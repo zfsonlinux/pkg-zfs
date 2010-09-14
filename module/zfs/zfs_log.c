@@ -23,7 +23,6 @@
  * Use is subject to license terms.
  */
 
-#ifdef HAVE_ZPL
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -48,6 +47,7 @@
 #include <sys/zfs_fuid.h>
 #include <sys/ddi.h>
 #include <sys/dsl_dataset.h>
+#include <sys/tsd_wrapper.h>
 
 #define	ZFS_HANDLE_REPLAY(zilog, tx) \
 	if (zilog->zl_replay) { \
@@ -107,6 +107,7 @@ zfs_log_create_txtype(zil_create_t type, vsecattr_t *vsecp, vattr_t *vap)
 	return (TX_MAX_TYPE);
 }
 
+#ifdef HAVE_ZPL
 /*
  * build up the log data necessary for logging xvattr_t
  * First lr_attr_t is initialized.  following the lr_attr_t
@@ -212,7 +213,8 @@ zfs_log_fuid_domains(zfs_fuid_info_t *fuidp, void *start)
 	return (start);
 }
 
-/*
+#endif /* HAVE_ZPL */
+/* 
  * zfs_log_create() is used to handle TX_CREATE, TX_CREATE_ATTR, TX_MKDIR,
  * TX_MKDIR_ATTR and TX_MKXATTR
  * transactions.
@@ -240,7 +242,9 @@ zfs_log_create(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
 	itx_t *itx;
 	uint64_t seq;
 	lr_create_t *lr;
+#ifdef HAVE_ZPL
 	lr_acl_create_t *lracl;
+#endif
 	size_t aclsize;
 	size_t xvatsize = 0;
 	size_t txsize;
@@ -304,15 +308,21 @@ zfs_log_create(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
 	/*
 	 * Fill in xvattr info if any
 	 */
+#ifdef HAVE_ZPL
 	if (vap->va_mask & AT_XVATTR) {
 		zfs_log_xvattr((lr_attr_t *)((caddr_t)lr + lrsize), xvap);
 		end = (caddr_t)lr + lrsize + xvatsize;
 	} else {
 		end = (caddr_t)lr + lrsize;
 	}
+#else
+	end = (caddr_t)lr + lrsize;
+#endif /* HAVE_ZPL */
+
 
 	/* Now fill in any ACL info */
 
+#ifdef HAVE_ZPL
 	if (vsecp) {
 		lracl = (lr_acl_create_t *)&itx->itx_lr;
 		lracl->lr_aclcnt = vsecp->vsa_aclcnt;
@@ -333,6 +343,7 @@ zfs_log_create(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
 		end = zfs_log_fuid_ids(fuidp, end);
 		end = zfs_log_fuid_domains(fuidp, end);
 	}
+#endif
 	/*
 	 * Now place file name in log record
 	 */
@@ -463,6 +474,7 @@ zfs_log_rename(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
 	tdzp->z_last_itx = seq;
 	szp->z_last_itx = seq;
 }
+
 
 /*
  * zfs_log_write() handles TX_WRITE transactions.
@@ -620,6 +632,7 @@ zfs_log_setattr(zilog_t *zilog, dmu_tx_t *tx, int txtype,
 	ZFS_TIME_ENCODE(&vap->va_atime, lr->lr_atime);
 	ZFS_TIME_ENCODE(&vap->va_mtime, lr->lr_mtime);
 	start = (lr_setattr_t *)(lr + 1);
+#ifdef HAVE_ZPL
 	if (vap->va_mask & AT_XVATTR) {
 		zfs_log_xvattr((lr_attr_t *)start, xvap);
 		start = (caddr_t)start + ZIL_XVAT_SIZE(xvap->xva_mapsize);
@@ -631,12 +644,14 @@ zfs_log_setattr(zilog_t *zilog, dmu_tx_t *tx, int txtype,
 
 	if (fuidp)
 		(void) zfs_log_fuid_domains(fuidp, start);
+#endif
 
 	itx->itx_sync = (zp->z_sync_cnt != 0);
 	seq = zil_itx_assign(zilog, itx, tx);
 	zp->z_last_itx = seq;
 }
 
+#ifdef HAVE_ZPL
 /*
  * zfs_log_acl() handles TX_ACL transactions.
  */

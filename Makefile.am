@@ -1,7 +1,9 @@
 include $(top_srcdir)/config/rpm.am
+include ${top_srcdir}/config/deb.am
+include ${top_srcdir}/config/tgz.am
 
 if CONFIG_USER
-USER_DIR = config doc scripts lib cmd
+USER_DIR = config doc scripts lib cmd man
 endif
 if CONFIG_KERNEL
 KERNEL_DIR = module
@@ -10,6 +12,7 @@ SUBDIRS = $(USER_DIR) $(KERNEL_DIR)
 
 AUTOMAKE_OPTIONS = foreign dist-zip
 EXTRA_DIST  = autogen.sh zfs.spec.in zfs-modules.spec.in
+EXTRA_DIST += config/rpm.am config/deb.am config/tgz.am
 EXTRA_DIST += META DISCLAIMER GIT
 EXTRA_DIST += OPENSOLARIS.LICENSE ZFS.RELEASE
 noinst_HEADERS = zfs_config.h zfs_unconfig.h
@@ -47,22 +50,3 @@ etags:
 
 tags: ctags etags
 
-srpm-modules:
-	$(MAKE) $(AM_MAKEFLAGS) pkg="${PACKAGE}-modules" srpm-common
-
-srpm-utils:
-	$(MAKE) $(AM_MAKEFLAGS) pkg="${PACKAGE}" srpm-common
-
-srpm: srpm-modules srpm-utils
-
-rpm-modules: srpm-modules
-	$(MAKE) $(AM_MAKEFLAGS) pkg="${PACKAGE}-modules" rpm-common
-
-rpm-utils: srpm-utils
-	$(MAKE) $(AM_MAKEFLAGS) pkg="${PACKAGE}" rpm-common
-
-rpm-modules: srpm-modules
-
-rpm-utils: srpm-utils
-
-rpm: rpm-modules rpm-utils

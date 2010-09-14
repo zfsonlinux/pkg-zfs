@@ -30,6 +30,26 @@
 #include <sys/zio.h>
 #include <sys/fs/zfs.h>
 #include <sys/fm/fs/zfs.h>
+#include <sys/spa_impl.h>
+#ifdef _KERNEL
+#include <sys/taskq.h>
+#endif
+
+#ifdef _KERNEL
+#define THREAD_SIZE1	8192 
+
+#ifdef __ia64__
+#define STACK_SIZE() (THREAD_SIZE1 -                                   \
+		       ((unsigned long)__builtin_dwarf_cfa() &          \
+		       (THREAD_SIZE1 - 1)))
+#else
+#define STACK_SIZE() (THREAD_SIZE1 -                                   \
+		       ((unsigned long)__builtin_frame_address(0) &     \
+			(THREAD_SIZE1 - 1)))
+#endif 
+
+static void zio_file_taskq_dispatch(zio_t *zio, enum zio_taskq_type q);
+#endif
 
 /*
  * Virtual device vector for files.
@@ -140,10 +160,65 @@ vdev_file_io_start(zio_t *zio)
 		return (ZIO_PIPELINE_CONTINUE);
 	}
 
+#ifdef _KERNEL
+	if ((STACK_SIZE() > THREAD_SIZE1 / 2) && (zio->io_type == ZIO_TYPE_READ ? UIO_READ : UIO_WRITE) ) {
+	        zio_file_taskq_dispatch(zio, ZIO_TASKQ_ISSUE);
+	} else {
+		zio->io_error = vn_rdwr(zio->io_type == ZIO_TYPE_READ ?
+		    UIO_READ : UIO_WRITE, vf->vf_vnode, zio->io_data,
+		    zio->io_size, zio->io_offset, UIO_SYSSPACE,
+		    0, RLIM64_INFINITY, kcred, &resid);
+
+		if (resid != 0 && zio->io_error == 0)
+			zio->io_error = ENOSPC;
+    	}
+#else
 	zio->io_error = vn_rdwr(zio->io_type == ZIO_TYPE_READ ?
-	    UIO_READ : UIO_WRITE, vf->vf_vnode, zio->io_data,
-	    zio->io_size, zio->io_offset, UIO_SYSSPACE,
-	    0, RLIM64_INFINITY, kcred, &resid);
+			UIO_READ : UIO_WRITE, vf->vf_vnode, zio->io_data,
+			zio->io_size, zio->io_offset, UIO_SYSSPACE,
+			0, RLIM64_INFINITY, kcred, &resid);
+
+	if (resid != 0 && zio->io_error == 0)
+		zio->io_error = ENOSPC;
+#endif
+	zio_interrupt(zio);
+
+	return (ZIO_PIPELINE_STOP);
+
+}
+
+#ifdef _KERNEL
+static int
+vdev_file_io_start_dispatch(zio_t *zio)
+{
+	vdev_t *vd = zio->io_vd;
+	vdev_file_t *vf = vd->vdev_tsd;
+	ssize_t resid;
+
+
+	if (zio->io_type == ZIO_TYPE_IOCTL) {
+		/* XXPOLICY */
+		if (!vdev_readable(vd)) {
+			zio->io_error = ENXIO;
+			return (ZIO_PIPELINE_CONTINUE);
+		}
+
+		switch (zio->io_cmd) {
+		case DKIOCFLUSHWRITECACHE:
+			zio->io_error = VOP_FSYNC(vf->vf_vnode, FSYNC | FDSYNC,
+			    kcred, NULL);
+			break;
+		default:
+			zio->io_error = ENOTSUP;
+		}
+
+		return (ZIO_PIPELINE_CONTINUE);
+	}
+
+	zio->io_error = vn_rdwr(zio->io_type == ZIO_TYPE_READ ?
+			UIO_READ : UIO_WRITE, vf->vf_vnode, zio->io_data,
+			zio->io_size, zio->io_offset, UIO_SYSSPACE,
+			0, RLIM64_INFINITY, kcred, &resid);
 
 	if (resid != 0 && zio->io_error == 0)
 		zio->io_error = ENOSPC;
@@ -152,6 +227,25 @@ vdev_file_io_start(zio_t *zio)
 
 	return (ZIO_PIPELINE_STOP);
 }
+
+static void
+zio_file_taskq_dispatch(zio_t *zio, enum zio_taskq_type q)
+{
+	int id;
+	zio_type_t t = zio->io_type;
+
+
+	id = taskq_dispatch(zio->io_spa->spa_zio_taskq[t][q],
+	    (task_func_t *)vdev_file_io_start_dispatch, zio, TQ_NOSLEEP);
+	if(id == 0) {
+		ASSERT(1 == 2);
+	}
+
+	cmn_err(CE_WARN, " id %d after taskq_dispatch \n", id); 
+	//__taskq_wait_id(zio->io_spa->spa_zio_taskq[t][q], id);
+	taskq_wait_id(zio->io_spa->spa_zio_taskq[t][q], id);
+}
+#endif
 
 /* ARGSUSED */
 static void

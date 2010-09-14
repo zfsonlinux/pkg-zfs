@@ -63,6 +63,7 @@
 #include <sys/zvol.h>
 #include <sharefs/share.h>
 #include <sys/dmu_objset.h>
+#include <sys/tsd_wrapper.h>
 
 #include <linux/miscdevice.h>
 
@@ -3803,10 +3804,8 @@ zfs_detach(void)
 		printk(KERN_INFO "ZFS: misc_deregister() failed %d\n", error);
 }
 
-#ifdef HAVE_ZPL
 uint_t zfs_fsyncer_key;
 extern uint_t rrw_tsd_key;
-#endif
 
 int
 _init(void)
@@ -3829,10 +3828,10 @@ _init(void)
 		return (error);
 	}
 
-#ifdef HAVE_ZPL
 	tsd_create(&zfs_fsyncer_key, NULL);
 	tsd_create(&rrw_tsd_key, NULL);
 
+#ifdef HAVE_ZPL
 	mutex_init(&zfs_share_lock, NULL, MUTEX_DEFAULT, NULL);
 #endif /* HAVE_ZPL */
 
@@ -3844,6 +3843,7 @@ _init(void)
 int
 _fini(void)
 {
+
 	zfs_detach();
 	zvol_fini();
 	zfs_fini();
@@ -3857,8 +3857,9 @@ _fini(void)
 		(void) ddi_modclose(sharefs_mod);
 
 	mutex_destroy(&zfs_share_lock);
-	tsd_destroy(&zfs_fsyncer_key);
 #endif /* HAVE_ZPL */
+	tsd_destroy(&zfs_fsyncer_key);
+	destroy_tsd_destructor();
 
 	return (0);
 }

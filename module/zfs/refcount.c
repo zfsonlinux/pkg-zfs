@@ -117,7 +117,7 @@ refcount_add_many(refcount_t *rc, uint64_t number, void *holder)
 	int64_t count;
 
 	if (reference_tracking_enable) {
-		ref = kmem_cache_alloc(reference_cache, KM_SLEEP);
+		ref = kmem_cache_alloc(reference_cache, KM_SLEEP & (~(__GFP_FS)));
 		ref->ref_holder = holder;
 		ref->ref_number = number;
 	}
@@ -161,7 +161,7 @@ refcount_remove_many(refcount_t *rc, uint64_t number, void *holder)
 			if (reference_history > 0) {
 				ref->ref_removed =
 				    kmem_cache_alloc(reference_history_cache,
-				    KM_SLEEP);
+				    KM_SLEEP & (~(__GFP_FS)));
 				list_insert_head(&rc->rc_removed, ref);
 				rc->rc_removed_count++;
 				if (rc->rc_removed_count >= reference_history) {

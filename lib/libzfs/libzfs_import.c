@@ -941,6 +941,28 @@ zpool_find_import_impl(libzfs_handle_t *hdl, int argc, char **argv,
 			    (name[1] == 0 || (name[1] == '.' && name[2] == 0)))
 				continue;
 
+			/*
+			 * Skip checking devices with well known prefixes:
+			 * watchdog - A special close is required to avoid
+			 *            triggering it and resetting the system.
+			 * fuse     - Fuse control device.
+			 * ppp      - Generic PPP driver.
+			 * tty*     - Generic serial interface.
+			 * vcs*     - Virtual console memory.
+			 * parport* - Parallel port interface.
+			 * lp*      - Printer interface.
+			 * fd*      - Floppy interface.
+			 */
+			if ((strncmp(name, "watchdog", 8) == 0) ||
+			    (strncmp(name, "fuse", 4) == 0)     ||
+			    (strncmp(name, "ppp", 3) == 0)      ||
+			    (strncmp(name, "tty", 3) == 0)      ||
+			    (strncmp(name, "vcs", 3) == 0)      ||
+			    (strncmp(name, "parport", 7) == 0)  ||
+			    (strncmp(name, "lp", 2) == 0)       ||
+			    (strncmp(name, "fd", 2) == 0))
+				continue;
+
 			snprintf(path2, sizeof (path2), "%s%s", rdsk, name);
 
 			/*

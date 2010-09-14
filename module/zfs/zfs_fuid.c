@@ -222,12 +222,14 @@ zfs_fuid_init(zfsvfs_t *zfsvfs)
 	rw_exit(&zfsvfs->z_fuid_lock);
 }
 
+#endif /* HAVE_ZPL */
 /*
  * sync out AVL trees to persistent storage.
  */
 void
 zfs_fuid_sync(zfsvfs_t *zfsvfs, dmu_tx_t *tx)
 {
+#ifdef HAVE_ZPL
 	nvlist_t *nvp;
 	nvlist_t **fuids;
 	size_t nvsize = 0;
@@ -290,8 +292,10 @@ zfs_fuid_sync(zfsvfs_t *zfsvfs, dmu_tx_t *tx)
 
 	zfsvfs->z_fuid_dirty = B_FALSE;
 	rw_exit(&zfsvfs->z_fuid_lock);
+#endif /* HAVE_ZPL */
 }
 
+#ifdef HAVE_ZPL
 /*
  * Query domain table for a given domain.
  *
@@ -388,6 +392,7 @@ zfs_fuid_find_by_idx(zfsvfs_t *zfsvfs, uint32_t idx)
 	return (domain);
 }
 
+#endif
 void
 zfs_fuid_map_ids(znode_t *zp, cred_t *cr, uid_t *uidp, uid_t *gidp)
 {
@@ -401,6 +406,7 @@ uid_t
 zfs_fuid_map_id(zfsvfs_t *zfsvfs, uint64_t fuid,
     cred_t *cr, zfs_fuid_type_t type)
 {
+#ifdef HAVE_ZPL
 	uint32_t index = FUID_INDEX(fuid);
 	const char *domain;
 	uid_t id;
@@ -419,8 +425,14 @@ zfs_fuid_map_id(zfsvfs_t *zfsvfs, uint64_t fuid,
 		    FUID_RID(fuid), &id);
 	}
 	return (id);
-}
+#endif
+	if(type == ZFS_OWNER || type == ZFS_ACE_USER)
+		return (crgetuid(cr));
+	else
+		return (crgetgid(cr));
 
+}
+#ifdef HAVE_ZPL
 /*
  * Add a FUID node to the list of fuid's being created for this
  * ACL
@@ -526,6 +538,7 @@ zfs_fuid_create_cred(zfsvfs_t *zfsvfs, zfs_fuid_type_t type,
 	return (FUID_ENCODE(idx, rid));
 }
 
+#endif
 /*
  * Create a file system FUID for an ACL ace
  * or a chown/chgrp of the file.
@@ -542,6 +555,7 @@ uint64_t
 zfs_fuid_create(zfsvfs_t *zfsvfs, uint64_t id, cred_t *cr,
     zfs_fuid_type_t type, zfs_fuid_info_t **fuidpp)
 {
+#ifdef HAVE_ZPL
 	const char *domain;
 	char *kdomain;
 	uint32_t fuid_idx = FUID_INDEX(id);
@@ -620,6 +634,12 @@ zfs_fuid_create(zfsvfs_t *zfsvfs, uint64_t id, cred_t *cr,
 		kmem_free(zfuid, sizeof (zfs_fuid_t));
 	}
 	return (FUID_ENCODE(idx, rid));
+#endif
+ /* return cred uid which is set to  acls uid */
+        if (type == ZFS_OWNER)
+		return crgetuid(cr);
+        else
+                return crgetgid(cr);
 }
 
 void
@@ -687,6 +707,7 @@ zfs_fuid_info_free(zfs_fuid_info_t *fuidp)
 boolean_t
 zfs_groupmember(zfsvfs_t *zfsvfs, uint64_t id, cred_t *cr)
 {
+#ifdef HAVE_ZPL
 	ksid_t		*ksid = crgetsid(cr, KSID_GROUP);
 	ksidlist_t	*ksidlist = crgetsidlist(cr);
 	uid_t		gid;
@@ -728,6 +749,8 @@ zfs_groupmember(zfsvfs_t *zfsvfs, uint64_t id, cred_t *cr)
 	 */
 	gid = zfs_fuid_map_id(zfsvfs, id, cr, ZFS_GROUP);
 	return (groupmember(gid, cr));
+#endif
+	return(B_TRUE);
 }
 
 void
@@ -744,5 +767,4 @@ zfs_fuid_txhold(zfsvfs_t *zfsvfs, dmu_tx_t *tx)
 		    FUID_SIZE_ESTIMATE(zfsvfs));
 	}
 }
-#endif /* HAVE_ZPL */
 #endif

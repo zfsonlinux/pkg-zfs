@@ -23,7 +23,6 @@
  * Use is subject to license terms.
  */
 
-#ifdef HAVE_ZPL
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -53,8 +52,10 @@
 #include <sys/dnode.h>
 #include <sys/zap.h>
 #include "fs/fs_subr.h"
+#ifdef HAVE_ZPL
 #include <acl/acl_common.h>
-
+#endif /* HAVE_ZPL */
+#include <sys/idmap.h>
 #define	ALLOW	ACE_ACCESS_ALLOWED_ACE_TYPE
 #define	DENY	ACE_ACCESS_DENIED_ACE_TYPE
 #define	MAX_ACE_TYPE	ACE_SYSTEM_ALARM_CALLBACK_OBJECT_ACE_TYPE
@@ -383,7 +384,7 @@ zfs_acl_release_nodes(zfs_acl_t *aclp)
 {
 	zfs_acl_node_t *aclnode;
 
-	while (aclnode = list_head(&aclp->z_acl)) {
+	while ((aclnode = list_head(&aclp->z_acl))) {
 		list_remove(&aclp->z_acl, aclnode);
 		zfs_acl_node_free(aclnode);
 	}
@@ -517,6 +518,7 @@ zfs_acl_next_ace(zfs_acl_t *aclp, void *start, uint64_t *who,
 }
 
 /*ARGSUSED*/
+#ifdef HAVE_ZPL
 static uint64_t
 zfs_ace_walk(void *datap, uint64_t cookie, int aclcnt,
     uint16_t *flags, uint16_t *type, uint32_t *mask)
@@ -529,6 +531,7 @@ zfs_ace_walk(void *datap, uint64_t cookie, int aclcnt,
 	    flags, type);
 	return ((uint64_t)(uintptr_t)acep);
 }
+#endif
 
 static zfs_acl_node_t *
 zfs_acl_curr_node(zfs_acl_t *aclp)
@@ -618,8 +621,8 @@ zfs_copy_fuid_2_ace(zfsvfs_t *zfsvfs, zfs_acl_t *aclp, cred_t *cr,
 	size_t ace_size;
 	uint16_t entry_type;
 
-	while (zacep = zfs_acl_next_ace(aclp, zacep,
-	    &who, &access_mask, &iflags, &type)) {
+	while ((zacep = zfs_acl_next_ace(aclp, zacep,
+	    &who, &access_mask, &iflags, &type))) {
 
 		switch (type) {
 		case ACE_ACCESS_ALLOWED_OBJECT_ACE_TYPE:
@@ -709,8 +712,8 @@ zfs_acl_xform(znode_t *zp, zfs_acl_t *aclp, cred_t *cr)
 	oldaclp = kmem_alloc(sizeof (zfs_oldace_t) * aclp->z_acl_count,
 	    KM_SLEEP);
 	i = 0;
-	while (cookie = zfs_acl_next_ace(aclp, cookie, &who,
-	    &access_mask, &iflags, &type)) {
+	while ((cookie = zfs_acl_next_ace(aclp, cookie, &who,
+	    &access_mask, &iflags, &type))) {
 		oldaclp[i].z_flags = iflags;
 		oldaclp[i].z_type = type;
 		oldaclp[i].z_fuid = who;
@@ -789,8 +792,8 @@ zfs_mode_compute(znode_t *zp, zfs_acl_t *aclp)
 
 	mode = (zp->z_phys->zp_mode & (S_IFMT | S_ISUID | S_ISGID | S_ISVTX));
 
-	while (acep = zfs_acl_next_ace(aclp, acep, &who,
-	    &access_mask, &iflags, &type)) {
+	while ((acep = zfs_acl_next_ace(aclp, acep, &who,
+	    &access_mask, &iflags, &type))) {
 
 		if (!zfs_acl_valid_ace_type(type, iflags))
 			continue;
@@ -1153,10 +1156,10 @@ zfs_aclset_common(znode_t *zp, zfs_acl_t *aclp, cred_t *cr, dmu_tx_t *tx)
 	zp->z_phys->zp_flags &= ~ZFS_ACL_WIDE_FLAGS;
 
 	zp->z_phys->zp_flags |= aclp->z_hints;
-
+#ifdef HAVE_ZPL
 	if (ace_trivial_common(aclp, 0, zfs_ace_walk) == 0)
 		zp->z_phys->zp_flags |= ZFS_ACL_TRIVIAL;
-
+#endif /* HAVE_ZPL */
 	return (0);
 }
 
@@ -1235,9 +1238,10 @@ zfs_acl_fixup_canonical_six(zfs_acl_t *aclp, mode_t mode)
 {
 	zfs_acl_node_t *aclnode = list_tail(&aclp->z_acl);
 	void	*acep;
-	int	maskoff = aclp->z_ops.ace_mask_off();
+	//int	maskoff = aclp->z_ops.ace_mask_off();
 	size_t abstract_size = aclp->z_ops.ace_abstract_size();
 
+	ASSERT(0); /* need to port if we get here */
 	ASSERT(aclnode != NULL);
 
 	acep = (void *)((caddr_t)aclnode->z_acldata +
@@ -1247,6 +1251,7 @@ zfs_acl_fixup_canonical_six(zfs_acl_t *aclp, mode_t mode)
 	 * Fixup final ACEs to match the mode
 	 */
 
+#ifdef HAVE_ZPL
 	adjust_ace_pair_common(acep, maskoff, abstract_size,
 	    (mode & 0700) >> 6);	/* owner@ */
 
@@ -1258,6 +1263,7 @@ zfs_acl_fixup_canonical_six(zfs_acl_t *aclp, mode_t mode)
 	acep = (caddr_t)acep + (abstract_size * 2);
 	adjust_ace_pair_common(acep, maskoff,
 	    abstract_size, mode);	/* everyone@ */
+#endif
 }
 
 
@@ -1516,6 +1522,14 @@ zfs_acl_chmod(zfsvfs_t *zfsvfs, uint64_t uid,
 	uint16_t	iflags, type;
 	uint32_t	access_mask;
 
+#ifdef LINUX_PORT
+	
+	/* XXX: Porting this is still pending. 
+	 */
+	
+	return;
+#endif
+	
 	/*
 	 * If discard then just discard all ACL nodes which
 	 * represent the ACEs.
@@ -1526,8 +1540,8 @@ zfs_acl_chmod(zfsvfs_t *zfsvfs, uint64_t uid,
 	if (zfsvfs->z_acl_mode == ZFS_ACL_DISCARD)
 		zfs_acl_release_nodes(aclp);
 
-	while (acep = zfs_acl_next_ace(aclp, acep, &who, &access_mask,
-	    &iflags, &type)) {
+	while ((acep = zfs_acl_next_ace(aclp, acep, &who, &access_mask,
+	    &iflags, &type))) {
 
 		entry_type = (iflags & ACE_TYPE_FLAGS);
 		iflags = (iflags & ALL_INHERIT);
@@ -1720,8 +1734,8 @@ zfs_acl_inherit(zfsvfs_t *zfsvfs, vtype_t vtype, zfs_acl_t *paclp,
 	aclp = zfs_acl_alloc(paclp->z_version);
 	if (zfsvfs->z_acl_inherit == ZFS_ACL_DISCARD)
 		return (aclp);
-	while (pacep = zfs_acl_next_ace(paclp, pacep, &who,
-	    &access_mask, &iflags, &type)) {
+	while ((pacep = zfs_acl_next_ace(paclp, pacep, &who,
+	    &access_mask, &iflags, &type))) {
 
 		/*
 		 * don't inherit bogus ACEs
@@ -1837,7 +1851,9 @@ zfs_acl_ids_create(znode_t *dzp, int flag, vattr_t *vap, cred_t *cr,
 	int		error;
 	zfsvfs_t	*zfsvfs = dzp->z_zfsvfs;
 	zfs_acl_t	*paclp;
+#ifdef HAVE_ZPL
 	gid_t		gid;
+#endif	
 	boolean_t	need_chmod = B_TRUE;
 
 	bzero(acl_ids, sizeof (zfs_acl_ids_t));
@@ -1847,6 +1863,10 @@ zfs_acl_ids_create(znode_t *dzp, int flag, vattr_t *vap, cred_t *cr,
 		if ((error = zfs_vsec_2_aclp(zfsvfs, vap->va_type, vsecp, cr,
 		    &acl_ids->z_fuidp, &acl_ids->z_aclp)) != 0)
 			return (error);
+	acl_ids->z_fuid = vap->va_uid;
+	acl_ids->z_fgid = vap->va_gid;
+
+#ifdef HAVE_ZPL
 
 	/*
 	 * Determine uid and gid.
@@ -1869,9 +1889,11 @@ zfs_acl_ids_create(znode_t *dzp, int flag, vattr_t *vap, cred_t *cr,
 			    (uint64_t)vap->va_gid,
 			    cr, ZFS_GROUP, &acl_ids->z_fuidp);
 			gid = vap->va_gid;
-			if (acl_ids->z_fgid != dzp->z_phys->zp_gid &&
+		/*	if (acl_ids->z_fgid != dzp->z_phys->zp_gid &&
 			    !groupmember(vap->va_gid, cr) &&
 			    secpolicy_vnode_create_gid(cr) != 0)
+		*/	if(acl_ids->z_fgid != dzp->z_phys->zp_gid &&
+				!groupmember(vap->va_gid, cr))		
 				acl_ids->z_fgid = 0;
 		}
 		if (acl_ids->z_fgid == 0) {
@@ -1886,7 +1908,7 @@ zfs_acl_ids_create(znode_t *dzp, int flag, vattr_t *vap, cred_t *cr,
 			}
 		}
 	}
-
+#endif /* HAVE_ZPL */
 	/*
 	 * If we're creating a directory, and the parent directory has the
 	 * set-GID bit set, set in on the new directory.
@@ -1898,8 +1920,10 @@ zfs_acl_ids_create(znode_t *dzp, int flag, vattr_t *vap, cred_t *cr,
 	    (vap->va_type == VDIR)) {
 		acl_ids->z_mode |= S_ISGID;
 	} else {
-		if ((acl_ids->z_mode & S_ISGID) &&
+	/*	if ((acl_ids->z_mode & S_ISGID) &&
 		    secpolicy_vnode_setids_setgids(cr, gid) != 0)
+	
+	*/	if(acl_ids->z_mode & S_ISGID) 
 			acl_ids->z_mode &= ~S_ISGID;
 	}
 
@@ -1965,7 +1989,7 @@ zfs_getacl(znode_t *zp, vsecattr_t *vsecp, boolean_t skipaclchk, cred_t *cr)
 	mask = vsecp->vsa_mask & (VSA_ACE | VSA_ACECNT |
 	    VSA_ACE_ACLFLAGS | VSA_ACE_ALLTYPES);
 
-	if (error = zfs_zaccess(zp, ACE_READ_ACL, 0, skipaclchk, cr))
+	if ((error = zfs_zaccess(zp, ACE_READ_ACL, 0, skipaclchk, cr)))
 		return (error);
 
 	if (mask == 0)
@@ -1989,8 +2013,8 @@ zfs_getacl(znode_t *zp, vsecattr_t *vsecp, boolean_t skipaclchk, cred_t *cr)
 		uint32_t access_mask;
 		uint16_t type, iflags;
 
-		while (zacep = zfs_acl_next_ace(aclp, zacep,
-		    &who, &access_mask, &iflags, &type)) {
+		while ((zacep = zfs_acl_next_ace(aclp, zacep,
+		    &who, &access_mask, &iflags, &type))) {
 			switch (type) {
 			case ACE_ACCESS_ALLOWED_OBJECT_ACE_TYPE:
 			case ACE_ACCESS_DENIED_OBJECT_ACE_TYPE:
@@ -2106,7 +2130,12 @@ int
 zfs_setacl(znode_t *zp, vsecattr_t *vsecp, boolean_t skipaclchk, cred_t *cr)
 {
 	zfsvfs_t	*zfsvfs = zp->z_zfsvfs;
+	/* might be needed when zilog comes in picture
+ 	 *
+ 	 */
+#ifdef HAVE_ZPL
 	zilog_t		*zilog = zfsvfs->z_log;
+#endif /* HAVE_ZPL */
 	ulong_t		mask = vsecp->vsa_mask & (VSA_ACE | VSA_ACECNT);
 	dmu_tx_t	*tx;
 	int		error;
@@ -2120,7 +2149,7 @@ zfs_setacl(znode_t *zp, vsecattr_t *vsecp, boolean_t skipaclchk, cred_t *cr)
 	if (zp->z_phys->zp_flags & ZFS_IMMUTABLE)
 		return (EPERM);
 
-	if (error = zfs_zaccess(zp, ACE_WRITE_ACL, 0, skipaclchk, cr))
+	if ((error = zfs_zaccess(zp, ACE_WRITE_ACL, 0, skipaclchk, cr)))
 		return (error);
 
 	error = zfs_vsec_2_aclp(zfsvfs, ZTOV(zp)->v_type, vsecp, cr, &fuidp,
@@ -2187,12 +2216,17 @@ top:
 		zfs_fuid_sync(zfsvfs, tx);
 
 	zfs_time_stamper_locked(zp, STATE_CHANGED, tx);
+	/* related to zilog so commented needs to be
+	 * looked ini later
+	 */
+#ifdef HAVE_ZPL
 	zfs_log_acl(zilog, tx, zp, vsecp, fuidp);
+#endif /* HAVE_ZPL */
 
 	if (fuidp)
 		zfs_fuid_info_free(fuidp);
 	dmu_tx_commit(tx);
-done:
+//done:
 	mutex_exit(&zp->z_acl_lock);
 	mutex_exit(&zp->z_lock);
 
@@ -2291,8 +2325,8 @@ zfs_zaccess_aces_check(znode_t *zp, uint32_t *working_mode,
 		return (error);
 	}
 
-	while (acep = zfs_acl_next_ace(aclp, acep, &who, &access_mask,
-	    &iflags, &type)) {
+	while ((acep = zfs_acl_next_ace(aclp, acep, &who, &access_mask,
+	    &iflags, &type))) {
 		uint32_t mask_matched;
 
 		if (!zfs_acl_valid_ace_type(type, iflags))
@@ -2395,6 +2429,7 @@ zfs_has_access(znode_t *zp, cred_t *cr)
 		owner = zfs_fuid_map_id(zp->z_zfsvfs,
 		    zp->z_phys->zp_uid, cr, ZFS_OWNER);
 
+#ifdef HAVE_ZPL
 		return (
 		    secpolicy_vnode_access(cr, ZTOV(zp), owner, VREAD) == 0 ||
 		    secpolicy_vnode_access(cr, ZTOV(zp), owner, VWRITE) == 0 ||
@@ -2402,6 +2437,7 @@ zfs_has_access(znode_t *zp, cred_t *cr)
 		    secpolicy_vnode_chown(cr, owner) == 0 ||
 		    secpolicy_vnode_setdac(cr, owner) == 0 ||
 		    secpolicy_vnode_remove(cr) == 0);
+#endif /* HAVE_ZPL */
 	}
 	return (B_TRUE);
 }
@@ -2614,6 +2650,7 @@ zfs_zaccess(znode_t *zp, int mode, int flags, boolean_t skipaclchk, cred_t *cr)
 		if (working_mode & ACE_EXECUTE)
 			checkmode |= VEXEC;
 
+#ifdef HAVE_ZPL
 		if (checkmode)
 			error = secpolicy_vnode_access(cr, ZTOV(check_zp),
 			    owner, checkmode);
@@ -2630,6 +2667,7 @@ zfs_zaccess(znode_t *zp, int mode, int flags, boolean_t skipaclchk, cred_t *cr)
 		if (error == 0 && (working_mode & ACE_SYNCHRONIZE)) {
 			error = secpolicy_vnode_chown(cr, owner);
 		}
+#endif
 		if (error == 0) {
 			/*
 			 * See if any bits other than those already checked
@@ -2672,14 +2710,14 @@ static int
 zfs_delete_final_check(znode_t *zp, znode_t *dzp,
     mode_t missing_perms, cred_t *cr)
 {
-	int error;
+	int error = 0;
 	uid_t downer;
 	zfsvfs_t *zfsvfs = zp->z_zfsvfs;
 
 	downer = zfs_fuid_map_id(zfsvfs, dzp->z_phys->zp_uid, cr, ZFS_OWNER);
-
+#ifdef HAVE_ZPL
 	error = secpolicy_vnode_access(cr, ZTOV(dzp), downer, missing_perms);
-
+#endif
 	if (error == 0)
 		error = zfs_sticky_remove_access(dzp, zp, cr);
 
@@ -2779,10 +2817,10 @@ zfs_zaccess_delete(znode_t *dzp, znode_t *zp, cred_t *cr)
 	 * since that *could* allow the delete based on write/execute permission
 	 * and we want delete permissions to override write/execute.
 	 */
-
+#ifdef HAVE_ZPL
 	if (dzp_error == EACCES)
 		return (secpolicy_vnode_remove(cr));
-
+#endif
 	/*
 	 * Third Row
 	 * only need to see if we have write/execute on directory.
@@ -2832,14 +2870,14 @@ zfs_zaccess_rename(znode_t *sdzp, znode_t *szp, znode_t *tdzp,
 	 * If that succeeds then check for add_file/add_subdir permissions
 	 */
 
-	if (error = zfs_zaccess_delete(sdzp, szp, cr))
+	if ((error = zfs_zaccess_delete(sdzp, szp, cr)))
 		return (error);
 
 	/*
 	 * If we have a tzp, see if we can delete it?
 	 */
 	if (tzp) {
-		if (error = zfs_zaccess_delete(tdzp, tzp, cr))
+		if ((error = zfs_zaccess_delete(tdzp, tzp, cr)))
 			return (error);
 	}
 
@@ -2851,4 +2889,3 @@ zfs_zaccess_rename(znode_t *sdzp, znode_t *szp, znode_t *tdzp,
 	return (error);
 }
 
-#endif /* HAVE_ZPL */

@@ -64,14 +64,15 @@
  * so that it cannot be freed until all snapshots have been unmounted.
  */
 
-#ifdef HAVE_ZPL
 
 #include <fs/fs_subr.h>
 #include <sys/zfs_ctldir.h>
 #include <sys/zfs_ioctl.h>
 #include <sys/zfs_vfsops.h>
 #include <sys/vfs_opreg.h>
+#ifdef HAVE_ZPL
 #include <sys/gfs.h>
+#endif
 #include <sys/stat.h>
 #include <sys/dmu.h>
 #include <sys/dsl_deleg.h>
@@ -80,6 +81,7 @@
 
 #include "zfs_namecheck.h"
 
+#ifdef HAVE_ZPL
 typedef struct zfsctl_node {
 	gfs_dir_t	zc_gfs_private;
 	uint64_t	zc_id;
@@ -206,6 +208,95 @@ zfsctl_root_inode_cb(vnode_t *vp, int index)
 	return (zfsvfs->z_shares_dir);
 }
 
+#endif /* HAVE_ZPL */
+
+/* 
+ * sets the pointer of .zfs vnode in zfsvfs field
+ */
+
+void
+set_zfsvfs_ctldir(void *ptr, vnode_t *ctl_dir_vp)
+{
+	zfsvfs_t *zfsvfs = NULL;
+	
+	ASSERT(ptr);
+	ASSERT(ctl_dir_vp);
+	zfsvfs = (zfsvfs_t *) ptr;
+	printk("checking : this : super_block magic no : %lx\n",
+			zfsvfs->z_vfs->vfs_super->s_magic);
+	zfsvfs->z_ctldir = ctl_dir_vp;
+}
+EXPORT_SYMBOL(set_zfsvfs_ctldir);
+
+/*
+ * pool name to be returned to lzfs module
+ */
+
+void
+zfs_fs_name_fn(void *ptr, char *osname)
+{
+	zfsvfs_t *zfsvfs = NULL;
+	
+	ASSERT(ptr);
+	zfsvfs = (zfsvfs_t *) ptr;
+	dmu_objset_name(zfsvfs->z_os, osname);
+}
+EXPORT_SYMBOL(zfs_fs_name_fn);
+
+/*
+ * .zfs dir cleanups
+ */
+
+void
+zfsctl_dir_destroy(void *ptr)
+{
+	zfsvfs_t *zfsvfs = NULL;
+   
+	ASSERT(ptr);
+	zfsvfs = (zfsvfs_t *) ptr;
+	drop_nlink(LZFS_VTOI(zfsvfs->z_ctldir));
+	mutex_destroy(&(zfsvfs->z_ctldir->v_lock));
+}
+EXPORT_SYMBOL(zfsctl_dir_destroy);
+
+/* gives the next snapshot name in snapname
+ * used by readdir in lzfs
+ */
+
+int
+zfs_snapshot_list_next(void *ptr, char *snapname,
+    uint64_t *idp, uint64_t *cookiep, boolean_t *case_conflictp)
+{
+	zfsvfs_t *zfsvfs = NULL;
+	int err;
+
+	ASSERT(ptr);
+	zfsvfs = (zfsvfs_t *) ptr;
+	err = dmu_snapshot_list_next(zfsvfs->z_os, MAXNAMELEN, snapname, idp,
+								cookiep, case_conflictp);
+	return err;
+}
+EXPORT_SYMBOL(zfs_snapshot_list_next);
+
+/*
+ * snapname over here is in-para
+ * returns object id used for inode numbering in lzfs
+ * computed using zap hashing operations
+ */
+
+uint64_t
+zfs_snapname_to_id(void *ptr, const char *snapname) 
+{
+	zfsvfs_t *zfsvfs = NULL;
+
+	ASSERT(ptr);
+	zfsvfs = (zfsvfs_t *) ptr;
+	return (dmu_snapname_to_id(zfsvfs->z_os,snapname));
+}
+EXPORT_SYMBOL(zfs_snapname_to_id); 
+
+#ifdef HAVE_ZPL
+
 /*
  * Create the '.zfs' directory.  This directory is cached as part of the VFS
  * structure.  This results in a hold on the vfs_t.  The code in zfs_umount()
@@ -252,6 +343,7 @@ zfsctl_destroy(zfsvfs_t *zfsvfs)
 	zfsvfs->z_ctldir = NULL;
 }
 
+#endif /* HAVE_ZPL */
 /*
  * Given a root znode, retrieve the associated .zfs directory.
  * Add a hold to the vnode and return it.
@@ -264,6 +356,7 @@ zfsctl_root(znode_t *zp)
 	return (zp->z_zfsvfs->z_ctldir);
 }
 
+#ifdef HAVE_ZPL
 /*
  * Common open routine.  Disallow any write access.
  */
@@ -429,6 +522,7 @@ zfsctl_root_getattr(vnode_t *vp, vattr_t *vap, int flags, cred_t *cr,
 	return (0);
 }
 
+#endif /* HAVE_ZPL */
 /*
  * Special case the handling of "..".
  */
@@ -439,7 +533,9 @@ zfsctl_root_lookup(vnode_t *dvp, char *nm, vnode_t **vpp, pathname_t *pnp,
     int *direntflags, pathname_t *realpnp)
 {
 	zfsvfs_t *zfsvfs = dvp->v_vfsp->vfs_data;
+#ifdef HAVE_ZPL
 	int err;
+#endif /* HAVE_ZPL */
 
 	/*
 	 * No extended attributes allowed under .zfs
@@ -449,18 +545,24 @@ zfsctl_root_lookup(vnode_t *dvp, char *nm, vnode_t **vpp, pathname_t *pnp,
 
 	ZFS_ENTER(zfsvfs);
 
+#ifdef HAVE_ZPL
 	if (strcmp(nm, "..") == 0) {
 		err = VFS_ROOT(dvp->v_vfsp, vpp);
 	} else {
 		err = gfs_vop_lookup(dvp, nm, vpp, pnp, flags, rdir,
 		    cr, ct, direntflags, realpnp);
 	}
+#endif /* HAVE_ZPL */
 
 	ZFS_EXIT(zfsvfs);
 
+#ifdef HAVE_ZPL
 	return (err);
+#endif /* HAVE_ZPL */
+	return 0;
 }
 
+#ifdef HAVE_ZPL
 static int
 zfsctl_pathconf(vnode_t *vp, int cmd, ulong_t *valp, cred_t *cr,
     caller_context_t *ct)

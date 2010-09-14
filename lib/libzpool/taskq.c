@@ -286,3 +286,9 @@ system_taskq_fini(void)
 {
 	taskq_destroy(system_taskq);
 }
+
+void
+taskq_wait_id(taskq_t *tq, taskqid_t id)
+{
+	ASSERT(0);
+}

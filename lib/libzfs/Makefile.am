@@ -28,4 +28,7 @@ libzfs_la_SOURCES = \
 	${top_srcdir}/lib/libzfs/libzfs_status.c \
 	${top_srcdir}/lib/libzfs/libzfs_util.c \
 	${top_srcdir}/lib/libzfs/include/libzfs.h \
-	${top_srcdir}/lib/libzfs/include/libzfs_impl.h
+	${top_srcdir}/lib/libzfs/include/libzfs_impl.h \
+	${top_srcdir}/lib/libzfs/include/libzfs_mtab.h \
+	${top_srcdir}/lib/libzfs/libzfs_mtab.c 
+

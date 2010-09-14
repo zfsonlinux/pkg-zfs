@@ -346,7 +346,7 @@ traverse_impl(spa_t *spa, uint64_t objset, blkptr_t *rootbp,
 
 	if (!(flags & TRAVERSE_PREFETCH) ||
 	    0 == taskq_dispatch(system_taskq, traverse_prefetch_thread,
-	    &td, TQ_NOQUEUE))
+	    &td, TQ_NOQUEUE | TQ_SLEEP))
 		pd.pd_exited = B_TRUE;
 
 	SET_BOOKMARK(&czb, objset, 0, -1, 0);

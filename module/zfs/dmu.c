@@ -430,7 +430,7 @@ dmu_free_long_range_impl(objset_t *os, dnode_t *dn, uint64_t offset,
     uint64_t length, boolean_t free_dnode)
 {
 	dmu_tx_t *tx;
-	uint64_t object_size, start, end, len;
+	uint64_t object_size, start, end, len = 0;
 	boolean_t trunc = (length == DMU_OBJECT_END);
 	int align, err;
 
@@ -813,7 +813,100 @@ dmu_write_req(objset_t *os, uint64_t object, struct request *req, dmu_tx_t *tx)
 	dmu_buf_rele_array(dbp, numbufs, FTAG);
 	return (err);
 }
-#endif
+
+/* uio variants of dmu_read_req function.
+ */ 
+
+int
+dmu_read_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size)
+{
+	dmu_buf_t **dbp;
+	int numbufs, i, err;
+
+	/*
+	 * NB: we could do this block-at-a-time, but it's nice
+	 * to be reading in parallel.
+	 */
+	err = dmu_buf_hold_array(os, object, uio->uio_loffset, size, TRUE, FTAG,
+	    &numbufs, &dbp);
+	if (err)
+		return (err);
+
+	for (i = 0; i < numbufs; i++) {
+		int tocpy;
+		int bufoff;
+		dmu_buf_t *db = dbp[i];
+
+		ASSERT(size > 0);
+
+		bufoff = uio->uio_loffset - db->db_offset;
+		tocpy = (int)MIN(db->db_size - bufoff, size);
+
+		err = uiomove((char *)db->db_data + bufoff, tocpy,
+		    UIO_READ, uio);
+		if (err)
+			break;
+
+		size -= tocpy;
+	}
+	dmu_buf_rele_array(dbp, numbufs, FTAG);
+
+	return (err);
+}
+
+int
+dmu_write_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size,
+    dmu_tx_t *tx)
+{
+	dmu_buf_t **dbp;
+	int numbufs, i;
+	int err = 0;
+
+	if (size == 0)
+		return (0);
+
+	err = dmu_buf_hold_array(os, object, uio->uio_loffset, size,
+	    FALSE, FTAG, &numbufs, &dbp);
+	if (err)
+		return (err);
+
+	for (i = 0; i < numbufs; i++) {
+		int tocpy;
+		int bufoff;
+		dmu_buf_t *db = dbp[i];
+
+		ASSERT(size > 0);
+
+		bufoff = uio->uio_loffset - db->db_offset;
+		tocpy = (int)MIN(db->db_size - bufoff, size);
+
+		ASSERT(i == 0 || i == numbufs-1 || tocpy == db->db_size);
+
+		if (tocpy == db->db_size)
+			dmu_buf_will_fill(db, tx);
+		else
+			dmu_buf_will_dirty(db, tx);
+
+		/*
+		 * XXX uiomove could block forever (eg. nfs-backed
+		 * pages).  There needs to be a uiolockdown() function
+		 * to lock the pages in memory, so that uiomove won't
+		 * block.
+		 */
+		err = uiomove((char *)db->db_data + bufoff, tocpy,
+		    UIO_WRITE, uio);
+
+		if (tocpy == db->db_size)
+			dmu_buf_fill_done(db, tx);
+
+		if (err)
+			break;
+
+		size -= tocpy;
+	}
+	dmu_buf_rele_array(dbp, numbufs, FTAG);
+	return (err);
+}
 
 #ifdef HAVE_ZPL
 int
@@ -870,7 +963,9 @@ dmu_write_pages(objset_t *os, uint64_t object, uint64_t offset, uint64_t size,
 	dmu_buf_rele_array(dbp, numbufs, FTAG);
 	return (err);
 }
-#endif
+#endif /* HAVE_ZPL */
+
+#endif /* KERNEL */
 
 /*
  * Allocate a loaned anonymous arc buffer.

@@ -87,7 +87,7 @@
  * (such as VFS logic) that will not compile easily in userland.
  */
 #ifdef _KERNEL
-#ifdef HAVE_ZPL
+
 /*
  * Needed to close a small window in zfs_znode_move() that allows the zfsvfs to
  * be freed before it can be safely accessed.
@@ -107,20 +107,22 @@ znode_evict_error(dmu_buf_t *dbuf, void *user_ptr)
 	panic("evicting znode %p\n", user_ptr);
 }
 
+
 /*ARGSUSED*/
 static int
 zfs_znode_cache_constructor(void *buf, void *arg, int kmflags)
 {
 	znode_t *zp = buf;
 
-	ASSERT(!POINTER_IS_VALID(zp->z_zfsvfs));
-
+	ASSERT(!zp->z_zfsvfs || !POINTER_IS_VALID(zp->z_zfsvfs));
+/*
 	zp->z_vnode = vn_alloc(kmflags);
 	if (zp->z_vnode == NULL) {
 		return (-1);
 	}
 	ZTOV(zp)->v_data = zp;
-
+	printk(" in %s zp is %p  ZTOV(zp)->v_data is at %p \n", __FUNCTION__, zp, ZTOV(zp)->v_data);
+*/
 	list_link_init(&zp->z_link_node);
 
 	mutex_init(&zp->z_lock, NULL, MUTEX_DEFAULT, NULL);
@@ -138,6 +140,7 @@ zfs_znode_cache_constructor(void *buf, void *arg, int kmflags)
 	return (0);
 }
 
+
 /*ARGSUSED*/
 static void
 zfs_znode_cache_destructor(void *buf, void *arg)
@@ -145,8 +148,9 @@ zfs_znode_cache_destructor(void *buf, void *arg)
 	znode_t *zp = buf;
 
 	ASSERT(!POINTER_IS_VALID(zp->z_zfsvfs));
-	ASSERT(ZTOV(zp)->v_data == zp);
-	vn_free(ZTOV(zp));
+//	printk(" in %s zp is %p  ZTOV(zp)->v_data is at %p \n", __FUNCTION__, zp, ZTOV(zp)->v_data);
+//	ASSERT(ZTOV(zp)->v_data == zp);
+//	vn_free(ZTOV(zp));
 	ASSERT(!list_link_active(&zp->z_link_node));
 	mutex_destroy(&zp->z_lock);
 	rw_destroy(&zp->z_parent_lock);
@@ -159,6 +163,8 @@ zfs_znode_cache_destructor(void *buf, void *arg)
 	ASSERT(zp->z_dirlocks == NULL);
 	ASSERT(zp->z_acl_cached == NULL);
 }
+
+#ifdef HAVE_ZPL 
 
 #ifdef	ZNODE_STATS
 static struct {
@@ -336,6 +342,8 @@ zfs_znode_move(void *buf, void *newbuf, size_t size, void *arg)
 	return (KMEM_CBRC_YES);
 }
 
+#endif /* HAVE_ZPL */
+
 void
 zfs_znode_init(void)
 {
@@ -347,8 +355,11 @@ zfs_znode_init(void)
 	znode_cache = kmem_cache_create("zfs_znode_cache",
 	    sizeof (znode_t), 0, zfs_znode_cache_constructor,
 	    zfs_znode_cache_destructor, NULL, NULL, NULL, 0);
+#ifdef HAVE_ZPL
 	kmem_cache_set_move(znode_cache, zfs_znode_move);
+#endif /* HAVE_ZPL */
 }
+
 
 void
 zfs_znode_fini(void)
@@ -356,7 +367,9 @@ zfs_znode_fini(void)
 	/*
 	 * Cleanup vfs & vnode ops
 	 */
+#ifdef HAVE_ZPL
 	zfs_remove_op_tables();
+#endif
 
 	/*
 	 * Cleanup zcache
@@ -366,6 +379,7 @@ zfs_znode_fini(void)
 	znode_cache = NULL;
 	rw_destroy(&zfsvfs_lock);
 }
+#ifdef HAVE_ZPL
 
 struct vnodeops *zfs_dvnodeops;
 struct vnodeops *zfs_fvnodeops;
@@ -518,6 +532,7 @@ zfs_create_share_dir(zfsvfs_t *zfsvfs, dmu_tx_t *tx)
 #define	MAXMIN64	0xffffffffUL
 #endif
 
+#endif /*HAVE_ZPL*/
 /*
  * Create special expldev for ZFS private use.
  * Can't use standard expldev since it doesn't do
@@ -605,6 +620,115 @@ zfs_znode_dmu_fini(znode_t *zp)
 	dmu_buf_rele(db, NULL);
 }
 
+#ifdef LINUX_PORT
+/*
+ * Construct a new inode and intialize.
+ */
+
+void
+zfs_inode_alloc(zfsvfs_t *zfsvfs, znode_t *zp, dmu_buf_t *db, struct inode *inode)
+{
+	vfs_t		*vfs;
+	vnode_t		*vp;
+	znode_phys_t	*zph;
+#if 0
+	uint32_t	blksize;
+#endif
+
+	vfs = zfsvfs->z_vfs;
+	ASSERT(vfs != NULL);
+	ASSERT(vfs->vfs_super != NULL);
+
+	/* Not sure if a valid inode can be in linux inode cache when
+	 * znode is not there. I think as long as it does not have
+	 * a znode association, it should be fine. But iget_locked
+	 * will not have this inode locked, so can there be some
+	 * issues because of that.
+	 */ 
+
+	ASSERT(inode->i_state & I_NEW);
+	vp = LZFS_ITOV(inode);
+	if(!zfsvfs->z_replay)
+		ASSERT(vp->v_data == NULL);
+	zp->z_vnode = vp;
+	vp->v_data = zp;
+	vp->v_vfsp = vfs;
+	vp->v_count = 1;
+
+//	printk("  vp->v_data is at %p and  zp is at %p  in %s  \n" ,vp->v_data, zp, __FUNCTION__);
+	zfs_znode_dmu_init(vfs->vfs_data, zp, db);
+	vp->v_type = IFTOVT((mode_t)zp->z_phys->zp_mode);
+	zp->z_gen = zp->z_phys->zp_gen;
+
+	/* Initalize the inode fields
+	 * Need to check the i_mode again. 
+	 */
+	
+	zph = zp->z_phys;
+	inode->i_mode = (uint32_t)zph->zp_mode;
+	if ((S_ISCHR(inode->i_mode)) ||  (S_ISBLK(inode->i_mode))) {
+		inode->i_rdev = zph->zp_rdev; 
+	}
+#if 0
+	/* struct inode members are updated in zfs_inode_update
+	 * */
+	inode->i_uid = zph->zp_uid;
+	inode->i_gid = zph->zp_gid;
+	inode->i_nlink = zph->zp_links;
+	inode->i_size = zph->zp_size;
+	ZFS_TIME_DECODE(&inode->i_atime, zph->zp_atime);
+	ZFS_TIME_DECODE(&inode->i_mtime, zph->zp_mtime);
+	ZFS_TIME_DECODE(&inode->i_ctime, zph->zp_ctime);
+	dmu_object_size_from_db(zp->z_dbuf, &blksize, (u_longlong_t *)&inode->i_blocks);
+	inode->i_generation = zph->zp_gen;
+#endif
+	
+	/* 
+	 * set up the inode operations.
+	 */
+	
+	ASSERT(vfs != NULL);
+	ASSERT(vfs->vfs_set_inode_ops != NULL);
+	
+	vfs->vfs_set_inode_ops(inode);
+
+	unlock_new_inode(inode);
+}
+
+
+void zfs_inode_update(znode_t *zp) 
+{
+	vnode_t		*vp;
+	struct inode    *inode;
+	znode_phys_t	*zph;
+	uint32_t	blksize;
+
+	vp = ZTOV(zp);
+	inode = LZFS_VTOI(vp);
+	
+	zph = zp->z_phys;
+	spin_lock(&inode->i_lock);
+	inode->i_uid = zph->zp_uid;
+	inode->i_gid = zph->zp_gid;
+	inode->i_nlink = zph->zp_links;
+	inode->i_mode = zph->zp_mode;
+	inode->i_blkbits = SPA_MINBLOCKSHIFT;
+	i_size_write(inode, zph->zp_size);
+	dmu_object_size_from_db(zp->z_dbuf, &blksize, (u_longlong_t *)&inode->i_blocks);
+	spin_unlock(&inode->i_lock);
+
+	/* TODO  (PRASAD)
+	 * 	modify inode number of blocks 
+	 * 	modify inode block size
+	 * 	*/
+	ZFS_TIME_DECODE(&inode->i_atime, zph->zp_atime);
+	ZFS_TIME_DECODE(&inode->i_mtime, zph->zp_mtime);
+	ZFS_TIME_DECODE(&inode->i_ctime, zph->zp_ctime);
+	inode->i_generation = zph->zp_gen;
+}
+
+#endif /* LINUX_PORT */
+
 /*
  * Construct a new znode/vnode and intialize.
  *
@@ -612,13 +736,24 @@ zfs_znode_dmu_fini(znode_t *zp)
  * up to the caller to do, in case you don't want to
  * return the znode
  */
+
+#ifdef LINUX_PORT
+static znode_t *
+zfs_znode_alloc(zfsvfs_t *zfsvfs, dmu_buf_t *db, int blksz, 
+		struct inode *inode)
+#else 
 static znode_t *
 zfs_znode_alloc(zfsvfs_t *zfsvfs, dmu_buf_t *db, int blksz)
+#endif /* LINUX_PORT */
 {
 	znode_t	*zp;
-	vnode_t *vp;
 
-	zp = kmem_cache_alloc(znode_cache, KM_SLEEP);
+#ifndef LINUX_PORT 
+	vnode_t *vp;
+#endif
+
+	zp = kmem_cache_alloc(znode_cache, KM_SLEEP & (~(__GFP_FS)));
+//	printk("in funcction %s zfs_znode_alloc zp is at %p \n",__FUNCTION__, zp);
 
 	ASSERT(zp->z_dirlocks == NULL);
 	ASSERT(zp->z_dbuf == NULL);
@@ -638,6 +773,9 @@ zfs_znode_alloc(zfsvfs_t *zfsvfs, dmu_buf_t *db, int blksz)
 	zp->z_seq = 0x7A4653;
 	zp->z_sync_cnt = 0;
 
+#ifdef LINUX_PORT 
+	zfs_inode_alloc(zfsvfs, zp, db, inode);
+#else 
 	vp = ZTOV(zp);
 	vn_reinit(vp);
 
@@ -681,7 +819,7 @@ zfs_znode_alloc(zfsvfs_t *zfsvfs, dmu_buf_t *db, int blksz)
 		vn_setops(vp, zfs_evnodeops);
 		break;
 	}
-
+#endif
 	mutex_enter(&zfsvfs->z_znodes_lock);
 	list_insert_tail(&zfsvfs->z_all_znodes, zp);
 	membar_producer();
@@ -695,6 +833,7 @@ zfs_znode_alloc(zfsvfs_t *zfsvfs, dmu_buf_t *db, int blksz)
 	VFS_HOLD(zfsvfs->z_vfs);
 	return (zp);
 }
+
 
 /*
  * Create a new DMU object to hold a zfs znode.
@@ -724,7 +863,9 @@ zfs_mknode(znode_t *dzp, vattr_t *vap, dmu_tx_t *tx, cred_t *cr,
 	timestruc_t	now;
 	uint64_t	gen, obj;
 	int		err;
-
+#ifdef LINUX_PORT
+	struct inode *inode;
+#endif
 	ASSERT(vap && (vap->va_mask & (AT_TYPE|AT_MODE)) == (AT_TYPE|AT_MODE));
 
 	if (zfsvfs->z_replay) {
@@ -831,9 +972,17 @@ zfs_mknode(znode_t *dzp, vattr_t *vap, dmu_tx_t *tx, cred_t *cr,
 
 	pzp->zp_mode = MAKEIMODE(vap->va_type, vap->va_mode);
 	if (!(flag & IS_ROOT_NODE)) {
+#ifdef LINUX_PORT
+		inode = iget_locked(zfsvfs->z_vfs->vfs_super, obj);
+		ASSERT(inode != NULL && atomic_read(&inode->i_count) > 0);
+		ZFS_OBJ_HOLD_ENTER(zfsvfs, obj);
+		*zpp = zfs_znode_alloc(zfsvfs, db, 0, inode);
+		ZFS_OBJ_HOLD_EXIT(zfsvfs, obj);
+#else
 		ZFS_OBJ_HOLD_ENTER(zfsvfs, obj);
 		*zpp = zfs_znode_alloc(zfsvfs, db, 0);
 		ZFS_OBJ_HOLD_EXIT(zfsvfs, obj);
+#endif /*LINUX_PORT */
 	} else {
 		/*
 		 * If we are creating the root node, the "parent" we
@@ -843,8 +992,13 @@ zfs_mknode(znode_t *dzp, vattr_t *vap, dmu_tx_t *tx, cred_t *cr,
 	}
 	pzp->zp_uid = acl_ids->z_fuid;
 	pzp->zp_gid = acl_ids->z_fgid;
+#ifdef HAVE_ZPL
+	cmn_err(CE_WARN, "%s zp_uid %lld zp_gid %lld\n",
+		__FUNCTION__, 
+		pzp->zp_uid, pzp->zp_gid);
 	pzp->zp_mode = acl_ids->z_mode;
 	VERIFY(0 == zfs_aclset_common(*zpp, acl_ids->z_aclp, cr, tx));
+#endif 
 	if (vap->va_mask & AT_XVATTR)
 		zfs_xvattr_set(*zpp, (xvattr_t *)vap);
 }
@@ -852,6 +1006,7 @@ zfs_mknode(znode_t *dzp, vattr_t *vap, dmu_tx_t *tx, cred_t *cr,
 void
 zfs_xvattr_set(znode_t *zp, xvattr_t *xvap)
 {
+#ifdef HAVE_ZPL
 	xoptattr_t *xoap;
 
 	xoap = xva_getxoptattr(xvap);
@@ -912,7 +1067,9 @@ zfs_xvattr_set(znode_t *zp, xvattr_t *xvap)
 		zp->z_phys->zp_flags |= ZFS_BONUS_SCANSTAMP;
 		XVA_SET_RTN(xvap, XAT_AV_SCANSTAMP);
 	}
+#endif /* HAVE_ZPL */
 }
+
 
 int
 zfs_zget(zfsvfs_t *zfsvfs, uint64_t obj_num, znode_t **zpp)
@@ -921,6 +1078,14 @@ zfs_zget(zfsvfs_t *zfsvfs, uint64_t obj_num, znode_t **zpp)
 	dmu_buf_t	*db;
 	znode_t		*zp;
 	int err;
+#ifdef LINUX_PORT 
+	struct inode    *inode;
+	
+	ASSERT(zfsvfs->z_vfs->vfs_super != NULL);
+	inode = iget_locked(zfsvfs->z_vfs->vfs_super, obj_num);
+	ASSERT(inode != NULL && atomic_read(&inode->i_count) > 0);
+
+#endif
 
 	*zpp = NULL;
 
@@ -961,13 +1126,22 @@ zfs_zget(zfsvfs_t *zfsvfs, uint64_t obj_num, znode_t **zpp)
 		dmu_buf_rele(db, NULL);
 		mutex_exit(&zp->z_lock);
 		ZFS_OBJ_HOLD_EXIT(zfsvfs, obj_num);
+#ifdef LINUX_PORT
+		iput(inode);
+#endif
 		return (err);
 	}
 
 	/*
 	 * Not found create new znode/vnode
 	 */
+//	printk(" in funcntion %s before zfs_znode_alloc zp is at %p  \n",__FUNCTION__, zp);
+#ifdef LINUX_PORT
+	zp = zfs_znode_alloc(zfsvfs, db, doi.doi_data_block_size, inode);
+#else
 	zp = zfs_znode_alloc(zfsvfs, db, doi.doi_data_block_size);
+#endif /*LINUX_PORT*/
+//	printk("After zfs_znode_alloc zp is at %p \n", zp);
 	ZFS_OBJ_HOLD_EXIT(zfsvfs, obj_num);
 	*zpp = zp;
 	return (0);
@@ -1100,9 +1274,7 @@ zfs_znode_free(znode_t *zp)
 		zfs_acl_free(zp->z_acl_cached);
 		zp->z_acl_cached = NULL;
 	}
-
 	kmem_cache_free(znode_cache, zp);
-
 	VFS_RELE(zfsvfs->z_vfs);
 }
 
@@ -1194,6 +1366,8 @@ zfs_grow_blocksize(znode_t *zp, uint64_t size, dmu_tx_t *tx)
 	dmu_object_size_from_db(zp->z_dbuf, &zp->z_blksz, &dummy);
 }
 
+#ifdef HAVE_ZPL
+
 /*
  * This is a dummy interface used when pvn_vplist_dirty() should *not*
  * be calling back into the fs for a putpage().  E.g.: when truncating
@@ -1207,6 +1381,7 @@ zfs_no_putpage(vnode_t *vp, page_t *pp, u_offset_t *offp, size_t *lenp,
 	ASSERT(0);
 	return (0);
 }
+#endif /* HAVE_ZPL */
 
 /*
  * Increase the file length
@@ -1335,7 +1510,9 @@ static int
 zfs_trunc(znode_t *zp, uint64_t end)
 {
 	zfsvfs_t *zfsvfs = zp->z_zfsvfs;
+#if defined(HAVE_ZPL)
 	vnode_t *vp = ZTOV(zp);
+#endif
 	dmu_tx_t *tx;
 	rl_t *rl;
 	int error;
@@ -1378,6 +1555,7 @@ top:
 
 	dmu_tx_commit(tx);
 
+#if defined(HAVE_ZPL)
 	/*
 	 * Clear any mapped pages in the truncated region.  This has to
 	 * happen outside of the transaction to avoid the possibility of
@@ -1401,6 +1579,7 @@ top:
 		    B_INVAL | B_TRUNC, NULL);
 		ASSERT(error == 0);
 	}
+#endif
 
 	zfs_range_unlock(rl);
 
@@ -1422,7 +1601,9 @@ top:
 int
 zfs_freesp(znode_t *zp, uint64_t off, uint64_t len, int flag, boolean_t log)
 {
+#if defined(HAVE_ZPL)
 	vnode_t *vp = ZTOV(zp);
+#endif
 	dmu_tx_t *tx;
 	zfsvfs_t *zfsvfs = zp->z_zfsvfs;
 	zilog_t *zilog = zfsvfs->z_log;
@@ -1436,6 +1617,7 @@ zfs_freesp(znode_t *zp, uint64_t off, uint64_t len, int flag, boolean_t log)
 			return (error);
 	}
 
+#if defined(HAVE_ZPL)
 	/*
 	 * Check for any locks in the region to be freed.
 	 */
@@ -1444,6 +1626,7 @@ zfs_freesp(znode_t *zp, uint64_t off, uint64_t len, int flag, boolean_t log)
 		if (error = chklock(vp, FWRITE, off, length, flag, NULL))
 			return (error);
 	}
+#endif
 
 	if (len == 0) {
 		error = zfs_trunc(zp, off);
@@ -1469,12 +1652,13 @@ log:
 	}
 
 	zfs_time_stamper(zp, CONTENT_MODIFIED, tx);
+
 	zfs_log_truncate(zilog, tx, TX_TRUNCATE, zp, off, len);
 
 	dmu_tx_commit(tx);
+	zfs_inode_update(zp);
 	return (0);
 }
-#endif /* HAVE_ZPL */
 
 void
 zfs_create_fs(objset_t *os, cred_t *cr, nvlist_t *zplprops, dmu_tx_t *tx)

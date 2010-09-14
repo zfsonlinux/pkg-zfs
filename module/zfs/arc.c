@@ -1202,14 +1202,14 @@ arc_buf_alloc(spa_t *spa, int size, void *tag, arc_buf_contents_t type)
 	arc_buf_t *buf;
 
 	ASSERT3U(size, >, 0);
-	hdr = kmem_cache_alloc(hdr_cache, KM_PUSHPAGE);
+	hdr = kmem_cache_alloc(hdr_cache, KM_PUSHPAGE & (~(__GFP_FS)));
 	ASSERT(BUF_EMPTY(hdr));
 	hdr->b_size = size;
 	hdr->b_type = type;
 	hdr->b_spa = spa_guid(spa);
 	hdr->b_state = arc_anon;
 	hdr->b_arc_access = 0;
-	buf = kmem_cache_alloc(buf_cache, KM_PUSHPAGE);
+	buf = kmem_cache_alloc(buf_cache, KM_PUSHPAGE & (~(__GFP_FS)));
 	buf->b_hdr = hdr;
 	buf->b_data = NULL;
 	buf->b_efunc = NULL;
@@ -1267,7 +1267,7 @@ arc_buf_clone(arc_buf_t *from)
 	arc_buf_hdr_t *hdr = from->b_hdr;
 	uint64_t size = hdr->b_size;
 
-	buf = kmem_cache_alloc(buf_cache, KM_PUSHPAGE);
+	buf = kmem_cache_alloc(buf_cache, KM_PUSHPAGE & (~(__GFP_FS)));
 	buf->b_hdr = hdr;
 	buf->b_data = NULL;
 	buf->b_efunc = NULL;
@@ -2602,7 +2602,7 @@ top:
 				arc_callback_t	*acb = NULL;
 
 				acb = kmem_zalloc(sizeof (arc_callback_t),
-				    KM_SLEEP);
+				    KM_SLEEP & (~(__GFP_FS)));
 				acb->acb_done = done;
 				acb->acb_private = private;
 				if (pio != NULL)
@@ -2704,7 +2704,7 @@ top:
 				add_reference(hdr, hash_lock, private);
 			if (*arc_flags & ARC_L2CACHE)
 				hdr->b_flags |= ARC_L2CACHE;
-			buf = kmem_cache_alloc(buf_cache, KM_PUSHPAGE);
+			buf = kmem_cache_alloc(buf_cache, KM_PUSHPAGE & (~(__GFP_FS)));
 			buf->b_hdr = hdr;
 			buf->b_data = NULL;
 			buf->b_efunc = NULL;
@@ -2717,7 +2717,7 @@ top:
 
 		}
 
-		acb = kmem_zalloc(sizeof (arc_callback_t), KM_SLEEP);
+		acb = kmem_zalloc(sizeof (arc_callback_t), KM_SLEEP & (~(__GFP_FS)));
 		acb->acb_done = done;
 		acb->acb_private = private;
 
@@ -2776,8 +2776,7 @@ top:
 				DTRACE_PROBE1(l2arc__hit, arc_buf_hdr_t *, hdr);
 				ARCSTAT_BUMP(arcstat_l2_hits);
 
-				cb = kmem_zalloc(sizeof (l2arc_read_callback_t),
-				    KM_SLEEP);
+				cb = kmem_zalloc(sizeof (l2arc_read_callback_t), KM_SLEEP & (~(__GFP_FS)));
 				cb->l2rcb_buf = buf;
 				cb->l2rcb_spa = spa;
 				cb->l2rcb_bp = *bp;
@@ -3044,7 +3043,7 @@ arc_release(arc_buf_t *buf, void *tag)
 
 		mutex_exit(hash_lock);
 
-		nhdr = kmem_cache_alloc(hdr_cache, KM_PUSHPAGE);
+		nhdr = kmem_cache_alloc(hdr_cache, KM_PUSHPAGE & (~(__GFP_FS)));
 		nhdr->b_size = blksz;
 		nhdr->b_spa = spa;
 		nhdr->b_type = type;
@@ -4296,7 +4295,7 @@ l2arc_write_buffers(spa_t *spa, l2arc_dev_t *dev, uint64_t target_sz)
 	pio = NULL;
 	write_sz = 0;
 	full = B_FALSE;
-	head = kmem_cache_alloc(hdr_cache, KM_PUSHPAGE);
+	head = kmem_cache_alloc(hdr_cache, KM_PUSHPAGE & (~(__GFP_FS)));
 	head->b_flags |= ARC_L2_WRITE_HEAD;
 
 	/*

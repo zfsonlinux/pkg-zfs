@@ -777,12 +777,13 @@ zpool_do_create(int argc, char **argv)
 					    zfs_prop_to_name(
 					    ZFS_PROP_MOUNTPOINT),
 					    mountpoint) == 0);
-#ifdef HAVE_ZPL
-				if (zfs_mount(pool, NULL, 0) == 0)
+				if ((ret = zfs_mount(pool, NULL, 0)) == 0) {
+#ifdef HAVE_ZPL			
 					ret = zfs_shareall(pool);
 #else
-				ret = 0;
+					ret = 0;
 #endif /* HAVE_ZPL */
+				}
 				zfs_close(pool);
 			}
 		} else if (libzfs_errno(g_zfs) == EZFS_INVALIDNAME) {

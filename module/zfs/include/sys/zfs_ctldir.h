@@ -36,6 +36,10 @@ extern "C" {
 #endif
 
 #define	ZFS_CTLDIR_NAME		".zfs"
+/*
+* flags for zfs_dir.c file
+*/
+#define ED_CASE_CONFLICT       0x10    /*Disconsidering case, entry not unique*/ 
 
 #define	zfs_has_ctldir(zdp)	\
 	((zdp)->z_id == (zdp)->z_zfsvfs->z_root && \
@@ -58,8 +62,11 @@ int zfsctl_root_lookup(vnode_t *dvp, char *nm, vnode_t **vpp, pathname_t *pnp,
     int flags, vnode_t *rdir, cred_t *cr, caller_context_t *ct,
     int *direntflags, pathname_t *realpnp);
 
+#ifndef LINUX_PORT
 int zfsctl_make_fid(zfsvfs_t *zfsvfsp, uint64_t object, uint32_t gen,
     fid_t *fidp);
+#endif
+
 int zfsctl_lookup_objset(vfs_t *vfsp, uint64_t objsetid, zfsvfs_t **zfsvfsp);
 
 #define	ZFSCTL_INO_ROOT		0x1

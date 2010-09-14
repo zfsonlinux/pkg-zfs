@@ -79,13 +79,17 @@
 
 #include <libzfs.h>
 
+#if defined(LINUX_PORT)
+#include <libzfs_mtab.h>
+#endif
+
 #include "libzfs_impl.h"
 
 #include <libshare.h>
 #include <sys/systeminfo.h>
 #define	MAXISALEN	257	/* based on sysinfo(2) man page */
 
-#ifdef HAVE_ZPL
+#if defined(HAVE_ZPL)
 static int zfs_share_proto(zfs_handle_t *, zfs_share_proto_t *);
 zfs_share_type_t zfs_is_shared_proto(zfs_handle_t *, char **,
     zfs_share_proto_t);
@@ -94,6 +98,7 @@ static int (*iscsitgt_zfs_share)(const char *);
 static int (*iscsitgt_zfs_unshare)(const char *);
 static int (*iscsitgt_zfs_is_shared)(const char *);
 static int (*iscsitgt_svc_online)(void);
+#endif
 
 /*
  * The share protocols table must be in the same order as the zfs_share_prot_t
@@ -111,6 +116,7 @@ proto_table_t proto_table[PROTO_END] = {
 	{ZFS_PROP_SHARESMB, "smb", EZFS_SHARESMBFAILED, EZFS_UNSHARESMBFAILED},
 };
 
+#if defined(HAVE_ZPL)
 zfs_share_proto_t nfs_only[] = {
 	PROTO_NFS,
 	PROTO_END
@@ -125,7 +131,9 @@ zfs_share_proto_t share_all_proto[] = {
 	PROTO_SMB,
 	PROTO_END
 };
+#endif
 
+#if defined(HAVE_ZPL)
 #ifdef __GNUC__
 static void
 zfs_iscsi_init(void) __attribute__((constructor));
@@ -205,6 +213,7 @@ is_shared(libzfs_handle_t *hdl, const char *mountpoint, zfs_share_proto_t proto)
 
 	return (SHARED_NOT_SHARED);
 }
+#endif
 
 /*
  * Returns true if the specified directory is empty.  If we can't open the
@@ -339,8 +348,10 @@ zfs_mount(zfs_handle_t *zhp, const char *options, int flags)
 	}
 
 	/* perform the mount */
-	if (mount(zfs_get_name(zhp), mountpoint, MS_OPTIONSTR | flags,
-	    MNTTYPE_ZFS, NULL, 0, mntopts, sizeof (mntopts)) != 0) {
+	if (os_mount(zfs_get_name(zhp), mountpoint, 
+			     MS_OPTIONSTR | flags,
+			     MNTTYPE_ZFS, NULL, 0, mntopts, 
+			     sizeof (mntopts)) != 0) {
 		/*
 		 * Generic errors are nasty, but there are just way too many
 		 * from mount(), and they're well-understood.  We pick a few
@@ -363,6 +374,14 @@ zfs_mount(zfs_handle_t *zhp, const char *options, int flags)
 	/* add the mounted entry into our cache */
 	libzfs_mnttab_add(hdl, zfs_get_name(zhp), mountpoint,
 	    mntopts);
+
+#ifdef LINUX_PORT
+	if (zfs_linux_add_entry(mountpoint, zhp->zfs_name, MTAB_FILE) != 0) {
+		return (zfs_error_fmt(hdl, EZFS_MOUNTFAILED,
+		    dgettext(TEXT_DOMAIN, "failed to add in /etc/mtab '%s'"),
+		    zhp->zfs_name));
+	}
+#endif
 	return (0);
 }
 
@@ -388,40 +407,56 @@ unmount_one(libzfs_handle_t *hdl, const char *mountpoint, int flags)
 int
 zfs_unmount(zfs_handle_t *zhp, const char *mountpoint, int flags)
 {
-	libzfs_handle_t *hdl = zhp->zfs_hdl;
-	struct mnttab entry;
-	char *mntpt = NULL;
+    libzfs_handle_t *hdl = zhp->zfs_hdl;
+    struct mnttab entry;
+    char *mntpt = NULL;
 
-	/* check to see if we need to unmount the filesystem */
-	if (mountpoint != NULL || ((zfs_get_type(zhp) == ZFS_TYPE_FILESYSTEM) &&
-	    libzfs_mnttab_find(hdl, zhp->zfs_name, &entry) == 0)) {
-		/*
-		 * mountpoint may have come from a call to
-		 * getmnt/getmntany if it isn't NULL. If it is NULL,
-		 * we know it comes from libzfs_mnttab_find which can
-		 * then get freed later. We strdup it to play it safe.
-		 */
-		if (mountpoint == NULL)
-			mntpt = zfs_strdup(hdl, entry.mnt_mountp);
-		else
-			mntpt = zfs_strdup(hdl, mountpoint);
+    /* check to see if we need to unmount the filesystem */
+    if (mountpoint != NULL || ((zfs_get_type(zhp) == ZFS_TYPE_FILESYSTEM) &&
+                libzfs_mnttab_find(hdl, zhp->zfs_name, &entry) == 0)) {
+        /*
+         * mountpoint may have come from a call to
+         * getmnt/getmntany if it isn't NULL. If it is NULL,
+         * we know it comes from libzfs_mnttab_find which can
+         * then get freed later. We strdup it to play it safe.
+         */
+        if (mountpoint == NULL)
+            mntpt = zfs_strdup(hdl, entry.mnt_mountp);
+        else
+            mntpt = zfs_strdup(hdl, mountpoint);
 
-		/*
-		 * Unshare and unmount the filesystem
-		 */
-		if (zfs_unshare_proto(zhp, mntpt, share_all_proto) != 0)
-			return (-1);
+#if defined(HAVE_ZPL)
+        /*
+         * Unshare and unmount the filesystem
+         */
+        if (zfs_unshare_proto(zhp, mntpt, share_all_proto) != 0)
+            return (-1);
 
-		if (unmount_one(hdl, mntpt, flags) != 0) {
-			free(mntpt);
-			(void) zfs_shareall(zhp);
-			return (-1);
-		}
-		libzfs_mnttab_remove(hdl, zhp->zfs_name);
-		free(mntpt);
-	}
+        if (unmount_one(hdl, mntpt, flags) != 0) {
+            free(mntpt);
+            (void) zfs_shareall(zhp);
+            return (-1);
+        }
+#else
+        if (unmount_one(hdl, mntpt, flags) != 0) {
+            free(mntpt);
+            return (-1);
+        }
+#endif
+        libzfs_mnttab_remove(hdl, zhp->zfs_name);
+#if defined(LINUX_PORT)
+        /* remove a /etc/mtab entry */
+        if (zfs_linux_remove_entry(mntpt, zhp->zfs_name, MTAB_FILE) < 0) {
+            free(mntpt);
+            return (zfs_error_fmt(hdl, EZFS_MOUNTFAILED,
+                        dgettext(TEXT_DOMAIN, "failed to remove from /etc/mtab '%s'"),
+                        zhp->zfs_name));
+        }
+#endif
+        free(mntpt);
+    }
 
-	return (0);
+    return (0);
 }
 
 /*
@@ -445,6 +480,7 @@ zfs_unmountall(zfs_handle_t *zhp, int flags)
 	return (ret);
 }
 
+#ifdef HAVE_ZPL
 boolean_t
 zfs_is_shared(zfs_handle_t *zhp)
 {
@@ -549,6 +585,8 @@ _zfs_init_libshare(void) __attribute__((constructor));
 #else
 #pragma init(_zfs_init_libshare)
 #endif
+#if defined(HAVE_ZPL)
+
 static void
 _zfs_init_libshare(void)
 {
@@ -607,6 +645,7 @@ _zfs_init_libshare(void)
 		}
 	}
 }
+#endif
 
 /*
  * zfs_init_libshare(zhandle, service)
@@ -723,12 +762,14 @@ zfs_sa_disable_share(sa_share_t share, char *proto)
 		return (_sa_disable_share(share, proto));
 	return (SA_CONFIG_ERR);
 }
+#endif
 
 /*
  * Share the given filesystem according to the options in the specified
  * protocol specific properties (sharenfs, sharesmb).  We rely
  * on "libshare" to the dirty work for us.
  */
+#if defined(HAVE_ZPL)
 static int
 zfs_share_proto(zfs_handle_t *zhp, zfs_share_proto_t *proto)
 {
@@ -818,7 +859,6 @@ zfs_share_proto(zfs_handle_t *zhp, zfs_share_proto_t *proto)
 	}
 	return (0);
 }
-
 
 int
 zfs_share_nfs(zfs_handle_t *zhp)
@@ -1009,7 +1049,6 @@ remove_mountpoint(zfs_handle_t *zhp)
 		(void) rmdir(mountpoint);
 	}
 }
-
 boolean_t
 zfs_is_shared_iscsi(zfs_handle_t *zhp)
 {
@@ -1399,7 +1438,7 @@ out:
 	return (ret);
 }
 
-#else  /* HAVE_ZPL */
+#else /* HAVE_ZPL */
 
 int
 zfs_unshare_iscsi(zfs_handle_t *zhp)
@@ -1407,27 +1446,17 @@ zfs_unshare_iscsi(zfs_handle_t *zhp)
 	return 0;
 }
 
+#if 0
 int
 zfs_unmount(zfs_handle_t *zhp, const char *mountpoint, int flags)
 {
 	return 0;
 }
+#endif
 
 void
 remove_mountpoint(zfs_handle_t *zhp) {
 	return;
-}
-
-boolean_t
-is_mounted(libzfs_handle_t *zfs_hdl, const char *special, char **where)
-{
-	return B_FALSE;
-}
-
-boolean_t
-zfs_is_mounted(zfs_handle_t *zhp, char **where)
-{
-	return is_mounted(zhp->zfs_hdl, zfs_get_name(zhp), where);
 }
 
 boolean_t

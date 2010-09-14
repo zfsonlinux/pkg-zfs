@@ -15,6 +15,10 @@ modules_install:
 		INSTALL_MOD_PATH=$(DESTDIR) \
 		INSTALL_MOD_DIR=addon/zfs $@
 	find ${DESTDIR}/lib/modules/ -name 'modules.*' | xargs ${RM}
+	sysmap=${DESTDIR}/boot/System.map-@LINUX_VERSION@; \
+        if [ -f $$sysmap ]; then \
+                depmod -ae -F $$sysmap @LINUX_VERSION@; \
+        fi
 	# Install the required headers in to the kernel source
 	destname=zfs-@ZFS_META_VERSION@/@LINUX_VERSION@; \
 	instdest=$(DESTDIR)/@prefix@/src/$$destname; \

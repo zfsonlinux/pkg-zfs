@@ -964,6 +964,7 @@ dbuf_dirty(dmu_buf_impl_t *db, dmu_tx_t *tx)
 		    (dmu_tx_is_syncing(tx) ? DN_DIRTY_SYNC : DN_DIRTY_OPEN);
 		ASSERT(dn->dn_dirtyctx_firstset == NULL);
 		dn->dn_dirtyctx_firstset = kmem_alloc(1, KM_SLEEP);
+		
 	}
 	mutex_exit(&dn->dn_mtx);
 
@@ -1516,7 +1517,12 @@ dbuf_create(dnode_t *dn, uint8_t level, uint64_t blkid,
 	ASSERT(RW_LOCK_HELD(&dn->dn_struct_rwlock));
 	ASSERT(dn->dn_type != DMU_OT_NONE);
 
-	db = kmem_cache_alloc(dbuf_cache, KM_SLEEP);
+	/*
+	 * This function might be called while holding a mutex lock on file 
+	 * system. Linux cache shrink code checks for the flag __GFP_FS to 
+	 * avoid a call to clear_inode, thus avoiding deadlock.
+	 * */
+	db = kmem_cache_alloc(dbuf_cache, KM_SLEEP & (~(__GFP_FS)));
 
 	db->db_objset = os;
 	db->db.db_object = dn->dn_object;

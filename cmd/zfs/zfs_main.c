@@ -554,18 +554,18 @@ zfs_do_clone(int argc, char **argv)
 	ret = zfs_clone(zhp, argv[1], props);
 
 	/* create the mountpoint if necessary */
-#ifdef HAVE_ZPL
 	if (ret == 0) {
 		zfs_handle_t *clone;
 
 		clone = zfs_open(g_zfs, argv[1], ZFS_TYPE_DATASET);
 		if (clone != NULL) {
 			if ((ret = zfs_mount(clone, NULL, 0)) == 0)
+#ifdef HAVE_ZPL
 				ret = zfs_share(clone);
+#endif
 			zfs_close(clone);
 		}
 	}
-#endif /* HAVE_ZPL */
 
 	zfs_close(zhp);
 	nvlist_free(props);
@@ -763,19 +763,20 @@ zfs_do_create(int argc, char **argv)
 	 * in fact created, even if we failed to mount or share it.
 	 */
 	ret = 0;
-#ifdef HAVE_ZPL
 	if (canmount == ZFS_CANMOUNT_ON) {
 		if (zfs_mount(zhp, NULL, 0) != 0) {
 			(void) fprintf(stderr, gettext("filesystem "
 			    "successfully created, but not mounted\n"));
 			ret = 1;
-		} else if (zfs_share(zhp) != 0) {
+		} 
+#if defined(ZFS_SHARE)
+		if (zfs_share(zhp) != 0) {
 			(void) fprintf(stderr, gettext("filesystem "
 			    "successfully created, but not shared\n"));
 			ret = 1;
 		}
+#endif
 	}
-#endif /* HAVE_ZPL */
 
 error:
 	if (zhp)
@@ -2791,7 +2792,6 @@ typedef struct get_all_cbdata {
 #define	SPINNER_TIME 3		/* seconds */
 #define	MOUNT_TIME 5		/* seconds */
 
-#ifdef HAVE_ZPL
 static int
 get_one_dataset(zfs_handle_t *zhp, void *data)
 {
@@ -2912,10 +2912,10 @@ dataset_cmp(const void *a, const void *b)
  */
 #define	OP_SHARE	0x1
 #define	OP_MOUNT	0x2
-
 /*
  * Share or mount a dataset.
  */
+
 static int
 share_mount_one(zfs_handle_t *zhp, int op, int flags, char *protocol,
     boolean_t explicit, const char *options)
@@ -2927,8 +2927,9 @@ share_mount_one(zfs_handle_t *zhp, int op, int flags, char *protocol,
 	struct mnttab mnt;
 	uint64_t zoned, canmount;
 	zfs_type_t type = zfs_get_type(zhp);
+#ifdef HAVE_ZPL
 	boolean_t shared_nfs, shared_smb;
-
+#endif /* HAVE_ZPL */
 	assert(type & (ZFS_TYPE_FILESYSTEM | ZFS_TYPE_VOLUME));
 
 	if (type == ZFS_TYPE_FILESYSTEM) {
@@ -3040,7 +3041,7 @@ share_mount_one(zfs_handle_t *zhp, int op, int flags, char *protocol,
 		 */
 		switch (op) {
 		case OP_SHARE:
-
+#ifdef HAVE_ZPL
 			shared_nfs = zfs_is_shared_nfs(zhp, NULL);
 			shared_smb = zfs_is_shared_smb(zhp, NULL);
 
@@ -3063,8 +3064,10 @@ share_mount_one(zfs_handle_t *zhp, int op, int flags, char *protocol,
 				return (1);
 
 			if (protocol == NULL) {
+#if defined(HAVE_ZPL)
 				if (zfs_shareall(zhp) != 0)
 					return (1);
+#endif
 			} else if (strcmp(protocol, "nfs") == 0) {
 				if (zfs_share_nfs(zhp))
 					return (1);
@@ -3080,7 +3083,7 @@ share_mount_one(zfs_handle_t *zhp, int op, int flags, char *protocol,
 			}
 
 			break;
-
+#endif /* HAVE_ZPL */
 		case OP_MOUNT:
 			if (options == NULL)
 				mnt.mnt_mntopts = "";
@@ -3124,6 +3127,7 @@ share_mount_one(zfs_handle_t *zhp, int op, int flags, char *protocol,
 			return (1);
 		}
 
+#ifdef HAVE_ZPL
 		if (zfs_is_shared_iscsi(zhp)) {
 			if (!explicit)
 				return (0);
@@ -3136,6 +3140,7 @@ share_mount_one(zfs_handle_t *zhp, int op, int flags, char *protocol,
 
 		if (zfs_share_iscsi(zhp) != 0)
 			return (1);
+#endif /* HAVE_ZPL */
 	}
 
 	return (0);
@@ -3194,7 +3199,6 @@ append_options(char *mntopts, char *newopts)
 
 	(void) strcpy(&mntopts[len], newopts);
 }
-
 static int
 share_mount(int op, int argc, char **argv)
 {
@@ -3343,7 +3347,6 @@ share_mount(int op, int argc, char **argv)
 
 	return (ret);
 }
-#endif  /* HAVE_ZPL */
 
 /*
  * zfs mount -a [nfs | iscsi]
@@ -3354,11 +3357,7 @@ share_mount(int op, int argc, char **argv)
 static int
 zfs_do_mount(int argc, char **argv)
 {
-#ifdef HAVE_ZPL
 	return (share_mount(OP_MOUNT, argc, argv));
-#else
-	return ENOSYS;
-#endif  /* HAVE_ZPL */
 }
 
 /*
@@ -3373,11 +3372,11 @@ zfs_do_share(int argc, char **argv)
 #ifdef HAVE_ZPL
 	return (share_mount(OP_SHARE, argc, argv));
 #else
+	(void) fprintf(stderr, gettext("This feature is not supported in current version\n"));
 	return ENOSYS;
 #endif  /* HAVE_ZPL */
 }
 
-#ifdef HAVE_ZPL
 typedef struct unshare_unmount_node {
 	zfs_handle_t	*un_zhp;
 	char		*un_mountp;
@@ -3524,7 +3523,9 @@ unshare_unmount(int op, int argc, char **argv)
 	int types, c;
 	zfs_handle_t *zhp;
 	char nfsiscsi_mnt_prop[ZFS_MAXPROPLEN];
+#if defined(HAVE_ZPL)
 	char sharesmb[ZFS_MAXPROPLEN];
+#endif
 
 	/* check options */
 	while ((c = getopt(argc, argv, op == OP_SHARE ? "a" : "af")) != -1) {
@@ -3606,6 +3607,7 @@ unshare_unmount(int op, int argc, char **argv)
 			}
 
 			switch (op) {
+#if defined(HAVE_ZPL)
 			case OP_SHARE:
 				verify(zfs_prop_get(zhp, ZFS_PROP_SHARENFS,
 				    nfsiscsi_mnt_prop,
@@ -3620,6 +3622,7 @@ unshare_unmount(int op, int argc, char **argv)
 				if (strcmp(nfsiscsi_mnt_prop, "off") == 0)
 					continue;
 				break;
+#endif
 			case OP_MOUNT:
 				/* Ignore legacy mounts */
 				verify(zfs_prop_get(zhp, ZFS_PROP_MOUNTPOINT,
@@ -3672,12 +3675,13 @@ unshare_unmount(int op, int argc, char **argv)
 			uu_avl_remove(tree, node);
 
 			switch (op) {
+#if defined(HAVE_ZPL)
 			case OP_SHARE:
 				if (zfs_unshareall_bypath(node->un_zhp,
 				    node->un_mountp) != 0)
 					ret = 1;
 				break;
-
+#endif
 			case OP_MOUNT:
 				if (zfs_unmount(node->un_zhp,
 				    node->un_mountp, flags) != 0)
@@ -3694,6 +3698,7 @@ unshare_unmount(int op, int argc, char **argv)
 		uu_avl_destroy(tree);
 		uu_avl_pool_destroy(pool);
 
+#if defined(HAVE_ZPL)
 		if (op == OP_SHARE) {
 			/*
 			 * Finally, unshare any volumes shared via iSCSI.
@@ -3717,6 +3722,7 @@ unshare_unmount(int op, int argc, char **argv)
 				free(dslist);
 			}
 		}
+#endif
 	} else {
 		if (argc != 1) {
 			if (argc == 0)
@@ -3739,8 +3745,10 @@ unshare_unmount(int op, int argc, char **argv)
 			    flags, B_FALSE));
 
 		types = ZFS_TYPE_FILESYSTEM;
+#if defined(HAVE_ZPL)
 		if (op == OP_SHARE)
 			types |= ZFS_TYPE_VOLUME;
+#endif
 
 		if ((zhp = zfs_open(g_zfs, argv[0], types)) == NULL)
 			return (1);
@@ -3752,6 +3760,7 @@ unshare_unmount(int op, int argc, char **argv)
 			    NULL, 0, B_FALSE) == 0);
 
 			switch (op) {
+#if defined(HAVE_ZPL)
 			case OP_SHARE:
 				verify(zfs_prop_get(zhp, ZFS_PROP_SHARENFS,
 				    nfsiscsi_mnt_prop,
@@ -3779,6 +3788,7 @@ unshare_unmount(int op, int argc, char **argv)
 					ret = 1;
 				}
 				break;
+#endif
 
 			case OP_MOUNT:
 				if (strcmp(nfsiscsi_mnt_prop, "legacy") == 0) {
@@ -3801,6 +3811,7 @@ unshare_unmount(int op, int argc, char **argv)
 				break;
 			}
 		} else {
+#if defined(HAVE_ZPL)
 			assert(op == OP_SHARE);
 
 			verify(zfs_prop_get(zhp, ZFS_PROP_SHAREISCSI,
@@ -3823,6 +3834,7 @@ unshare_unmount(int op, int argc, char **argv)
 			} else if (zfs_unshare_iscsi(zhp) != 0) {
 				ret = 1;
 			}
+#endif
 		}
 
 		zfs_close(zhp);
@@ -3830,7 +3842,6 @@ unshare_unmount(int op, int argc, char **argv)
 
 	return (ret);
 }
-#endif  /* HAVE_ZPL */
 
 /*
  * zfs unmount -a
@@ -3841,11 +3852,7 @@ unshare_unmount(int op, int argc, char **argv)
 static int
 zfs_do_unmount(int argc, char **argv)
 {
-#ifdef HAVE_ZPL
 	return (unshare_unmount(OP_MOUNT, argc, argv));
-#else
-	return ENOSYS;
-#endif  /* HAVE_ZPL */
 }
 
 /*
@@ -3860,6 +3867,7 @@ zfs_do_unshare(int argc, char **argv)
 #ifdef HAVE_ZPL
 	return (unshare_unmount(OP_SHARE, argc, argv));
 #else
+	(void) fprintf(stderr, gettext("This feature is not supported in current version\n"));
 	return ENOSYS;
 #endif  /* HAVE_ZPL */
 }

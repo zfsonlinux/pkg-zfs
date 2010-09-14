@@ -495,6 +495,14 @@ void dmu_prealloc(objset_t *os, uint64_t object, uint64_t offset, uint64_t size,
 #ifdef _KERNEL
 int dmu_read_req(objset_t *os, uint64_t object, struct request *req);
 int dmu_write_req(objset_t *os, uint64_t object, struct request *req, dmu_tx_t *tx);
+int
+dmu_read_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size);
+int
+dmu_write_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size,
+	      dmu_tx_t *tx);
+
+
+
 #endif
 #ifdef HAVE_ZPL
 int dmu_write_pages(objset_t *os, uint64_t object, uint64_t offset,
@@ -597,6 +605,7 @@ uint64_t dmu_objset_fsid_guid(objset_t *os);
 
 int dmu_objset_is_snapshot(objset_t *os);
 
+extern uint64_t dmu_snapname_to_id(objset_t *os, const char *snapname);
 extern struct spa *dmu_objset_spa(objset_t *os);
 extern struct zilog *dmu_objset_zil(objset_t *os);
 extern struct dsl_pool *dmu_objset_pool(objset_t *os);

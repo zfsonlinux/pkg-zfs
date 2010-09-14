@@ -46,12 +46,15 @@ AC_PROG_LIBTOOL
 AM_PROG_AS
 
 ZFS_AC_LICENSE
+ZFS_AC_PACKAGE
 ZFS_AC_CONFIG
 ZFS_AC_DEBUG
 
 AC_CONFIG_FILES([ 
 	Makefile
 	config/Makefile
+        man/Makefile
+        man/man8/Makefile
 	doc/Makefile
 	lib/Makefile
 	lib/libspl/Makefile

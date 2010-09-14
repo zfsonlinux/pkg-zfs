@@ -1347,11 +1347,9 @@ zilog_t *
 zil_open(objset_t *os, zil_get_data_t *get_data)
 {
 	zilog_t *zilog = dmu_objset_zil(os);
-
 	zilog->zl_get_data = get_data;
 	zilog->zl_clean_taskq = taskq_create("zil_clean", 1, minclsyspri,
 	    2, 2, TASKQ_PREPOPULATE);
-
 	return (zilog);
 }
 

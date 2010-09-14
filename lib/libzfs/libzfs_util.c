@@ -40,9 +40,8 @@
 #include <sys/mnttab.h>
 #include <sys/mntent.h>
 #include <sys/types.h>
-
 #include <libzfs.h>
-
+#include <sys/stat.h>
 #include "libzfs_impl.h"
 #include "zfs_prop.h"
 
@@ -572,6 +571,22 @@ libzfs_handle_t *
 libzfs_init(void)
 {
 	libzfs_handle_t *hdl;
+	int fd;
+
+	if (mkdir(FLOCK_DIR, 0700) < 0) {
+		if (errno != EEXIST) {
+			perror("mkdir ");
+			return NULL;
+		}
+	}
+
+	if ((fd = creat(FLOCK_PATH, S_IRUSR | S_IWUSR)) < 0) {
+		if (errno != EEXIST) {
+			perror("creat ");
+			return NULL;
+		}
+	} else close(fd);
+
 
 	if ((hdl = calloc(sizeof (libzfs_handle_t), 1)) == NULL) {
 		return (NULL);

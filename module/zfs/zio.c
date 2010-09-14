@@ -33,6 +33,17 @@
 #include <sys/zio_compress.h>
 #include <sys/zio_checksum.h>
 
+#define THREAD_SIZE1 8192
+
+#ifdef  __ia64__
+#define STACK_SIZE() (THREAD_SIZE1 -                                   \
+		       ((unsigned long)__builtin_dwarf_cfa() &          \
+		       (THREAD_SIZE1 - 1)))
+#else
+#define STACK_SIZE() (THREAD_SIZE1 -                                   \
+		       ((unsigned long)__builtin_frame_address(0) &     \
+			(THREAD_SIZE1 - 1)))
+#endif 
 /*
  * ==========================================================================
  * I/O priority table
@@ -194,7 +205,7 @@ zio_buf_alloc(size_t size)
 
 	ASSERT(c < SPA_MAXBLOCKSIZE >> SPA_MINBLOCKSHIFT);
 
-	return (kmem_cache_alloc(zio_buf_cache[c], KM_PUSHPAGE));
+	return (kmem_cache_alloc(zio_buf_cache[c], KM_PUSHPAGE & (~(__GFP_FS))));
 }
 
 /*
@@ -210,7 +221,7 @@ zio_data_buf_alloc(size_t size)
 
 	ASSERT(c < SPA_MAXBLOCKSIZE >> SPA_MINBLOCKSHIFT);
 
-	return (kmem_cache_alloc(zio_data_buf_cache[c], KM_PUSHPAGE));
+	return (kmem_cache_alloc(zio_data_buf_cache[c], KM_PUSHPAGE & (~(__GFP_FS))));
 }
 
 void
@@ -356,7 +367,7 @@ zio_unique_parent(zio_t *cio)
 void
 zio_add_child(zio_t *pio, zio_t *cio)
 {
-	zio_link_t *zl = kmem_cache_alloc(zio_link_cache, KM_SLEEP);
+	zio_link_t *zl = kmem_cache_alloc(zio_link_cache, KM_SLEEP & (~(__GFP_FS)));
 	int w;
 
 	/*
@@ -469,7 +480,7 @@ zio_create(zio_t *pio, spa_t *spa, uint64_t txg, blkptr_t *bp,
 	ASSERT(!bp || !(flags & ZIO_FLAG_CONFIG_WRITER));
 	ASSERT(vd || stage == ZIO_STAGE_OPEN);
 
-	zio = kmem_cache_alloc(zio_cache, KM_SLEEP);
+	zio = kmem_cache_alloc(zio_cache, KM_SLEEP & (~(__GFP_FS)));
 	bzero(zio, sizeof (zio_t));
 
 	mutex_init(&zio->io_lock, NULL, MUTEX_DEFAULT, NULL);
@@ -1090,7 +1101,13 @@ zio_nowait(zio_t *zio)
 		zio_add_child(spa->spa_async_zio_root, zio);
 	}
 
-	zio_execute(zio);
+	if (STACK_SIZE() > THREAD_SIZE1 / 2) {
+		zio_taskq_dispatch(zio, ZIO_TASKQ_ISSUE);
+	} else {
+		zio_execute(zio);
+	}
+
+//	zio_execute(zio);
 }
 
 /*

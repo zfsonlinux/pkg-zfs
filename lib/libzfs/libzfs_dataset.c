@@ -630,6 +630,9 @@ libzfs_mnttab_find(libzfs_handle_t *hdl, const char *fsname,
 {
 	mnttab_node_t find;
 	mnttab_node_t *mtn;
+#if defined(LINUX_PORT)
+	int fd;
+#endif
 
 	if (!hdl->libzfs_mnttab_enable) {
 		struct mnttab srch = { 0 };
@@ -645,6 +648,11 @@ libzfs_mnttab_find(libzfs_handle_t *hdl, const char *fsname,
 			return (ENOENT);
 	}
 
+#if defined(LINUX_PORT)
+	fd = open(FLOCK_PATH, O_RDONLY);
+	flock(fd, LOCK_EX);
+#endif
+
 	if (avl_numnodes(&hdl->libzfs_mnttab_cache) == 0)
 		libzfs_mnttab_update(hdl);
 
@@ -652,8 +660,16 @@ libzfs_mnttab_find(libzfs_handle_t *hdl, const char *fsname,
 	mtn = avl_find(&hdl->libzfs_mnttab_cache, &find, NULL);
 	if (mtn) {
 		*entry = mtn->mtn_mt;
+#if defined(LINUX_PORT)
+		flock(fd, LOCK_UN);
+		close(fd);
+#endif
 		return (0);
 	}
+#if defined(LINUX_PORT)
+	flock(fd, LOCK_UN);
+	close(fd);
+#endif
 	return (ENOENT);
 }
 
@@ -1614,7 +1630,7 @@ get_numeric_property(zfs_handle_t *zhp, zfs_prop_t prop, zprop_source_t *src,
 		*val = getprop_uint64(zhp, prop, source);
 		if (*val != ZFS_CANMOUNT_ON)
 			*source = zhp->zfs_name;
-		else
+		else 
 			*source = "";	/* default */
 		break;
 
@@ -2536,12 +2552,12 @@ create_parents(libzfs_handle_t *hdl, char *target, int prefixlen)
 			goto ancestorerr;
 		}
 
-#ifdef HAVE_ZPL
 		if (zfs_mount(h, NULL, 0) != 0) {
 			opname = dgettext(TEXT_DOMAIN, "mount");
 			goto ancestorerr;
 		}
 
+#ifdef HAVE_ZPL
 		if (zfs_share(h) != 0) {
 			opname = dgettext(TEXT_DOMAIN, "share");
 			goto ancestorerr;

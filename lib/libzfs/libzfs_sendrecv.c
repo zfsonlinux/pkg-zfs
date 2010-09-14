@@ -1975,7 +1975,6 @@ zfs_receive_one(libzfs_handle_t *hdl, int infd, const char *tosnap,
 	 * if we did a replication receive (indicated by stream_avl
 	 * being non-NULL).
 	 */
-#ifdef HAVE_ZPL
 	cp = strchr(zc.zc_value, '@');
 	if (cp && (ioctl_err == 0 || !newfs)) {
 		zfs_handle_t *h;
@@ -2002,7 +2001,6 @@ zfs_receive_one(libzfs_handle_t *hdl, int infd, const char *tosnap,
 		}
 		*cp = '@';
 	}
-#endif /* HAVE_ZPL */
 
 	if (clp) {
 		err |= changelist_postfix(clp);
@@ -2124,6 +2122,7 @@ zfs_receive(libzfs_handle_t *hdl, const char *tosnap, recvflags_t flags,
 
 	err = zfs_receive_impl(hdl, tosnap, flags, infd, stream_avl, &top_zfs);
 
+	assert(top_zfs);
 	if (err == 0 && !flags.nomount && top_zfs) {
 		zfs_handle_t *zhp;
 		prop_changelist_t *clp;

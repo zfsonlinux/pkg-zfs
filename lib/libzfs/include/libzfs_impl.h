@@ -37,6 +37,8 @@
 #include <libuutil.h>
 #include <libzfs.h>
 #include <libshare.h>
+#include <sys/mount.h>
+#include <sys/mntent.h>
 
 #ifdef	__cplusplus
 extern "C" {
@@ -189,6 +191,38 @@ extern int zfs_parse_options(char *, zfs_share_proto_t);
 
 extern int zfs_unshare_proto(zfs_handle_t *,
     const char *, zfs_share_proto_t *);
+
+extern int mkdirp(const char *d, mode_t mode);
+
+#ifdef LINUX_PORT
+
+static inline int 
+os_mount(const char *src, const char *mntpt, int mflag, char *fstype, 
+	char *dataptr, int datalen, char *optptr, int optlen)
+{
+	int ret = 0;
+
+	assert(dataptr == NULL);
+	assert(datalen == 0);
+	assert(mflag == 0);
+	assert(strcmp(fstype, MNTTYPE_ZFS) == 0);
+
+	ret = mount(src, mntpt, (char *)MNTTYPE_ZFS, mflag, "defaults");
+	return ret;
+}
+
+#else 
+
+static inline int 
+os_mount(const char *src, const char *mntpt, int mflag, char *fstype, 
+	char *dataptr, int datalen, char *optptr, int optlen)
+{
+	return mount(src, mntpt, mflag, fstype, dataptr, datalen, 
+		     optptr, optlen);
+} 
+
+#endif /* LINUX_PORT */
+
 #ifdef	__cplusplus
 }
 #endif

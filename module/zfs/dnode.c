@@ -297,7 +297,7 @@ static dnode_t *
 dnode_create(objset_impl_t *os, dnode_phys_t *dnp, dmu_buf_impl_t *db,
     uint64_t object)
 {
-	dnode_t *dn = kmem_cache_alloc(dnode_cache, KM_SLEEP);
+	dnode_t *dn = kmem_cache_alloc(dnode_cache, KM_SLEEP & (~(__GFP_FS)));
 	int i;
 
 	DNODE_VERIFY_CLEAN(dn);
@@ -650,7 +650,7 @@ dnode_hold_impl(objset_impl_t *os, uint64_t object, int flag,
 	if (children_dnodes == NULL) {
 		dnode_t **winner;
 		children_dnodes = kmem_zalloc(epb * sizeof (dnode_t *),
-		    KM_SLEEP);
+		    KM_SLEEP & (~(__GFP_FS)));
 		if ((winner = dmu_buf_set_user(&db->db, children_dnodes, NULL,
 		    dnode_buf_pageout))) {
 			kmem_free(children_dnodes, epb * sizeof (dnode_t *));

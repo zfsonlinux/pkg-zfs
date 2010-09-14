@@ -28,7 +28,7 @@
 
 #ifdef _KERNEL
 #include <sys/isa_defs.h>
-#include <sys/types32.h>
+#include <sys/isa_defs.h>
 #endif
 #include <sys/acl.h>
 #include <sys/dmu.h>
@@ -39,6 +39,16 @@ extern "C" {
 #endif
 
 struct znode_phys;
+
+/* vsa_mask values */ 
+#define VSA_ACL                 0x0001
+#define VSA_ACLCNT              0x0002
+#define VSA_DFACL               0x0004
+#define VSA_DFACLCNT            0x0008
+#define VSA_ACE                 0x0010
+#define VSA_ACECNT              0x0020
+#define VSA_ACE_ALLTYPES        0x0040
+#define VSA_ACE_ACLFLAGS        0x0080   /*get/set ACE ACL flags */ 
 
 #define	ACE_SLOT_CNT	6
 #define	ZFS_ACL_VERSION_INITIAL 0ULL

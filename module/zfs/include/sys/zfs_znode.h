@@ -42,6 +42,8 @@
 extern "C" {
 #endif
 
+#define MAKEIMODE(T, M) (VTTOIF(T) | ((M) & ~Z_IFMT))
+
 /*
  * Additional file level attributes, that are stored
  * in the upper half of zp_flags
@@ -82,7 +84,11 @@ extern "C" {
 /*
  * Is ID ephemeral?
  */
-#define	IS_EPHEMERAL(x)		(x > MAXUID)
+#ifdef LINUX_PORT
+#define IS_EPHEMERAL(x)         (0)
+#else 
+#define IS_EPHEMERAL(x)         (x > MAXUID)
+#endif /* LINUX_PORT */
 
 /*
  * Should we use FUIDs?
@@ -344,6 +350,7 @@ extern void zfs_log_acl(zilog_t *zilog, dmu_tx_t *tx, znode_t *zp,
 extern void zfs_xvattr_set(znode_t *zp, xvattr_t *xvap);
 extern void zfs_upgrade(zfsvfs_t *zfsvfs, dmu_tx_t *tx);
 extern int zfs_create_share_dir(zfsvfs_t *zfsvfs, dmu_tx_t *tx);
+extern void zfs_inode_update(znode_t *zp);
 
 #if defined(HAVE_UIO_RW)
 extern caddr_t zfs_map_page(page_t *, enum seg_rw);

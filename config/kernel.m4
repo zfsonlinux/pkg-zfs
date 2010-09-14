@@ -27,7 +27,7 @@ AC_DEFUN([ZFS_AC_CONFIG_KERNEL], [
 
 	dnl # -Wall -fno-strict-aliasing -Wstrict-prototypes and other
 	dnl # compiler options are added by the kernel build system.
-	KERNELCPPFLAGS="$KERNELCPPFLAGS -Werror -DHAVE_SPL -D_KERNEL"
+	KERNELCPPFLAGS="$KERNELCPPFLAGS -Werror -DHAVE_SPL -DLINUX_PORT -D_KERNEL"
 	KERNELCPPFLAGS="$KERNELCPPFLAGS -DTEXT_DOMAIN=\\\"zfs-linux-kernel\\\""
 	KERNELCPPFLAGS="$KERNELCPPFLAGS -I$TOPDIR -I$SPL -I$SPL/include"
 
@@ -241,7 +241,7 @@ dnl #
 dnl # ZFS_LINUX_CONFTEST
 dnl #
 AC_DEFUN([ZFS_LINUX_CONFTEST], [
-cat >conftest.c <<_ACEOF
+cat confdefs.h - <<_ACEOF >conftest.c
 $1
 _ACEOF
 ])

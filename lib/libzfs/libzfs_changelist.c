@@ -93,7 +93,6 @@ struct prop_changelist {
 int
 changelist_prefix(prop_changelist_t *clp)
 {
-#ifdef HAVE_ZPL
 	prop_changenode_t *cn;
 	int ret = 0;
 
@@ -120,6 +119,7 @@ changelist_prefix(prop_changelist_t *clp)
 		if (ZFS_IS_VOLUME(cn->cn_handle)) {
 			switch (clp->cl_realprop) {
 			case ZFS_PROP_NAME:
+#ifdef HAVE_ZPL
 				/*
 				 * If this was a rename, unshare the zvol, and
 				 * remove the /dev/zvol links.
@@ -132,6 +132,7 @@ changelist_prefix(prop_changelist_t *clp)
 					cn->cn_needpost = B_FALSE;
 					(void) zfs_share_iscsi(cn->cn_handle);
 				}
+#endif
 				break;
 
 			case ZFS_PROP_VOLSIZE:
@@ -139,7 +140,9 @@ changelist_prefix(prop_changelist_t *clp)
 				 * If this was a change to the volume size, we
 				 * need to unshare and reshare the volume.
 				 */
+#if defined(HAVE_ZPL)
 				(void) zfs_unshare_iscsi(cn->cn_handle);
+#endif
 				break;
 			default:
 				break;
@@ -156,9 +159,11 @@ changelist_prefix(prop_changelist_t *clp)
 					cn->cn_needpost = B_FALSE;
 				}
 				break;
+#if defined(HAVE_ZPL)
 			case ZFS_PROP_SHARESMB:
 				(void) zfs_unshare_smb(cn->cn_handle, NULL);
 				break;
+#endif
 			default:
 				break;
 			}
@@ -169,9 +174,6 @@ changelist_prefix(prop_changelist_t *clp)
 		(void) changelist_postfix(clp);
 
 	return (ret);
-#else
-	return 0;
-#endif  /* HAVE_ZPL */
 }
 
 /*
@@ -186,11 +188,14 @@ changelist_prefix(prop_changelist_t *clp)
 int
 changelist_postfix(prop_changelist_t *clp)
 {
-#ifdef HAVE_ZPL
 	prop_changenode_t *cn;
+#ifdef HAVE_ZPL	
 	char shareopts[ZFS_MAXPROPLEN];
+#endif /* HAVE_ZPL */
 	int errors = 0;
+#ifdef HAVE_ZPL
 	libzfs_handle_t *hdl;
+#endif /* HAVE_ZPL */
 
 	/*
 	 * If we're changing the mountpoint, attempt to destroy the underlying
@@ -211,11 +216,13 @@ changelist_postfix(prop_changelist_t *clp)
 	 * attempt to reshare during postfix can fail unless libshare
 	 * is uninitialized here so that it will reinitialize later.
 	 */
+#ifdef HAVE_ZPL
 	if (cn->cn_handle != NULL) {
 		hdl = cn->cn_handle->zfs_hdl;
 		assert(hdl != NULL);
 		zfs_uninit_libshare(hdl);
 	}
+#endif /* HAVE_ZPL */
 
 	/*
 	 * We walk the datasets in reverse, because we want to mount any parent
@@ -225,16 +232,20 @@ changelist_postfix(prop_changelist_t *clp)
 	for (cn = uu_list_last(clp->cl_list); cn != NULL;
 	    cn = uu_list_prev(clp->cl_list, cn)) {
 
+#ifdef HAVE_ZPL
 		boolean_t sharenfs;
 		boolean_t sharesmb;
+#endif /* HAVE_ZPL */
 		boolean_t mounted;
 
 		/*
 		 * If we are in the global zone, but this dataset is exported
 		 * to a local zone, do nothing.
 		 */
+#ifdef HAVE_ZPL
 		if (getzoneid() == GLOBAL_ZONEID && cn->cn_zoned)
 			continue;
+#endif /* HAVE_ZPL */
 
 		/* Only do post-processing if it's required */
 		if (!cn->cn_needpost)
@@ -252,7 +263,9 @@ changelist_postfix(prop_changelist_t *clp)
 			    zvol_create_link(cn->cn_handle->zfs_hdl,
 			    cn->cn_handle->zfs_name) != 0) {
 				errors++;
-			} else if (cn->cn_shared ||
+			}
+#ifdef HAVE_ZPL			
+			else if (cn->cn_shared ||
 			    clp->cl_prop == ZFS_PROP_SHAREISCSI) {
 				if (zfs_prop_get(cn->cn_handle,
 				    ZFS_PROP_SHAREISCSI, shareopts,
@@ -267,6 +280,7 @@ changelist_postfix(prop_changelist_t *clp)
 				}
 			}
 
+#endif /* HAVE_ZPL */
 			continue;
 		}
 
@@ -274,6 +288,7 @@ changelist_postfix(prop_changelist_t *clp)
 		 * Remount if previously mounted or mountpoint was legacy,
 		 * or sharenfs or sharesmb  property is set.
 		 */
+#ifdef HAVE_ZPL
 		sharenfs = ((zfs_prop_get(cn->cn_handle, ZFS_PROP_SHARENFS,
 		    shareopts, sizeof (shareopts), NULL, NULL, 0,
 		    B_FALSE) == 0) && (strcmp(shareopts, "off") != 0));
@@ -282,12 +297,21 @@ changelist_postfix(prop_changelist_t *clp)
 		    shareopts, sizeof (shareopts), NULL, NULL, 0,
 		    B_FALSE) == 0) && (strcmp(shareopts, "off") != 0));
 
+#endif /* HAVE_ZPL */
 		mounted = zfs_is_mounted(cn->cn_handle, NULL);
 
-		if (!mounted && (cn->cn_mounted ||
-		    ((sharenfs || sharesmb || clp->cl_waslegacy) &&
-		    (zfs_prop_get_int(cn->cn_handle,
-		    ZFS_PROP_CANMOUNT) == ZFS_CANMOUNT_ON)))) {
+		if (!mounted && (cn->cn_mounted 
+#ifdef HAVE_ZPL			
+			||
+		    ((sharenfs || sharesmb || clp->cl_waslegacy) 
+#endif /* HAVE_ZPL */			
+			&&
+			(zfs_prop_get_int(cn->cn_handle,
+			ZFS_PROP_CANMOUNT) == ZFS_CANMOUNT_ON)
+#ifdef HAVE_ZPL			
+		 ) 
+#endif /* HAVE_ZPL */
+			)) {
 
 			if (zfs_mount(cn->cn_handle, NULL, 0) != 0)
 				errors++;
@@ -300,6 +324,7 @@ changelist_postfix(prop_changelist_t *clp)
 		 * if the filesystem is currently shared, so that we can
 		 * adopt any new options.
 		 */
+#ifdef HAVE_ZPL
 		if (sharenfs && mounted)
 			errors += zfs_share_nfs(cn->cn_handle);
 		else if (cn->cn_shared || clp->cl_waslegacy)
@@ -308,12 +333,10 @@ changelist_postfix(prop_changelist_t *clp)
 			errors += zfs_share_smb(cn->cn_handle);
 		else if (cn->cn_shared || clp->cl_waslegacy)
 			errors += zfs_unshare_smb(cn->cn_handle, NULL);
+#endif /* HAVE_ZPL */	
 	}
 
 	return (errors ? -1 : 0);
-#else
-	return 0;
-#endif  /* HAVE_ZPL */
 }
 
 /*

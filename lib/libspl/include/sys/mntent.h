@@ -37,6 +37,9 @@ extern "C" {
 
 #define	MNTTAB		"/proc/mounts"
 #define	VFSTAB		"/etc/vfstab"
+#ifdef LINUX_PORT
+#define MTAB_FILE	"/etc/mtab"
+#endif /*LINUX_PORT*/
 #define	MNTMAXSTR	128
 
 #define	MNTTYPE_ZFS	"zfs"		/* ZFS file system */

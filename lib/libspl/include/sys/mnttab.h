@@ -40,6 +40,9 @@
 
 #define MNTTAB "/proc/mounts"
 #define MNT_LINE_MAX 1024
+#define FLOCK_DIR   "/var/lock/zfs/"
+#define FLOCK_NAME  "mtab_lock"
+#define FLOCK_PATH  (FLOCK_DIR FLOCK_NAME)
 
 #define MNT_TOOLONG 1    /* entry exceeds MNT_LINE_MAX */
 #define MNT_TOOMANY 2    /* too many fields in line */

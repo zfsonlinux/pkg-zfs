@@ -43,11 +43,10 @@
 #include <sys/zio.h>
 #include <strings.h>
 #include <dlfcn.h>
-
 #include "zfs_namecheck.h"
 #include "zfs_prop.h"
 #include "libzfs_impl.h"
-
+#include <sys/stat.h>
 static int read_efi_label(nvlist_t *config, diskaddr_t *sb);
 
 #if defined(__i386) || defined(__amd64)

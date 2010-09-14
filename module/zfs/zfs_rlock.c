@@ -94,6 +94,25 @@
 
 #include <sys/zfs_rlock.h>
 
+static inline void do_delayed_release(rl_t *rl)
+{
+    if (rl->r_delayed_release == B_FALSE)
+        return;
+
+    if (0 == atomic_dec_return(&rl->r_cv_waiters)) {
+        /* destroy the condition variables */
+        if (rl->r_read_wanted) {
+            cv_destroy(&rl->r_rd_cv);
+        }
+        if (rl->r_write_wanted) {
+            cv_destroy(&rl->r_wr_cv);
+        }
+
+        /* free the rl_t memory */
+        kmem_free(rl, sizeof (rl_t));
+    }
+}
+
 /*
  * Check if a write lock can be grabbed, or wait and recheck until available.
  */
@@ -119,26 +138,26 @@ zfs_range_lock_writer(znode_t *zp, rl_t *new)
 		 * we could make the range locking code generically available
 		 * to other non-zfs consumers.
 		 */
-		if (zp->z_vnode) { /* caller is ZPL */
-			/*
-			 * If in append mode pick up the current end of file.
-			 * This is done under z_range_lock to avoid races.
-			 */
-			if (new->r_type == RL_APPEND)
-				new->r_off = zp->z_phys->zp_size;
+        if (zp->z_vnode) { /* caller is ZPL */
+            /*
+             * If in append mode pick up the current end of file.
+             * This is done under z_range_lock to avoid races.
+             */
+            if (new->r_type == RL_APPEND)
+                new->r_off = zp->z_phys->zp_size;
 
-			/*
-			 * If we need to grow the block size then grab the whole
-			 * file range. This is also done under z_range_lock to
-			 * avoid races.
-			 */
-			end_size = MAX(zp->z_phys->zp_size, new->r_off + len);
-			if (end_size > zp->z_blksz && (!ISP2(zp->z_blksz) ||
-			    zp->z_blksz < zp->z_zfsvfs->z_max_blksz)) {
-				new->r_off = 0;
-				new->r_len = UINT64_MAX;
-			}
-		}
+            /*
+             * If we need to grow the block size then grab the whole
+             * file range. This is also done under z_range_lock to
+             * avoid races.
+             */
+            end_size = MAX(zp->z_phys->zp_size, new->r_off + len);
+            if (end_size > zp->z_blksz && (!ISP2(zp->z_blksz) ||
+                        zp->z_blksz < zp->z_zfsvfs->z_max_blksz)) {
+                new->r_off = 0;
+                new->r_len = UINT64_MAX;
+            }
+        }
 
 		/*
 		 * First check for the usual case of no locks
@@ -172,7 +191,10 @@ wait:
 			cv_init(&rl->r_wr_cv, NULL, CV_DEFAULT, NULL);
 			rl->r_write_wanted = B_TRUE;
 		}
+
+		atomic_inc(&rl->r_cv_waiters);
 		cv_wait(&rl->r_wr_cv, &zp->z_range_lock);
+		do_delayed_release(rl);
 
 		/* reset to original */
 		new->r_off = off;
@@ -375,7 +397,9 @@ retry:
 				cv_init(&prev->r_rd_cv, NULL, CV_DEFAULT, NULL);
 				prev->r_read_wanted = B_TRUE;
 			}
+			atomic_inc(&prev->r_cv_waiters);
 			cv_wait(&prev->r_rd_cv, &zp->z_range_lock);
+			do_delayed_release(prev);
 			goto retry;
 		}
 		if (off + len < prev->r_off + prev->r_len)
@@ -398,7 +422,9 @@ retry:
 				cv_init(&next->r_rd_cv, NULL, CV_DEFAULT, NULL);
 				next->r_read_wanted = B_TRUE;
 			}
+			atomic_inc(&next->r_cv_waiters);
 			cv_wait(&next->r_rd_cv, &zp->z_range_lock);
+			do_delayed_release(next);
 			goto retry;
 		}
 		if (off + len <= next->r_off + next->r_len)
@@ -437,6 +463,8 @@ zfs_range_lock(znode_t *zp, uint64_t off, uint64_t len, rl_type_t type)
 	new->r_proxy = B_FALSE;
 	new->r_write_wanted = B_FALSE;
 	new->r_read_wanted = B_FALSE;
+	atomic_set(&new->r_cv_waiters, 0);
+	new->r_delayed_release = B_FALSE;
 
 	mutex_enter(&zp->z_range_lock);
 	if (type == RL_READER) {
@@ -474,11 +502,23 @@ zfs_range_unlock_reader(znode_t *zp, rl_t *remove)
 		avl_remove(tree, remove);
 		if (remove->r_write_wanted) {
 			cv_broadcast(&remove->r_wr_cv);
+#if 0
+			/* LINUX does not gaurantee that all waiting threads will be 
+			 * woken up before cv_broadcast returns we cannot destroy 
+			 * the cv at this point. Do delayed release.
+			 * */
 			cv_destroy(&remove->r_wr_cv);
+#endif
 		}
 		if (remove->r_read_wanted) {
 			cv_broadcast(&remove->r_rd_cv);
+#if 0
+			/* LINUX does not gaurantee that all waiting threads will be 
+			 * woken up before cv_broadcast returns we cannot destroy 
+			 * the cv at this point. Do delayed release.
+			 * */
 			cv_destroy(&remove->r_rd_cv);
+#endif
 		}
 	} else {
 		ASSERT3U(remove->r_cnt, ==, 0);
@@ -507,17 +547,35 @@ zfs_range_unlock_reader(znode_t *zp, rl_t *remove)
 				avl_remove(tree, rl);
 				if (rl->r_write_wanted) {
 					cv_broadcast(&rl->r_wr_cv);
+#if 0
+					/* LINUX does not gaurantee that all waiting threads will be
+					 * woken up before cv_broadcast returns we cannot destroy 
+					 * the cv at this point. Do delayed release.
+					 * */
 					cv_destroy(&rl->r_wr_cv);
+#endif
 				}
 				if (rl->r_read_wanted) {
 					cv_broadcast(&rl->r_rd_cv);
+#if 0
+					/* LINUX does not gaurantee that all waiting threads will be
+					 * woken up before cv_broadcast returns we cannot destroy 
+					 * the cv at this point. Do delayed release.
+					 * */
 					cv_destroy(&rl->r_rd_cv);
+#endif
 				}
-				kmem_free(rl, sizeof (rl_t));
+				if (0 == atomic_read(&rl->r_cv_waiters))
+					kmem_free(rl, sizeof (rl_t));
+				else
+					rl->r_delayed_release = B_TRUE;
 			}
 		}
 	}
-	kmem_free(remove, sizeof (rl_t));
+	if (0 == atomic_read(&remove->r_cv_waiters))
+		kmem_free(remove, sizeof (rl_t));
+	else
+		remove->r_delayed_release = B_TRUE;
 }
 
 /*
@@ -539,13 +597,28 @@ zfs_range_unlock(rl_t *rl)
 		mutex_exit(&zp->z_range_lock);
 		if (rl->r_write_wanted) {
 			cv_broadcast(&rl->r_wr_cv);
+#if 0
+			/* LINUX does not gaurantee that all waiting threads will be
+			 * woken up before cv_broadcast returns we cannot destroy 
+			 * the cv at this point. Do delayed release.
+			 * */
 			cv_destroy(&rl->r_wr_cv);
+#endif
 		}
 		if (rl->r_read_wanted) {
 			cv_broadcast(&rl->r_rd_cv);
+#if 0
+			/* LINUX does not gaurantee that all waiting threads will be
+			 * woken up before cv_broadcast returns we cannot destroy 
+			 * the cv at this point. Do delayed release.
+			 * */
 			cv_destroy(&rl->r_rd_cv);
+#endif
 		}
-		kmem_free(rl, sizeof (rl_t));
+		if (0 == atomic_read(&rl->r_cv_waiters))
+			kmem_free(rl, sizeof (rl_t));
+		else
+			rl->r_delayed_release = B_TRUE;
 	} else {
 		/*
 		 * lock may be shared, let zfs_range_unlock_reader()

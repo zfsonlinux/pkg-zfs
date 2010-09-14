@@ -1263,6 +1263,36 @@ dmu_snapshot_list_next(objset_t *os, int namelen, char *name,
 	return (0);
 }
 
+/*
+ * returns obj id for the snapshot name given as arg.
+ * id is used to compute the inode no
+ */
+
+uint64_t
+dmu_snapname_to_id(objset_t *os, const char *snapname)
+{
+	dsl_dataset_t *ds = os->os->os_dsl_dataset;
+	zap_cursor_t cursor;
+	zap_attribute_t attr;
+
+	if (ds->ds_phys->ds_snapnames_zapobj == 0) {
+		return (ENOENT);
+	}
+	zap_cursor_init(&cursor,
+					ds->ds_dir->dd_pool->dp_meta_objset,
+					ds->ds_phys->ds_snapnames_zapobj);
+	if(!(zap_cursor_move_to_key(&cursor, snapname, MT_EXACT))) {
+		if (zap_cursor_retrieve(&cursor, &attr) != 0) {
+			zap_cursor_fini(&cursor); 
+	/* not returning ENOENT as that might be the id no */           
+			return 0; // no snapshot by name snapname
+		}
+		return attr.za_first_integer;
+	} else {
+		return 0; // no snapshot by name snapname        
+	}
+}
+
 int
 dmu_dir_list_next(objset_t *os, int namelen, char *name,
     uint64_t *idp, uint64_t *offp)
@@ -1494,6 +1524,7 @@ EXPORT_SYMBOL(dmu_snapshot_list_next);
 EXPORT_SYMBOL(dmu_dir_list_next);
 EXPORT_SYMBOL(dmu_objset_set_user);
 EXPORT_SYMBOL(dmu_objset_get_user);
+EXPORT_SYMBOL(dmu_snapname_to_id);
 
 /* Public routines to create, destroy, open, and close objsets. */
 EXPORT_SYMBOL(dmu_objset_open);
