@@ -38,6 +38,7 @@
 #include <sys/utsname.h>
 #include <sys/file.h>
 #include <linux/kmod.h>
+#include <sys/tsd_hashtable.h>
 #include "spl_config.h"
 
 #ifdef DEBUG_SUBSYSTEM
@@ -45,6 +46,7 @@
 #endif
 
 #define DEBUG_SUBSYSTEM S_GENERIC
+extern struct tsd_hash_table *tsd_hash_table;
 
 char spl_version[16] = "SPL v" SPL_META_VERSION;
 
@@ -429,6 +431,8 @@ spl_fini(void)
 	ENTRY;
 
 	printk("SPL: Unloaded Solaris Porting Layer v%s\n", SPL_META_VERSION);
+	/* Remove the TSD's hash table */
+	fini_tsd_hash_table(tsd_hash_table);
 	kstat_fini();
 	proc_fini();
 	vn_fini();

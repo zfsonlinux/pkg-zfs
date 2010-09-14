@@ -1,0 +1,11 @@
+#ifndef _LZFS_SNAP_H
+#define _LZFS_SNAP_H
+
+#define LZFS_ZFSCTL_INO_ROOT     0xFFFFFFFFFFFFFFFF
+#define LZFS_ZFSCTL_INO_SNAPDIR  0xFFFFFFFFFFFFFFFE
+#define LZFS_ZFSCTL_INO_SHARES   0xFFFFFFFFFFFFFFFD
+
+#define ZFS_CTLDIR_NAME     ".zfs"
+#define ZFS_SNAPDIR_NAME    "snapshot"
+#define ZFS_SHAREDIR_NAME   "shares"
+#endif /* _LZFS_SNAP_H */

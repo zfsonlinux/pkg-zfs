@@ -5,6 +5,8 @@
 #include <asm/uaccess.h>
 #include <sys/types.h>
 
+typedef struct iovec iovec_t;
+
 typedef enum uio_rw {
 	UIO_READ =	0,
 	UIO_WRITE =	1,
@@ -35,12 +37,18 @@ typedef struct aio_req {
 /* XXX: Must be fully implemented when ZVOL is needed, for reference:
  * http://cvs.opensolaris.org/source/xref/onnv/onnv-gate/usr/src/uts/common/os/move.c
  */
-#if 0
-static __inline__ int
-uiomove(void *p, size_t n, enum uio_rw rw, struct uio *uio)
-{
-	return 0;
-}
-#endif
+extern int
+uiomove(void *p, size_t n, enum uio_rw rw, struct uio *uio);
+
+extern void
+uio_prefaultpages(ssize_t n, struct uio *uio);
+
+extern int
+uiocopy(void *p, size_t n, enum uio_rw rw, struct uio *uio, size_t *cbytes);
+
+extern void
+uioskip(uio_t *uiop, size_t n);
+
+
 
 #endif /* SPL_UIO_H */

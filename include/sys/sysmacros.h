@@ -147,7 +147,7 @@ extern uint32_t zone_get_hostid(void *zone);
 extern void spl_setup(void);
 extern void spl_cleanup(void);
 
-#define makedevice(maj,min) makedev(maj,min)
+#define makedevice(maj,min) MKDEV(maj,min)
 
 /* common macros */
 #ifndef MIN

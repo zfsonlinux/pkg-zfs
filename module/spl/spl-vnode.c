@@ -43,35 +43,72 @@ static spl_kmem_cache_t *vn_file_cache;
 static spinlock_t vn_file_lock = SPIN_LOCK_UNLOCKED;
 static LIST_HEAD(vn_file_list);
 
-static vtype_t
-vn_get_sol_type(umode_t mode)
+mode_t
+vn_vtype_to_if(vtype_t vtype)
 {
-	if (S_ISREG(mode))
-		return VREG;
+        if (vtype == VREG)
+                return S_IFREG;
 
-	if (S_ISDIR(mode))
-		return VDIR;
+        if (vtype == VDIR)
+                return S_IFDIR;
 
-	if (S_ISCHR(mode))
-		return VCHR;
+        if (vtype == VCHR)
+                return S_IFCHR;
 
-	if (S_ISBLK(mode))
-		return VBLK;
+        if (vtype == VBLK)
+                return S_IFBLK;
 
-	if (S_ISFIFO(mode))
-		return VFIFO;
+        if (vtype == VFIFO)
+                return S_IFIFO;
 
-	if (S_ISLNK(mode))
-		return VLNK;
+        if (vtype == VLNK)
+                return S_IFLNK;
 
-	if (S_ISSOCK(mode))
-		return VSOCK;
+        if (vtype == VSOCK)
+                return S_IFSOCK;
 
-	if (S_ISCHR(mode))
-		return VCHR;
+        return VNON;
+} /* vn_vtype_to_if() */
+EXPORT_SYMBOL(vn_vtype_to_if);
 
-	return VNON;
-} /* vn_get_sol_type() */
+
+/*
+ * get linux mode from solaris vnode type
+ */
+umode_t
+vn_get_lin_type(vtype_t type)
+{
+	if(type == VREG)
+		return S_IFREG;
+	if(type == VDIR)
+		return S_IFDIR;
+	if(type == VCHR)
+		return S_IFCHR;
+	if(type == VBLK)
+		return S_IFBLK;
+	if(type == VFIFO)
+		return S_IFIFO;
+	if(type == VLNK)
+		return S_IFLNK;
+	if(type == VSOCK)
+		return S_IFSOCK;
+	return 0;
+}
+EXPORT_SYMBOL(vn_get_lin_type);
+
+/*
+ * specvp make available to specvp_check in zfs_lookup just set the
+ * inode device type in this function
+ */
+vnode_t *
+specvp(struct vnode *vp, dev_t dev, vtype_t type, struct cred *cr)
+{
+	VN_HOLD(vp);
+	init_special_inode(&vp->v_inode,vn_get_lin_type(type) , dev);
+	return vp;
+}
+EXPORT_SYMBOL(specvp);
+
 
 vnode_t *
 vn_alloc(int flag)
@@ -79,13 +116,27 @@ vn_alloc(int flag)
 	vnode_t *vp;
 	ENTRY;
 
-	vp = kmem_cache_alloc(vn_cache, flag);
+	vp = kmem_cache_alloc(vn_cache, flag & (~(__GFP_FS)));
 	if (vp != NULL) {
 		vp->v_file = NULL;
 		vp->v_type = 0;
 	}
 
+//	printk(" vp  at %p in %s   \n", vp, __FUNCTION__);	
 	RETURN(vp);
+#if 0
+	vnode_t *vp = NULL;
+	ENTRY;
+	vp = kzalloc(sizeof (vnode_t), KM_SLEEP);
+	if (!vp) {
+		return NULL;
+	}
+	mutex_init(&vp->v_lock, NULL, MUTEX_DEFAULT, NULL);
+	inode_init_once(LZFS_VTOI(vp));
+	LZFS_VTOI(vp)->i_version = 1;
+	RETURN(vp);
+
+#endif
 } /* vn_alloc() */
 EXPORT_SYMBOL(vn_alloc);
 
@@ -95,6 +146,10 @@ vn_free(vnode_t *vp)
 	ENTRY;
 	kmem_cache_free(vn_cache, vp);
 	EXIT;
+#if 0
+	ENTRY;
+	kfree(vp);
+#endif
 } /* vn_free() */
 EXPORT_SYMBOL(vn_free);
 
@@ -141,6 +196,7 @@ vn_open(const char *path, uio_seg_t seg, int flags, int mode,
 	}
 
 	vp = vn_alloc(KM_SLEEP);
+	inode_init_once(LZFS_VTOI(vp));
 	if (!vp) {
 		filp_close(fp, 0);
 		RETURN(ENOMEM);
@@ -193,7 +249,9 @@ vn_rdwr(uio_rw_t uio, vnode_t *vp, void *addr, ssize_t len, offset_t off,
 	ASSERT(vp);
 	ASSERT(vp->v_file);
 	ASSERT(seg == UIO_SYSSPACE);
+#ifdef HAVE_ZPL
 	ASSERT(x1 == 0);
+#endif /* HAVE_ZPL */
 	ASSERT(x2 == RLIM64_INFINITY);
 
 	offset = off;
@@ -446,12 +504,9 @@ vn_getattr(vnode_t *vp, vattr_t *vap, int flags, void *x3, void *x4)
 	vap->va_nlink         = stat.nlink;
         vap->va_size          = stat.size;
 	vap->va_blocksize     = stat.blksize;
-	vap->va_atime.tv_sec  = stat.atime.tv_sec;
-	vap->va_atime.tv_usec = stat.atime.tv_nsec / NSEC_PER_USEC;
-	vap->va_mtime.tv_sec  = stat.mtime.tv_sec;
-	vap->va_mtime.tv_usec = stat.mtime.tv_nsec / NSEC_PER_USEC;
-	vap->va_ctime.tv_sec  = stat.ctime.tv_sec;
-	vap->va_ctime.tv_usec = stat.ctime.tv_nsec / NSEC_PER_USEC;
+	vap->va_atime         = stat.atime;
+        vap->va_mtime         = stat.mtime;
+        vap->va_ctime         = stat.ctime;
 	vap->va_rdev          = stat.rdev;
 	vap->va_blocks        = stat.blocks;
 
@@ -530,6 +585,7 @@ vn_getf(int fd)
 		GOTO(out_mutex, rc);
 
 	vp = vn_alloc(KM_SLEEP);
+	inode_init_once(LZFS_VTOI(vp));
 	if (vp == NULL)
 		GOTO(out_fget, rc);
 
@@ -732,8 +788,7 @@ vn_init(void)
 				     sizeof(struct vnode), 64,
 	                             vn_cache_constructor,
 				     vn_cache_destructor,
-				     NULL, NULL, NULL, 0);
-
+				     NULL, NULL, NULL, KMC_KMEM);
 	vn_file_cache = kmem_cache_create("spl_vn_file_cache",
 					  sizeof(file_t), 64,
 				          vn_file_cache_constructor,
@@ -741,6 +796,92 @@ vn_init(void)
 				          NULL, NULL, NULL, 0);
 	RETURN(0);
 } /* vn_init() */
+
+/* A placeholder for now. Might be sufficient, need to check again.
+ */ 
+
+void
+vn_exists(vnode_t *vp) 
+{
+
+}
+EXPORT_SYMBOL(vn_exists);
+
+/* A placeholder for now. Might be sufficient, need to check again.
+ */ 
+int 
+vn_has_cached_data(vnode_t *vp)
+{
+	return 0;	
+}
+EXPORT_SYMBOL(vn_has_cached_data);
+
+vtype_t
+vn_get_sol_type(mode_t mode)
+{
+	if (S_ISREG(mode))
+		return VREG;
+
+	if (S_ISDIR(mode))
+		return VDIR;
+
+	if (S_ISCHR(mode))
+		return VCHR;
+
+	if (S_ISBLK(mode))
+		return VBLK;
+
+	if (S_ISFIFO(mode))
+		return VFIFO;
+
+	if (S_ISLNK(mode))
+		return VLNK;
+
+	if (S_ISSOCK(mode))
+		return VSOCK;
+
+	return VNON;
+} /* vn_get_sol_type() */
+EXPORT_SYMBOL(vn_get_sol_type);
+
+/* A placeholder for now. Might be sufficient, need to check again.
+ */ 
+void 
+vn_invalid(vnode_t *vp)
+{
+
+}
+EXPORT_SYMBOL(vn_invalid);
+
+/* vn_rele_async: Release the last hold on inode from taskq to avoid an
+ * inactivation call from this context.
+ *
+ * Like vn_rele() except if we are going to call VOP_INACTIVE() then do it
+ * asynchronously using a taskq. This can avoid deadlocks caused by re-entering
+ * the file system as a result of releasing the vnode. Note, file systems
+ * already have to handle the race where the vnode is incremented before the
+ * inactive routine is called and does its locking.
+ *
+ * Warning: Excessive use of this routine can lead to performance problems.
+ * This is because taskqs throttle back allocation if too many are created.
+ */
+void
+vn_rele_async(vnode_t *vp, taskq_t *taskq)
+{
+	struct inode *inode = LZFS_VTOI(vp);
+
+	VERIFY(vp->v_count > 0);
+	mutex_enter(&vp->v_lock);
+	if (atomic_read(&inode->i_count) == 1) {
+		mutex_exit(&vp->v_lock);
+		VERIFY(taskq_dispatch(taskq, (task_func_t *)iput,
+				      inode, TQ_SLEEP) != 0);
+		return;
+	}
+	iput(inode);
+	mutex_exit(&vp->v_lock);
+}
+EXPORT_SYMBOL(vn_rele_async);
 
 void
 vn_fini(void)
@@ -765,7 +906,23 @@ vn_fini(void)
 		CWARN("Warning %d files leaked\n", leaked);
 
 	kmem_cache_destroy(vn_cache);
-
 	EXIT;
 	return;
 } /* vn_fini() */
+
+/*
+ * Zero out the structure, set the size of the requested/returned bitmaps,
+ * set AT_XVATTR in the embedded vattr_t's va_mask, and set up the pointer 
+ * to the returned attributes array.
+ */             
+void
+xva_init(xvattr_t *xvap)
+{
+        bzero(xvap, sizeof (xvattr_t));
+        xvap->xva_mapsize = XVA_MAPSIZE;
+        xvap->xva_magic = XVA_MAGIC;
+        xvap->xva_vattr.va_mask = AT_XVATTR;
+        xvap->xva_rtnattrmapp = &(xvap->xva_rtnattrmap)[0];
+}
+EXPORT_SYMBOL(xva_init);
+

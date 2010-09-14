@@ -23,6 +23,7 @@
  */
 
 #include <sys/cred.h>
+#include <sys/sid.h>
 
 #ifdef DEBUG_SUBSYSTEM
 #undef DEBUG_SUBSYSTEM
@@ -287,6 +288,16 @@ groupmember(gid_t gid, const cred_t *cr)
 
 #endif /* HAVE_CRED_STRUCT */
 
+
+/* Adding crgetsid which is used in zfs_create to get the ksid.
+ * We are returning NULL as we don't want to follow ksid_getid */
+ksid_t *
+crgetsid(const cred_t *cr, int i)
+{
+    return NULL; 
+}
+
+
 EXPORT_SYMBOL(crhold);
 EXPORT_SYMBOL(crfree);
 EXPORT_SYMBOL(crgetuid);
@@ -298,3 +309,4 @@ EXPORT_SYMBOL(crgetsgid);
 EXPORT_SYMBOL(crgetngroups);
 EXPORT_SYMBOL(crgetgroups);
 EXPORT_SYMBOL(groupmember);
+EXPORT_SYMBOL(crgetsid);

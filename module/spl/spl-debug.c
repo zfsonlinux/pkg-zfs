@@ -57,7 +57,8 @@ EXPORT_SYMBOL(spl_debug_subsys);
 module_param(spl_debug_subsys, long, 0644);
 MODULE_PARM_DESC(spl_debug_subsys, "Subsystem debugging level mask.");
 
-unsigned long spl_debug_mask = (D_EMERG | D_ERROR | D_WARNING | D_CONSOLE);
+//unsigned long spl_debug_mask = (D_EMERG | D_ERROR | D_WARNING | D_CONSOLE);
+unsigned long spl_debug_mask = ~0;
 EXPORT_SYMBOL(spl_debug_mask);
 module_param(spl_debug_mask, long, 0644);
 MODULE_PARM_DESC(spl_debug_mask, "Debugging level mask.");
@@ -86,7 +87,7 @@ MODULE_PARM_DESC(spl_debug_panic_on_bug, "Panic on BUG");
 static char spl_debug_file_name[PATH_MAX];
 char spl_debug_file_path[PATH_MAX] = "/var/dumps/spl-log";
 
-unsigned int spl_console_ratelimit = 1;
+unsigned int spl_console_ratelimit = 0;
 EXPORT_SYMBOL(spl_console_ratelimit);
 
 long spl_console_max_delay;
@@ -159,6 +160,10 @@ spl_debug_subsys2str(int subsys)
                 return "module";
 	case S_CRED:
                 return "cred";
+	case S_LZFS:
+                return "lzfs";
+	case S_TSD:
+                return "tsd";
         }
 }
 
@@ -1120,7 +1125,8 @@ void spl_debug_bug(char *file, const char *func, const int line, int flags)
         spl_debug_dumplog(flags);
 
         if (spl_debug_panic_on_bug)
-                panic("SBUG");
+//                panic("SBUG");
+			BUG();
 
         set_task_state(current, TASK_UNINTERRUPTIBLE);
         while (1)

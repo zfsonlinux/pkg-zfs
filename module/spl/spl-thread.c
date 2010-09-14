@@ -26,6 +26,7 @@
 
 #include <sys/thread.h>
 #include <sys/kmem.h>
+#include <sys/tsd_wrapper.h>
 
 #ifdef DEBUG_SUBSYSTEM
 #undef DEBUG_SUBSYSTEM
@@ -73,6 +74,7 @@ __thread_exit(void)
 {
 	ENTRY;
 	EXIT;
+	tsd_exit();  /* Clean up this thread's TSD */
 	complete_and_exit(NULL, 0);
 	/* Unreachable */
 }

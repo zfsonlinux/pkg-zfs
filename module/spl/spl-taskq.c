@@ -94,7 +94,8 @@ retry:
         }
 
 	spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
-        t = kmem_alloc(sizeof(spl_task_t), flags & (TQ_SLEEP | TQ_NOSLEEP));
+        t = kmem_alloc(sizeof(spl_task_t), flags & (TQ_SLEEP | TQ_NOSLEEP) & 
+				(~(__GFP_FS)));
         spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
 
 	if (t) {
@@ -169,7 +170,6 @@ taskq_wait_check(taskq_t *tq, taskqid_t id)
 	spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
 	rc = (id < tq->tq_lowest_id);
 	spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
-
 	RETURN(rc);
 }
 
@@ -260,7 +260,7 @@ __taskq_dispatch(taskq_t *tq, task_func_t func, void *arg, uint_t flags)
         t->t_func = func;
         t->t_arg = arg;
 	spin_unlock(&t->t_lock);
-
+	
 	wake_up(&tq->tq_work_waitq);
 out:
 	spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);

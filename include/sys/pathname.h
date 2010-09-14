@@ -1,6 +1,8 @@
 #ifndef _SPL_PATHNAME_H
 #define _SPL_PATHNAME_H
 
+#include <sys/types.h>
+
 typedef struct pathname {
 	char	*pn_buf;		/* underlying storage */
 	char	*pn_path;		/* remaining pathname */

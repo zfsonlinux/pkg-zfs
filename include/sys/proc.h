@@ -30,7 +30,6 @@
 #include <linux/proc_fs.h>
 #include <linux/kmod.h>
 #include <linux/ctype.h>
-#include <linux/sysctl.h>
 #include <linux/seq_file.h>
 #include <sys/sysmacros.h>
 #include <sys/systeminfo.h>
@@ -38,7 +37,7 @@
 #include <sys/mutex.h>
 #include <sys/kstat.h>
 #include <sys/debug.h>
-
+#include <sys/sysctl_compat.h>
 #ifdef CONFIG_SYSCTL
 #ifdef HAVE_2ARGS_REGISTER_SYSCTL
 #define spl_register_sysctl_table(t, a)	register_sysctl_table(t, a)

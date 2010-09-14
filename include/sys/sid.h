@@ -5,7 +5,9 @@ typedef struct ksiddomain {
 	uint_t		kd_ref;
 	uint_t		kd_len;
 	char		*kd_name;
+#ifdef HAVE_ZPL
 	avl_node_t	kd_link;
+#endif
 } ksiddomain_t;
 
 static inline ksiddomain_t *
@@ -28,4 +30,18 @@ ksiddomain_rele(ksiddomain_t *ksid)
         kmem_free(ksid, sizeof(ksiddomain_t));
 }
 
+/* defined ksid_t which is used in zfs_create in zfs_vnops */
+typedef int ksid_t;
+
+/* Defined enum to the KSID_OWNER which is used by crgetsid in zfs_create */
+typedef enum ksid_index {
+        KSID_USER,
+        KSID_GROUP,
+        KSID_OWNER,
+        KSID_COUNT                      /* Must be last */
+} ksid_index_t;
+
+/* Just defining ksid_getid which will not hit as we are returning NULL with
+ * crgetsid*/
+#define ksid_getid(a)  (0)
 #endif /* _SPL_SID_H */

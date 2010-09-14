@@ -47,11 +47,17 @@ extern "C" {
 #include <sys/time.h>
 #include <sys/uio.h>
 #include <sys/sunldi.h>
+#include <sys/cred.h>
+#include <sys/pathname.h>
+#include <sys/taskq.h>
+#include <sys/vfs.h>
+#include <sys/fcntl.h>
 
 #define XVA_MAPSIZE     3
 #define XVA_MAGIC       0x78766174
 
-#define O_DSYNC		040000000
+#define O_DSYNC		O_SYNC
+#define O_RSYNC		O_SYNC
 
 #define FREAD		1
 #define FWRITE		2
@@ -101,6 +107,10 @@ extern "C" {
 # define nd_mnt		mnt
 #endif
 
+#define LOOKUP_XATTR	0x02	/*lookup extended attr dir */
+#define IS_DEVVP(vp)	\
+	((vp)->v_type == VCHR || (vp)->v_type == VBLK || (vp)->v_type == VFIFO)
+
 typedef enum vtype {
 	VNON		= 0,
 	VREG		= 1,
@@ -116,22 +126,33 @@ typedef enum vtype {
 	VBAD		= 11
 } vtype_t;
 
+/*
+ * Permissions.
+ */
+#define VREAD    00400
+#define VWRITE   00200
+#define VEXEC	 00100
+
+#define V_APPEND        0x2     /* want to do append only check */
+
+
 typedef struct vattr {
-	enum vtype	va_type;	/* vnode type */
-	u_int		va_mask;	/* attribute bit-mask */
-	u_short		va_mode;	/* acc mode */
-	short		va_uid;		/* owner uid */
-	short		va_gid;		/* owner gid */
-	long		va_fsid;	/* fs id */
-	long		va_nodeid;	/* node # */
-	short		va_nlink;	/* # links */
-	u_long		va_size;	/* file size */
-	long		va_blocksize;	/* block size */
-	struct timeval va_atime;	/* last acc */
-	struct timeval va_mtime;	/* last mod */
-	struct timeval va_ctime;	/* last chg */
-	dev_t		va_rdev;	/* dev */
-	long		va_blocks;	/* space used */
+    enum vtype	va_type;	/* vnode type */
+    u_int		va_mask;	/* attribute bit-mask */
+    u_short		va_mode;	/* acc mode */
+    uid_t       va_uid;		/* owner uid */
+    gid_t       va_gid;		/* owner gid */
+    long		va_fsid;	/* fs id */
+    long		va_nodeid;	/* node # */
+    short		va_nlink;	/* # links */
+    u_long		va_size;	/* file size */
+    uint32_t	va_blocksize;	/* block size */
+    struct timespec va_atime;	/* last acc */
+    struct timespec va_mtime;	/* last mod */
+    struct timespec va_ctime;	/* last chg */
+    dev_t		va_rdev;	/* dev */
+    long		va_blocks;	/* space used */
+    uint64_t    va_nblocks;     /* space used, TBD, remove above field */
 } vattr_t;
 
 typedef struct xoptattr {
@@ -167,6 +188,7 @@ typedef struct vsecattr {
 	int		vsa_dfaclcnt;	/* default ACL entry count */
 	void		*vsa_dfaclentp;	/* pointer to default ACL entries */
 	size_t		vsa_aclentsz;	/* ACE size in bytes of vsa_aclentp */
+        uint_t          vsa_aclflags;   /* ACE ACL flags */
 } vsecattr_t;
 
 typedef struct vnode {
@@ -179,7 +201,19 @@ typedef struct vnode {
 	struct stdata	*v_stream;	/* associated stream */
 	enum vtype	v_type;		/* vnode type */
 	dev_t		v_rdev;		/* device (VCHR, VBLK) */
+	struct inode	v_inode;	/* Linux inode */
 } vnode_t;
+
+#define VN_SET_VFS_TYPE_DEV(vp, vfsp, type, dev)	{ \
+	(vp)->v_vfsp = (vfsp); \
+	(vp)->v_type = (type); \
+	(vp)->v_rdev = (dev); \
+}
+
+vnode_t *specvp(struct vnode *vp, dev_t dev, vtype_t type, struct cred *cr);
+
+#define LZFS_ITOV(inode)	(container_of(inode, vnode_t, v_inode))
+#define LZFS_VTOI(vp)	(&(vp)->v_inode)
 
 typedef struct vn_file {
 	int		f_fd;		/* linux fd for lookup */
@@ -217,15 +251,18 @@ extern int vn_fsync(vnode_t *vp, int flags, void *x3, void *x4);
 extern file_t *vn_getf(int fd);
 extern void vn_releasef(int fd);
 extern int vn_set_pwd(const char *filename);
-
+extern mode_t vn_vtype_to_if(vtype_t);
+extern vtype_t vn_get_sol_type(mode_t);
+extern void vn_exists(vnode_t *);
 int vn_init(void);
+extern void vn_invalid(vnode_t *);
 void vn_fini(void);
+extern int vn_has_cached_data(vnode_t *);
+extern void vn_rele_async(vnode_t *, taskq_t *);
 
-static __inline__ int
-vn_rele(vnode_t *vp)
-{
-	return 0;
-} /* vn_rele() */
+#define VN_HOLD(vp)		igrab(LZFS_VTOI(vp))
+#define VN_RELE(vp)		iput(LZFS_VTOI(vp))
+#define VN_RELE_ASYNC(vp, taskq) vn_rele_async(vp, taskq)
 
 static __inline__ int
 vn_putpage(vnode_t *vp, offset_t off, ssize_t size,
@@ -235,7 +272,6 @@ vn_putpage(vnode_t *vp, offset_t off, ssize_t size,
 
 #define VOP_CLOSE				vn_close
 #define VOP_SEEK				vn_seek
-#define VN_RELE					vn_rele
 #define VOP_GETATTR				vn_getattr
 #define VOP_FSYNC				vn_fsync
 #define VOP_PUTPAGE				vn_putpage
@@ -243,7 +279,121 @@ vn_putpage(vnode_t *vp, offset_t off, ssize_t size,
 #define getf					vn_getf
 #define releasef				vn_releasef
 
+/*  Some values same as S_xxx entries from stat.h for convenience.
+ */
+#define        VSUID           04000           /* set user id on execution */
+#define        VSGID           02000           /* set group id on execution */
+#define        VSVTX           01000           /* save swapped text even after use */
+
+#define VOP_CREATE(dvp, p, vap, ex, mode, vpp, cr, flag, ct, vsap) \
+        zfs_create(dvp, p, vap, ex, mode, vpp, cr, flag, ct, vsap)
+#define VOP_MKDIR(dp, p, vap, vpp, cr, ct, f, vsap) \
+        zfs_mkdir(dp, p, vap, vpp, cr, ct, f, vsap)
+#define VOP_SYMLINK(dvp, lnm, vap, tnm, cr, ct, f, vpp) \
+        zfs_symlink(dvp, lnm, vap, tnm, cr, ct, f, vpp)
+#define VOP_REMOVE(dvp, p, cr, ct, f) \
+        zfs_remove(dvp, p, cr, ct, f)
+#define VOP_LINK(tdvp, fvp, p, cr, ct, f) \
+        zfs_link(tdvp, fvp, p, cr, ct, f)
+#define VOP_RENAME(fvp, fnm, tdvp, tnm, cr, ct, f) \
+        zfs_rename(fvp, fnm, tdvp, tnm, cr, ct, f)
+#define VOP_RMDIR(dp, p, cdir, cr, ct, f) \
+        zfs_rmdir(dp, p, cdir, cr, ct, f)
+#define VOP_SETATTR(vp, vap, f, cr, ct) \
+        zfs_setattr(vp, vap, f, cr, ct)
+#define VOP_WRITE(vp , uio, f , cr, ct) \
+	zfs_write(vp, uio , f, cr, ct)
+#define VOP_SPACE(vp, cmd, fl, f, off, cr, ct) \
+	zfs_space(vp, cmd, fl, f, off, cr, ct)
+
+#define MODEMASK              07777
+
+/*
+ * VOP_ACCESS flags
+ */
+#define        V_ACE_MASK      0x1     /* mask represents  NFSv4 ACE permissions */
+/* Added as vcexcl_t is one the parameter in zfs_create */
+/*
+ * Flags for vnode operations.
+ */
+enum vcexcl    { NONEXCL, EXCL };              /* (non)excl create */
+
+typedef enum vcexcl    vcexcl_t;
+#define IFTOVT(mode)			vn_get_sol_type(mode)
+#define VTTOIF(vtype)                   vn_vtype_to_if(vtype)
+#define Z_IFMT                          0xF000  
+
 extern vnode_t *rootdir;
+
+/* root of its file system */
+#define VROOT 0x01
+
+void
+zfs_inactive(vnode_t *vp, struct cred *cr, caller_context_t *ct);
+
+int
+zfs_lookup(vnode_t *dvp, char *nm, vnode_t **vpp, struct pathname *pnp,
+    int flags, vnode_t *rdir, struct cred *cr,  caller_context_t *ct,
+    int *direntflags, pathname_t *realpnp);
+
+int
+zfs_create(vnode_t *dvp, char *name, vattr_t *vap, vcexcl_t excl,
+    int mode, vnode_t **vpp, struct cred *cr, int flag, caller_context_t *ct,
+    vsecattr_t *vsecp);
+
+int
+zfs_readdir(vnode_t *vp, uio_t *uio, struct cred *cr, int *eofp,
+	    caller_context_t *ct, int flags, filldir_t filldir, uint64_t *pos);
+
+int
+zfs_link(vnode_t *tdvp, vnode_t *svp, char *name, struct cred *cr,
+	 caller_context_t *ct, int flags);
+int
+zfs_remove(vnode_t *dvp, char *name, struct cred *cr, caller_context_t *ct,
+	   int flags);
+int
+zfs_mkdir(vnode_t *dvp, char *dirname, vattr_t *vap, vnode_t **vpp, 
+	  struct cred *cr,
+	  caller_context_t *ct, int flags, vsecattr_t *vsecp);
+int
+zfs_rmdir(vnode_t *dvp, char *name, vnode_t *cwd, struct cred *cr,
+	  caller_context_t *ct, int flags);
+int
+zfs_symlink(vnode_t *dvp, char *name, vattr_t *vap, char *link, 
+	    struct cred *cr,
+	    caller_context_t *ct, int flags, vnode_t **vpp);
+int
+zfs_rename(vnode_t *sdvp, char *snm, vnode_t *tdvp, char *tnm, struct cred *cr,
+	   caller_context_t *ct, int flags);
+int
+zfs_setattr(vnode_t *vp, vattr_t *vap, int flags, struct cred *cr,
+	    caller_context_t *ct);
+int
+zfs_readlink(vnode_t *vp, uio_t *uio, struct cred *cr, caller_context_t *ct);
+
+int
+zfs_read(vnode_t *vp, uio_t *uio, int ioflag, struct cred *cr,
+	 caller_context_t *ct);
+
+int zfs_file_accessed(vnode_t *vp);
+
+int zfs_file_modified(vnode_t *vp);
+
+int
+zfs_write(vnode_t *vp, uio_t *uio, int ioflag, struct cred *cr, 
+	  caller_context_t *ct);
+
+int
+zfs_getattr(vnode_t *vp, vattr_t *vap, int flags, struct cred *cr,
+		    caller_context_t *ct);
+int
+zfs_fsync(vnode_t *vp, int syncflag, struct cred *cr,
+		    caller_context_t *ct);
+void
+xva_init(xvattr_t *xvap);
+
+int zfs_space(vnode_t *vp, int cmd, flock64_t *bfp, int flag,
+    offset_t offset, struct cred *cr, caller_context_t *ct);
 
 #ifdef  __cplusplus
 }

@@ -19,6 +19,7 @@ typedef struct ace_object {
         uint8_t         a_inherit_obj_type[16];  /* inherit obj */
 } ace_object_t;
 
+#define MAX_ACL_ENTRIES         (1024)  /* max entries of each type */
 #define ACE_READ_DATA                                   0x00000001
 #define ACE_LIST_DIRECTORY                              0x00000001
 #define ACE_WRITE_DATA                                  0x00000002

@@ -8,6 +8,7 @@ extern "C" {
 #include <linux/module.h>
 #include <sys/types.h>
 #include <sys/vfs.h>
+#include <sys/sid.h>
 
 #ifdef HAVE_CRED_STRUCT
 
@@ -36,6 +37,7 @@ extern gid_t crgetsgid(const cred_t *cr);
 extern int crgetngroups(const cred_t *cr);
 extern gid_t * crgetgroups(const cred_t *cr);
 extern int groupmember(gid_t gid, const cred_t *cr);
+extern ksid_t * crgetsid(const cred_t *cr, int i);
 
 #ifdef  __cplusplus
 }

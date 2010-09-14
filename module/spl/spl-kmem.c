@@ -830,6 +830,7 @@ spl_slab_alloc(spl_kmem_cache_t *skc, int flags)
 	base = kv_alloc(skc, skc->skc_slab_size, flags);
 	if (base == NULL)
 		RETURN(NULL);
+	memset(base, 0x33, skc->skc_slab_size);
 
 	sks = (spl_kmem_slab_t *)base;
 	sks->sks_magic = SKS_MAGIC;
@@ -841,7 +842,7 @@ spl_slab_alloc(spl_kmem_cache_t *skc, int flags)
 	sks->sks_ref = 0;
 	obj_size = spl_obj_size(skc);
 
-	if (skc->skc_flags * KMC_OFFSLAB)
+	if (skc->skc_flags & KMC_OFFSLAB)
 		offslab_size = spl_offslab_size(skc);
 
 	for (i = 0; i < sks->sks_objs; i++) {
@@ -1329,6 +1330,7 @@ spl_kmem_cache_destroy(spl_kmem_cache_t *skc)
 	int i;
 	ENTRY;
 
+	printk("skc_name  in %s is %s \n", __FUNCTION__, skc->skc_name);
 	ASSERT(skc->skc_magic == SKC_MAGIC);
 
 	down_write(&spl_kmem_cache_sem);
@@ -1578,7 +1580,6 @@ spl_cache_flush(spl_kmem_cache_t *skc, spl_kmem_magazine_t *skm, int flush)
 
 	ASSERT(skc->skc_magic == SKC_MAGIC);
 	ASSERT(skm->skm_magic == SKM_MAGIC);
-
 	/*
 	 * XXX: Currently we simply return objects from the magazine to
 	 * the slabs in fifo order.  The ideal thing to do from a memory

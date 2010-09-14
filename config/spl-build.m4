@@ -73,6 +73,8 @@ AC_DEFUN([SPL_AC_CONFIG_KERNEL], [
 	SPL_AC_CRED_STRUCT
 	SPL_AC_GROUPS_SEARCH
 	SPL_AC_PUT_TASK_STRUCT
+	SPL_AC_5ARGS_PROC_HANDLER
+	SPL_AC_EXPORTED_RWSEM_IS_LOCKED
 ])
 
 AC_DEFUN([SPL_AC_MODULE_SYMVERS], [
@@ -175,9 +177,293 @@ AC_DEFUN([SPL_AC_KERNEL], [
 ])
 
 dnl #
+dnl dnl # 2.6.32 API change,
+dnl dnl # Unused 'struct file *' removed from prototype.
+dnl dnl #
+AC_DEFUN([SPL_AC_5ARGS_PROC_HANDLER], [
+     AC_MSG_CHECKING([whether proc_handler() wants 5 args])
+     SPL_LINUX_TRY_COMPILE([
+           #include <linux/sysctl.h>
+     ],[
+           proc_dostring(NULL, 0, NULL, NULL, NULL);
+     ],[
+           AC_MSG_RESULT(yes)
+           AC_DEFINE(HAVE_5ARGS_PROC_HANDLER, 1,
+                [proc_handler() wants 5 args])
+     ],[
+                AC_MSG_RESULT(no)
+     ])
+])
+
+dnl #
 dnl # Default SPL user configuration
 dnl #
 AC_DEFUN([SPL_AC_CONFIG_USER], [])
+
+dnl #
+dnl # Check for rpm+rpmbuild to build RPM packages.  If these tools
+dnl # are missing it is non-fatal but you will not be able to build
+dnl # RPM packages and will be warned if you try too.
+dnl #
+AC_DEFUN([SPL_AC_RPM], [
+	RPM=rpm
+	RPMBUILD=rpmbuild
+
+	AC_MSG_CHECKING([whether $RPM is available])
+	AS_IF([tmp=$($RPM --version 2>/dev/null)], [
+		RPM_VERSION=$(echo $tmp | $AWK '/RPM/ { print $[3] }')
+		HAVE_RPM=yes
+		AC_MSG_RESULT([$HAVE_RPM ($RPM_VERSION)])
+	],[
+		HAVE_RPM=no
+		AC_MSG_RESULT([$HAVE_RPM])
+	])
+
+	AC_MSG_CHECKING([whether $RPMBUILD is available])
+	AS_IF([tmp=$($RPMBUILD --version 2>/dev/null)], [
+		RPMBUILD_VERSION=$(echo $tmp | $AWK '/RPM/ { print $[3] }')
+		HAVE_RPMBUILD=yes
+		AC_MSG_RESULT([$HAVE_RPMBUILD ($RPMBUILD_VERSION)])
+	],[
+		HAVE_RPMBUILD=no
+		AC_MSG_RESULT([$HAVE_RPMBUILD])
+	])
+
+	AC_SUBST(HAVE_RPM)
+	AC_SUBST(RPM)
+	AC_SUBST(RPM_VERSION)
+
+	AC_SUBST(HAVE_RPMBUILD)
+	AC_SUBST(RPMBUILD)
+	AC_SUBST(RPMBUILD_VERSION)
+])
+
+dnl #
+dnl # Check for dpkg+dpkg-buildpackage to build DEB packages.  If these
+dnl # tools are missing it is non-fatal but you will not be able to build
+dnl # DEB packages and will be warned if you try too.
+dnl #
+AC_DEFUN([SPL_AC_DPKG], [
+	DPKG=dpkg
+	DPKGBUILD=dpkg-buildpackage
+
+	AC_MSG_CHECKING([whether $DPKG is available])
+	AS_IF([tmp=$($DPKG --version 2>/dev/null)], [
+		DPKG_VERSION=$(echo $tmp | $AWK '/Debian/ { print $[7] }')
+		HAVE_DPKG=yes
+		AC_MSG_RESULT([$HAVE_DPKG ($DPKG_VERSION)])
+	],[
+		HAVE_DPKG=no
+		AC_MSG_RESULT([$HAVE_DPKG])
+	])
+
+	AC_MSG_CHECKING([whether $DPKGBUILD is available])
+	AS_IF([tmp=$($DPKGBUILD --version 2>/dev/null)], [
+		DPKGBUILD_VERSION=$(echo $tmp | \
+		    $AWK '/Debian/ { print $[4] }' | cut -f-4 -d'.')
+		HAVE_DPKGBUILD=yes
+		AC_MSG_RESULT([$HAVE_DPKGBUILD ($DPKGBUILD_VERSION)])
+	],[
+		HAVE_DPKGBUILD=no
+		AC_MSG_RESULT([$HAVE_DPKGBUILD])
+	])
+
+	AC_SUBST(HAVE_DPKG)
+	AC_SUBST(DPKG)
+	AC_SUBST(DPKG_VERSION)
+
+	AC_SUBST(HAVE_DPKGBUILD)
+	AC_SUBST(DPKGBUILD)
+	AC_SUBST(DPKGBUILD_VERSION)
+])
+
+dnl #
+dnl # Until native packaging for various different packing systems
+dnl # can be added the least we can do is attempt to use alien to
+dnl # convert the RPM packages to the needed package type.  This is
+dnl # a hack but so far it has worked reasonable well.
+dnl #
+AC_DEFUN([SPL_AC_ALIEN], [
+	ALIEN=alien
+
+	AC_MSG_CHECKING([whether $ALIEN is available])
+	AS_IF([tmp=$($ALIEN --version 2>/dev/null)], [
+		ALIEN_VERSION=$(echo $tmp | $AWK '{ print $[3] }')
+		HAVE_ALIEN=yes
+		AC_MSG_RESULT([$HAVE_ALIEN ($ALIEN_VERSION)])
+	],[
+		HAVE_ALIEN=no
+		AC_MSG_RESULT([$HAVE_ALIEN])
+	])
+
+	AC_SUBST(HAVE_ALIEN)
+	AC_SUBST(ALIEN)
+	AC_SUBST(ALIEN_VERSION)
+])
+
+dnl #
+dnl # Using the VENDOR tag from config.guess set the default
+dnl # package type for 'make pkg': (rpm | deb | tgz)
+dnl #
+AC_DEFUN([SPL_AC_DEFAULT_PACKAGE], [
+	VENDOR=$(echo $ac_build_alias | cut -f2 -d'-')
+
+	AC_MSG_CHECKING([default package type])
+	case "$VENDOR" in
+		fedora)     DEFAULT_PACKAGE=rpm ;;
+		redhat)     DEFAULT_PACKAGE=rpm ;;
+		sles)       DEFAULT_PACKAGE=rpm ;;
+		ubuntu)     DEFAULT_PACKAGE=deb ;;
+		debian)     DEFAULT_PACKAGE=deb ;;
+		slackware)  DEFAULT_PACKAGE=tgz ;;
+		*)          DEFAULT_PACKAGE=rpm ;;
+	esac
+
+	AC_MSG_RESULT([$DEFAULT_PACKAGE])
+	AC_SUBST(DEFAULT_PACKAGE)
+])
+
+dnl #
+dnl # Default SPL user configuration
+dnl #
+AC_DEFUN([SPL_AC_PACKAGE], [
+	SPL_AC_RPM
+	SPL_AC_DPKG
+	SPL_AC_ALIEN
+	SPL_AC_DEFAULT_PACKAGE
+])
+dnl #
+dnl # Check for rpm+rpmbuild to build RPM packages.  If these tools
+dnl # are missing it is non-fatal but you will not be able to build
+dnl # RPM packages and will be warned if you try too.
+dnl #
+AC_DEFUN([SPL_AC_RPM], [
+	RPM=rpm
+	RPMBUILD=rpmbuild
+
+	AC_MSG_CHECKING([whether $RPM is available])
+	AS_IF([tmp=$($RPM --version 2>/dev/null)], [
+		RPM_VERSION=$(echo $tmp | $AWK '/RPM/ { print $[3] }')
+		HAVE_RPM=yes
+		AC_MSG_RESULT([$HAVE_RPM ($RPM_VERSION)])
+	],[
+		HAVE_RPM=no
+		AC_MSG_RESULT([$HAVE_RPM])
+	])
+
+	AC_MSG_CHECKING([whether $RPMBUILD is available])
+	AS_IF([tmp=$($RPMBUILD --version 2>/dev/null)], [
+		RPMBUILD_VERSION=$(echo $tmp | $AWK '/RPM/ { print $[3] }')
+		HAVE_RPMBUILD=yes
+		AC_MSG_RESULT([$HAVE_RPMBUILD ($RPMBUILD_VERSION)])
+	],[
+		HAVE_RPMBUILD=no
+		AC_MSG_RESULT([$HAVE_RPMBUILD])
+	])
+
+	AC_SUBST(HAVE_RPM)
+	AC_SUBST(RPM)
+	AC_SUBST(RPM_VERSION)
+
+	AC_SUBST(HAVE_RPMBUILD)
+	AC_SUBST(RPMBUILD)
+	AC_SUBST(RPMBUILD_VERSION)
+])
+
+dnl #
+dnl # Check for dpkg+dpkg-buildpackage to build DEB packages.  If these
+dnl # tools are missing it is non-fatal but you will not be able to build
+dnl # DEB packages and will be warned if you try too.
+dnl #
+AC_DEFUN([SPL_AC_DPKG], [
+	DPKG=dpkg
+	DPKGBUILD=dpkg-buildpackage
+
+	AC_MSG_CHECKING([whether $DPKG is available])
+	AS_IF([tmp=$($DPKG --version 2>/dev/null)], [
+		DPKG_VERSION=$(echo $tmp | $AWK '/Debian/ { print $[7] }')
+		HAVE_DPKG=yes
+		AC_MSG_RESULT([$HAVE_DPKG ($DPKG_VERSION)])
+	],[
+		HAVE_DPKG=no
+		AC_MSG_RESULT([$HAVE_DPKG])
+	])
+
+	AC_MSG_CHECKING([whether $DPKGBUILD is available])
+	AS_IF([tmp=$($DPKGBUILD --version 2>/dev/null)], [
+		DPKGBUILD_VERSION=$(echo $tmp | \
+		    $AWK '/Debian/ { print $[4] }' | cut -f-4 -d'.')
+		HAVE_DPKGBUILD=yes
+		AC_MSG_RESULT([$HAVE_DPKGBUILD ($DPKGBUILD_VERSION)])
+	],[
+		HAVE_DPKGBUILD=no
+		AC_MSG_RESULT([$HAVE_DPKGBUILD])
+	])
+
+	AC_SUBST(HAVE_DPKG)
+	AC_SUBST(DPKG)
+	AC_SUBST(DPKG_VERSION)
+
+	AC_SUBST(HAVE_DPKGBUILD)
+	AC_SUBST(DPKGBUILD)
+	AC_SUBST(DPKGBUILD_VERSION)
+])
+
+dnl #
+dnl # Until native packaging for various different packing systems
+dnl # can be added the least we can do is attempt to use alien to
+dnl # convert the RPM packages to the needed package type.  This is
+dnl # a hack but so far it has worked reasonable well.
+dnl #
+AC_DEFUN([SPL_AC_ALIEN], [
+	ALIEN=alien
+
+	AC_MSG_CHECKING([whether $ALIEN is available])
+	AS_IF([tmp=$($ALIEN --version 2>/dev/null)], [
+		ALIEN_VERSION=$(echo $tmp | $AWK '{ print $[3] }')
+		HAVE_ALIEN=yes
+		AC_MSG_RESULT([$HAVE_ALIEN ($ALIEN_VERSION)])
+	],[
+		HAVE_ALIEN=no
+		AC_MSG_RESULT([$HAVE_ALIEN])
+	])
+
+	AC_SUBST(HAVE_ALIEN)
+	AC_SUBST(ALIEN)
+	AC_SUBST(ALIEN_VERSION)
+])
+
+dnl #
+dnl # Using the VENDOR tag from config.guess set the default
+dnl # package type for 'make pkg': (rpm | deb | tgz)
+dnl #
+AC_DEFUN([SPL_AC_DEFAULT_PACKAGE], [
+	VENDOR=$(echo $ac_build_alias | cut -f2 -d'-')
+
+	AC_MSG_CHECKING([default package type])
+	case "$VENDOR" in
+		fedora)     DEFAULT_PACKAGE=rpm ;;
+		redhat)     DEFAULT_PACKAGE=rpm ;;
+		sles)       DEFAULT_PACKAGE=rpm ;;
+		ubuntu)     DEFAULT_PACKAGE=deb ;;
+		debian)     DEFAULT_PACKAGE=deb ;;
+		slackware)  DEFAULT_PACKAGE=tgz ;;
+		*)          DEFAULT_PACKAGE=rpm ;;
+	esac
+
+	AC_MSG_RESULT([$DEFAULT_PACKAGE])
+	AC_SUBST(DEFAULT_PACKAGE)
+])
+
+dnl #
+dnl # Default SPL user configuration
+dnl #
+AC_DEFUN([SPL_AC_PACKAGE], [
+	SPL_AC_RPM
+	SPL_AC_DPKG
+	SPL_AC_ALIEN
+	SPL_AC_DEFAULT_PACKAGE
+])
 
 AC_DEFUN([SPL_AC_LICENSE], [
 	AC_MSG_CHECKING([spl license])
@@ -310,7 +596,7 @@ dnl #
 dnl # SPL_LINUX_CONFTEST
 dnl #
 AC_DEFUN([SPL_LINUX_CONFTEST], [
-cat >conftest.c <<_ACEOF
+cat confdefs.h - <<_ACEOF >conftest.c
 $1
 _ACEOF
 ])
@@ -1360,3 +1646,21 @@ AC_DEFUN([SPL_AC_PUT_TASK_STRUCT], [
 		[__put_task_struct() is available])],
 		[])
 ])
+
+dnl #
+dnl # 2.6.33 API change. Also backported in RHEL5 as of 2.6.18-190.el5.
+dnl # Earlier versions of rwsem_is_locked() were inline and had a race
+dnl # condition.  The fixed version is exported as a symbol.  The race
+dnl # condition is fixed by acquiring sem->wait_lock, so we must not
+dnl # call that version while holding sem->wait_lock.
+dnl #
+AC_DEFUN([SPL_AC_EXPORTED_RWSEM_IS_LOCKED], [
+       SPL_CHECK_SYMBOL_EXPORT(
+               [rwsem_is_locked],
+               [lib/rwsem-spinlock.c],
+               [AC_DEFINE(RWSEM_IS_LOCKED_TAKES_WAIT_LOCK, 1,
+               [rwsem_is_locked() acquires sem->wait_lock])],
+               [])
+])
+
+

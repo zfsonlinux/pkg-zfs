@@ -54,6 +54,8 @@ extern unsigned long spl_debug_subsys;
 #define S_PROC        0x00004000
 #define S_MODULE      0x00008000
 #define S_CRED        0x00010000
+#define S_LZFS        0x00020000
+#define S_TSD         0x00040000
 
 #define D_TRACE       0x00000001
 #define D_INFO        0x00000002
