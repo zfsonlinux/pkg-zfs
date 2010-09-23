@@ -13,10 +13,6 @@ uiomove(void *p, size_t n, enum uio_rw rw, struct uio *uio)
 	struct iovec *iov;
 	ulong_t cnt;
 	
-	/* Currently uiomove only for copy data in the sysspace.
-	 */
-	ASSERT(uio->uio_segflg == UIO_SYSSPACE);
-
 	while (n && uio->uio_resid) {
 		iov = uio->uio_iov;
 		cnt = MIN(iov->iov_len, n);
@@ -28,20 +24,23 @@ uiomove(void *p, size_t n, enum uio_rw rw, struct uio *uio)
 		switch (uio->uio_segflg) {
 		case UIO_USERSPACE:
 		case UIO_USERISPACE:
-			ASSERT(0);
-#ifdef HAVE_ZPL
-			if (rw == UIO_READ) {
-				error = xcopyout_nta(p, iov->iov_base, cnt,
-				    (uio->uio_extflg & UIO_COPY_CACHED));
-			} else {
-				error = xcopyin_nta(iov->iov_base, p, cnt,
-				    (uio->uio_extflg & UIO_COPY_CACHED));
-			}
+			/* p = kernel data pointer
+			 * iov->iov_base = user data pointer */
 
-			if (error)
-				return (error);
+			if (rw == UIO_READ) {
+				/* * UIO_READ = copy data from kernel to user * */
+				if (copy_to_user(iov->iov_base, p, cnt))
+					return EFAULT;
+				/* error = xcopyout_nta(p, iov->iov_base, cnt,
+				 * (uio->uio_extflg & UIO_COPY_CACHED)); */
+			} else {
+				/* * UIO_WRITE = copy data from user to kernel * */
+				/* error = xcopyin_nta(iov->iov_base, p, cnt,
+				 * (uio->uio_extflg & UIO_COPY_CACHED)); */
+				if (copy_from_user(p, iov->iov_base, cnt))
+					return EFAULT;
+			}
 			break;
-#endif /* HAVE_ZPL */
 		case UIO_SYSSPACE:
 			if (rw == UIO_READ)
 				bcopy(p, iov->iov_base, cnt);
@@ -59,6 +58,8 @@ uiomove(void *p, size_t n, enum uio_rw rw, struct uio *uio)
 	return (0);
 }
 EXPORT_SYMBOL(uiomove);
+
+#define fuword8(uptr, vptr) get_user((*vptr), (uptr))
 
 /*
  * Fault in the pages of the first n bytes specified by the uio structure.
@@ -78,8 +79,6 @@ uio_prefaultpages(ssize_t n, struct uio *uio)
 	iov = uio->uio_iov;
 	iovcnt = uio->uio_iovcnt;
 
-	ASSERT(uio->uio_segflg == UIO_SYSSPACE);
-
 	while ((n > 0) && (iovcnt > 0)) {
 		cnt = MIN(iov->iov_len, n);
 		if (cnt == 0) {
@@ -97,11 +96,8 @@ uio_prefaultpages(ssize_t n, struct uio *uio)
 			switch (uio->uio_segflg) {
 			case UIO_USERSPACE:
 			case UIO_USERISPACE:
-				ASSERT(0);
-#ifdef HAVE_ZPL
-				if (fuword8(p, &tmp))
+				if (fuword8((uint8_t *) p, &tmp))
 					return;
-#endif /*HAVE_ZPL*/
 				break;
 			case UIO_SYSSPACE:
 				bcopy(p, &tmp, 1);
@@ -118,11 +114,8 @@ uio_prefaultpages(ssize_t n, struct uio *uio)
 		switch (uio->uio_segflg) {
 		case UIO_USERSPACE:
 		case UIO_USERISPACE:
-			ASSERT(0);
-#ifdef HAVE_ZPL
-			if (fuword8(p, &tmp))
+			if (fuword8((uint8_t *) p, &tmp))
 				return;
-#endif /*HAVE_ZPL*/
 			break;
 		case UIO_SYSSPACE:
 			bcopy(p, &tmp, 1);
@@ -145,8 +138,6 @@ uiocopy(void *p, size_t n, enum uio_rw rw, struct uio *uio, size_t *cbytes)
 	ulong_t cnt;
 	int iovcnt;
 	
-	ASSERT(uio->uio_segflg == UIO_SYSSPACE);
-
 	iovcnt = uio->uio_iovcnt;
 	*cbytes = 0;
 
@@ -159,19 +150,22 @@ uiocopy(void *p, size_t n, enum uio_rw rw, struct uio *uio, size_t *cbytes)
 
 		case UIO_USERSPACE:
 		case UIO_USERISPACE:
-			ASSERT(0);
-#ifdef HAVE_ZPL
-			if (rw == UIO_READ) {
-				error = xcopyout_nta(p, iov->iov_base, cnt,
-				    (uio->uio_extflg & UIO_COPY_CACHED));
-			} else {
-				error = xcopyin_nta(iov->iov_base, p, cnt,
-				    (uio->uio_extflg & UIO_COPY_CACHED));
-			}
+			/* p = kernel data pointer
+			 * iov->iov_base = user data pointer */
 
-			if (error)
-				return (error);
-#endif /*HAVE_ZPL*/
+			if (rw == UIO_READ) {
+				/* * UIO_READ = copy data from kernel to user * */
+				if (copy_to_user(iov->iov_base, p, cnt))
+					return EFAULT;
+				/* error = xcopyout_nta(p, iov->iov_base, cnt,
+				 * (uio->uio_extflg & UIO_COPY_CACHED)); */
+			} else {
+				/* * UIO_WRITE = copy data from user to kernel * */
+				/* error = xcopyin_nta(iov->iov_base, p, cnt,
+				 * (uio->uio_extflg & UIO_COPY_CACHED)); */
+				if (copy_from_user(p, iov->iov_base, cnt))
+					return EFAULT;
+			}
 			break;
 
 		case UIO_SYSSPACE:

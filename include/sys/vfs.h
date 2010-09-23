@@ -75,6 +75,9 @@ typedef	uint64_t	vfs_feature_t;
 
 #ifdef HAVE_ZPL
 typedef struct fid {
+#else
+typedef struct lzfs_fid {
+#endif
 	union {
 		long fid_pad;
 		struct {
@@ -84,7 +87,8 @@ typedef struct fid {
 	} un;
 } fid_t;
 
-#endif /* HAVE_ZPL */
+#define	fid_len		un._fid.len
+#define	fid_data	un._fid.data
 
 #ifndef FSTYPSZ
 #define FSTYPSZ 16 /* max size of fs identifier */

@@ -26,14 +26,6 @@
 #include <linux/exportfs.h>
 #include <linux/stddef.h>
 
-struct lzfs_fid {
-        u64 ino;
-        u32 gen;
-
-        u64 parent_ino;
-        u32 parent_gen;
-} __attribute__((packed));
-
 extern const struct export_operations zfs_export_ops;
 
 #define LZFS_FILEID_INO64_GEN 4
