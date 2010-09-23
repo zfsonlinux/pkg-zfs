@@ -4724,7 +4724,6 @@ zfs_space(vnode_t *vp, int cmd, flock64_t *bfp, int flag,
 	return (error);
 }
 
-#ifdef HAVE_ZPL
 /*ARGSUSED*/
 static int
 zfs_fid(vnode_t *vp, fid_t *fidp, caller_context_t *ct)
@@ -4778,6 +4777,9 @@ zfs_fid(vnode_t *vp, fid_t *fidp, caller_context_t *ct)
 	return (0);
 }
 
+EXPORT_SYMBOL(zfs_fid);
+
+#ifdef HAVE_ZPL
 static int
 zfs_pathconf(vnode_t *vp, int cmd, ulong_t *valp, cred_t *cr,
     caller_context_t *ct)

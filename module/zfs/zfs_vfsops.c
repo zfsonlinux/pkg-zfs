@@ -1893,7 +1893,6 @@ zfs_umount(vfs_t *vfsp, int fflag, cred_t *cr)
 }
 EXPORT_SYMBOL(zfs_umount);
 
-#ifdef HAVE_ZPL
 static int
 zfs_vget(vfs_t *vfsp, vnode_t **vpp, fid_t *fidp)
 {
@@ -1920,12 +1919,14 @@ zfs_vget(vfs_t *vfsp, vnode_t **vpp, fid_t *fidp)
 		for (i = 0; i < sizeof (zlfid->zf_setgen); i++)
 			setgen |= ((uint64_t)zlfid->zf_setgen[i]) << (8 * i);
 
+#ifdef HAVE_ZPL
 		ZFS_EXIT(zfsvfs);
 
 		err = zfsctl_lookup_objset(vfsp, objsetid, &zfsvfs);
 		if (err)
 			return (EINVAL);
 		ZFS_ENTER(zfsvfs);
+#endif
 	}
 
 	if (fidp->fid_len == SHORT_FID_LEN || fidp->fid_len == LONG_FID_LEN) {
@@ -1959,7 +1960,7 @@ zfs_vget(vfs_t *vfsp, vnode_t **vpp, fid_t *fidp)
 	gen_mask = -1ULL >> (64 - 8 * i);
 
 	dprintf("getting %llu [%u mask %llx]\n", object, fid_gen, gen_mask);
-	if (err = zfs_zget(zfsvfs, object, &zp)) {
+	if ((err = zfs_zget(zfsvfs, object, &zp))) {
 		ZFS_EXIT(zfsvfs);
 		return (err);
 	}
@@ -1974,10 +1975,19 @@ zfs_vget(vfs_t *vfsp, vnode_t **vpp, fid_t *fidp)
 	}
 
 	*vpp = ZTOV(zp);
+
+#ifdef LINUX_PORT
+	if (*vpp) {
+		zfs_inode_update(VTOZ(*vpp));
+	}
+#endif	
 	ZFS_EXIT(zfsvfs);
 	return (0);
 }
 
+EXPORT_SYMBOL(zfs_vget);
+
+#ifdef HAVE_ZPL
 /*
  * Block out VOPs and close zfsvfs_t::z_os
  *
