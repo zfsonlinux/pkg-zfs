@@ -144,7 +144,7 @@ typedef struct vattr {
     gid_t       va_gid;		/* owner gid */
     long		va_fsid;	/* fs id */
     long		va_nodeid;	/* node # */
-    short		va_nlink;	/* # links */
+    uint32_t	va_nlink;	/* # links */
     u_long		va_size;	/* file size */
     uint32_t	va_blocksize;	/* block size */
     struct timespec va_atime;	/* last acc */
@@ -327,6 +327,7 @@ extern vnode_t *rootdir;
 
 /* root of its file system */
 #define VROOT 0x01
+#define VMMAPPED 0x02
 
 void
 zfs_inactive(vnode_t *vp, struct cred *cr, caller_context_t *ct);

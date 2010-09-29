@@ -372,8 +372,8 @@ exit2:
 #else
         up(&nd.nd_dentry->d_inode->i_sem);
 #endif /* HAVE_INODE_I_MUTEX */
-        if (inode)
-                iput(inode);    /* truncate the inode here */
+		if (inode)
+			iput(inode);    /* truncate the inode here */
 exit1:
         vn_path_release(&nd);
 exit:
