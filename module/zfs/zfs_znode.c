@@ -755,6 +755,7 @@ zfs_znode_alloc(zfsvfs_t *zfsvfs, dmu_buf_t *db, int blksz)
 	zp = kmem_cache_alloc(znode_cache, KM_SLEEP & (~(__GFP_FS)));
 //	printk("in funcction %s zfs_znode_alloc zp is at %p \n",__FUNCTION__, zp);
 
+	ASSERT(zp != NULL);
 	ASSERT(zp->z_dirlocks == NULL);
 	ASSERT(zp->z_dbuf == NULL);
 	ASSERT(!POINTER_IS_VALID(zp->z_zfsvfs));
@@ -973,9 +974,9 @@ zfs_mknode(znode_t *dzp, vattr_t *vap, dmu_tx_t *tx, cred_t *cr,
 	pzp->zp_mode = MAKEIMODE(vap->va_type, vap->va_mode);
 	if (!(flag & IS_ROOT_NODE)) {
 #ifdef LINUX_PORT
+		ZFS_OBJ_HOLD_ENTER(zfsvfs, obj);
 		inode = iget_locked(zfsvfs->z_vfs->vfs_super, obj);
 		ASSERT(inode != NULL && atomic_read(&inode->i_count) > 0);
-		ZFS_OBJ_HOLD_ENTER(zfsvfs, obj);
 		*zpp = zfs_znode_alloc(zfsvfs, db, 0, inode);
 		ZFS_OBJ_HOLD_EXIT(zfsvfs, obj);
 #else
@@ -1080,11 +1081,6 @@ zfs_zget(zfsvfs_t *zfsvfs, uint64_t obj_num, znode_t **zpp)
 	int err;
 #ifdef LINUX_PORT 
 	struct inode    *inode;
-	
-	ASSERT(zfsvfs->z_vfs->vfs_super != NULL);
-	inode = iget_locked(zfsvfs->z_vfs->vfs_super, obj_num);
-	ASSERT(inode != NULL && atomic_read(&inode->i_count) > 0);
-
 #endif
 
 	*zpp = NULL;
@@ -1126,9 +1122,6 @@ zfs_zget(zfsvfs_t *zfsvfs, uint64_t obj_num, znode_t **zpp)
 		dmu_buf_rele(db, NULL);
 		mutex_exit(&zp->z_lock);
 		ZFS_OBJ_HOLD_EXIT(zfsvfs, obj_num);
-#ifdef LINUX_PORT
-		iput(inode);
-#endif
 		return (err);
 	}
 
@@ -1137,6 +1130,10 @@ zfs_zget(zfsvfs_t *zfsvfs, uint64_t obj_num, znode_t **zpp)
 	 */
 //	printk(" in funcntion %s before zfs_znode_alloc zp is at %p  \n",__FUNCTION__, zp);
 #ifdef LINUX_PORT
+	ASSERT(zfsvfs->z_vfs->vfs_super != NULL);
+	inode = iget_locked(zfsvfs->z_vfs->vfs_super, obj_num);
+	ASSERT(inode != NULL && atomic_read(&inode->i_count) > 0);
+
 	zp = zfs_znode_alloc(zfsvfs, db, doi.doi_data_block_size, inode);
 #else
 	zp = zfs_znode_alloc(zfsvfs, db, doi.doi_data_block_size);
