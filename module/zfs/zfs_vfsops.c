@@ -742,6 +742,8 @@ fuidstr_to_sid(zfsvfs_t *zfsvfs, const char *fuidstr,
 	*ridp = FUID_RID(fuid);
 }
 
+#endif /* HAVE_ZPL */
+
 static uint64_t
 zfs_userquota_prop_to_obj(zfsvfs_t *zfsvfs, zfs_userquota_prop_t type)
 {
@@ -754,10 +756,13 @@ zfs_userquota_prop_to_obj(zfsvfs_t *zfsvfs, zfs_userquota_prop_t type)
 		return (zfsvfs->z_userquota_obj);
 	case ZFS_PROP_GROUPQUOTA:
 		return (zfsvfs->z_groupquota_obj);
+	case ZFS_NUM_USERQUOTA_PROPS:
+		return ENOTSUP;
 	}
 	return (0);
 }
 
+#ifdef HAVE_ZPL
 int
 zfs_userspace_many(zfsvfs_t *zfsvfs, zfs_userquota_prop_t type,
     uint64_t *cookiep, void *vbuf, uint64_t *bufsizep)
@@ -820,6 +825,7 @@ id_to_fuidstr(zfsvfs_t *zfsvfs, const char *domain, uid_t rid,
 	return (0);
 }
 
+#endif /* HAVE_ZPL */
 int
 zfs_userspace_one(zfsvfs_t *zfsvfs, zfs_userquota_prop_t type,
     const char *domain, uint64_t rid, uint64_t *valp)
@@ -837,10 +843,7 @@ zfs_userspace_one(zfsvfs_t *zfsvfs, zfs_userquota_prop_t type,
 	if (obj == 0)
 		return (0);
 
-	err = id_to_fuidstr(zfsvfs, domain, rid, buf, B_FALSE);
-	if (err)
-		return (err);
-
+	(void) sprintf(buf, "%llx", (longlong_t)rid);
 	err = zap_lookup(zfsvfs->z_os, obj, buf, 8, 1, valp);
 	if (err == ENOENT)
 		err = 0;
@@ -855,7 +858,6 @@ zfs_set_userquota(zfsvfs_t *zfsvfs, zfs_userquota_prop_t type,
 	int err;
 	dmu_tx_t *tx;
 	uint64_t *objp;
-	boolean_t fuid_dirtied;
 
 	if (type != ZFS_PROP_USERQUOTA && type != ZFS_PROP_GROUPQUOTA)
 		return (EINVAL);
@@ -866,19 +868,13 @@ zfs_set_userquota(zfsvfs_t *zfsvfs, zfs_userquota_prop_t type,
 	objp = (type == ZFS_PROP_USERQUOTA) ? &zfsvfs->z_userquota_obj :
 	    &zfsvfs->z_groupquota_obj;
 
-	err = id_to_fuidstr(zfsvfs, domain, rid, buf, B_TRUE);
-	if (err)
-		return (err);
-	fuid_dirtied = zfsvfs->z_fuid_dirty;
-
+	(void) sprintf(buf, "%llx", (longlong_t)rid);
 	tx = dmu_tx_create(zfsvfs->z_os);
 	dmu_tx_hold_zap(tx, *objp ? *objp : DMU_NEW_OBJECT, B_TRUE, NULL);
 	if (*objp == 0) {
 		dmu_tx_hold_zap(tx, MASTER_NODE_OBJ, B_TRUE,
 		    zfs_userquota_prop_prefixes[type]);
 	}
-	if (fuid_dirtied)
-		zfs_fuid_txhold(zfsvfs, tx);
 	err = dmu_tx_assign(tx, TXG_WAIT);
 	if (err) {
 		dmu_tx_abort(tx);
@@ -902,16 +898,12 @@ zfs_set_userquota(zfsvfs_t *zfsvfs, zfs_userquota_prop_t type,
 		err = zap_update(zfsvfs->z_os, *objp, buf, 8, 1, &quota, tx);
 	}
 	ASSERT(err == 0);
-	if (fuid_dirtied)
-		zfs_fuid_sync(zfsvfs, tx);
 	dmu_tx_commit(tx);
 	return (err);
 }
-#endif /* HAVE_ZPL */
 boolean_t
 zfs_usergroup_overquota(zfsvfs_t *zfsvfs, boolean_t isgroup, uint64_t fuid)
 {
-#ifdef HAVE_ZPL
 	char buf[32];
 	uint64_t used, quota, usedobj, quotaobj;
 	int err;
@@ -931,8 +923,6 @@ zfs_usergroup_overquota(zfsvfs_t *zfsvfs, boolean_t isgroup, uint64_t fuid)
 	if (err != 0)
 		return (B_FALSE);
 	return (used >= quota);
-#endif
-	return (B_FALSE);
 }
 
 int

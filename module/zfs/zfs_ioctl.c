@@ -23,6 +23,7 @@
  * Use is subject to license terms.
  */
 
+#include <sys/zfs_vfsops.h>
 #include <sys/types.h>
 #include <sys/param.h>
 #include <sys/errno.h>
@@ -71,6 +72,12 @@
 #include "zfs_prop.h"
 #include "zfs_deleg.h"
 #include "zfs_config.h"
+
+static int
+zfsvfs_hold(const char *name, boolean_t readonly, void *tag, zfsvfs_t **zvp);
+
+static void
+zfsvfs_rele(zfsvfs_t *zfsvfs, void *tag);
 
 extern void zfs_init(void);
 extern void zfs_fini(void);
@@ -742,7 +749,9 @@ zfs_secpolicy_userspace_one(zfs_cmd_t *zc, cred_t *cr)
 		 */
 		if (zc->zc_objset_type == ZFS_PROP_USERUSED ||
 		    zc->zc_objset_type == ZFS_PROP_USERQUOTA) {
+#ifdef HAVE_ZPL	
 			if (zc->zc_guid == crgetuid(cr))
+#endif	
 				return (0);
 		} else {
 			if (groupmember(zc->zc_guid, cr))
@@ -847,7 +856,6 @@ put_nvlist(zfs_cmd_t *zc, nvlist_t *nvl)
 	return (error);
 }
 
-#ifdef HAVE_ZPL
 static int
 getzfsvfs(const char *dsname, zfsvfs_t **zvp)
 {
@@ -910,7 +918,6 @@ zfsvfs_rele(zfsvfs_t *zfsvfs, void *tag)
 		zfsvfs_free(zfsvfs);
 	}
 }
-#endif /* HAVE_ZPL */
 
 static int
 zfs_ioc_pool_create(zfs_cmd_t *zc)
@@ -1726,7 +1733,6 @@ zfs_set_prop_nvlist(const char *name, nvlist_t *nvl)
 
 		if (prop == ZPROP_INVAL) {
 			if (zfs_prop_userquota(propname)) {
-#ifdef HAVE_ZPL
 				uint64_t *valary;
 				unsigned int vallen;
 				const char *domain;
@@ -1755,10 +1761,6 @@ zfs_set_prop_nvlist(const char *name, nvlist_t *nvl)
 					continue;
 				else
 					goto out;
-#else
-				error = ENOTSUP;
-				goto out;
-#endif
 			} else if (zfs_prop_user(propname)) {
 				VERIFY(nvpair_value_string(elem, &strval) == 0);
 				error = dsl_prop_set(name, propname, 1,
@@ -3099,7 +3101,6 @@ zfs_ioc_promote(zfs_cmd_t *zc)
 static int
 zfs_ioc_userspace_one(zfs_cmd_t *zc)
 {
-#ifdef HAVE_ZPL
 	zfsvfs_t *zfsvfs;
 	int error;
 
@@ -3115,9 +3116,6 @@ zfs_ioc_userspace_one(zfs_cmd_t *zc)
 	zfsvfs_rele(zfsvfs, FTAG);
 
 	return (error);
-#else
-	return (ENOTSUP);
-#endif /* HAVE_ZPL */
 }
 
 /*
