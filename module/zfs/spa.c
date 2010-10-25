@@ -1669,7 +1669,6 @@ spa_open_common(const char *pool, spa_t **spapp, void *tag, nvlist_t **config)
 		spa_activate(spa, spa_mode_global);
 
 		error = spa_load(spa, spa->spa_config, SPA_LOAD_OPEN, B_FALSE);
-
 		if (error == EBADF) {
 			/*
 			 * If vdev_validate() returns failure (indicated by

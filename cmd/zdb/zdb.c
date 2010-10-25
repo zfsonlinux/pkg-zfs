@@ -2478,19 +2478,23 @@ main(int argc, char **argv)
 		if (slash != NULL)
 			*slash = '/';
 	}
-
+	
+	printf ("\n before error = check %d", error);
+	
 	if (error == 0) {
 		if (strchr(argv[0], '/') != NULL) {
 			error = dmu_objset_open(argv[0], DMU_OST_ANY,
 			    DS_MODE_USER | DS_MODE_READONLY, &os);
 		} else {
+			printf("\n in else calling spa open argv[0] = %s", argv[0]);
 			error = spa_open(argv[0], &spa, FTAG);
 		}
 	}
 
-	if (error)
+	if (error) {
+		printf ("\n before fatal error %d\n", error);
 		fatal("can't open %s: %s", argv[0], strerror(error));
-
+	}
 	argv++;
 	if (--argc > 0) {
 		zopt_objects = argc;

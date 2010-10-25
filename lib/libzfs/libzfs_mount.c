@@ -126,12 +126,12 @@ zfs_share_proto_t smb_only[] = {
 	PROTO_SMB,
 	PROTO_END
 };
+#endif 
 zfs_share_proto_t share_all_proto[] = {
 	PROTO_NFS,
 	PROTO_SMB,
 	PROTO_END
 };
-#endif
 
 #if defined(HAVE_ZPL)
 #ifdef __GNUC__
@@ -213,6 +213,7 @@ is_shared(libzfs_handle_t *hdl, const char *mountpoint, zfs_share_proto_t proto)
 
 	return (SHARED_NOT_SHARED);
 }
+
 #endif
 
 /*
@@ -391,12 +392,27 @@ zfs_mount(zfs_handle_t *zhp, const char *options, int flags)
 static int
 unmount_one(libzfs_handle_t *hdl, const char *mountpoint, int flags)
 {
+	char *mntpt = NULL;
+	zfs_handle_t *zhp ;	
+
 	if (umount2(mountpoint, flags) != 0) {
 		zfs_error_aux(hdl, strerror(errno));
 		return (zfs_error_fmt(hdl, EZFS_UMOUNTFAILED,
 		    dgettext(TEXT_DOMAIN, "cannot unmount '%s'"),
 		    mountpoint));
 	}
+
+	mntpt = zfs_strdup(hdl, mountpoint);
+	
+	#if defined(LINUX_PORT)
+        /* remove a /etc/mtab entry */
+        if (zfs_linux_remove_entry(mntpt, zhp->zfs_name, MTAB_FILE) < 0) {
+            free(mntpt);
+            return (zfs_error_fmt(hdl, EZFS_MOUNTFAILED,
+                        dgettext(TEXT_DOMAIN, "failed to remove from /etc/mtab '%s'"),
+                        zhp->zfs_name));
+        }
+	#endif
 
 	return (0);
 }
@@ -431,13 +447,15 @@ zfs_unmount(zfs_handle_t *zhp, const char *mountpoint, int flags)
          */
         if (zfs_unshare_proto(zhp, mntpt, share_all_proto) != 0)
             return (-1);
-
+#else
         if (unmount_one(hdl, mntpt, flags) != 0) {
             free(mntpt);
-            (void) zfs_shareall(zhp);
-            return (-1);
+             #if defined(HAVE_ZPL)
+	            (void) zfs_shareall(zhp);
+             #endif   
+	    return (-1);
         }
-#else
+
         if (unmount_one(hdl, mntpt, flags) != 0) {
             free(mntpt);
             return (-1);
@@ -1017,6 +1035,8 @@ zfs_unshareall_bypath(zfs_handle_t *zhp, const char *mountpoint)
 	return (zfs_unshare_proto(zhp, mountpoint, share_all_proto));
 }
 
+#endif 
+
 /*
  * Remove the mountpoint associated with the current dataset, if necessary.
  * We only remove the underlying directory if:
@@ -1049,6 +1069,9 @@ remove_mountpoint(zfs_handle_t *zhp)
 		(void) rmdir(mountpoint);
 	}
 }
+
+#if defined (HAVE_ZPL)
+
 boolean_t
 zfs_is_shared_iscsi(zfs_handle_t *zhp)
 {
@@ -1286,6 +1309,8 @@ zvol_cb(const char *dataset, void *data)
 	return (0);
 }
 
+#else /* HAVE_ZPL */
+
 static int
 mountpoint_compare(const void *a, const void *b)
 {
@@ -1319,9 +1344,10 @@ zpool_disable_datasets(zpool_handle_t *zhp, boolean_t force)
 	/*
 	 * First unshare all zvols.
 	 */
-	if (zpool_iter_zvol(zhp, zvol_cb, hdl) != 0)
-		return (-1);
-
+	#if defined(HAVE_ZPL)
+		if (zpool_iter_zvol(zhp, zvol_cb, hdl) != 0)
+			return (-1);
+	#endif
 	namelen = strlen(zhp->zpool_name);
 
 	rewind(hdl->libzfs_mnttab);
@@ -1396,7 +1422,9 @@ zpool_disable_datasets(zpool_handle_t *zhp, boolean_t force)
 	 * mountpoint.
 	 */
 	qsort(mountpoints, used, sizeof (char *), mountpoint_compare);
-
+	
+	#if defined(HAVE_ZPL)
+	
 	/*
 	 * Walk through and first unshare everything.
 	 */
@@ -1411,6 +1439,8 @@ zpool_disable_datasets(zpool_handle_t *zhp, boolean_t force)
 		}
 	}
 
+	#endif
+	
 	/*
 	 * Now unmount everything, removing the underlying directories as
 	 * appropriate.
@@ -1438,8 +1468,6 @@ out:
 	return (ret);
 }
 
-#else /* HAVE_ZPL */
-
 int
 zfs_unshare_iscsi(zfs_handle_t *zhp)
 {
@@ -1454,10 +1482,12 @@ zfs_unmount(zfs_handle_t *zhp, const char *mountpoint, int flags)
 }
 #endif
 
+/*
 void
 remove_mountpoint(zfs_handle_t *zhp) {
 	return;
 }
+*/
 
 boolean_t
 zfs_is_shared(zfs_handle_t *zhp)
@@ -1471,9 +1501,11 @@ zpool_enable_datasets(zpool_handle_t *zhp, const char *mntopts, int flags)
 	return B_FALSE;
 }
 
+/*
 int
 zpool_disable_datasets(zpool_handle_t *zhp, boolean_t force)
 {
 	return B_FALSE;
 }
+*/
 #endif /* HAVE_ZPL */

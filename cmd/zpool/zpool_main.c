@@ -865,11 +865,13 @@ zpool_do_destroy(int argc, char **argv)
 		return (1);
 	}
 
+	
 	ret = (zpool_destroy(zhp) != 0);
 
 	zpool_close(zhp);
 
 	return (ret);
+	
 }
 
 /*

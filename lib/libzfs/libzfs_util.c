@@ -389,6 +389,7 @@ zfs_standard_error_fmt(libzfs_handle_t *hdl, int error, const char *fmt, ...)
 int
 zpool_standard_error(libzfs_handle_t *hdl, int error, const char *msg)
 {
+	printf("\nSHOS : FILE[%s] func[%s] line[%d] error[%d] msg[%s]\n", __FILE__, __func__, __LINE__, error, msg);
 	return (zpool_standard_error_fmt(hdl, error, "%s", msg));
 }
 
@@ -399,7 +400,7 @@ zpool_standard_error_fmt(libzfs_handle_t *hdl, int error, const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-
+	printf("\nSHOS : FILE[%s] func[%s] line[%d] error[%d]\n", __FILE__, __func__, __LINE__, error);
 	if (zfs_common_error(hdl, error, fmt, ap) != 0) {
 		va_end(ap);
 		return (-1);
@@ -802,6 +803,7 @@ zfs_ioctl(libzfs_handle_t *hdl, int request, zfs_cmd_t *zc)
 
 	zc->zc_history = (uint64_t)(uintptr_t)hdl->libzfs_log_str;
 	error = ioctl(hdl->libzfs_fd, request, zc);
+
 	if (hdl->libzfs_log_str) {
 		free(hdl->libzfs_log_str);
 		hdl->libzfs_log_str = NULL;
