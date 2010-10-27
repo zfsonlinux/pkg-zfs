@@ -19,11 +19,9 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2007 Sun Microsystems, Inc.  All rights reserved.
+ * Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
  */
-
-
 
 /*
  * The pool configuration repository is stored in /etc/zfs/zpool.cache as a
@@ -103,7 +101,7 @@ namespace_reload(libzfs_handle_t *hdl)
 	nvlist_t *config;
 	config_node_t *cn;
 	nvpair_t *elem;
-	zfs_cmd_t zc = { "\0", "\0", "\0", 0 };
+	zfs_cmd_t zc = { "\0", "\0", "\0", "\0", 0 };
 	void *cookie;
 
 	if (hdl->libzfs_ns_gen == 0) {
@@ -228,7 +226,7 @@ zpool_get_config(zpool_handle_t *zhp, nvlist_t **oldconfig)
 int
 zpool_refresh_stats(zpool_handle_t *zhp, boolean_t *missing)
 {
-	zfs_cmd_t zc = { "\0", "\0", "\0", 0 };
+	zfs_cmd_t zc = { "\0", "\0", "\0", "\0", 0 };
 	int error;
 	nvlist_t *config;
 	libzfs_handle_t *hdl = zhp->zpool_hdl;
@@ -313,21 +311,33 @@ zpool_iter(libzfs_handle_t *hdl, zpool_iter_f func, void *data)
 	zpool_handle_t *zhp;
 	int ret;
 
-	if (namespace_reload(hdl) != 0)
+	/*
+	 * If someone makes a recursive call to zpool_iter(), we want to avoid
+	 * refreshing the namespace because that will invalidate the parent
+	 * context.  We allow recursive calls, but simply re-use the same
+	 * namespace AVL tree.
+	 */
+	if (!hdl->libzfs_pool_iter && namespace_reload(hdl) != 0)
 		return (-1);
 
+	hdl->libzfs_pool_iter++;
 	for (cn = uu_avl_first(hdl->libzfs_ns_avl); cn != NULL;
 	    cn = uu_avl_next(hdl->libzfs_ns_avl, cn)) {
 
-		if (zpool_open_silent(hdl, cn->cn_name, &zhp) != 0)
+		if (zpool_open_silent(hdl, cn->cn_name, &zhp) != 0) {
+			hdl->libzfs_pool_iter--;
 			return (-1);
+		}
 
 		if (zhp == NULL)
 			continue;
 
-		if ((ret = func(zhp, data)) != 0)
+		if ((ret = func(zhp, data)) != 0) {
+			hdl->libzfs_pool_iter--;
 			return (ret);
+		}
 	}
+	hdl->libzfs_pool_iter--;
 
 	return (0);
 }

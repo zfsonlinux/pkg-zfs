@@ -30,10 +30,27 @@
 #include_next <sys/time.h>
 #include <sys/types.h>
 
+#ifndef SEC
+#define SEC		1
+#endif
+
+#ifndef MILLISEC
+#define MILLISEC	1000
+#endif
+
+#ifndef MICROSEC
+#define MICROSEC	1000000
+#endif
+
 #ifndef NANOSEC
-#define NANOSEC 1000000000
+#define NANOSEC		1000000000
+#endif
+
+#ifndef NSEC_PER_USEC
+#define NSEC_PER_USEC	1000L
 #endif
 
 extern hrtime_t gethrtime(void);
+extern void gethrestime(timestruc_t *);
 
-#endif
+#endif /* _LIBSPL_SYS_TIME_H */

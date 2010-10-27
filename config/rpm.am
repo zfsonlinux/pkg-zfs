@@ -1,4 +1,3 @@
-
 srpm-modules:
 	$(MAKE) $(AM_MAKEFLAGS) pkg="${PACKAGE}-modules" srpm-common
 
@@ -42,7 +41,7 @@ srpm-common: dist
 		rpmbuild="$$rpmbuild" \
 		rpmspec="$$rpmspec" \
 		rpm-local || exit 1; \
-	/usr/bin/rpmbuild \
+	$(RPMBUILD) \
 		--define "_tmppath $$rpmbuild/TMP" \
 		--define "_topdir $$rpmbuild" \
 		--define "build_src_rpm 1" \
@@ -59,7 +58,7 @@ rpm-common:
 		rpmbuild="$$rpmbuild" \
 		rpmspec="$$rpmspec" \
 		rpm-local || exit 1; \
-	/usr/bin/rpmbuild \
+	$(RPMBUILD) \
 		--define "_tmppath $$rpmbuild/TMP" \
 		--define "_topdir $$rpmbuild" \
 		--define "dist %{nil}" \

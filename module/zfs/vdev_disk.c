@@ -19,8 +19,10 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
- * Use is subject to license terms.
+ * Copyright (C) 2008-2010 Lawrence Livermore National Security, LLC.
+ * Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ * Rewritten for Linux by Brian Behlendorf <behlendorf1@llnl.gov>.
+ * LLNL-CODE-403049.
  */
 
 #include <sys/zfs_context.h>
@@ -233,15 +235,13 @@ BIO_END_IO_PROTO(vdev_disk_physio_completion, bio, size, error)
 	int rc;
 
 	/* Fatal error but print some useful debugging before asserting */
-	if (dr == NULL) {
-		printk("FATAL: bio->bi_private == NULL\n"
-		       "bi_next: %p, bi_flags: %lx, bi_rw: %lu, bi_vcnt: %d\n"
-		       "bi_idx: %d, bi_size: %d, bi_end_io: %p, bi_cnt: %d\n",
-		       bio->bi_next, bio->bi_flags, bio->bi_rw, bio->bi_vcnt,
-		       bio->bi_idx, bio->bi_size, bio->bi_end_io,
-		       atomic_read(&bio->bi_cnt));
-		SBUG();
-	}
+	if (dr == NULL)
+		PANIC("dr == NULL, bio->bi_private == NULL\n"
+		    "bi_next: %p, bi_flags: %lx, bi_rw: %lu, bi_vcnt: %d\n"
+		    "bi_idx: %d, bi_size: %d, bi_end_io: %p, bi_cnt: %d\n",
+		    bio->bi_next, bio->bi_flags, bio->bi_rw, bio->bi_vcnt,
+		    bio->bi_idx, bio->bi_size, bio->bi_end_io,
+		    atomic_read(&bio->bi_cnt));
 
 #ifndef HAVE_2ARGS_BIO_END_IO_T
 	if (bio->bi_size)
@@ -548,6 +548,35 @@ vdev_disk_io_done(zio_t *zio)
 	}
 }
 
+static void
+vdev_disk_hold(vdev_t *vd)
+{
+	ASSERT(spa_config_held(vd->vdev_spa, SCL_STATE, RW_WRITER));
+
+	/* We must have a pathname, and it must be absolute. */
+	if (vd->vdev_path == NULL || vd->vdev_path[0] != '/')
+		return;
+
+	/*
+	 * Only prefetch path and devid info if the device has
+	 * never been opened.
+	 */
+	if (vd->vdev_tsd != NULL)
+		return;
+
+	/* XXX: Implement me as a vnode lookup for the device */
+	vd->vdev_name_vp = NULL;
+	vd->vdev_devid_vp = NULL;
+}
+
+static void
+vdev_disk_rele(vdev_t *vd)
+{
+	ASSERT(spa_config_held(vd->vdev_spa, SCL_STATE, RW_WRITER));
+
+	/* XXX: Implement me as a vnode rele for the device */
+}
+
 vdev_ops_t vdev_disk_ops = {
 	vdev_disk_open,
 	vdev_disk_close,
@@ -555,6 +584,8 @@ vdev_ops_t vdev_disk_ops = {
 	vdev_disk_io_start,
 	vdev_disk_io_done,
 	NULL,
+	vdev_disk_hold,
+	vdev_disk_rele,
 	VDEV_TYPE_DISK,		/* name of this vdev type */
 	B_TRUE			/* leaf vdev */
 };

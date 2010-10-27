@@ -1,0 +1,160 @@
+#!/bin/bash
+#
+# Set BUSES and PORTS to match the topology of your system.  As each
+# port is enumerated it will be assigned the next channel name.  The
+# current script enumerates each port on a bus before moving on to
+# enumerate the next bus.
+#
+# Every distribution, version of udev, and type of attached storage
+# seems to result in slightly different formatting of the by-path
+# name.   For this reason you may need to adjust the parsing below
+# to suit your needs.  This is one of the reasons to use a custom
+# /etc/zfs/zdev.conf file, it allows the by-path naming convertion
+# to change and still keep the simple <channel><rank> naming.
+#
+AWK=${AWK:-/bin/awk}
+CONFIG=${CONFIG:-/etc/zfs/zdev.conf}
+BUSES=( 01 02 03 )
+PORTS=( 4 0 )
+CHANNELS=( A B C D E F G H I J K L M N O P Q R S T U V W X Y Z )
+TRIGGER="no"
+MAPPING=linux
+
+
+usage() {
+	cat << EOF
+Usage: zpool_layout [-th] [-c file] [-b buses] [-p ports] [-n channels] [-m map]
+  -c    Alternate config file [default=${CONFIG}]
+  -b    Enumerate buses [default="${BUSES[*]}"]
+  -p    Enumerate ports [default="${PORTS[*]}"]
+  -n    Channel names [default="A..Z"]
+  -t    Trigger and wait for udev to settle [default=${TRIGGER}]
+  -m    Slot mapping [default=${MAPPING}]
+  -h    Show this message
+EOF
+	exit 0
+}
+
+while getopts 'c:b:p:n:m:th' OPTION; do
+	case ${OPTION} in
+	c)
+		CONFIG=${OPTARG}
+		;;
+	b)
+		BUSES=(${OPTARG})
+		;;
+	p)
+		PORTS=(${OPTARG})
+		;;
+	n)
+		CHANNELS=(${OPTARG})
+		;;
+	m)
+		MAPPING=`readlink -e ${OPTARG}`
+		;;
+	t)
+		TRIGGER=yes
+		;;
+	h)
+		usage
+		;;
+	esac
+done
+
+# Verify mapping file exists if specified.
+# Linux-Slot	Custom-Slot
+if [ ${MAPPING} != "linux" ] && [ ! -e ${MAPPING} ]; then
+	echo "Error: Mapping file '${MAPPING}' does not exist"
+	exit 1
+fi
+
+# Save stdout as fd #8, then redirect stdout to the config file.
+exec 8>&1
+exec >${CONFIG}
+pushd /dev/disk/by-path >/dev/null
+
+map_slot() {
+	local LINUX_SLOT=$1
+	local MAPPED_SLOT=
+
+	if [ ${MAPPING} = "linux" ]; then
+		MAPPED_SLOT=${LINUX_SLOT}
+	else
+		MAPPED_SLOT=`${AWK} "\\$1 == ${LINUX_SLOT} && !/^#/ \
+			{ print \\$2; exit }" $MAPPING`
+	fi
+	printf "%d" ${MAPPED_SLOT}
+}
+
+# Generate comment header.
+echo "#"
+echo "# Custom /dev/disk/by-path to /dev/disk/zpool mapping, "
+echo "# based of the following physical cable layout."
+echo "#"
+
+# Generate host port layout table for comment header.
+echo "# ------------------ Host Port Layout ---------------------"
+echo -n "#          "
+for (( i=0; i<${#BUSES[*]}; i++ )); do
+	printf "%-8d" ${BUSES[$i]}
+done
+echo
+
+for (( i=0, k=0; i<${#PORTS[*]}; i++ )); do
+	printf "# Port %-2d  " ${PORTS[$i]}
+
+	for (( j=0; j<${#BUSES[*]}; j++, k++ )); do
+		let k=$j*${#PORTS[*]}+$i
+		printf "%-8s" ${CHANNELS[$k]}
+	done
+	echo
+done
+echo "#"
+
+# Generate channel/disk layout table for comment header.
+echo "# ----------------- Channel/Disk Layout -------------------"
+echo "# Channel  Disks"
+for (( i=0, k=0; i<${#BUSES[*]}; i++ )); do
+	for (( j=0; j<${#PORTS[*]}; j++, k++ )); do
+		printf "# %-9s" ${CHANNELS[$k]}
+		ls *:${BUSES[$i]}:*:${PORTS[$j]}* 2>/dev/null | \
+			cut -f7 -d'-' | sort -u -n | tr '\n' ','
+		echo
+	done
+done
+echo "#"
+
+# Generate mapping from <channel><rank> to by-path name.
+for (( i=0, k=0; i<${#BUSES[*]}; i++ )); do
+	for (( j=0; j<${#PORTS[*]}; j++, k++ )); do
+		BYPATH=(`ls *:${BUSES[$i]}:*:${PORTS[$j]}* 2>/dev/null | \
+			grep -v part | sort -n -k7 -t'-' | cut -f1-6 -d'-'`)
+		SLOTS=(`ls *:${BUSES[$i]}:*:${PORTS[$j]}* 2>/dev/null |  \
+			grep -v part | sort -n -k7 -t'-' | cut -f7 -d'-'`)
+		TMP_FILE=`mktemp`
+
+		for (( l=0; l<${#SLOTS[*]}; l++ )); do
+			MAPPED_SLOT=`map_slot ${SLOTS[$l]}`
+			printf "%s%d\t%s-%d\n" \
+				${CHANNELS[$k]} ${MAPPED_SLOT} \
+				${BYPATH[$l]} ${SLOTS[$l]} >>${TMP_FILE}
+		done
+
+		echo
+		echo -n "# Channel ${CHANNELS[$k]}, "
+		echo "Bus ${BUSES[$i]}, Port ${PORTS[$j]}"
+		cat ${TMP_FILE} | sort -n -k2 -t${CHANNELS[$k]}
+		rm -f ${TMP_FILE}
+	done
+done
+
+# Restore stdout from fd #8 and close fd #8.
+exec 1>&8 8>&-
+popd >/dev/null
+
+if [ ${TRIGGER} = "yes" ]; then
+	udevadm trigger
+	udevadm settle
+fi
+
+exit 0

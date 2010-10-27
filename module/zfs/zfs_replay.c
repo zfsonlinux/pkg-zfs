@@ -19,8 +19,7 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
- * Use is subject to license terms.
+ * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  */
 
 
@@ -129,6 +128,12 @@ zfs_replay_xvattr(lr_attr_t *lrattr, xvattr_t *xvap)
 		ZFS_TIME_DECODE(&xoap->xoa_createtime, crtime);
 	if (XVA_ISSET_REQ(xvap, XAT_AV_SCANSTAMP))
 		bcopy(scanstamp, xoap->xoa_av_scanstamp, AV_SCANSTAMP_SZ);
+	if (XVA_ISSET_REQ(xvap, XAT_REPARSE))
+		xoap->xoa_reparse = ((*attrs & XAT0_REPARSE) != 0);
+	if (XVA_ISSET_REQ(xvap, XAT_OFFLINE))
+		xoap->xoa_offline = ((*attrs & XAT0_OFFLINE) != 0);
+	if (XVA_ISSET_REQ(xvap, XAT_SPARSE))
+		xoap->xoa_sparse = ((*attrs & XAT0_SPARSE) != 0);
 }
 #endif /* HAVE_ZPL */
 
@@ -279,9 +284,9 @@ zfs_replay_create_acl(zfsvfs_t *zfsvfs,
 	uint64_t txtype;
 	int error;
 
+	txtype = (lr->lr_common.lrc_txtype & ~TX_CI);
 	if (byteswap) {
 		byteswap_uint64_array(lracl, sizeof (*lracl));
-		txtype = (int)lr->lr_common.lrc_txtype;
 		if (txtype == TX_CREATE_ACL_ATTR ||
 		    txtype == TX_MKDIR_ACL_ATTR) {
 			lrattr = (lr_attr_t *)(caddr_t)(lracl + 1);
@@ -322,7 +327,7 @@ zfs_replay_create_acl(zfsvfs_t *zfsvfs,
 
 	if (lr->lr_common.lrc_txtype & TX_CI)
 		vflg |= FIGNORECASE;
-	switch ((int)lr->lr_common.lrc_txtype) {
+	switch (txtype) {
 	case TX_CREATE_ACL:
 		aclstart = (caddr_t)(lracl + 1);
 		fuidstart = (caddr_t)aclstart +
@@ -395,7 +400,8 @@ bail:
 
 	VN_RELE(ZTOV(dzp));
 
-	zfs_fuid_info_free(zfsvfs->z_fuid_replay);
+	if (zfsvfs->z_fuid_replay)
+		zfs_fuid_info_free(zfsvfs->z_fuid_replay);
 	zfsvfs->z_fuid_replay = NULL;
 
 	return (error);
@@ -422,9 +428,9 @@ zfs_replay_create(void  *arg1, char *arg2, boolean_t byteswap)
 	uint64_t txtype;
 	int error;
 
+	txtype = (lr->lr_common.lrc_txtype & ~TX_CI);
 	if (byteswap) {
 		byteswap_uint64_array(lr, sizeof (*lr));
-		txtype = (int)lr->lr_common.lrc_txtype;
 		if (txtype == TX_CREATE_ATTR || txtype == TX_MKDIR_ATTR)
 			zfs_replay_swap_attrs((lr_attr_t *)(lr + 1));
 	}
@@ -469,7 +475,7 @@ zfs_replay_create(void  *arg1, char *arg2, boolean_t byteswap)
 		    lr->lr_uid, lr->lr_gid);
 	}
 
-	switch ((int)lr->lr_common.lrc_txtype) {
+	switch (txtype) {
 	case TX_CREATE_ATTR:
 		ASSERT(0);
 #ifdef HAVE_ZPL
@@ -513,7 +519,6 @@ zfs_replay_create(void  *arg1, char *arg2, boolean_t byteswap)
 		break;
 	case TX_MKXATTR:
 #ifdef HAVE_ZPL
-		name = (char *)(lr + 1);
 		error = zfs_make_xattrdir(dzp, &xva.xva_vattr, &vp, kcred);
 #endif /* HAVE_ZPL */
 		break;
@@ -668,24 +673,104 @@ zfs_replay_write(void *arg1, char *arg2, boolean_t byteswap)
 		return (error);
 	}
 #ifndef LINUX_PORT
-	error = vn_rdwr(UIO_WRITE, ZTOV(zp), data, lr->lr_length,
-	    lr->lr_offset, UIO_SYSSPACE, 0, RLIM64_INFINITY, kcred, &resid);
-#else
+	offset = lr->lr_offset;
+	length = lr->lr_length;
 	iov.iov_base = (void *) data;
 	iov.iov_len = lr->lr_length;
+	 /* This may be a write from a dmu_sync() for a whole block,
+	 * and may extend beyond the current end of the file.
+	 * We can't just replay what was written for this TX_WRITE as
+	 * a future TX_WRITE2 may extend the eof and the data for that
+	 * write needs to be there. So we write the whole block and
+	 * reduce the eof. This needs to be done within the single dmu
+	 * transaction created within vn_rdwr -> zfs_write. So a possible
+	 * new end of file is passed through in zfsvfs->z_replay_eof
+	 */
 
-	uio.uio_iov = &iov;
-	uio.uio_resid = lr->lr_length;
-	uio.uio_iovcnt = 1;
-	uio.uio_loffset = (offset_t)lr->lr_offset;
-	uio.uio_limit = MAXOFFSET_T;
-	uio.uio_segflg = UIO_SYSSPACE;
-	error = VOP_WRITE(ZTOV(zp), &uio, vflg, NULL , NULL);
+	zfsvfs->z_replay_eof = 0; /* 0 means don't change end of file */
+
+	/* If it's a dmu_sync() block, write the whole block */
+	if (lr->lr_common.lrc_reclen == sizeof (lr_write_t)) {
+		uint64_t blocksize = BP_GET_LSIZE(&lr->lr_blkptr);
+		if (length < blocksize) {
+			offset -= offset % blocksize;
+			length = blocksize;
+		}
+		if (zp->z_size < eod)
+			zfsvfs->z_replay_eof = eod;
+	}
+
+	error = vn_rdwr(UIO_WRITE, ZTOV(zp), data, length, offset,
+	    UIO_SYSSPACE, 0, RLIM64_INFINITY, kcred, &resid);
+#else
+        iov.iov_base = (void *) data;
+        iov.iov_len = lr->lr_length;
+
+        uio.uio_iov = &iov;
+        uio.uio_resid = lr->lr_length;
+        uio.uio_iovcnt = 1;
+        uio.uio_loffset = (offset_t)lr->lr_offset;
+        uio.uio_limit = MAXOFFSET_T;
+        uio.uio_segflg = UIO_SYSSPACE;
+        error = VOP_WRITE(ZTOV(zp), &uio, vflg, NULL , NULL);
 #endif
+	VN_RELE(ZTOV(zp));
+	zfsvfs->z_replay_eof = 0;	/* safety */
+
+	return (error);
+}
+
+#ifdef HAVE_ZPL
+/*
+ * TX_WRITE2 are only generated when dmu_sync() returns EALREADY
+ * meaning the pool block is already being synced. So now that we always write
+ * out full blocks, all we have to do is expand the eof if
+ * the file is grown.
+ */
+static int
+zfs_replay_write2(zfsvfs_t *zfsvfs, lr_write_t *lr, boolean_t byteswap)
+{
+	znode_t	*zp;
+	int error;
+	uint64_t end;
+
+	if (byteswap)
+		byteswap_uint64_array(lr, sizeof (*lr));
+
+	if ((error = zfs_zget(zfsvfs, lr->lr_foid, &zp)) != 0)
+		return (error);
+
+top:
+	end = lr->lr_offset + lr->lr_length;
+	if (end > zp->z_size) {
+		dmu_tx_t *tx = dmu_tx_create(zfsvfs->z_os);
+
+		zp->z_size = end;
+		dmu_tx_hold_sa(tx, zp->z_sa_hdl, B_FALSE);
+		error = dmu_tx_assign(tx, TXG_WAIT);
+		if (error) {
+			VN_RELE(ZTOV(zp));
+			if (error == ERESTART) {
+				dmu_tx_wait(tx);
+				dmu_tx_abort(tx);
+				goto top;
+			}
+			dmu_tx_abort(tx);
+			return (error);
+		}
+		(void) sa_update(zp->z_sa_hdl, SA_ZPL_SIZE(zfsvfs),
+		    (void *)&zp->z_size, sizeof (uint64_t), tx);
+
+		/* Ensure the replayed seq is updated */
+		(void) zil_replaying(zfsvfs->z_log, tx);
+
+		dmu_tx_commit(tx);
+	}
 	VN_RELE(ZTOV(zp));
 
 	return (error);
 }
+#endif
 
 static int
 zfs_replay_truncate(void *arg1, char *arg2, boolean_t byteswap)
@@ -699,16 +784,8 @@ zfs_replay_truncate(void *arg1, char *arg2, boolean_t byteswap)
 	if (byteswap)
 		byteswap_uint64_array(lr, sizeof (*lr));
 
-	if ((error = zfs_zget(zfsvfs, lr->lr_foid, &zp)) != 0) {
-		/*
-		 * As we can log truncates out of order, it's possible the
-		 * file has been removed. In this case just drop the truncate
-		 * and return success.
-		 */
-		if (error == ENOENT)
-			error = 0;
+	if ((error = zfs_zget(zfsvfs, lr->lr_foid, &zp)) != 0)
 		return (error);
-	}
 
 	bzero(&fl, sizeof (fl));
 	fl.l_type = F_WRLCK;
@@ -744,16 +821,8 @@ zfs_replay_setattr(void *arg1, char *arg2, boolean_t byteswap)
 			zfs_replay_swap_attrs((lr_attr_t *)(lr + 1));
 	}
 
-	if ((error = zfs_zget(zfsvfs, lr->lr_foid, &zp)) != 0) {
-		/*
-		 * As we can log setattrs out of order, it's possible the
-		 * file has been removed. In this case just drop the setattr
-		 * and return success.
-		 */
-		if (error == ENOENT)
-			error = 0;
+	if ((error = zfs_zget(zfsvfs, lr->lr_foid, &zp)) != 0)
 		return (error);
-	}
 
 	zfs_init_vattr(vap, lr->lr_mask, lr->lr_mode,
 	    lr->lr_uid, lr->lr_gid, 0, lr->lr_foid);
@@ -802,16 +871,8 @@ zfs_replay_acl_v0(zfsvfs_t *zfsvfs, lr_acl_v0_t *lr, boolean_t byteswap)
 		zfs_oldace_byteswap(ace, lr->lr_aclcnt);
 	}
 
-	if ((error = zfs_zget(zfsvfs, lr->lr_foid, &zp)) != 0) {
-		/*
-		 * As we can log acls out of order, it's possible the
-		 * file has been removed. In this case just drop the acl
-		 * and return success.
-		 */
-		if (error == ENOENT)
-			error = 0;
+	if ((error = zfs_zget(zfsvfs, lr->lr_foid, &zp)) != 0)
 		return (error);
-	}
 
 	bzero(&vsa, sizeof (vsa));
 	vsa.vsa_mask = VSA_ACE | VSA_ACECNT;
@@ -859,16 +920,8 @@ zfs_replay_acl(zfsvfs_t *zfsvfs, lr_acl_t *lr, boolean_t byteswap)
 		}
 	}
 
-	if ((error = zfs_zget(zfsvfs, lr->lr_foid, &zp)) != 0) {
-		/*
-		 * As we can log acls out of order, it's possible the
-		 * file has been removed. In this case just drop the acl
-		 * and return success.
-		 */
-		if (error == ENOENT)
-			error = 0;
+	if ((error = zfs_zget(zfsvfs, lr->lr_foid, &zp)) != 0)
 		return (error);
-	}
 
 	bzero(&vsa, sizeof (vsa));
 	vsa.vsa_mask = VSA_ACE | VSA_ACECNT | VSA_ACE_ACLFLAGS;
@@ -922,4 +975,5 @@ zil_replay_func_t *zfs_replay_vector[TX_MAX_TYPE] = {
 //	zfs_replay_create_acl,	/* TX_MKDIR_ACL */
 	zfs_replay_create,	/* TX_MKDIR_ATTR */
 //	zfs_replay_create_acl,	/* TX_MKDIR_ACL_ATTR */
+//	zfs_replay_write2,	/* TX_WRITE2 */
 };

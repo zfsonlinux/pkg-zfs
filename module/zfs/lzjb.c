@@ -20,30 +20,29 @@
  */
 
 /*
- * Copyright 2007 Sun Microsystems, Inc.  All rights reserved.
- * Use is subject to license terms.
+ * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  */
-
-
 
 /*
- * We keep our own copy of this algorithm for 2 main reasons:
- * 	1. If we didn't, anyone modifying common/os/compress.c would
+ * We keep our own copy of this algorithm for 3 main reasons:
+ *	1. If we didn't, anyone modifying common/os/compress.c would
  *         directly break our on disk format
- * 	2. Our version of lzjb does not have a number of checks that the
+ *	2. Our version of lzjb does not have a number of checks that the
  *         common/os version needs and uses
+ *	3. We initialize the lempel to ensure deterministic results,
+ *	   so that identical blocks can always be deduplicated.
  * In particular, we are adding the "feature" that compress() can
- * take a destination buffer size and return -1 if the data will not
- * compress to d_len or less.
+ * take a destination buffer size and returns the compressed length, or the
+ * source length if compression would overflow the destination buffer.
  */
 
-#include <sys/types.h>
+#include <sys/zfs_context.h>
 
 #define	MATCH_BITS	6
 #define	MATCH_MIN	3
 #define	MATCH_MAX	((1 << MATCH_BITS) + (MATCH_MIN - 1))
 #define	OFFSET_MASK	((1 << (16 - MATCH_BITS)) - 1)
-#define	LEMPEL_SIZE	256
+#define	LEMPEL_SIZE	1024
 
 /*ARGSUSED*/
 size_t
@@ -53,18 +52,15 @@ lzjb_compress(void *s_start, void *d_start, size_t s_len, size_t d_len, int n)
 	uchar_t *dst = d_start;
 	uchar_t *cpy, *copymap = NULL;
 	int copymask = 1 << (NBBY - 1);
-	int mlen, offset;
+	int mlen, offset, hash;
 	uint16_t *hp;
-	uint16_t lempel[LEMPEL_SIZE];	/* uninitialized; see above */
+	uint16_t *lempel;
 
+	lempel = kmem_zalloc(LEMPEL_SIZE * sizeof (uint16_t), KM_SLEEP);
 	while (src < (uchar_t *)s_start + s_len) {
 		if ((copymask <<= 1) == (1 << NBBY)) {
 			if (dst >= (uchar_t *)d_start + d_len - 1 - 2 * NBBY) {
-				if (d_len != s_len)
-					return (s_len);
-				mlen = s_len;
-				for (src = s_start, dst = d_start; mlen; mlen--)
-					*dst++ = *src++;
+				kmem_free(lempel, LEMPEL_SIZE*sizeof(uint16_t));
 				return (s_len);
 			}
 			copymask = 1;
@@ -75,8 +71,10 @@ lzjb_compress(void *s_start, void *d_start, size_t s_len, size_t d_len, int n)
 			*dst++ = *src++;
 			continue;
 		}
-		hp = &lempel[((src[0] + 13) ^ (src[1] - 13) ^ src[2]) &
-		    (LEMPEL_SIZE - 1)];
+		hash = (src[0] << 16) + (src[1] << 8) + src[2];
+		hash += hash >> 9;
+		hash += hash >> 5;
+		hp = &lempel[hash & (LEMPEL_SIZE - 1)];
 		offset = (intptr_t)(src - *hp) & OFFSET_MASK;
 		*hp = (uint16_t)(uintptr_t)src;
 		cpy = src - offset;
@@ -94,6 +92,8 @@ lzjb_compress(void *s_start, void *d_start, size_t s_len, size_t d_len, int n)
 			*dst++ = *src++;
 		}
 	}
+
+	kmem_free(lempel, LEMPEL_SIZE * sizeof (uint16_t));
 	return (dst - (uchar_t *)d_start);
 }
 

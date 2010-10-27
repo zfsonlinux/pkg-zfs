@@ -19,12 +19,9 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
+ * Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
  */
-
-
-
 
 /*
  * AVL - generic AVL tree implementation for kernel use
@@ -243,7 +240,7 @@ avl_nearest(avl_tree_t *tree, avl_index_t where, int direction)
  *	"void *"  of the found tree node
  */
 void *
-avl_find(avl_tree_t *tree, void *value, avl_index_t *where)
+avl_find(avl_tree_t *tree, const void *value, avl_index_t *where)
 {
 	avl_node_t *node;
 	avl_node_t *prev = NULL;
@@ -1033,15 +1030,16 @@ done:
 }
 
 #if defined(_KERNEL) && defined(HAVE_SPL)
+
 static int avl_init(void) { return 0; }
 static int avl_fini(void) { return 0; }
 
 spl_module_init(avl_init);
 spl_module_exit(avl_fini);
 
-MODULE_AUTHOR("Sun Microsystems, Inc");
 MODULE_DESCRIPTION("Generic AVL tree implementation");
-MODULE_LICENSE("CDDL");
+MODULE_AUTHOR(ZFS_META_AUTHOR);
+MODULE_LICENSE(ZFS_META_LICENSE);
 
 EXPORT_SYMBOL(avl_create);
 EXPORT_SYMBOL(avl_find);

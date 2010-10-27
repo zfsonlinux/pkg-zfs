@@ -20,8 +20,7 @@
  */
 
 /*
- * Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
- * Use is subject to license terms.
+ * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  */
 
 /*
@@ -78,7 +77,9 @@
 #include <uuid/uuid.h>
 #ifdef HAVE_LIBBLKID
 #include <blkid/blkid.h>
-#endif
+#else
+#define blkid_cache void *
+#endif /* HAVE_LIBBLKID */
 
 #include "zpool_util.h"
 
@@ -125,7 +126,7 @@ check_file(const char *file, boolean_t force, boolean_t isspare)
 	pool_state_t state;
 	boolean_t inuse;
 
-	if ((fd = open(file, O_RDONLY|O_EXCL)) < 0)
+	if ((fd = open(file, O_RDONLY)) < 0)
 		return (0);
 
 	if (zpool_in_use(g_zfs, fd, &state, &name, &inuse) == 0 && inuse) {
@@ -177,7 +178,6 @@ check_file(const char *file, boolean_t force, boolean_t isspare)
 	return (ret);
 }
 
-#ifdef HAVE_LIBBLKID
 static void
 check_error(int err)
 {
@@ -189,8 +189,10 @@ static int
 check_slice(const char *path, blkid_cache cache, int force, boolean_t isspare)
 {
 	struct stat64 statbuf;
-	char *value;
 	int err;
+#ifdef HAVE_LIBBLKID
+	char *value;
+#endif /* HAVE_LIBBLKID */
 
 	if (stat64(path, &statbuf) != 0) {
 		vdev_error(gettext("cannot stat %s: %s\n"),
@@ -198,6 +200,7 @@ check_slice(const char *path, blkid_cache cache, int force, boolean_t isspare)
 		return (-1);
 	}
 
+#ifdef HAVE_LIBBLKID
 	/* No valid type detected device is safe to use */
 	value = blkid_get_tag_value(cache, "TYPE", path);
 	if (value == NULL)
@@ -221,6 +224,9 @@ check_slice(const char *path, blkid_cache cache, int force, boolean_t isspare)
 	}
 
 	free(value);
+#else
+	err = check_file(path, force, isspare);
+#endif /* HAVE_LIBBLKID */
 
 	return (err);
 }
@@ -317,13 +323,15 @@ check_device(const char *path, boolean_t force,
 	     boolean_t isspare, boolean_t iswholedisk)
 {
 	static blkid_cache cache = NULL;
-	int err;
 
+#ifdef HAVE_LIBBLKID
 	/*
 	 * There is no easy way to add a correct blkid_put_cache() call,
 	 * memory will be reclaimed when the command exits.
 	 */
 	if (cache == NULL) {
+		int err;
+
 		if ((err = blkid_get_cache(&cache, NULL)) != 0) {
 			check_error(err);
 			return -1;
@@ -335,19 +343,10 @@ check_device(const char *path, boolean_t force,
 			return -1;
 		}
 	}
+#endif /* HAVE_LIBBLKID */
 
 	return check_disk(path, cache, force, isspare, iswholedisk);
 }
-
-#else /* HAVE_LIBBLKID */
-
-static int
-check_device(const char *path, boolean_t force,
-	     boolean_t isspare, boolean_t iswholedisk)
-{
-	return check_file(path, force, isspare);
-}
-#endif /* HAVE_LIBBLKID */
 
 /*
  * By "whole disk" we mean an entire physical disk (something we can
@@ -358,14 +357,11 @@ check_device(const char *path, boolean_t force,
  * it isn't.
  */
 static boolean_t
-is_whole_disk(const char *arg)
+is_whole_disk(const char *path)
 {
 	struct dk_gpt *label;
 	int	fd;
-	char	path[MAXPATHLEN];
 
-	(void) snprintf(path, sizeof (path), "%s%s%s",
-	    RDISK_ROOT, strrchr(arg, '/'), BACKUP_SLICE);
 	if ((fd = open(path, O_RDWR|O_DIRECT|O_EXCL)) < 0)
 		return (B_FALSE);
 	if (efi_alloc_and_init(fd, EFI_NUMPAR, &label) != 0) {
@@ -378,13 +374,51 @@ is_whole_disk(const char *arg)
 }
 
 /*
+ * This may be a shorthand device path or it could be total gibberish.
+ * Check to see if it's a known device in /dev/, /dev/disk/by-id,
+ * /dev/disk/by-label, /dev/disk/by-path, /dev/disk/by-uuid, or
+ * /dev/disk/zpool/.  As part of this check, see if we've been given
+ * an entire disk (minus the slice number).
+ */
+static int
+is_shorthand_path(const char *arg, char *path,
+                  struct stat64 *statbuf, boolean_t *wholedisk)
+{
+	char dirs[5][8] = {"by-id", "by-label", "by-path", "by-uuid", "zpool"};
+	int i, err;
+
+	/* /dev/<name> */
+	(void) snprintf(path, MAXPATHLEN, "%s/%s", DISK_ROOT, arg);
+	*wholedisk = is_whole_disk(path);
+	err = stat64(path, statbuf);
+	if (*wholedisk || err == 0)
+		return (0);
+
+	/* /dev/disk/<dirs>/<name> */
+	for (i = 0; i < 5; i++) {
+		(void) snprintf(path, MAXPATHLEN, "%s/%s/%s",
+		    UDISK_ROOT, dirs[i], arg);
+		*wholedisk = is_whole_disk(path);
+		err = stat64(path, statbuf);
+		if (*wholedisk || err == 0)
+			return (0);
+	}
+
+	strlcpy(path, arg, sizeof(path));
+	memset(statbuf, 0, sizeof(*statbuf));
+	*wholedisk = B_FALSE;
+
+	return (ENOENT);
+}
+
+/*
  * Create a leaf vdev.  Determine if this is a file or a device.  If it's a
  * device, fill in the device id to make a complete nvlist.  Valid forms for a
  * leaf vdev are:
  *
- * 	/dev/dsk/xxx	Complete disk path
+ * 	/dev/xxx	Complete disk path
  * 	/xxx		Full path to file
- * 	xxx		Shorthand for /dev/dsk/xxx
+ * 	xxx		Shorthand for /dev/disk/yyy/xxx
  */
 static nvlist_t *
 make_leaf_vdev(const char *arg, uint64_t is_log)
@@ -394,6 +428,7 @@ make_leaf_vdev(const char *arg, uint64_t is_log)
 	nvlist_t *vdev = NULL;
 	char *type = NULL;
 	boolean_t wholedisk = B_FALSE;
+	int err;
 
 	/*
 	 * Determine what type of vdev this is, and put the full path into
@@ -426,16 +461,8 @@ make_leaf_vdev(const char *arg, uint64_t is_log)
 		/* After is_whole_disk() check restore original passed path */
 		strlcpy(path, arg, MAXPATHLEN);
 	} else {
-		/*
-		 * This may be a short path for a device, or it could be total
-		 * gibberish.  Check to see if it's a known device in
-		 * /dev/dsk/.  As part of this check, see if we've been given a
-		 * an entire disk (minus the slice number).
-		 */
-		(void) snprintf(path, sizeof (path), "%s/%s", DISK_ROOT,
-		    arg);
-		wholedisk = is_whole_disk(path);
-		if (!wholedisk && (stat64(path, &statbuf) != 0)) {
+		err = is_shorthand_path(arg, path, &statbuf, &wholedisk);
+		if (err != 0) {
 			/*
 			 * If we got ENOENT, then the user gave us
 			 * gibberish, so try to direct them with a
@@ -443,7 +470,7 @@ make_leaf_vdev(const char *arg, uint64_t is_log)
 			 * regurgitate strerror() since it's the best we
 			 * can do.
 			 */
-			if (errno == ENOENT) {
+			if (err == ENOENT) {
 				(void) fprintf(stderr,
 				    gettext("cannot open '%s': no such "
 				    "device in %s\n"), arg, DISK_ROOT);
@@ -1057,8 +1084,8 @@ is_spare(nvlist_t *config, const char *path)
 		return (B_FALSE);
 	}
 	free(name);
-
 	(void) close(fd);
+
 	verify(nvlist_lookup_uint64(label, ZPOOL_CONFIG_GUID, &guid) == 0);
 	nvlist_free(label);
 
@@ -1082,8 +1109,8 @@ is_spare(nvlist_t *config, const char *path)
  * the majority of this task.
  */
 static int
-check_in_use(nvlist_t *config, nvlist_t *nv, int force, int isreplacing,
-    int isspare)
+check_in_use(nvlist_t *config, nvlist_t *nv, boolean_t force,
+    boolean_t replacing, boolean_t isspare)
 {
 	nvlist_t **child;
 	uint_t c, children;
@@ -1107,12 +1134,13 @@ check_in_use(nvlist_t *config, nvlist_t *nv, int force, int isreplacing,
 		 * hot spare within the same pool.  If so, we allow it
 		 * regardless of what libblkid or zpool_in_use() says.
 		 */
-		if (isreplacing) {
+		if (replacing) {
 			if (wholedisk)
 				(void) snprintf(buf, sizeof (buf), "%ss0",
 				    path);
 			else
 				(void) strlcpy(buf, path, sizeof (buf));
+
 			if (is_spare(config, buf))
 				return (0);
 		}
@@ -1128,21 +1156,21 @@ check_in_use(nvlist_t *config, nvlist_t *nv, int force, int isreplacing,
 
 	for (c = 0; c < children; c++)
 		if ((ret = check_in_use(config, child[c], force,
-		    isreplacing, B_FALSE)) != 0)
+		    replacing, B_FALSE)) != 0)
 			return (ret);
 
 	if (nvlist_lookup_nvlist_array(nv, ZPOOL_CONFIG_SPARES,
 	    &child, &children) == 0)
 		for (c = 0; c < children; c++)
 			if ((ret = check_in_use(config, child[c], force,
-			    isreplacing, B_TRUE)) != 0)
+			    replacing, B_TRUE)) != 0)
 				return (ret);
 
 	if (nvlist_lookup_nvlist_array(nv, ZPOOL_CONFIG_L2CACHE,
 	    &child, &children) == 0)
 		for (c = 0; c < children; c++)
 			if ((ret = check_in_use(config, child[c], force,
-			    isreplacing, B_FALSE)) != 0)
+			    replacing, B_FALSE)) != 0)
 				return (ret);
 
 	return (0);
@@ -1415,6 +1443,52 @@ construct_spec(int argc, char **argv)
 	return (nvroot);
 }
 
+nvlist_t *
+split_mirror_vdev(zpool_handle_t *zhp, char *newname, nvlist_t *props,
+    splitflags_t flags, int argc, char **argv)
+{
+	nvlist_t *newroot = NULL, **child;
+	uint_t c, children;
+
+	if (argc > 0) {
+		if ((newroot = construct_spec(argc, argv)) == NULL) {
+			(void) fprintf(stderr, gettext("Unable to build a "
+			    "pool from the specified devices\n"));
+			return (NULL);
+		}
+
+		if (!flags.dryrun && make_disks(zhp, newroot) != 0) {
+			nvlist_free(newroot);
+			return (NULL);
+		}
+
+		/* avoid any tricks in the spec */
+		verify(nvlist_lookup_nvlist_array(newroot,
+		    ZPOOL_CONFIG_CHILDREN, &child, &children) == 0);
+		for (c = 0; c < children; c++) {
+			char *path;
+			const char *type;
+			int min, max;
+
+			verify(nvlist_lookup_string(child[c],
+			    ZPOOL_CONFIG_PATH, &path) == 0);
+			if ((type = is_grouping(path, &min, &max)) != NULL) {
+				(void) fprintf(stderr, gettext("Cannot use "
+				    "'%s' as a device for splitting\n"), type);
+				nvlist_free(newroot);
+				return (NULL);
+			}
+		}
+	}
+
+	if (zpool_vdev_split(zhp, newname, &newroot, props, flags) != 0) {
+		if (newroot != NULL)
+			nvlist_free(newroot);
+		return (NULL);
+	}
+
+	return (newroot);
+}
 
 /*
  * Get and validate the contents of the given vdev specification.  This ensures
@@ -1428,7 +1502,7 @@ construct_spec(int argc, char **argv)
  */
 nvlist_t *
 make_root_vdev(zpool_handle_t *zhp, int force, int check_rep,
-    boolean_t isreplacing, boolean_t dryrun, int argc, char **argv)
+    boolean_t replacing, boolean_t dryrun, int argc, char **argv)
 {
 	nvlist_t *newroot;
 	nvlist_t *poolconfig = NULL;
@@ -1451,8 +1525,7 @@ make_root_vdev(zpool_handle_t *zhp, int force, int check_rep,
 	 * uses (such as a dedicated dump device) that even '-f' cannot
 	 * override.
 	 */
-	if (check_in_use(poolconfig, newroot, force, isreplacing,
-	    B_FALSE) != 0) {
+	if (check_in_use(poolconfig, newroot, force, replacing, B_FALSE) != 0) {
 		nvlist_free(newroot);
 		return (NULL);
 	}

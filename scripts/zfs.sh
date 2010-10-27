@@ -2,11 +2,11 @@
 #
 # A simple script to simply the loading/unloading the ZFS module stack.
 
+basedir="$(dirname $0)"
+
 SCRIPT_COMMON=common.sh
-if [ -f ./${SCRIPT_COMMON} ]; then
-. ./${SCRIPT_COMMON}
-elif [ -f /usr/libexec/zfs/${SCRIPT_COMMON} ]; then
-. /usr/libexec/zfs/${SCRIPT_COMMON}
+if [ -f "${basedir}/${SCRIPT_COMMON}" ]; then
+. "${basedir}/${SCRIPT_COMMON}"
 else
 echo "Missing helper script ${SCRIPT_COMMON}" && exit 1
 fi
@@ -69,6 +69,7 @@ if [ ${UNLOAD} ]; then
 else
 	check_modules || die "${ERROR}"
 	load_modules "$@"
+	wait_udev /dev/zfs 30
 fi
 
 exit 0

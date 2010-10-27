@@ -1,8 +1,5 @@
 /* zfs_config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* Define to 1 to enable debug tracing */
-#undef DEBUG
-
 /* invalidate_bdev() wants 1 arg */
 #undef HAVE_1ARG_INVALIDATE_BDEV
 
@@ -48,10 +45,13 @@
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
 
+/* kernel defines fmode_t */
+#undef HAVE_FMODE_T
+
 /* blk_disk_ro() is available */
 #undef HAVE_GET_DISK_RO
 
-/* Define to 1 if module is licensed under the GPL */
+/* Define to 1 if licensed under the GPL */
 #undef HAVE_GPL_ONLY_SYMBOLS
 
 /* Define to 1 if you have the <inttypes.h> header file. */
@@ -65,6 +65,9 @@
 
 /* Define to 1 if ioctl() defined in <unistd.h> */
 #undef HAVE_IOCTL_IN_UNISTD_H
+
+/* kernel defines KOBJ_NAME_LEN */
+#undef HAVE_KOBJ_NAME_LEN
 
 /* Define if you have libblkid */
 #undef HAVE_LIBBLKID
@@ -118,8 +121,9 @@
    */
 #undef LT_OBJDIR
 
-/* Define to 1 to disable debug tracing */
-#undef NDEBUG
+/* Define to 1 if NPTL threading implementation includes guard area in stack
+   allocation */
+#undef NPTL_GUARD_WITHIN_STACK
 
 /* Name of package */
 #undef PACKAGE
@@ -154,6 +158,9 @@
 /* Define the project release date. */
 #undef ZFS_META_DATA
 
+/* Define the project license. */
+#undef ZFS_META_LICENSE
+
 /* Define the libtool library 'age' version information. */
 #undef ZFS_META_LT_AGE
 
@@ -181,5 +188,3 @@
 #undef PACKAGE_VERSION
 #undef STDC_HEADERS
 #undef VERSION
-
-#include <zfs_unconfig.h>
