@@ -1,29 +1,51 @@
+/*****************************************************************************\
+ *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
+ *  UCRL-CODE-235197
+ *
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
+ *
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
+ *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ *  for more details.
+ *
+ *  You should have received a copy of the GNU General Public License along
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+\*****************************************************************************/
+
 #ifndef _SPL_TYPES_H
 #define	_SPL_TYPES_H
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
-
 #include <linux/types.h>
 #include <sys/sysmacros.h>
-#include <spl_config.h>
 
 #include <linux/uaccess_compat.h>
 #include <linux/file_compat.h>
 #include <linux/list_compat.h>
-#include <linux/time_compat.h>
-#include <linux/bitops_compat.h>
+//#include <linux/time_compat.h>
+//nclude <linux/bitops_compat.h>
 #include <linux/smp_compat.h>
 #include <linux/workqueue_compat.h>
 #include <linux/kallsyms_compat.h>
 #include <linux/mutex_compat.h>
 #include <linux/module_compat.h>
-
+#include <linux/sysctl_compat.h>
+#include <linux/proc_compat.h>
+#include <linux/math64_compat.h>
+/*
 #ifndef HAVE_UINTPTR_T
 typedef unsigned long			uintptr_t;
 #endif
-
+*/
 #ifndef ULLONG_MAX
 #define ULLONG_MAX			(~0ULL)
 #endif
@@ -43,6 +65,7 @@ typedef unsigned long long		rlim64_t;
 typedef long long			longlong_t;
 typedef long long			offset_t;
 typedef struct task_struct		kthread_t;
+typedef struct task_struct		proc_t;
 typedef struct vmem { }			vmem_t;
 typedef short				pri_t;
 typedef struct timespec			timestruc_t; /* definition per SVr4 */
@@ -57,6 +80,19 @@ typedef uint_t				minor_t;
 typedef ulong_t				pfn_t;
 typedef ulong_t				pgcnt_t;
 typedef long				spgcnt_t;
+typedef short				index_t;
+typedef int				id_t;
+
+typedef union {
+        offset_t _f;    /* Full 64 bit offset value */
+        struct {
+                int32_t _l; /* lower 32 bits of offset value */
+                int32_t _u; /* upper 32 bits of offset value */
+        } _p;
+} lloff_t;
+
+
+extern proc_t p0;
 
 typedef ino_t                          ino64_t;
 

@@ -1,34 +1,33 @@
-/*
- *  This file is part of the SPL: Solaris Porting Layer.
- *
- *  Copyright (c) 2009 Lawrence Livermore National Security, LLC.
- *  Produced at Lawrence Livermore National Laboratory
- *  Written by:
- *          Brian Behlendorf <behlendorf1@llnl.gov>,
- *          Herb Wartens <wartens2@llnl.gov>,
- *          Jim Garlick <garlick@llnl.gov>
+/*****************************************************************************\
+ *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
  *  UCRL-CODE-235197
  *
- *  This is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
  *
- *  This is distributed in the hope that it will be useful, but WITHOUT
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
  *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  *  for more details.
  *
  *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
- */
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+\*****************************************************************************/
 
 #ifndef _SPL_MUTEX_H
 #define _SPL_MUTEX_H
 
 #include <sys/types.h>
 #include <linux/mutex.h>
+#include <linux/compiler_compat.h>
 
 typedef enum {
         MUTEX_DEFAULT  = 0,
@@ -36,20 +35,29 @@ typedef enum {
         MUTEX_ADAPTIVE = 2
 } kmutex_type_t;
 
-#ifdef HAVE_MUTEX_OWNER
-
+#if defined(HAVE_MUTEX_OWNER) && defined(CONFIG_SMP)
 typedef struct mutex kmutex_t;
 
 static inline kthread_t *
 mutex_owner(kmutex_t *mp)
 {
-        if (mp->owner)
-                return (mp->owner)->task;
+	struct thread_info *owner;
+
+	owner = ACCESS_ONCE(mp->owner);
+        if (owner)
+                return owner->task;
 
         return NULL;
 }
-#define mutex_owned(mp)         (mutex_owner(mp) == current)
+
+static inline int
+mutex_owned(kmutex_t *mp)
+{
+	return (ACCESS_ONCE(mp->owner) == current_thread_info());
+}
+
 #define MUTEX_HELD(mp)          mutex_owned(mp)
+#define MUTEX_NOT_HELD(mp)      (!MUTEX_HELD(mp))
 #undef mutex_init
 #define mutex_init(mp, name, type, ibc)                                 \
 ({                                                                      \
@@ -62,13 +70,22 @@ mutex_owner(kmutex_t *mp)
 #undef mutex_destroy
 #define mutex_destroy(mp)                                               \
 ({                                                                      \
-        VERIFY(!MUTEX_HELD(mp));                                        \
+	VERIFY3P(mutex_owner(mp), ==, NULL);				\
 })
 
-#define mutex_tryenter(mp)      mutex_trylock(mp)
-#define mutex_enter(mp)         mutex_lock(mp)
-#define mutex_exit(mp)          mutex_unlock(mp)
+#define mutex_tryenter(mp)              mutex_trylock(mp)
+#define mutex_enter(mp)                 mutex_lock(mp)
 
+/* mutex->owner is not cleared when CONFIG_DEBUG_MUTEXES is set */
+#ifdef CONFIG_DEBUG_MUTEXES
+# define mutex_exit(mp)                                                 \
+({                                                                      \
+         (mp)->owner = NULL;                                            \
+	 mutex_unlock(mp);                                              \
+})
+#else
+# define mutex_exit(mp)                 mutex_unlock(mp)
+#endif /* CONFIG_DEBUG_MUTEXES */
 
 #ifdef HAVE_GPL_ONLY_SYMBOLS
 # define mutex_enter_nested(mp, sc)     mutex_lock_nested(mp, sc)
@@ -82,6 +99,8 @@ typedef struct {
         struct mutex m_mutex;
         kthread_t *m_owner;
 } kmutex_t;
+
+#eqwdewqd
 
 #ifdef HAVE_TASK_CURR
 extern int spl_mutex_spin_max(void);
@@ -133,6 +152,7 @@ mutex_owner(kmutex_t *mp)
 
 #define mutex_owned(mp)         (mutex_owner(mp) == current)
 #define MUTEX_HELD(mp)          mutex_owned(mp)
+#define MUTEX_NOT_HELD(mp)      (!MUTEX_HELD(mp))
 
 /*
  * The following functions must be a #define and not static inline.
@@ -153,7 +173,7 @@ mutex_owner(kmutex_t *mp)
 #undef mutex_destroy
 #define mutex_destroy(mp)                                               \
 ({                                                                      \
-        VERIFY(!MUTEX_HELD(mp));                                        \
+	VERIFY3P(mutex_owner(mp), ==, NULL);				\
 })
 
 #define mutex_tryenter(mp)                                              \

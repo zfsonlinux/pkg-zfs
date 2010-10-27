@@ -1,28 +1,28 @@
-/*
- *  This file is part of the SPL: Solaris Porting Layer.
- *
- *  Copyright (c) 2008 Lawrence Livermore National Security, LLC.
- *  Produced at Lawrence Livermore National Laboratory
- *  Written by:
- *          Brian Behlendorf <behlendorf1@llnl.gov>,
- *          Herb Wartens <wartens2@llnl.gov>,
- *          Jim Garlick <garlick@llnl.gov>
+/*****************************************************************************\
+ *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
  *  UCRL-CODE-235197
  *
- *  This is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
  *
- *  This is distributed in the hope that it will be useful, but WITHOUT
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
  *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  *  for more details.
  *
  *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
- */
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+ *****************************************************************************
+ *  Solaris Porting Layer (SPL) Generic Implementation.
+\*****************************************************************************/
 
 #include <sys/sysmacros.h>
 #include <sys/systeminfo.h>
@@ -38,17 +38,17 @@
 #include <sys/utsname.h>
 #include <sys/file.h>
 #include <linux/kmod.h>
-#include <sys/tsd_hashtable.h>
-#include "spl_config.h"
+#include <linux/proc_compat.h>
+#include <spl-debug.h>
 
-#ifdef DEBUG_SUBSYSTEM
-#undef DEBUG_SUBSYSTEM
+#ifdef SS_DEBUG_SUBSYS
+#undef SS_DEBUG_SUBSYS
 #endif
 
-#define DEBUG_SUBSYSTEM S_GENERIC
-extern struct tsd_hash_table *tsd_hash_table;
+#define SS_DEBUG_SUBSYS SS_GENERIC
 
 char spl_version[16] = "SPL v" SPL_META_VERSION;
+EXPORT_SYMBOL(spl_version);
 
 long spl_hostid = 0;
 EXPORT_SYMBOL(spl_hostid);
@@ -56,7 +56,7 @@ EXPORT_SYMBOL(spl_hostid);
 char hw_serial[HW_HOSTID_LEN] = "<none>";
 EXPORT_SYMBOL(hw_serial);
 
-int p0 = 0;
+proc_t p0 = { 0 };
 EXPORT_SYMBOL(p0);
 
 #ifndef HAVE_KALLSYMS_LOOKUP_NAME
@@ -67,10 +67,10 @@ int
 highbit(unsigned long i)
 {
         register int h = 1;
-        ENTRY;
+        SENTRY;
 
         if (i == 0)
-                RETURN(0);
+                SRETURN(0);
 #if BITS_PER_LONG == 64
         if (i & 0xffffffff00000000ul) {
                 h += 32; i >>= 32;
@@ -91,46 +91,123 @@ highbit(unsigned long i)
         if (i & 0x2) {
                 h += 1;
         }
-        RETURN(h);
+        SRETURN(h);
 }
 EXPORT_SYMBOL(highbit);
 
-/*
- * Implementation of 64 bit division for 32-bit machines.
- */
 #if BITS_PER_LONG == 32
-uint64_t __udivdi3(uint64_t dividend, uint64_t divisor)
+/*
+ * Support 64/64 => 64 division on a 32-bit platform.  While the kernel
+ * provides a div64_u64() function for this we do not use it because the
+ * implementation is flawed.  There are cases which return incorrect
+ * results as late as linux-2.6.35.  Until this is fixed upstream the
+ * spl must provide its own implementation.
+ *
+ * This implementation is a slightly modified version of the algorithm
+ * proposed by the book 'Hacker's Delight'.  The original source can be
+ * found here and is available for use without restriction.
+ *
+ * http://www.hackersdelight.org/HDcode/newCode/divDouble.c
+ */
+
+/*
+ * Calculate number of leading of zeros for a 64-bit value.
+ */
+static int
+nlz64(uint64_t x) {
+	register int n = 0;
+
+	if (x == 0)
+		return 64;
+
+	if (x <= 0x00000000FFFFFFFFULL) {n = n + 32; x = x << 32;}
+	if (x <= 0x0000FFFFFFFFFFFFULL) {n = n + 16; x = x << 16;}
+	if (x <= 0x00FFFFFFFFFFFFFFULL) {n = n +  8; x = x <<  8;}
+	if (x <= 0x0FFFFFFFFFFFFFFFULL) {n = n +  4; x = x <<  4;}
+	if (x <= 0x3FFFFFFFFFFFFFFFULL) {n = n +  2; x = x <<  2;}
+	if (x <= 0x7FFFFFFFFFFFFFFFULL) {n = n +  1;}
+
+	return n;
+}
+
+/*
+ * Newer kernels have a div_u64() function but we define our own
+ * to simplify portibility between kernel versions.
+ */
+static inline uint64_t
+__div_u64(uint64_t u, uint32_t v)
 {
-#if defined(HAVE_DIV64_64) /* 2.6.22 - 2.6.25 API */
-	return div64_64(dividend, divisor);
-#elif defined(HAVE_DIV64_U64) /* 2.6.26 - 2.6.x API */
-	return div64_u64(dividend, divisor);
-#else
-	/* Implementation from 2.6.30 kernel */
-	uint32_t high, d;
+	(void) do_div(u, v);
+	return u;
+}
 
-	high = divisor >> 32;
-	if (high) {
-		unsigned int shift = fls(high);
+/*
+ * Implementation of 64-bit unsigned division for 32-bit machines.
+ *
+ * First the procedure takes care of the case in which the divisor is a
+ * 32-bit quantity. There are two subcases: (1) If the left half of the
+ * dividend is less than the divisor, one execution of do_div() is all that
+ * is required (overflow is not possible). (2) Otherwise it does two
+ * divisions, using the grade school method.
+ */
+uint64_t
+__udivdi3(uint64_t u, uint64_t v)
+{
+	uint64_t u0, u1, v1, q0, q1, k;
+	int n;
 
-		d = divisor >> shift;
-		dividend >>= shift;
-	} else
-		d = divisor;
-
-	return do_div(dividend, d);
-#endif /* HAVE_DIV64_64, HAVE_DIV64_U64 */
+	if (v >> 32 == 0) {			// If v < 2**32:
+		if (u >> 32 < v) {		// If u/v cannot overflow,
+			return __div_u64(u, v);	// just do one division.
+		} else {			// If u/v would overflow:
+			u1 = u >> 32;		// Break u into two halves.
+			u0 = u & 0xFFFFFFFF;
+			q1 = __div_u64(u1, v);	// First quotient digit.
+			k  = u1 - q1 * v;	// First remainder, < v.
+			u0 += (k << 32);
+			q0 = __div_u64(u0, v);	// Seconds quotient digit.
+			return (q1 << 32) + q0;
+		}
+	} else {				// If v >= 2**32:
+		n = nlz64(v);			// 0 <= n <= 31.
+		v1 = (v << n) >> 32;		// Normalize divisor, MSB is 1.
+		u1 = u >> 1;			// To ensure no overflow.
+		q1 = __div_u64(u1, v1);		// Get quotient from
+		q0 = (q1 << n) >> 31;		// Undo normalization and
+						// division of u by 2.
+		if (q0 != 0)			// Make q0 correct or
+			q0 = q0 - 1;		// too small by 1.
+		if ((u - q0 * v) >= v)
+			q0 = q0 + 1;		// Now q0 is correct.
+	
+		return q0;
+	}
 }
 EXPORT_SYMBOL(__udivdi3);
 
 /*
- * Implementation of 64 bit modulo for 32-bit machines.
+ * Implementation of 64-bit signed division for 32-bit machines.
  */
-uint64_t __umoddi3(uint64_t dividend, uint64_t divisor)
+int64_t
+__divdi3(int64_t u, int64_t v)
 {
-	return dividend - divisor * (dividend / divisor);
+	int64_t q, t;
+	q = __udivdi3(abs64(u), abs64(v));
+	t = (u ^ v) >> 63;	// If u, v have different
+	return (q ^ t) - t;	// signs, negate q.
+}
+EXPORT_SYMBOL(__divdi3);
+
+/*
+ * Implementation of 64-bit unsigned modulo for 32-bit machines.
+ */
+uint64_t
+__umoddi3(uint64_t dividend, uint64_t divisor)
+{
+	return (dividend - (divisor * __udivdi3(dividend, divisor)));
 }
 EXPORT_SYMBOL(__umoddi3);
+
 #endif /* BITS_PER_LONG */
 
 /* NOTE: The strtoxx behavior is solely based on my reading of the Solaris
@@ -263,12 +340,12 @@ EXPORT_SYMBOL(ddi_copyout);
  * never be putting away the last reference on a task structure so this will
  * not be called.  However, we still need to define it so the module does not
  * have undefined symbol at load time.  That all said if this impossible
- * thing does somehow happen SBUG() immediately so we know about it.
+ * thing does somehow happen PANIC immediately so we know about it.
  */
 void
 __put_task_struct(struct task_struct *t)
 {
-	SBUG();
+	PANIC("Unexpectly put last reference on task %d\n", (int)t->pid);
 }
 EXPORT_SYMBOL(__put_task_struct);
 #endif /* HAVE_PUT_TASK_STRUCT */
@@ -335,7 +412,7 @@ EXPORT_SYMBOL(zone_get_hostid);
  * the requested address.
  */
 #define GET_KALLSYMS_ADDR_CMD						\
-	"awk '{ if ( $3 == \"kallsyms_lookup_name\") { print $1 } }' "	\
+	"gawk '{ if ( $3 == \"kallsyms_lookup_name\") { print $1 } }' "	\
 	"/proc/kallsyms >/proc/sys/kernel/spl/kallsyms_lookup_name"
 
 static int
@@ -370,39 +447,40 @@ __init spl_init(void)
 		return rc;
 
 	if ((rc = spl_kmem_init()))
-		GOTO(out1, rc);
+		SGOTO(out1, rc);
 
 	if ((rc = spl_mutex_init()))
-		GOTO(out2, rc);
+		SGOTO(out2, rc);
 
 	if ((rc = spl_rw_init()))
-		GOTO(out3, rc);
+		SGOTO(out3, rc);
 
 	if ((rc = spl_taskq_init()))
-		GOTO(out4, rc);
+		SGOTO(out4, rc);
 
 	if ((rc = vn_init()))
-		GOTO(out5, rc);
+		SGOTO(out5, rc);
 
 	if ((rc = proc_init()))
-		GOTO(out6, rc);
+		SGOTO(out6, rc);
 
 	if ((rc = kstat_init()))
-		GOTO(out7, rc);
+		SGOTO(out7, rc);
 
 	if ((rc = set_hostid()))
-		GOTO(out8, rc = -EADDRNOTAVAIL);
+		SGOTO(out8, rc = -EADDRNOTAVAIL);
 
 #ifndef HAVE_KALLSYMS_LOOKUP_NAME
 	if ((rc = set_kallsyms_lookup_name()))
-		GOTO(out8, rc = -EADDRNOTAVAIL);
+		SGOTO(out8, rc = -EADDRNOTAVAIL);
 #endif /* HAVE_KALLSYMS_LOOKUP_NAME */
 
 	if ((rc = spl_kmem_init_kallsyms_lookup()))
-		GOTO(out8, rc);
+		SGOTO(out8, rc);
 
-	printk("SPL: Loaded Solaris Porting Layer v%s\n", SPL_META_VERSION);
-	RETURN(rc);
+	printk(KERN_NOTICE "SPL: Loaded Solaris Porting Layer v%s%s\n",
+	       SPL_META_VERSION, SPL_DEBUG_STR);
+	SRETURN(rc);
 out8:
 	kstat_fini();
 out7:
@@ -420,19 +498,18 @@ out2:
 out1:
 	debug_fini();
 
-	printk("SPL: Failed to Load Solaris Porting Layer v%s, "
-	       "rc = %d\n", SPL_META_VERSION, rc);
+	printk(KERN_NOTICE "SPL: Failed to Load Solaris Porting Layer v%s%s"
+	       ", rc = %d\n", SPL_META_VERSION, SPL_DEBUG_STR, rc);
 	return rc;
 }
 
 static void
 spl_fini(void)
 {
-	ENTRY;
+	SENTRY;
 
-	printk("SPL: Unloaded Solaris Porting Layer v%s\n", SPL_META_VERSION);
-	/* Remove the TSD's hash table */
-	fini_tsd_hash_table(tsd_hash_table);
+	printk(KERN_NOTICE "SPL: Unloaded Solaris Porting Layer v%s%s\n",
+	       SPL_META_VERSION, SPL_DEBUG_STR);
 	kstat_fini();
 	proc_fini();
 	vn_fini();
@@ -447,12 +524,16 @@ spl_fini(void)
 void
 spl_setup(void)
 {
+        int rc;
+
         /*
          * At module load time the pwd is set to '/' on a Solaris system.
          * On a Linux system will be set to whatever directory the caller
          * was in when executing insmod/modprobe.
          */
-        vn_set_pwd("/");
+        rc = vn_set_pwd("/");
+        if (rc)
+                printk("SPL: Warning unable to set pwd to '/': %d\n", rc);
 }
 EXPORT_SYMBOL(spl_setup);
 

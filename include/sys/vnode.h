@@ -1,35 +1,29 @@
-/*
- *  This file is part of the SPL: Solaris Porting Layer.
- *
- *  Copyright (c) 2008 Lawrence Livermore National Security, LLC.
- *  Produced at Lawrence Livermore National Laboratory
- *  Written by:
- *          Brian Behlendorf <behlendorf1@llnl.gov>,
- *          Herb Wartens <wartens2@llnl.gov>,
- *          Jim Garlick <garlick@llnl.gov>
+/*****************************************************************************\
+ *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
  *  UCRL-CODE-235197
  *
- *  This is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
  *
- *  This is distributed in the hope that it will be useful, but WITHOUT
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
  *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  *  for more details.
  *
  *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
- */
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+\*****************************************************************************/
 
 #ifndef _SPL_VNODE_H
 #define _SPL_VNODE_H
-
-#ifdef  __cplusplus
-extern "C" {
-#endif
 
 #include <linux/module.h>
 #include <linux/syscalls.h>
@@ -55,9 +49,18 @@ extern "C" {
 
 #define XVA_MAPSIZE     3
 #define XVA_MAGIC       0x78766174
+#define O_RSYNC         O_SYNC
 
+#define AV_SCANSTAMP_SZ 32              /* length of anti-virus scanstamp */
+
+/*
+ * Prior to linux-2.6.33 only O_DSYNC semantics were implemented and
+ * they used the O_SYNC flag.  As of linux-2.6.33 the this behavior
+ * was properly split in to O_SYNC and O_DSYNC respectively.
+ */
+#ifndef O_DSYNC
 #define O_DSYNC		O_SYNC
-#define O_RSYNC		O_SYNC
+#endif
 
 #define FREAD		1
 #define FWRITE		2
@@ -137,21 +140,21 @@ typedef enum vtype {
 
 
 typedef struct vattr {
-    enum vtype	va_type;	/* vnode type */
-    u_int		va_mask;	/* attribute bit-mask */
-    u_short		va_mode;	/* acc mode */
-    uid_t       va_uid;		/* owner uid */
-    gid_t       va_gid;		/* owner gid */
-    long		va_fsid;	/* fs id */
-    long		va_nodeid;	/* node # */
-    uint32_t	va_nlink;	/* # links */
-    u_long		va_size;	/* file size */
-    uint32_t	va_blocksize;	/* block size */
-    struct timespec va_atime;	/* last acc */
-    struct timespec va_mtime;	/* last mod */
-    struct timespec va_ctime;	/* last chg */
-    dev_t		va_rdev;	/* dev */
-    long		va_blocks;	/* space used */
+	enum vtype	va_type;	/* vnode type */
+	u_int		va_mask;	/* attribute bit-mask */
+	u_short		va_mode;	/* acc mode */
+	uid_t 		va_uid;		/* owner uid */
+	uid_t	 	va_gid;		/* owner gid */
+	long		va_fsid;	/* fs id */
+	long		va_nodeid;	/* node # */
+	uint32_t	va_nlink;	/* # links */
+	u_long		va_size;	/* file size */
+	uint32_t	va_blocksize;	/* block size */
+	struct timespec va_atime;	/* last acc */
+	struct timespec va_mtime;	/* last mod */
+	struct timespec va_ctime;	/* last chg */
+	dev_t		va_rdev;	/* dev */
+	long		va_blocks;	/* space used */
     uint64_t    va_nblocks;     /* space used, TBD, remove above field */
 } vattr_t;
 
@@ -188,7 +191,6 @@ typedef struct vsecattr {
 	int		vsa_dfaclcnt;	/* default ACL entry count */
 	void		*vsa_dfaclentp;	/* pointer to default ACL entries */
 	size_t		vsa_aclentsz;	/* ACE size in bytes of vsa_aclentp */
-        uint_t          vsa_aclflags;   /* ACE ACL flags */
 } vsecattr_t;
 
 typedef struct vnode {
@@ -201,6 +203,7 @@ typedef struct vnode {
 	struct stdata	*v_stream;	/* associated stream */
 	enum vtype	v_type;		/* vnode type */
 	dev_t		v_rdev;		/* device (VCHR, VBLK) */
+	gfp_t		v_gfp_mask;	/* original mapping gfp mask */
 	struct inode	v_inode;	/* Linux inode */
 } vnode_t;
 
@@ -307,6 +310,12 @@ vn_putpage(vnode_t *vp, offset_t off, ssize_t size,
 	zfs_space(vp, cmd, fl, f, off, cr, ct)
 
 #define MODEMASK              07777
+/*
+ *Check whether mandatory file locking is enabled.
+*/
+#define	MANDMODE(mode)		(((mode) & (VSGID|(VEXEC>>3))) == VSGID)
+#define	MANDLOCK(vp, mode)	((vp)->v_type == VREG && MANDMODE(mode))
+
 
 /*
  * VOP_ACCESS flags
@@ -328,6 +337,7 @@ extern vnode_t *rootdir;
 /* root of its file system */
 #define VROOT 0x01
 #define VMMAPPED 0x02
+
 
 void
 zfs_inactive(vnode_t *vp, struct cred *cr, caller_context_t *ct);
@@ -373,7 +383,7 @@ int
 zfs_readlink(vnode_t *vp, uio_t *uio, struct cred *cr, caller_context_t *ct);
 
 int
-zfs_read(vnode_t *vp, uio_t *uio, int ioflag, struct cred *cr,
+zfs_read(vnode_t *vp, uio_t *uio, int ioflag,  cred_t *cr,
 	 caller_context_t *ct);
 
 int zfs_file_accessed(vnode_t *vp);
@@ -381,7 +391,7 @@ int zfs_file_accessed(vnode_t *vp);
 int zfs_file_modified(vnode_t *vp);
 
 int
-zfs_write(vnode_t *vp, uio_t *uio, int ioflag, struct cred *cr, 
+zfs_write(vnode_t *vp, uio_t *uio, int ioflag, cred_t *cr, 
 	  caller_context_t *ct);
 
 int

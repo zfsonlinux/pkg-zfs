@@ -25,6 +25,7 @@
 #include <sys/kmem.h>
 #include <sys/tsd_hashtable.h>
 #include <sys/tsd_wrapper.h>
+#include <spl-debug.h>
 
 #ifdef DEBUG_SUBSYSTEM
 #undef DEBUG_SUBSYSTEM
@@ -43,8 +44,8 @@ DEFINE_MUTEX(tsd_mutex);
 
 void tsd_defaultdestructor(void *value)
 {
-	ENTRY;
-	EXIT;
+	SENTRY;
+	SEXIT;
 }
 EXPORT_SYMBOL(tsd_defaultdestructor);
 
@@ -57,7 +58,7 @@ tsd_realloc(void *old, size_t osize, size_t nsize)
 	new = kmem_zalloc(nsize, KM_SLEEP);
 	if (!new)
 	    return NULL;
-	ENTRY;
+	SENTRY;
 	if (old) {
 		memcpy(old, new, osize);
 		kmem_free(old, osize);
@@ -74,11 +75,11 @@ tsd_create(uint_t *keyp, void (*destructor)(void *))
 	/*
 	 * if key is allocated, do nothing
 	 */
-	ENTRY;
+	SENTRY;
 	mutex_lock(&tsd_mutex);
 	if (*keyp) {
 		mutex_unlock(&tsd_mutex);
-		EXIT;
+		SEXIT;
 		return;
 	}
 	/*
@@ -111,7 +112,7 @@ tsd_create(uint_t *keyp, void (*destructor)(void *))
 	tsd_destructor[i] = destructor;
 	*keyp = i + 1;
 	mutex_unlock(&tsd_mutex);
-	EXIT;
+	SEXIT;
 }
 EXPORT_SYMBOL(tsd_create);
 
@@ -120,19 +121,19 @@ get_tsd_thread(pid_t pid)
 {
 	tsd_wrap_thread_t *t;
 
-	ENTRY;
+	SENTRY;
 	mutex_lock(&wrap_mutex);
 
 	t = tsd_hash_search(tsd_hash_table, pid);
 
 	if (t != NULL ) {
 		mutex_unlock(&wrap_mutex);
-		EXIT;
+		SEXIT;
 		return t;
 	}
 	mutex_unlock(&wrap_mutex);
 	
-	EXIT;
+	SEXIT;
 	return NULL;
 }
 EXPORT_SYMBOL(get_tsd_thread);
@@ -144,21 +145,21 @@ tsd_wrap_create(void)
 	tsd_wrap_thread_t *temp;
 	struct task_struct *task = curthread;
 
-	ENTRY;
+	SENTRY;
 	temp = get_tsd_thread(task->pid);
 	if (temp) {
-	    EXIT;
+	    SEXIT;
 	    return temp;
 	}
 
 	temp =  kmem_zalloc(sizeof (struct tsd_wrap_thread ), KM_SLEEP);
 	if (!temp) {
-	    EXIT;
+	    SEXIT;
 	    return NULL;
 	}
 	temp->tpid = task->pid;
 
-	EXIT;
+	SEXIT;
 	return temp;
 }
 
@@ -166,15 +167,15 @@ tsd_wrap_create(void)
 int
 tsd_agent_set(struct tsd_wrap_thread *tsd, uint_t key, void *value)
 {
-	ENTRY;
+	SENTRY;
 	if (key == 0) {
-		EXIT;
+		SEXIT;
 		return EINVAL;
 	}
 
 	if (key <= tsd->ts_nkeys) {
 		tsd->ts_value[key - 1] = value;
-		EXIT;
+		SEXIT;
 		return 0;
 	}
 
@@ -190,14 +191,14 @@ tsd_agent_set(struct tsd_wrap_thread *tsd, uint_t key, void *value)
 			(tsd)->ts_nkeys * sizeof (void *),
 			key * sizeof (void *));
 	if (tsd->ts_value == NULL) {
-		EXIT;
+		SEXIT;
 		return EINVAL;
 	}
 	tsd->ts_nkeys = key;
 	tsd->ts_value[key - 1] = value;
 
 	mutex_unlock(&tsd_mutex);
-	EXIT;
+	SEXIT;
 
 	return 0;
 }
@@ -207,12 +208,12 @@ tsd_set(unsigned int key, void *value)
 {
 	tsd_wrap_thread_t *tsd = tsd_wrap_create();
 
-	ENTRY;
+	SENTRY;
 	if(unlikely(!tsd)) {
-		EXIT;
+		SEXIT;
 		return EINVAL;
 	}
-	EXIT;
+	SEXIT;
 	return  tsd_agent_set(tsd, key, value);
 }
 EXPORT_SYMBOL(tsd_set);
@@ -221,9 +222,9 @@ EXPORT_SYMBOL(tsd_set);
 void *
 tsd_agent_get(struct tsd_wrap_thread *tsd, uint_t key)
 {
-	ENTRY;
+	SENTRY;
 	if (key && tsd != NULL && key <= tsd->ts_nkeys) {
-		EXIT;
+		SEXIT;
 		return (tsd->ts_value[key - 1]);
 	}
 	return (NULL);
@@ -236,14 +237,14 @@ tsd_get(unsigned int key)
 	struct task_struct *task = curthread;
 	tsd_wrap_thread_t *tsd = get_tsd_thread(task->pid);
 
-	ENTRY;
+	SENTRY;
 
 	if(unlikely(!tsd)) {
-		EXIT;
+		SEXIT;
 		return NULL;
 	}
 
-	EXIT;
+	SEXIT;
 	return tsd_agent_get(tsd, key);
 }
 EXPORT_SYMBOL(tsd_get);
@@ -254,7 +255,7 @@ tsd_destroy(uint_t *keyp)
 	uint_t key;
 	struct task_struct *task = curthread;
 
-	ENTRY;
+	SENTRY;
 	/*
 	 * protect the key namespace and our destructor lists
 	 */
@@ -276,7 +277,7 @@ tsd_destroy(uint_t *keyp)
 		}
 	}
 	mutex_unlock(&tsd_mutex);
-	EXIT;
+	SEXIT;
 }
 EXPORT_SYMBOL(tsd_destroy);
 
@@ -288,15 +289,15 @@ tsd_exit(void)
 	struct task_struct *task = curthread;
 	tsd_wrap_thread_t *tsd = get_tsd_thread(task->pid);
 
-	ENTRY;
+	SENTRY;
 	if (tsd == NULL) {
-		EXIT;
+		SEXIT;
 		return;
 	}
 
 	if (tsd->ts_nkeys == 0) {
 		kmem_free(tsd, sizeof (*tsd));
-		EXIT;
+		SEXIT;
 		return;
 	}
 
@@ -310,7 +311,7 @@ tsd_exit(void)
 	}
 	tsd_hash_del(tsd_hash_table, task->pid);
 	mutex_exit(&tsd_mutex);
-	EXIT;
+	SEXIT;
 
 }
 EXPORT_SYMBOL(tsd_exit);

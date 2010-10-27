@@ -1,28 +1,28 @@
-/*
- *  This file is part of the SPL: Solaris Porting Layer.
- *
- *  Copyright (c) 2008 Lawrence Livermore National Security, LLC.
- *  Produced at Lawrence Livermore National Laboratory
- *  Written by:
- *	  Brian Behlendorf <behlendorf1@llnl.gov>,
- *	  Herb Wartens <wartens2@llnl.gov>,
- *	  Jim Garlick <garlick@llnl.gov>
+/*****************************************************************************\
+ *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
  *  UCRL-CODE-235197
  *
- *  This is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
  *
- *  This is distributed in the hope that it will be useful, but WITHOUT
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
  *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  *  for more details.
  *
  *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
- */
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+ *****************************************************************************
+ *  Solaris Porting LAyer Tests (SPLAT) Kmem Tests.
+\*****************************************************************************/
 
 #include "splat-internal.h"
 
@@ -69,9 +69,11 @@
 #define SPLAT_KMEM_TEST10_NAME		"slab_lock"
 #define SPLAT_KMEM_TEST10_DESC		"Slab locking test"
 
+#ifdef _LP64
 #define SPLAT_KMEM_TEST11_ID		0x010b
 #define SPLAT_KMEM_TEST11_NAME		"slab_overcommit"
 #define SPLAT_KMEM_TEST11_DESC		"Slab memory overcommit test"
+#endif /* _LP64 */
 
 #define SPLAT_KMEM_TEST12_ID		0x010c
 #define SPLAT_KMEM_TEST12_NAME		"vmem_size"
@@ -88,15 +90,11 @@ splat_kmem_test1(struct file *file, void *arg)
 	int size = PAGE_SIZE;
 	int i, count, rc = 0;
 
-	/* We are intentionally going to push kmem_alloc to its max
-	 * allocation size, so suppress the console warnings for now */
-	kmem_set_warning(0);
-
 	while ((!rc) && (size <= (PAGE_SIZE * 32))) {
 		count = 0;
 
 		for (i = 0; i < SPLAT_KMEM_ALLOC_COUNT; i++) {
-			ptr[i] = kmem_alloc(size, KM_SLEEP);
+			ptr[i] = kmem_alloc(size, KM_SLEEP | KM_NODEBUG);
 			if (ptr[i])
 				count++;
 		}
@@ -114,8 +112,6 @@ splat_kmem_test1(struct file *file, void *arg)
 		size *= 2;
 	}
 
-	kmem_set_warning(1);
-
 	return rc;
 }
 
@@ -126,15 +122,11 @@ splat_kmem_test2(struct file *file, void *arg)
 	int size = PAGE_SIZE;
 	int i, j, count, rc = 0;
 
-	/* We are intentionally going to push kmem_alloc to its max
-	 * allocation size, so suppress the console warnings for now */
-	kmem_set_warning(0);
-
 	while ((!rc) && (size <= (PAGE_SIZE * 32))) {
 		count = 0;
 
 		for (i = 0; i < SPLAT_KMEM_ALLOC_COUNT; i++) {
-			ptr[i] = kmem_zalloc(size, KM_SLEEP);
+			ptr[i] = kmem_zalloc(size, KM_SLEEP | KM_NODEBUG);
 			if (ptr[i])
 				count++;
 		}
@@ -143,7 +135,7 @@ splat_kmem_test2(struct file *file, void *arg)
 		for (i = 0; i < SPLAT_KMEM_ALLOC_COUNT; i++) {
 			for (j = 0; j < size; j++) {
 				if (((char *)ptr[i])[j] != '\0') {
-					splat_vprint(file, SPLAT_KMEM_TEST2_NAME,
+					splat_vprint(file,SPLAT_KMEM_TEST2_NAME,
 						  "%d-byte allocation was "
 						  "not zeroed\n", size);
 					rc = -EFAULT;
@@ -163,8 +155,6 @@ splat_kmem_test2(struct file *file, void *arg)
 
 		size *= 2;
 	}
-
-	kmem_set_warning(1);
 
 	return rc;
 }
@@ -416,9 +406,10 @@ splat_kmem_cache_test_reclaim(void *priv)
 	for (i = 0; i < kcp->kcp_kct_count; i++) {
 		spin_lock(&kcp->kcp_lock);
 		kct = kcp->kcp_kct[i];
-		spin_unlock(&kcp->kcp_lock);
-		if (!kct)
+		if (!kct) {
+			spin_unlock(&kcp->kcp_lock);
 			continue;
+		}
 
 		spin_lock(&kct->kct_lock);
 		count = kct->kct_kcd_count * SPLAT_KMEM_OBJ_RECLAIM / 100;
@@ -433,6 +424,7 @@ splat_kmem_cache_test_reclaim(void *priv)
 			}
 		}
 		spin_unlock(&kct->kct_lock);
+		spin_unlock(&kcp->kcp_lock);
 	}
 
 	return;
@@ -744,15 +736,15 @@ splat_kmem_test6(struct file *file, void *arg)
 	char *name = SPLAT_KMEM_TEST6_NAME;
 	int rc;
 
-	rc = splat_kmem_cache_test(file, arg, name, 128*1024, 0, 0);
+	rc = splat_kmem_cache_test(file, arg, name, 256*1024, 0, 0);
 	if (rc)
 		return rc;
 
-	rc = splat_kmem_cache_test(file, arg, name, 128*1024, 0, KMC_KMEM);
+	rc = splat_kmem_cache_test(file, arg, name, 64*1024, 0, KMC_KMEM);
 	if (rc)
 		return rc;
 
-	return splat_kmem_cache_test(file, arg, name, 128*1028, 0, KMC_VMEM);
+	return splat_kmem_cache_test(file, arg, name, 1024*1024, 0, KMC_VMEM);
 }
 
 /* Validate object alignment cache behavior for caches */
@@ -1003,6 +995,7 @@ splat_kmem_test10(struct file *file, void *arg)
 	return rc;
 }
 
+#ifdef _LP64
 /*
  * This test creates N threads with a shared kmem cache which overcommits
  * memory by 4x.  This makes it impossible for the slab to satify the
@@ -1011,7 +1004,9 @@ splat_kmem_test10(struct file *file, void *arg)
  * detecting a low memory condition on the node and invoking the shrinkers.
  * This should allow all the threads to complete while avoiding deadlock
  * and for the most part out of memory events.  This is very tough on the
- * system so it is possible the test app may get oom'ed.
+ * system so it is possible the test app may get oom'ed.  This particular
+ * test has proven troublesome on 32-bit archs with limited virtual
+ * address space so it only run on 64-bit systems.
  */
 static int
 splat_kmem_test11(struct file *file, void *arg)
@@ -1031,6 +1026,7 @@ splat_kmem_test11(struct file *file, void *arg)
 
 	return rc;
 }
+#endif /* _LP64 */
 
 /*
  * Check vmem_size() behavior by acquiring the alloc/free/total vmem
@@ -1147,8 +1143,10 @@ splat_kmem_init(void)
 			SPLAT_KMEM_TEST9_ID, splat_kmem_test9);
 	SPLAT_TEST_INIT(sub, SPLAT_KMEM_TEST10_NAME, SPLAT_KMEM_TEST10_DESC,
 			SPLAT_KMEM_TEST10_ID, splat_kmem_test10);
+#ifdef _LP64
 	SPLAT_TEST_INIT(sub, SPLAT_KMEM_TEST11_NAME, SPLAT_KMEM_TEST11_DESC,
 			SPLAT_KMEM_TEST11_ID, splat_kmem_test11);
+#endif /* _LP64 */
 	SPLAT_TEST_INIT(sub, SPLAT_KMEM_TEST12_NAME, SPLAT_KMEM_TEST12_DESC,
 			SPLAT_KMEM_TEST12_ID, splat_kmem_test12);
 
@@ -1160,7 +1158,9 @@ splat_kmem_fini(splat_subsystem_t *sub)
 {
 	ASSERT(sub);
 	SPLAT_TEST_FINI(sub, SPLAT_KMEM_TEST12_ID);
+#ifdef _LP64
 	SPLAT_TEST_FINI(sub, SPLAT_KMEM_TEST11_ID);
+#endif /* _LP64 */
 	SPLAT_TEST_FINI(sub, SPLAT_KMEM_TEST10_ID);
 	SPLAT_TEST_FINI(sub, SPLAT_KMEM_TEST9_ID);
 	SPLAT_TEST_FINI(sub, SPLAT_KMEM_TEST8_ID);

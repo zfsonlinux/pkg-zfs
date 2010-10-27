@@ -18,6 +18,9 @@
 /* vfs_unlink() wants 2 args */
 #undef HAVE_2ARGS_VFS_UNLINK
 
+/* file_fsync() wants 3 args */
+#undef HAVE_3ARGS_FILE_FSYNC
+
 /* INIT_WORK wants 3 args */
 #undef HAVE_3ARGS_INIT_WORK
 
@@ -48,17 +51,14 @@
 /* struct cred exists */
 #undef HAVE_CRED_STRUCT
 
+/* struct ctl_table has ctl_name */
+#undef HAVE_CTL_NAME
+
 /* unnumbered sysctl support exists */
 #undef HAVE_CTL_UNNUMBERED
 
 /* device_create() is available */
 #undef HAVE_DEVICE_CREATE
-
-/* div64_64() is available */
-#undef HAVE_DIV64_64
-
-/* div64_u64() is available */
-#undef HAVE_DIV64_U64
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
@@ -101,6 +101,9 @@
 
 /* kmalloc_node() is available */
 #undef HAVE_KMALLOC_NODE
+
+/* kvasprintf() is available */
+#undef HAVE_KVASPRINTF
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
@@ -176,6 +179,9 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
+
+/* user_path_dir() is available */
+#undef HAVE_USER_PATH_DIR
 
 /* Page state NR_ACTIVE is available */
 #undef HAVE_ZONE_STAT_ITEM_NR_ACTIVE
@@ -258,5 +264,3 @@
 
 /* Version number of package */
 #undef VERSION
-
-#include <spl_unconfig.h>

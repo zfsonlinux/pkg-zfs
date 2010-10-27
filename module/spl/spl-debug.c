@@ -1,35 +1,28 @@
-/*
- *  This file is part of the SPL: Solaris Porting Layer.
- *
- *  This file was originally part of Lustre, http://www.lustre.org.
- *  but has subsequently been adapted for use in the SPL in
- *  accordance with the GPL.
- *
- *  Copyright (C) 2004 Cluster File Systems, Inc.
- *  Copyright (c) 2008 Lawrence Livermore National Security, LLC.
- *  Produced at Lawrence Livermore National Laboratory
- *  Written by:
- *          Zach Brown <zab@clusterfs.com>
- *          Phil Schwan <phil@clusterfs.com>
- *          Brian Behlendorf <behlendorf1@llnl.gov>,
- *          Herb Wartens <wartens2@llnl.gov>,
- *          Jim Garlick <garlick@llnl.gov>
+/*****************************************************************************\
+ *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
  *  UCRL-CODE-235197
  *
- *  This is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
  *
- *  This is distributed in the hope that it will be useful, but WITHOUT
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
  *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  *  for more details.
  *
  *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
- */
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+ *****************************************************************************
+ *  Solaris Porting Layer (SPL) Debug Implementation.
+\*****************************************************************************/
 
 #include <linux/kmod.h>
 #include <linux/mm.h>
@@ -41,31 +34,32 @@
 #include <linux/hardirq.h>
 #include <linux/interrupt.h>
 #include <linux/spinlock.h>
+#include <linux/proc_compat.h>
+#include <linux/file_compat.h>
 #include <sys/sysmacros.h>
-#include <sys/proc.h>
-#include <sys/debug.h>
+#include <spl-debug.h>
+#include <spl-trace.h>
 #include <spl-ctl.h>
 
-#ifdef DEBUG_SUBSYSTEM
-#undef DEBUG_SUBSYSTEM
+#ifdef SS_DEBUG_SUBSYS
+#undef SS_DEBUG_SUBSYS
 #endif
 
-#define DEBUG_SUBSYSTEM S_DEBUG
+#define SS_DEBUG_SUBSYS SS_DEBUG
 
 unsigned long spl_debug_subsys = ~0;
 EXPORT_SYMBOL(spl_debug_subsys);
-module_param(spl_debug_subsys, long, 0644);
+module_param(spl_debug_subsys, ulong, 0644);
 MODULE_PARM_DESC(spl_debug_subsys, "Subsystem debugging level mask.");
 
-//unsigned long spl_debug_mask = (D_EMERG | D_ERROR | D_WARNING | D_CONSOLE);
-unsigned long spl_debug_mask = ~0;
+unsigned long spl_debug_mask = SD_CANTMASK;
 EXPORT_SYMBOL(spl_debug_mask);
-module_param(spl_debug_mask, long, 0644);
+module_param(spl_debug_mask, ulong, 0644);
 MODULE_PARM_DESC(spl_debug_mask, "Debugging level mask.");
 
-unsigned long spl_debug_printk = D_CANTMASK;
+unsigned long spl_debug_printk = SD_CANTMASK;
 EXPORT_SYMBOL(spl_debug_printk);
-module_param(spl_debug_printk, long, 0644);
+module_param(spl_debug_printk, ulong, 0644);
 MODULE_PARM_DESC(spl_debug_printk, "Console printk level mask.");
 
 int spl_debug_mb = -1;
@@ -79,15 +73,15 @@ EXPORT_SYMBOL(spl_debug_binary);
 unsigned int spl_debug_catastrophe;
 EXPORT_SYMBOL(spl_debug_catastrophe);
 
-unsigned int spl_debug_panic_on_bug = 1;
+unsigned int spl_debug_panic_on_bug = 0;
 EXPORT_SYMBOL(spl_debug_panic_on_bug);
-module_param(spl_debug_panic_on_bug, int, 0644);
+module_param(spl_debug_panic_on_bug, uint, 0644);
 MODULE_PARM_DESC(spl_debug_panic_on_bug, "Panic on BUG");
 
 static char spl_debug_file_name[PATH_MAX];
-char spl_debug_file_path[PATH_MAX] = "/var/dumps/spl-log";
+char spl_debug_file_path[PATH_MAX] = "/tmp/spl-log";
 
-unsigned int spl_console_ratelimit = 0;
+unsigned int spl_console_ratelimit = 1;
 EXPORT_SYMBOL(spl_console_ratelimit);
 
 long spl_console_max_delay;
@@ -126,44 +120,60 @@ spl_debug_subsys2str(int subsys)
         switch (subsys) {
         default:
                 return NULL;
-        case S_UNDEFINED:
+        case SS_UNDEFINED:
                 return "undefined";
-        case S_ATOMIC:
+        case SS_ATOMIC:
                 return "atomic";
-        case S_KOBJ:
+        case SS_KOBJ:
                 return "kobj";
-        case S_VNODE:
+        case SS_VNODE:
                 return "vnode";
-        case S_TIME:
+        case SS_TIME:
                 return "time";
-        case S_RWLOCK:
+        case SS_RWLOCK:
                 return "rwlock";
-        case S_THREAD:
+        case SS_THREAD:
                 return "thread";
-        case S_CONDVAR:
+        case SS_CONDVAR:
                 return "condvar";
-        case S_MUTEX:
+        case SS_MUTEX:
                 return "mutex";
-        case S_RNG:
+        case SS_RNG:
                 return "rng";
-        case S_TASKQ:
+        case SS_TASKQ:
                 return "taskq";
-        case S_KMEM:
+        case SS_KMEM:
                 return "kmem";
-        case S_DEBUG:
+        case SS_DEBUG:
                 return "debug";
-        case S_GENERIC:
+        case SS_GENERIC:
                 return "generic";
-        case S_PROC:
+        case SS_PROC:
                 return "proc";
-        case S_MODULE:
+        case SS_MODULE:
                 return "module";
-	case S_CRED:
+        case SS_CRED:
                 return "cred";
-	case S_LZFS:
-                return "lzfs";
-	case S_TSD:
-                return "tsd";
+        case SS_KSTAT:
+                return "kstat";
+        case SS_XDR:
+                return "xdr";
+        case SS_USER1:
+                return "user1";
+        case SS_USER2:
+                return "user2";
+        case SS_USER3:
+                return "user3";
+        case SS_USER4:
+                return "user4";
+        case SS_USER5:
+                return "user5";
+        case SS_USER6:
+                return "user6";
+        case SS_USER7:
+                return "user7";
+        case SS_USER8:
+                return "user8";
         }
 }
 
@@ -173,23 +183,23 @@ spl_debug_dbg2str(int debug)
         switch (debug) {
         default:
                 return NULL;
-        case D_TRACE:
+        case SD_TRACE:
                 return "trace";
-        case D_INFO:
+        case SD_INFO:
                 return "info";
-        case D_WARNING:
+        case SD_WARNING:
                 return "warning";
-        case D_ERROR:
+        case SD_ERROR:
                 return "error";
-        case D_EMERG:
+        case SD_EMERG:
                 return "emerg";
-        case D_CONSOLE:
+        case SD_CONSOLE:
                 return "console";
-        case D_IOCTL:
+        case SD_IOCTL:
                 return "ioctl";
-        case D_DPRINTF:
+        case SD_DPRINTF:
                 return "dprintf";
-        case D_OTHER:
+        case SD_OTHER:
                 return "other";
         }
 }
@@ -362,7 +372,7 @@ spl_debug_dumplog_internal(dumplog_priv_t *dp)
         snprintf(spl_debug_file_name, sizeof(spl_debug_file_path) - 1,
                  "%s.%ld.%ld", spl_debug_file_path,
 		 get_seconds(), (long)dp->dp_pid);
-        printk(KERN_ALERT "SPL: dumping log to %s\n", spl_debug_file_name);
+        printk("SPL: Dumping log to %s\n", spl_debug_file_name);
         spl_debug_dump_all_pages(dp, spl_debug_file_name);
 
         current->journal_info = journal_info;
@@ -503,21 +513,21 @@ trace_print_to_console(struct spl_debug_header *hdr, int mask, const char *buf,
 {
         char *prefix = "SPL", *ptype = NULL;
 
-        if ((mask & D_EMERG) != 0) {
+        if ((mask & SD_EMERG) != 0) {
                 prefix = "SPLError";
                 ptype = KERN_EMERG;
-        } else if ((mask & D_ERROR) != 0) {
+        } else if ((mask & SD_ERROR) != 0) {
                 prefix = "SPLError";
                 ptype = KERN_ERR;
-        } else if ((mask & D_WARNING) != 0) {
+        } else if ((mask & SD_WARNING) != 0) {
                 prefix = "SPL";
                 ptype = KERN_WARNING;
-        } else if ((mask & (D_CONSOLE | spl_debug_printk)) != 0) {
+        } else if ((mask & (SD_CONSOLE | spl_debug_printk)) != 0) {
                 prefix = "SPL";
                 ptype = KERN_INFO;
         }
 
-        if ((mask & D_CONSOLE) != 0) {
+        if ((mask & SD_CONSOLE) != 0) {
                 printk("%s%s: %.*s", ptype, prefix, len, buf);
         } else {
                 printk("%s%s: %d:%d:(%s:%d:%s()) %.*s", ptype, prefix,
@@ -644,10 +654,10 @@ trace_get_tage(struct trace_cpu_data *tcd, unsigned long len)
 }
 
 int
-spl_debug_vmsg(spl_debug_limit_state_t *cdls, int subsys, int mask,
-               const char *file, const char *fn, const int line,
-               const char *format1, va_list args, const char *format2, ...)
+spl_debug_msg(void *arg, int subsys, int mask, const char *file,
+    const char *fn, const int line, const char *format, ...)
 {
+	spl_debug_limit_state_t *cdls = arg;
         struct trace_cpu_data   *tcd = NULL;
         struct spl_debug_header header = { 0, };
         struct trace_page       *tage;
@@ -659,12 +669,17 @@ spl_debug_vmsg(spl_debug_limit_state_t *cdls, int subsys, int mask,
         int                      max_nob;
         va_list                  ap;
         int                      i;
-        int                      remain;
+
+	if (subsys == 0)
+		subsys = SS_DEBUG_SUBSYS;
+
+	if (mask == 0)
+		mask = SD_EMERG;
 
         if (strchr(file, '/'))
                 file = strrchr(file, '/') + 1;
 
-        trace_set_debug_header(&header, subsys, mask, line, CDEBUG_STACK());
+        trace_set_debug_header(&header, subsys, mask, line, 0);
 
         tcd = trace_get_tcd();
         if (tcd == NULL)
@@ -689,7 +704,7 @@ spl_debug_vmsg(spl_debug_limit_state_t *cdls, int subsys, int mask,
                 tage = trace_get_tage(tcd, needed + known_size + 1);
                 if (tage == NULL) {
                         if (needed + known_size > PAGE_SIZE)
-                                mask |= D_ERROR;
+                                mask |= SD_ERROR;
 
                         trace_put_tcd(tcd);
                         tcd = NULL;
@@ -702,26 +717,16 @@ spl_debug_vmsg(spl_debug_limit_state_t *cdls, int subsys, int mask,
                 max_nob = PAGE_SIZE - tage->used - known_size;
                 if (max_nob <= 0) {
                         printk(KERN_EMERG "negative max_nob: %i\n", max_nob);
-                        mask |= D_ERROR;
+                        mask |= SD_ERROR;
                         trace_put_tcd(tcd);
                         tcd = NULL;
                         goto console;
                 }
 
                 needed = 0;
-                if (format1) {
-                        va_copy(ap, args);
-                        needed = vsnprintf(string_buf, max_nob, format1, ap);
-                        va_end(ap);
-                }
-
-                if (format2) {
-                        remain = max_nob - needed;
-                        if (remain < 0)
-                                remain = 0;
-
-                        va_start(ap, format2);
-                        needed += vsnprintf(string_buf+needed, remain, format2, ap);
+                if (format) {
+                        va_start(ap, format);
+                        needed += vsnprintf(string_buf, max_nob, format, ap);
                         va_end(ap);
                 }
 
@@ -795,18 +800,11 @@ console:
                 string_buf = trace_get_console_buffer();
 
                 needed = 0;
-                if (format1 != NULL) {
-                        va_copy(ap, args);
-                        needed = vsnprintf(string_buf, TRACE_CONSOLE_BUFFER_SIZE, format1, ap);
+                if (format != NULL) {
+                        va_start(ap, format);
+                        needed += vsnprintf(string_buf,
+                            TRACE_CONSOLE_BUFFER_SIZE, format, ap);
                         va_end(ap);
-                }
-                if (format2 != NULL) {
-                        remain = TRACE_CONSOLE_BUFFER_SIZE - needed;
-                        if (remain > 0) {
-                                va_start(ap, format2);
-                                needed += vsnprintf(string_buf+needed, remain, format2, ap);
-                                va_end(ap);
-                        }
                 }
                 trace_print_to_console(&header, mask,
                                  string_buf, needed, file, fn);
@@ -830,7 +828,7 @@ console:
 
         return 0;
 }
-EXPORT_SYMBOL(spl_debug_vmsg);
+EXPORT_SYMBOL(spl_debug_msg);
 
 /* Do the collect_pages job on a single CPU: assumes that all other
  * CPUs have been stopped during a panic.  If this isn't true for
@@ -892,9 +890,6 @@ put_pages_back_on_all_cpus(struct page_collection *pc)
 
                         list_for_each_entry_safe(tage, tmp, &pc->pc_pages,
                                                  linkage) {
-
-                                __ASSERT_TAGE_INVARIANT(tage);
-
                                 if (tage->cpu != cpu || tage->type != i)
                                         continue;
 
@@ -914,28 +909,6 @@ put_pages_back(struct page_collection *pc)
                 put_pages_back_on_all_cpus(pc);
 }
 
-static struct file *
-trace_filp_open (const char *name, int flags, int mode, int *err)
-{
-        struct file *filp = NULL;
-        int rc;
-
-        filp = filp_open(name, flags, mode);
-        if (IS_ERR(filp)) {
-                rc = PTR_ERR(filp);
-                printk(KERN_ERR "SPL: Can't open %s file: %d\n", name, rc);
-                if (err)
-                        *err = rc;
-                filp = NULL;
-        }
-        return filp;
-}
-
-#define trace_filp_write(fp, b, s, p)  (fp)->f_op->write((fp), (b), (s), p)
-#define trace_filp_fsync(fp)           (fp)->f_op->fsync((fp),(fp)->f_dentry,1)
-#define trace_filp_close(f)            filp_close(f, NULL)
-#define trace_filp_poff(f)             (&(f)->f_pos)
-
 static int
 spl_debug_dump_all_pages(dumplog_priv_t *dp, char *filename)
 {
@@ -948,7 +921,7 @@ spl_debug_dump_all_pages(dumplog_priv_t *dp, char *filename)
 
         down_write(&trace_sem);
 
-        filp = trace_filp_open(filename, O_CREAT|O_EXCL|O_WRONLY|O_LARGEFILE,
+        filp = spl_filp_open(filename, O_CREAT|O_EXCL|O_WRONLY|O_LARGEFILE,
                                0600, &rc);
         if (filp == NULL) {
                 if (rc != -EEXIST)
@@ -968,10 +941,8 @@ spl_debug_dump_all_pages(dumplog_priv_t *dp, char *filename)
         set_fs(get_ds());
 
         list_for_each_entry_safe(tage, tmp, &pc.pc_pages, linkage) {
-                __ASSERT_TAGE_INVARIANT(tage);
-
-                rc = trace_filp_write(filp, page_address(tage->page),
-                                      tage->used, trace_filp_poff(filp));
+                rc = spl_filp_write(filp, page_address(tage->page),
+                                    tage->used, spl_filp_poff(filp));
                 if (rc != (int)tage->used) {
                         printk(KERN_WARNING "SPL: Wanted to write %u "
                                "but wrote %d\n", tage->used, rc);
@@ -985,11 +956,11 @@ spl_debug_dump_all_pages(dumplog_priv_t *dp, char *filename)
 
         set_fs(oldfs);
 
-        rc = trace_filp_fsync(filp);
+        rc = spl_filp_fsync(filp, 1);
         if (rc)
                 printk(KERN_ERR "SPL: Unable to sync: %d\n", rc);
  close:
-        trace_filp_close(filp);
+        spl_filp_close(filp);
  out:
         up_write(&trace_sem);
 
@@ -1012,7 +983,6 @@ spl_debug_flush_pages(void)
 
         collect_pages(&dp, &pc);
         list_for_each_entry_safe(tage, tmp, &pc.pc_pages, linkage) {
-                __ASSERT_TAGE_INVARIANT(tage);
                 list_del(&tage->linkage);
                 tage_free(tage);
         }
@@ -1102,7 +1072,7 @@ void spl_debug_dumpstack(struct task_struct *tsk)
         if (tsk == NULL)
                 tsk = current;
 
-        printk(KERN_ERR "SPL: Showing stack for process %d\n", tsk->pid);
+        printk("SPL: Showing stack for process %d\n", tsk->pid);
         dump_stack();
 }
 EXPORT_SYMBOL(spl_debug_dumpstack);
@@ -1110,12 +1080,13 @@ EXPORT_SYMBOL(spl_debug_dumpstack);
 void spl_debug_bug(char *file, const char *func, const int line, int flags)
 {
         spl_debug_catastrophe = 1;
-        spl_debug_msg(NULL, 0, D_EMERG, file, func, line, "SBUG\n");
+        spl_debug_msg(NULL, 0, SD_EMERG, file, func, line, "SPL PANIC\n");
 
-        if (in_interrupt()) {
-                panic("SBUG in interrupt.\n");
-                /* not reached */
-        }
+        if (in_interrupt())
+                panic("SPL PANIC in interrupt.\n");
+
+	if (in_atomic() || irqs_disabled())
+		flags |= DL_NOTHREAD;
 
         /* Ensure all debug pages and dumped by current cpu */
          if (spl_debug_panic_on_bug)
@@ -1125,8 +1096,7 @@ void spl_debug_bug(char *file, const char *func, const int line, int flags)
         spl_debug_dumplog(flags);
 
         if (spl_debug_panic_on_bug)
-//                panic("SBUG");
-			BUG();
+                panic("SPL PANIC");
 
         set_task_state(current, TASK_UNINTERRUPTIBLE);
         while (1)
@@ -1145,9 +1115,9 @@ EXPORT_SYMBOL(spl_debug_clear_buffer);
 int
 spl_debug_mark_buffer(char *text)
 {
-        CDEBUG(D_WARNING, "*************************************\n");
-        CDEBUG(D_WARNING, "DEBUG MARKER: %s\n", text);
-        CDEBUG(D_WARNING, "*************************************\n");
+        SDEBUG(SD_WARNING, "*************************************\n");
+        SDEBUG(SD_WARNING, "DEBUG MARKER: %s\n", text);
+        SDEBUG(SD_WARNING, "*************************************\n");
 
         return 0;
 }
@@ -1239,8 +1209,6 @@ trace_cleanup_on_all_cpus(void)
 
                         list_for_each_entry_safe(tage, tmp, &tcd->tcd_pages,
                                                  linkage) {
-                                __ASSERT_TAGE_INVARIANT(tage);
-
                                 list_del(&tage->linkage);
                                 tage_free(tage);
                         }

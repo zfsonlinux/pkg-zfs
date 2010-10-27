@@ -1,28 +1,28 @@
-/*
- *  This file is part of the SPL: Solaris Porting Layer.
- *
- *  Copyright (c) 2008 Lawrence Livermore National Security, LLC.
- *  Produced at Lawrence Livermore National Laboratory
- *  Written by:
- *          Brian Behlendorf <behlendorf1@llnl.gov>,
- *          Herb Wartens <wartens2@llnl.gov>,
- *          Jim Garlick <garlick@llnl.gov>
+/*****************************************************************************\
+ *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
  *  UCRL-CODE-235197
  *
- *  This is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
  *
- *  This is distributed in the hope that it will be useful, but WITHOUT
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
  *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  *  for more details.
  *
  *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
- */
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+ *****************************************************************************
+ *  Solaris Porting LAyer Tests (SPLAT) Generic Tests.
+\*****************************************************************************/
 
 #include "splat-internal.h"
 
@@ -44,6 +44,14 @@
 #define SPLAT_GENERIC_TEST4_ID		0x0d04
 #define SPLAT_GENERIC_TEST4_NAME	"ddi_strtoll"
 #define SPLAT_GENERIC_TEST4_DESC	"ddi_strtoll Test"
+
+# define SPLAT_GENERIC_TEST5_ID		0x0d05
+# define SPLAT_GENERIC_TEST5_NAME	"udivdi3"
+# define SPLAT_GENERIC_TEST5_DESC	"Unsigned Div-64 Test"
+
+# define SPLAT_GENERIC_TEST6_ID		0x0d06
+# define SPLAT_GENERIC_TEST6_NAME	"divdi3"
+# define SPLAT_GENERIC_TEST6_DESC	"Signed Div-64 Test"
 
 #define STR_POS				"123456789"
 #define STR_NEG				"-123456789"
@@ -183,6 +191,125 @@ define_splat_generic_test_strtox(l, long);
 define_splat_generic_test_strtox(ull, unsigned long long);
 define_splat_generic_test_strtox(ll, long long);
 
+/*
+ * The entries in the table are used in all combinations and the
+ * return value is checked to ensure it is range.  On 32-bit
+ * systems __udivdi3 will be invoked for the 64-bit division.
+ * On 64-bit system the native 64-bit divide will be used so
+ * __udivdi3 isn't used but we might as well stil run the test.
+ */
+static int
+splat_generic_test_udivdi3(struct file *file, void *arg)
+{
+	const uint64_t tabu[] = {
+	    0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+	    10, 11, 12, 13, 14, 15, 16, 1000, 2003,
+	    32765, 32766, 32767, 32768, 32769, 32760,
+	    65533, 65534, 65535, 65536, 65537, 65538,
+	    0x7ffffffeULL, 0x7fffffffULL, 0x80000000ULL, 0x80000001ULL,
+	    0x7000000000000000ULL, 0x7000000080000000ULL, 0x7000000080000001ULL,
+	    0x7fffffffffffffffULL, 0x7fffffff8fffffffULL, 0x7fffffff8ffffff1ULL,
+	    0x7fffffff00000000ULL, 0x7fffffff80000000ULL, 0x7fffffff00000001ULL,
+	    0x8000000000000000ULL, 0x8000000080000000ULL, 0x8000000080000001ULL,
+	    0xc000000000000000ULL, 0xc000000080000000ULL, 0xc000000080000001ULL,
+	    0xfffffffffffffffdULL, 0xfffffffffffffffeULL, 0xffffffffffffffffULL,
+	};
+	uint64_t uu, vu, qu, ru;
+	int n, i, j, errors = 0;
+
+	splat_vprint(file, SPLAT_GENERIC_TEST5_NAME, "%s",
+	    "Testing unsigned 64-bit division.\n");
+	n = sizeof(tabu) / sizeof(tabu[0]);
+	for (i = 0; i < n; i++) {
+		for (j = 1; j < n; j++) {
+			uu = tabu[i];
+			vu = tabu[j];
+			qu = uu / vu; /* __udivdi3 */
+			ru = uu - qu * vu;
+			if (qu > uu || ru >= vu) {
+				splat_vprint(file, SPLAT_GENERIC_TEST5_NAME,
+				    "%016llx/%016llx != %016llx rem %016llx\n",
+				    uu, vu, qu, ru);
+				errors++;
+			}
+		}
+	}
+
+	if (errors) {
+		splat_vprint(file, SPLAT_GENERIC_TEST5_NAME,
+		    "Failed %d/%d tests\n", errors, n * (n - 1));
+		return -ERANGE;
+	}
+
+	splat_vprint(file, SPLAT_GENERIC_TEST5_NAME,
+	    "Passed all %d tests\n", n * (n - 1));
+
+	return 0;
+}
+
+/*
+ * The entries the table are used in all combinations, with + and - signs
+ * preceding them.  The return value is checked to ensure it is range.
+ * On 32-bit systems __divdi3 will be invoked for the 64-bit division.
+ * On 64-bit system the native 64-bit divide will be used so __divdi3
+ *  isn't used but we might as well stil run the test.
+ */
+static int
+splat_generic_test_divdi3(struct file *file, void *arg)
+{
+	const int64_t tabs[] = {
+	    0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+	    10, 11, 12, 13, 14, 15, 16, 1000, 2003,
+	    32765, 32766, 32767, 32768, 32769, 32760,
+	    65533, 65534, 65535, 65536, 65537, 65538,
+	    0x7ffffffeLL, 0x7fffffffLL, 0x80000000LL, 0x80000001LL,
+	    0x7000000000000000LL, 0x7000000080000000LL, 0x7000000080000001LL,
+	    0x7fffffffffffffffLL, 0x7fffffff8fffffffLL, 0x7fffffff8ffffff1LL,
+	    0x7fffffff00000000LL, 0x7fffffff80000000LL, 0x7fffffff00000001LL,
+	    0x0123456789abcdefLL, 0x00000000abcdef01LL, 0x0000000012345678LL,
+#if BITS_PER_LONG == 32
+	    0x8000000000000000LL, 0x8000000080000000LL, 0x8000000080000001LL,
+#endif
+	};
+	int64_t u, v, q, r;
+	int n, i, j, k, errors = 0;
+
+	splat_vprint(file, SPLAT_GENERIC_TEST6_NAME, "%s",
+	    "Testing signed 64-bit division.\n");
+	n = sizeof(tabs) / sizeof(tabs[0]);
+	for (i = 0; i < n; i++) {
+		for (j = 1; j < n; j++) {
+			for (k = 0; k <= 3; k++) {
+				u = (k & 1)  ? -tabs[i] : tabs[i];
+				v = (k >= 2) ? -tabs[j] : tabs[j];
+
+				q = u / v; /* __divdi3 */
+				r = u - q * v;
+				if (abs64(q) >  abs64(u) ||
+				    abs64(r) >= abs64(v) ||
+				    (r != 0 && (r ^ u) < 0)) {
+					splat_vprint(file,
+					    SPLAT_GENERIC_TEST6_NAME,
+					    "%016llx/%016llx != %016llx "
+					    "rem %016llx\n", u, v, q, r);
+					errors++;
+				}
+			}
+		}
+	}
+
+	if (errors) {
+		splat_vprint(file, SPLAT_GENERIC_TEST6_NAME,
+		    "Failed %d/%d tests\n", errors, n * (n - 1));
+		return -ERANGE;
+	}
+
+	splat_vprint(file, SPLAT_GENERIC_TEST6_NAME,
+	    "Passed all %d tests\n", n * (n - 1));
+
+	return 0;
+}
+
 splat_subsystem_t *
 splat_generic_init(void)
 {
@@ -208,6 +335,10 @@ splat_generic_init(void)
 	                SPLAT_GENERIC_TEST3_ID, splat_generic_test_strtoull);
         SPLAT_TEST_INIT(sub, SPLAT_GENERIC_TEST4_NAME, SPLAT_GENERIC_TEST4_DESC,
 	                SPLAT_GENERIC_TEST4_ID, splat_generic_test_strtoll);
+        SPLAT_TEST_INIT(sub, SPLAT_GENERIC_TEST5_NAME, SPLAT_GENERIC_TEST5_DESC,
+	                SPLAT_GENERIC_TEST5_ID, splat_generic_test_udivdi3);
+        SPLAT_TEST_INIT(sub, SPLAT_GENERIC_TEST6_NAME, SPLAT_GENERIC_TEST6_DESC,
+	                SPLAT_GENERIC_TEST6_ID, splat_generic_test_divdi3);
 
         return sub;
 }
@@ -217,6 +348,8 @@ splat_generic_fini(splat_subsystem_t *sub)
 {
         ASSERT(sub);
 
+        SPLAT_TEST_FINI(sub, SPLAT_GENERIC_TEST6_ID);
+        SPLAT_TEST_FINI(sub, SPLAT_GENERIC_TEST5_ID);
         SPLAT_TEST_FINI(sub, SPLAT_GENERIC_TEST4_ID);
         SPLAT_TEST_FINI(sub, SPLAT_GENERIC_TEST3_ID);
         SPLAT_TEST_FINI(sub, SPLAT_GENERIC_TEST2_ID);

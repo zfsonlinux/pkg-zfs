@@ -1,6 +1,6 @@
 include $(top_srcdir)/config/rpm.am
-include ${top_srcdir}/config/deb.am
-include ${top_srcdir}/config/tgz.am
+include $(top_srcdir)/config/deb.am
+include $(top_srcdir)/config/tgz.am
 
 if CONFIG_USER
 USER_DIR = lib cmd scripts
@@ -10,10 +10,10 @@ KERNEL_DIR = module include
 endif
 SUBDIRS = $(USER_DIR) $(KERNEL_DIR)
 
-AUTOMAKE_OPTIONS = foreign dist-zip
+AUTOMAKE_OPTIONS = foreign
 EXTRA_DIST  = autogen.sh spl.spec.in spl-modules.spec.in META DISCLAIMER
-EXTRA_DIST += config/rpm.am config/deb.am config/tgz.am
-noinst_HEADERS = spl_config.h spl_unconfig.h
+EXTRA_DIST += config/config.awk config/rpm.am config/deb.am config/tgz.am
+noinst_HEADERS = spl_config.h
 
 distclean-local::
 	-$(RM) -R autom4te*.cache
@@ -30,8 +30,8 @@ distclean-local::
 if CONFIG_KERNEL
 install-data-local:
 	destname=spl-$(SPL_META_VERSION)/$(LINUX_VERSION); \
-	instdest=$(DESTDIR)/${prefix}/src/$$destname; \
-	echo "${SPL_META_VERSION}" >$$instdest/spl.release; \
+	instdest=$(DESTDIR)/usr/src/$$destname; \
+	echo "$(SPL_META_VERSION)" >$$instdest/spl.release; \
 	for instfile in $(noinst_HEADERS) module/$(LINUX_SYMBOLS); do \
 		$(INSTALL) -D $$instfile $$instdest/$$instfile; \
 	done
