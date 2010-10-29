@@ -399,7 +399,6 @@ zpool_standard_error_fmt(libzfs_handle_t *hdl, int error, const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-
 	if (zfs_common_error(hdl, error, fmt, ap) != 0) {
 		va_end(ap);
 		return (-1);

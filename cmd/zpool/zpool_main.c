@@ -864,11 +864,9 @@ zpool_do_destroy(int argc, char **argv)
 		    "could not unmount datasets\n"), zpool_get_name(zhp));
 		return (1);
 	}
-
 	ret = (zpool_destroy(zhp) != 0);
 
 	zpool_close(zhp);
-
 	return (ret);
 }
 
