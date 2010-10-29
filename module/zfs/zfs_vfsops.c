@@ -550,7 +550,7 @@ int zfs_register_callbacks(vfs_t *vfsp)
 		do_exec = B_TRUE;
 	}
 	if (vfs_optionisset(vfsp, MNTOPT_NOXATTR, NULL)) {
-		xattr = B_FALSE;
+		xattr = B_TRUE;
 		do_xattr = B_TRUE;
 	} else if (vfs_optionisset(vfsp, MNTOPT_XATTR, NULL)) {
 		xattr = B_TRUE;

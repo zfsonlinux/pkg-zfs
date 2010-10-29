@@ -216,21 +216,25 @@ zfs_dirent_lock(zfs_dirlock_t **dlpp, znode_t *dzp, char *name, znode_t **zpp,
 	rw_enter(&dzp->z_name_lock, RW_READER);
 	mutex_enter(&dzp->z_lock);
 	for (;;) {
+		cmn_err(CE_WARN, " before ENOENT 1 \n");
 		if (dzp->z_unlinked) {
 			mutex_exit(&dzp->z_lock);
 			rw_exit(&dzp->z_name_lock);
 			return (ENOENT);
 		}
+		cmn_err(CE_WARN, " after ENOENT 1 \n");
 		for (dl = dzp->z_dirlocks; dl != NULL; dl = dl->dl_next) {
 			if ((u8_strcmp(name, dl->dl_name, 0, cmpflags,
 			    U8_UNICODE_LATEST, &error) == 0) || error != 0)
 				break;
 		}
+		cmn_err(CE_WARN, " before ENOENT 2 \n");
 		if (error != 0) {
 			mutex_exit(&dzp->z_lock);
 			rw_exit(&dzp->z_name_lock);
 			return (ENOENT);
 		}
+		cmn_err(CE_WARN, " after ENOENT 2 \n");
 		if (dl == NULL)	{
 			/*
 			 * Allocate a new dirlock and add it to the list.
@@ -275,6 +279,8 @@ zfs_dirent_lock(zfs_dirlock_t **dlpp, znode_t *dzp, char *name, znode_t **zpp,
 	if (flag & ZXATTR) {
 		zoid = dzp->z_phys->zp_xattr;
 		error = (zoid == 0 ? ENOENT : 0);
+		if(error == ENOENT)
+			cmn_err(CE_WARN, " error is ENOENT\n");
 	} else {
 		if (update)
 			vp = dnlc_lookup(ZTOV(dzp), name);
@@ -315,7 +321,7 @@ zfs_dirent_lock(zfs_dirlock_t **dlpp, znode_t *dzp, char *name, znode_t **zpp,
 	}
 
 	*dlpp = dl;
-
+	cmn_err(CE_WARN, " hello fn completed \n");
 	return (0);
 }
 
@@ -1122,6 +1128,7 @@ zfs_dirent(znode_t *zp)
 }
 
 
+#endif /* HAVE_ZPL */
 /*
  * Link zp into dl.  Can only fail if zp has been unlinked.
  */
@@ -1137,9 +1144,9 @@ zfs_make_xattrdir(znode_t *zp, vattr_t *vap, vnode_t **xvpp, cred_t *cr)
 
 	*xvpp = NULL;
 
-	if (error = zfs_zaccess(zp, ACE_WRITE_NAMED_ATTRS, 0, B_FALSE, cr))
+	if ((error = zfs_zaccess(zp, ACE_WRITE_NAMED_ATTRS, 0, B_FALSE, cr)))
 		return (error);
-
+/*
 	if ((error = zfs_acl_ids_create(zp, IS_XATTR, vap, cr, NULL,
 	    &acl_ids)) != 0)
 		return (error);
@@ -1148,6 +1155,7 @@ zfs_make_xattrdir(znode_t *zp, vattr_t *vap, vnode_t **xvpp, cred_t *cr)
 		return (EDQUOT);
 	}
 
+*/
 	tx = dmu_tx_create(zfsvfs->z_os);
 	dmu_tx_hold_bonus(tx, zp->z_id);
 	dmu_tx_hold_zap(tx, DMU_NEW_OBJECT, FALSE, NULL);
@@ -1164,17 +1172,18 @@ zfs_make_xattrdir(znode_t *zp, vattr_t *vap, vnode_t **xvpp, cred_t *cr)
 	}
 	zfs_mknode(zp, vap, tx, cr, IS_XATTR, &xzp, 0, &acl_ids);
 
+/*
 	if (fuid_dirtied)
 		zfs_fuid_sync(zfsvfs, tx);
-
+*/
 	ASSERT(xzp->z_phys->zp_parent == zp->z_id);
 	dmu_buf_will_dirty(zp->z_dbuf, tx);
 	zp->z_phys->zp_xattr = xzp->z_id;
 
-	(void) zfs_log_create(zfsvfs->z_log, tx, TX_MKXATTR, zp,
-	    xzp, "", NULL, acl_ids.z_fuidp, vap);
+//	(void) zfs_log_create(zfsvfs->z_log, tx, TX_MKXATTR, zp,
+//	    xzp, "", NULL, acl_ids.z_fuidp, vap);
 
-	zfs_acl_ids_free(&acl_ids);
+//	zfs_acl_ids_free(&acl_ids);
 	dmu_tx_commit(tx);
 
 	*xvpp = ZTOV(xzp);
@@ -1208,6 +1217,7 @@ top:
 	if (error)
 		return (error);
 
+	cmn_err(CE_WARN, "rohan\n");
 	if (xzp != NULL) {
 		*xvpp = ZTOV(xzp);
 		zfs_dirent_unlock(dl);
@@ -1215,8 +1225,9 @@ top:
 	}
 
 	ASSERT(zp->z_phys->zp_xattr == 0);
-
+	cmn_err(CE_WARN," hello \n");
 	if (!(flags & CREATE_XATTR_DIR)) {
+		cmn_err(CE_WARN, " CREATE_XATTR_DIR flag not specified \n");
 		zfs_dirent_unlock(dl);
 		return (ENOENT);
 	}
@@ -1252,7 +1263,6 @@ top:
 	return (error);
 }
 
-#endif /* HAVE_ZPL */
 /*
  * Decide whether it is okay to remove within a sticky directory.
  *
