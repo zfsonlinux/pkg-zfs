@@ -335,10 +335,12 @@ pool_namecheck(const char *pool, namecheck_err_t *why, char *what)
 		return (-1);
 	}
 
-	if (pool[0] == 'c' && (pool[1] >= '0' && pool[1] <= '9')) {
-		if (why)
-			*why = NAME_ERR_DISKLIKE;
-		return (-1);
+	if (pool[0] == 's' && pool[1] == 'd' && ( pool[2] >= 'a' && pool[2] <= 'z')) {
+		if (!(pool[3] >= 'a' && pool[3] <= 'z')) {
+			if (why)
+				*why = NAME_ERR_DISKLIKE;
+			return (-1);
+		}
 	}
 
 	return (0);
