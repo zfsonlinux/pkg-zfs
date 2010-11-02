@@ -1586,7 +1586,6 @@ dmu_snapshot_list_next(objset_t *os, int namelen, char *name,
 	return (0);
 }
 
-#ifdef HAVE_ZPL
 /*
  * returns obj id for the snapshot name given as arg.
  * id is used to compute the inode no
@@ -1595,7 +1594,7 @@ dmu_snapshot_list_next(objset_t *os, int namelen, char *name,
 uint64_t
 dmu_snapname_to_id(objset_t *os, const char *snapname)
 {
-	dsl_dataset_t *ds = os->os->os_dsl_dataset;
+	dsl_dataset_t *ds = os->os_dsl_dataset;
 	zap_cursor_t cursor;
 	zap_attribute_t attr;
 
@@ -1616,7 +1615,7 @@ dmu_snapname_to_id(objset_t *os, const char *snapname)
 		return 0; // no snapshot by name snapname        
 	}
 }
-#endif
+
 
 int
 dmu_dir_list_next(objset_t *os, int namelen, char *name,
@@ -1839,7 +1838,7 @@ EXPORT_SYMBOL(dmu_objset_own);
 EXPORT_SYMBOL(dmu_objset_rele);
 EXPORT_SYMBOL(dmu_objset_disown);
 EXPORT_SYMBOL(dmu_objset_from_ds);
-//EXPORT_SYMBOL(dmu_snapname_to_id);
+EXPORT_SYMBOL(dmu_snapname_to_id);
 EXPORT_SYMBOL(dmu_objset_create);
 EXPORT_SYMBOL(dmu_objset_clone);
 EXPORT_SYMBOL(dmu_objset_destroy);

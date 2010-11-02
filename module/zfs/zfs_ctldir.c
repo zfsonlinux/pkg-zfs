@@ -288,7 +288,6 @@ zfs_snapshot_list_next(void *ptr, char *snapname,
 }
 EXPORT_SYMBOL(zfs_snapshot_list_next);
 
-#ifdef HAVE_ZPL
 /*
  * snapname over here is in-para
  * returns object id used for inode numbering in lzfs
@@ -307,6 +306,7 @@ zfs_snapname_to_id(void *ptr, const char *snapname)
 EXPORT_SYMBOL(zfs_snapname_to_id); 
 
 
+#ifdef HAVE_ZPL
 /*
  * Create the '.zfs' directory.  This directory is cached as part of the VFS
  * structure.  This results in a hold on the vfs_t.  The code in zfs_umount()
