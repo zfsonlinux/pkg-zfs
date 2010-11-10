@@ -823,10 +823,12 @@ dmu_read_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size)
 	dmu_buf_t **dbp;
 	int numbufs, i, err;
 
+	cmn_err(CE_WARN, " dmu_read_uio \n");
 	/*
 	 * NB: we could do this block-at-a-time, but it's nice
 	 * to be reading in parallel.
 	 */
+	printk("object is :%llu \n", object);
 	err = dmu_buf_hold_array(os, object, uio->uio_loffset, size, TRUE, FTAG,
 	    &numbufs, &dbp);
 	if (err)
@@ -842,8 +844,13 @@ dmu_read_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size)
 		bufoff = uio->uio_loffset - db->db_offset;
 		tocpy = (int)MIN(db->db_size - bufoff, size);
 
+		printk("bufoff is : %ld\n", (long) bufoff);
+		ASSERT(db->db_data + bufoff);
+		ASSERT(uio);
+		printk(" before uiomove \n");
 		err = uiomove((char *)db->db_data + bufoff, tocpy,
 		    UIO_READ, uio);
+		printk(" after uiomove \n");
 		if (err)
 			break;
 

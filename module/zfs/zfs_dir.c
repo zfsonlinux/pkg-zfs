@@ -216,25 +216,21 @@ zfs_dirent_lock(zfs_dirlock_t **dlpp, znode_t *dzp, char *name, znode_t **zpp,
 	rw_enter(&dzp->z_name_lock, RW_READER);
 	mutex_enter(&dzp->z_lock);
 	for (;;) {
-		cmn_err(CE_WARN, " before ENOENT 1 \n");
 		if (dzp->z_unlinked) {
 			mutex_exit(&dzp->z_lock);
 			rw_exit(&dzp->z_name_lock);
 			return (ENOENT);
 		}
-		cmn_err(CE_WARN, " after ENOENT 1 \n");
 		for (dl = dzp->z_dirlocks; dl != NULL; dl = dl->dl_next) {
 			if ((u8_strcmp(name, dl->dl_name, 0, cmpflags,
 			    U8_UNICODE_LATEST, &error) == 0) || error != 0)
 				break;
 		}
-		cmn_err(CE_WARN, " before ENOENT 2 \n");
 		if (error != 0) {
 			mutex_exit(&dzp->z_lock);
 			rw_exit(&dzp->z_name_lock);
 			return (ENOENT);
 		}
-		cmn_err(CE_WARN, " after ENOENT 2 \n");
 		if (dl == NULL)	{
 			/*
 			 * Allocate a new dirlock and add it to the list.
@@ -279,8 +275,6 @@ zfs_dirent_lock(zfs_dirlock_t **dlpp, znode_t *dzp, char *name, znode_t **zpp,
 	if (flag & ZXATTR) {
 		zoid = dzp->z_phys->zp_xattr;
 		error = (zoid == 0 ? ENOENT : 0);
-		if(error == ENOENT)
-			cmn_err(CE_WARN, " error is ENOENT\n");
 	} else {
 		if (update)
 			vp = dnlc_lookup(ZTOV(dzp), name);
@@ -321,7 +315,6 @@ zfs_dirent_lock(zfs_dirlock_t **dlpp, znode_t *dzp, char *name, znode_t **zpp,
 	}
 
 	*dlpp = dl;
-	cmn_err(CE_WARN, " hello fn completed \n");
 	return (0);
 }
 

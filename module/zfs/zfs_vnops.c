@@ -466,7 +466,7 @@ zfs_read(vnode_t *vp, uio_t *uio, int ioflag, cred_t *cr, caller_context_t *ct)
 		ZFS_EXIT(zfsvfs);
 		return (EACCES);
 	}
-
+	printk(" in zfs_read \n");
 	/*
 	 * Validate file offset
 	 */
@@ -624,6 +624,7 @@ zfs_write(vnode_t *vp, uio_t *uio, int ioflag, cred_t *cr, caller_context_t *ct)
 	/*
 	 * Fasttrack empty write
 	 */
+	printk("uio write value : %s\n", (char *)uio->uio_iov->iov_base);
 	n = start_resid;
 	if (n == 0)
 		return (0);
@@ -2252,7 +2253,7 @@ zfs_readdir(vnode_t *vp, uio_t *uio, cred_t *cr, int *eofp,
 		*next = offset;
 	}
 	zp->z_zn_prefetch = B_FALSE; /* a lookup will re-enable pre-fetching */
-
+	
 	if (uio->uio_segflg == UIO_SYSSPACE && uio->uio_iovcnt == 1) {
 		iovp->iov_base += outcount;
 		iovp->iov_len -= outcount;
