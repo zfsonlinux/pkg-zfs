@@ -4,7 +4,10 @@ dnl #
 AC_DEFUN([ZFS_AC_CONFIG_KERNEL], [
 	ZFS_AC_KERNEL
 	ZFS_AC_SPL
+	ZFS_AC_KERNEL_CONFIG
 	ZFS_AC_KERNEL_BDEV_BLOCK_DEVICE_OPERATIONS
+	ZFS_AC_KERNEL_TYPE_FMODE_T
+	ZFS_AC_KERNEL_KOBJ_NAME_LEN
 	ZFS_AC_KERNEL_OPEN_BDEV_EXCLUSIVE
 	ZFS_AC_KERNEL_INVALIDATE_BDEV_ARGS
 	ZFS_AC_KERNEL_BDEV_LOGICAL_BLOCK_SIZE
@@ -21,26 +24,23 @@ AC_DEFUN([ZFS_AC_CONFIG_KERNEL], [
 	ZFS_AC_KERNEL_RQ_IS_SYNC
 	ZFS_AC_KERNEL_RQ_FOR_EACH_SEGMENT
 
-	dnl # Kernel build make options
-	dnl # KERNELMAKE_PARAMS="V=1"	# Enable verbose module build
-	KERNELMAKE_PARAMS="V=1"
-
-	dnl # -Wall -fno-strict-aliasing -Wstrict-prototypes and other
-	dnl # compiler options are added by the kernel build system.
-	KERNELCPPFLAGS="$KERNELCPPFLAGS -Werror -DHAVE_SPL -DLINUX_PORT -D_KERNEL"
-	KERNELCPPFLAGS="$KERNELCPPFLAGS -DTEXT_DOMAIN=\\\"zfs-linux-kernel\\\""
-	KERNELCPPFLAGS="$KERNELCPPFLAGS -I$TOPDIR -I$SPL -I$SPL/include"
-
 	if test "$LINUX_OBJ" != "$LINUX"; then
 		KERNELMAKE_PARAMS="$KERNELMAKE_PARAMS O=$LINUX_OBJ"
 	fi
-
 	AC_SUBST(KERNELMAKE_PARAMS)
+
+
+	dnl # -Wall -fno-strict-aliasing -Wstrict-prototypes and other
+	dnl # compiler options are added by the kernel build system.
+	KERNELCPPFLAGS="$KERNELCPPFLAGS -DHAVE_SPL -DLINUX_PORT -D_KERNEL"
+	KERNELCPPFLAGS="$KERNELCPPFLAGS -DTEXT_DOMAIN=\\\"zfs-linux-kernel\\\""
+
+
 	AC_SUBST(KERNELCPPFLAGS)
 ])
 
 dnl #
-dnl # Detect name used more Module.symvers file
+dnl # Detect name used for Module.symvers file in kernel
 dnl #
 AC_DEFUN([ZFS_AC_MODULE_SYMVERS], [
 	modpost=$LINUX/scripts/Makefile.modpost
@@ -74,16 +74,23 @@ AC_DEFUN([ZFS_AC_KERNEL], [
 
 	AC_MSG_CHECKING([kernel source directory])
 	if test -z "$kernelsrc"; then
-		sourcelink=`ls -1d /usr/src/kernels/* /usr/src/linux-* \
-		            2>/dev/null | grep -v obj | tail -1`
+		headersdir="/lib/modules/$(uname -r)/build"
+		if test -e "$headersdir"; then
+			sourcelink=$(readlink -f "$headersdir")
+		else
+			sourcelink=$(ls -1d /usr/src/kernels/* \
+				     /usr/src/linux-* \
+			             2>/dev/null | grep -v obj | tail -1)
+		fi
 
-		if test -e $sourcelink; then
+		if test -n "$sourcelink" && test -e ${sourcelink}; then
 			kernelsrc=`readlink -f ${sourcelink}`
 		else
 			AC_MSG_RESULT([Not found])
 			AC_MSG_ERROR([
-			*** Please specify the location of the kernel source
-			*** with the '--with-linux=PATH' option])
+	*** Please make sure the kernel devel package for your distribution
+	*** is installed then try again.  If that fails you can specify the
+	*** location of the kernel source with the '--with-linux=PATH' option.])
 		fi
 	else
 		if test "$kernelsrc" = "NONE"; then
@@ -94,12 +101,12 @@ AC_DEFUN([ZFS_AC_KERNEL], [
 	AC_MSG_RESULT([$kernelsrc])
 	AC_MSG_CHECKING([kernel build directory])
 	if test -z "$kernelbuild"; then
-		if test -d ${kernelsrc}-obj/`arch`/`arch`; then
-			kernelbuild=${kernelsrc}-obj/`arch`/`arch`
-		elif test -d ${kernelsrc}-obj/`arch`/default; then
-		        kernelbuild=${kernelsrc}-obj/`arch`/default
-		elif test -d `dirname ${kernelsrc}`/build-`arch`; then
-			kernelbuild=`dirname ${kernelsrc}`/build-`arch`
+		if test -d ${kernelsrc}-obj/${target_cpu}/${target_cpu}; then
+			kernelbuild=${kernelsrc}-obj/${target_cpu}/${target_cpu}
+		elif test -d ${kernelsrc}-obj/${target_cpu}/default; then
+		        kernelbuild=${kernelsrc}-obj/${target_cpu}/default
+		elif test -d `dirname ${kernelsrc}`/build-${target_cpu}; then
+			kernelbuild=`dirname ${kernelsrc}`/build-${target_cpu}
 		else
 			kernelbuild=${kernelsrc}
 		fi
@@ -107,28 +114,30 @@ AC_DEFUN([ZFS_AC_KERNEL], [
 	AC_MSG_RESULT([$kernelbuild])
 
 	AC_MSG_CHECKING([kernel source version])
-	if test -r $kernelbuild/include/linux/version.h &&
-		fgrep -q UTS_RELEASE $kernelbuild/include/linux/version.h; then
-
-		kernsrcver=`(echo "#include <linux/version.h>";
-		             echo "kernsrcver=UTS_RELEASE") |
-		             cpp -I $kernelbuild/include |
-		             grep "^kernsrcver=" | cut -d \" -f 2`
-
-	elif test -r $kernelbuild/include/linux/utsrelease.h &&
-		fgrep -q UTS_RELEASE $kernelbuild/include/linux/utsrelease.h; then
-
-		kernsrcver=`(echo "#include <linux/utsrelease.h>";
-		             echo "kernsrcver=UTS_RELEASE") |
-		             cpp -I $kernelbuild/include |
-		             grep "^kernsrcver=" | cut -d \" -f 2`
+	utsrelease1=$kernelbuild/include/linux/version.h
+	utsrelease2=$kernelbuild/include/linux/utsrelease.h
+	utsrelease3=$kernelbuild/include/generated/utsrelease.h
+	if test -r $utsrelease1 && fgrep -q UTS_RELEASE $utsrelease1; then
+		utsrelease=linux/version.h
+	elif test -r $utsrelease2 && fgrep -q UTS_RELEASE $utsrelease2; then
+		utsrelease=linux/utsrelease.h
+	elif test -r $utsrelease3 && fgrep -q UTS_RELEASE $utsrelease3; then
+		utsrelease=generated/utsrelease.h
 	fi
 
-	if test -z "$kernsrcver"; then
+	if test "$utsrelease"; then
+		kernsrcver=`(echo "#include <$utsrelease>";
+		             echo "kernsrcver=UTS_RELEASE") |
+		             cpp -I $kernelbuild/include |
+		             grep "^kernsrcver=" | cut -d \" -f 2`
+
+		if test -z "$kernsrcver"; then
+			AC_MSG_RESULT([Not found])
+			AC_MSG_ERROR([*** Cannot determine kernel version.])
+		fi
+	else
 		AC_MSG_RESULT([Not found])
-		AC_MSG_ERROR([
-		*** Cannot determine the version of the linux kernel source.
-		*** Please prepare the kernel before running this script])
+		AC_MSG_ERROR([*** Cannot find UTS_RELEASE definition.])
 	fi
 
 	AC_MSG_RESULT([$kernsrcver])
@@ -145,7 +154,14 @@ AC_DEFUN([ZFS_AC_KERNEL], [
 ])
 
 dnl #
-dnl # Detect name used for the additional SPL Module.symvers file
+dnl # Detect name used for the additional SPL Module.symvers file.  If one
+dnl # does not exist this is likely because the SPL has been configured
+dnl # but not built.  To allow recursive builds a good guess is made as to
+dnl # what this file will be named based on what it is named in the kernel
+dnl # build products.  This file will first be used at link time so if
+dnl # the guess is wrong the build will fail then.  This unfortunately
+dnl # means the ZFS package does not contain a reliable mechanism to
+dnl # detect symbols exported by the SPL at configure time.
 dnl #
 AC_DEFUN([ZFS_AC_SPL_MODULE_SYMVERS], [
 	AC_MSG_CHECKING([spl file name for module symbols])
@@ -153,8 +169,12 @@ AC_DEFUN([ZFS_AC_SPL_MODULE_SYMVERS], [
 		SPL_SYMBOLS=Module.symvers
 	elif test -r $SPL_OBJ/Modules.symvers; then
 		SPL_SYMBOLS=Modules.symvers
+	elif test -r $SPL_OBJ/module/Module.symvers; then
+		SPL_SYMBOLS=Module.symvers
+	elif test -r $SPL_OBJ/module/Modules.symvers; then
+		SPL_SYMBOLS=Modules.symvers
 	else
-		SPL_SYMBOLS=NONE
+		SPL_SYMBOLS=$LINUX_SYMBOLS
 	fi
 
 	AC_MSG_RESULT([$SPL_SYMBOLS])
@@ -181,13 +201,18 @@ AC_DEFUN([ZFS_AC_SPL], [
 		sourcelink=`ls -1d /usr/src/spl-*/${LINUX_VERSION} \
 		            2>/dev/null | tail -1`
 
+		if test -z "$sourcelink" || test ! -e $sourcelink; then
+			sourcelink=../spl
+		fi
+
 		if test -e $sourcelink; then
 			splsrc=`readlink -f ${sourcelink}`
 		else
 			AC_MSG_RESULT([Not found])
 			AC_MSG_ERROR([
-			*** Please specify the location of the spl source
-			*** with the '--with-spl=PATH' option])
+	*** Please make sure the spl devel package for your distribution
+	*** is installed then try again.  If that fails you can specify the
+	*** location of the spl source with the '--with-spl=PATH' option.])
 		fi
 	else
 		if test "$splsrc" = "NONE"; then
@@ -199,21 +224,17 @@ AC_DEFUN([ZFS_AC_SPL], [
 	AC_MSG_RESULT([$splsrc])
 	AC_MSG_CHECKING([spl build directory])
 	if test -z "$splbuild"; then
-		if test -d ${splsrc}/module; then
-			splbuild=${splsrc}/module
-		else
-			splbuild=${splsrc}
-		fi
+		splbuild=${splsrc}
 	fi
 	AC_MSG_RESULT([$splbuild])
 
 	AC_MSG_CHECKING([spl source version])
-	if test -r $splsrc/spl_config.h &&
-		fgrep -q SPL_META_VERSION $splsrc/spl_config.h; then
+	if test -r $splbuild/spl_config.h &&
+		fgrep -q SPL_META_VERSION $splbuild/spl_config.h; then
 
 		splsrcver=`(echo "#include <spl_config.h>";
 		            echo "splsrcver=SPL_META_VERSION") |
-		            cpp -I $splsrc |
+		            cpp -I $splbuild |
 		            grep "^splsrcver=" | cut -d \" -f 2`
 	fi
 
@@ -235,6 +256,30 @@ AC_DEFUN([ZFS_AC_SPL], [
 	AC_SUBST(SPL_VERSION)
 
 	ZFS_AC_SPL_MODULE_SYMVERS
+])
+
+dnl #
+dnl # There are certain kernel build options which when enabled are
+dnl # completely incompatible with non GPL kernel modules.  It is best
+dnl # to detect these at configure time and fail with a clear error
+dnl # rather than build everything and fail during linking.
+dnl #
+dnl # CONFIG_DEBUG_LOCK_ALLOC - Maps mutex_lock() to mutex_lock_nested()
+dnl #
+AC_DEFUN([ZFS_AC_KERNEL_CONFIG], [
+
+	if test "$ZFS_META_LICENSE" = CDDL; then
+		ZFS_LINUX_CONFIG([DEBUG_LOCK_ALLOC],
+		AC_MSG_ERROR([
+		*** Kernel built with CONFIG_DEBUG_LOCK_ALLOC which is
+		*** incompatible with the CDDL license.  You must rebuild
+		*** your kernel without this option.]), [])
+	fi
+
+	if test "$ZFS_META_LICENSE" = GPL; then
+		AC_DEFINE([HAVE_GPL_ONLY_SYMBOLS], [1],
+			[Define to 1 if licensed under the GPL])
+	fi
 ])
 
 dnl #
@@ -317,7 +362,7 @@ dnl #
 AC_DEFUN([ZFS_CHECK_SYMBOL_EXPORT],
 	[AC_MSG_CHECKING([whether symbol $1 is exported])
 	grep -q -E '[[[:space:]]]$1[[[:space:]]]' \
-		$LINUX_OBJ/Module*.symvers $SPL_OBJ/Module*.symvers 2>/dev/null
+		$LINUX_OBJ/$LINUX_SYMBOLS 2>/dev/null
 	rc=$?
 	if test $rc -ne 0; then
 		export=0

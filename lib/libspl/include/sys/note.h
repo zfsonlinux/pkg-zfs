@@ -39,8 +39,6 @@
 #ifndef	_SYS_NOTE_H
 #define	_SYS_NOTE_H
 
-
-
 #ifdef	__cplusplus
 extern "C" {
 #endif

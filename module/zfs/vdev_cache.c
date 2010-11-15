@@ -172,7 +172,7 @@ vdev_cache_allocate(zio_t *zio)
 
 	ve = kmem_zalloc(sizeof (vdev_cache_entry_t), KM_SLEEP);
 	ve->ve_offset = offset;
-	ve->ve_lastused = lbolt;
+	ve->ve_lastused = ddi_get_lbolt();
 	ve->ve_data = zio_buf_alloc(VCBS);
 
 	avl_add(&vc->vc_offset_tree, ve);
@@ -189,9 +189,9 @@ vdev_cache_hit(vdev_cache_t *vc, vdev_cache_entry_t *ve, zio_t *zio)
 	ASSERT(MUTEX_HELD(&vc->vc_lock));
 	ASSERT(ve->ve_fill_io == NULL);
 
-	if (ve->ve_lastused != lbolt) {
+	if (ve->ve_lastused != ddi_get_lbolt()) {
 		avl_remove(&vc->vc_lastused_tree, ve);
-		ve->ve_lastused = lbolt;
+		ve->ve_lastused = ddi_get_lbolt();
 		avl_add(&vc->vc_lastused_tree, ve);
 	}
 
@@ -244,7 +244,7 @@ int
 vdev_cache_read(zio_t *zio)
 {
 	vdev_cache_t *vc = &zio->io_vd->vdev_cache;
-	vdev_cache_entry_t *ve, ve_search;
+	vdev_cache_entry_t *ve, *ve_search;
 	uint64_t cache_offset = P2ALIGN(zio->io_offset, VCBS);
 	ASSERTV(uint64_t cache_phase = P2PHASE(zio->io_offset, VCBS);)
 	zio_t *fio;
@@ -267,8 +267,10 @@ vdev_cache_read(zio_t *zio)
 
 	mutex_enter(&vc->vc_lock);
 
-	ve_search.ve_offset = cache_offset;
-	ve = avl_find(&vc->vc_offset_tree, &ve_search, NULL);
+	ve_search = kmem_alloc(sizeof(vdev_cache_entry_t), KM_SLEEP);
+	ve_search->ve_offset = cache_offset;
+	ve = avl_find(&vc->vc_offset_tree, ve_search, NULL);
+	kmem_free(ve_search, sizeof(vdev_cache_entry_t));
 
 	if (ve != NULL) {
 		if (ve->ve_missed_update) {

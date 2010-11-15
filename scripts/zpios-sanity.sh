@@ -2,11 +2,11 @@
 #
 # ZFS/ZPOOL configuration test script.
 
+basedir="$(dirname $0)"
+
 SCRIPT_COMMON=common.sh
-if [ -f ./${SCRIPT_COMMON} ]; then
-. ./${SCRIPT_COMMON}
-elif [ -f /usr/libexec/zfs/${SCRIPT_COMMON} ]; then
-. /usr/libexec/zfs/${SCRIPT_COMMON}
+if [ -f "${basedir}/${SCRIPT_COMMON}" ]; then
+. "${basedir}/${SCRIPT_COMMON}"
 else
 echo "Missing helper script ${SCRIPT_COMMON}" && exit 1
 fi
@@ -17,7 +17,7 @@ HEADER=
 usage() {
 cat << EOF
 USAGE:
-$0 [hv]
+$0 [hvxfc]
 
 DESCRIPTION:
         ZPIOS sanity tests
@@ -27,11 +27,12 @@ OPTIONS:
         -v      Verbose
         -x      Destructive hd/sd/md/dm/ram tests
 	-f      Don't prompt due to -x
+	-c      Cleanup lo+file devices at start
 
 EOF
 }
 
-while getopts 'hvxf' OPTION; do
+while getopts 'hvxfc?' OPTION; do
 	case $OPTION in
 	h)
 		usage
@@ -46,6 +47,9 @@ while getopts 'hvxf' OPTION; do
 	f)
 		FORCE=1
 		;;
+	c)
+		CLEANUP=1
+		;;
 	?)
 		usage
 		exit
@@ -55,6 +59,12 @@ done
 
 if [ $(id -u) != 0 ]; then
 	die "Must run as root"
+fi
+
+# Perform pre-cleanup is requested
+if [ ${CLEANUP} ]; then
+	cleanup_loop_devices
+	rm -f /tmp/zpool.cache.*
 fi
 
 zpios_test() {

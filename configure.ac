@@ -35,10 +35,13 @@ AC_LANG(C)
 ZFS_AC_META
 AC_CONFIG_AUX_DIR([config])
 AC_CANONICAL_SYSTEM
-AM_INIT_AUTOMAKE([$ZFS_META_NAME], [$ZFS_META_VERSION])
-AC_CONFIG_HEADERS([zfs_config.h])
-AH_BOTTOM([#include <zfs_unconfig.h>])
 AM_MAINTAINER_MODE
+AM_SILENT_RULES
+AM_INIT_AUTOMAKE([$ZFS_META_NAME], [$ZFS_META_VERSION])
+AC_CONFIG_HEADERS([zfs_config.h], [
+	(mv zfs_config.h zfs_config.h.tmp &&
+	awk -f ${ac_srcdir}/config/config.awk zfs_config.h.tmp >zfs_config.h &&
+	rm zfs_config.h.tmp) || exit 1])
 
 AC_PROG_INSTALL
 AC_PROG_CC
@@ -52,29 +55,36 @@ ZFS_AC_DEBUG
 
 AC_CONFIG_FILES([ 
 	Makefile
-	config/Makefile
-        man/Makefile
-        man/man8/Makefile
-	doc/Makefile
+	etc/Makefile
+	man/Makefile
+	man/man8/Makefile
 	lib/Makefile
 	lib/libspl/Makefile
 	lib/libspl/asm-generic/Makefile
 	lib/libspl/asm-i386/Makefile
 	lib/libspl/asm-x86_64/Makefile
 	lib/libspl/include/Makefile
+	lib/libspl/include/ia32/Makefile
+	lib/libspl/include/ia32/sys/Makefile
+	lib/libspl/include/rpc/Makefile
+	lib/libspl/include/sys/Makefile
+	lib/libspl/include/sys/sysevent/Makefile
+	lib/libspl/include/sys/dktp/Makefile
+	lib/libspl/include/util/Makefile
 	lib/libavl/Makefile
 	lib/libefi/Makefile
 	lib/libnvpair/Makefile
 	lib/libunicode/Makefile
 	lib/libuutil/Makefile
 	lib/libzpool/Makefile
-	lib/libzpool/include/Makefile
 	lib/libzfs/Makefile
 	cmd/Makefile
 	cmd/zdb/Makefile
 	cmd/zfs/Makefile
 	cmd/zinject/Makefile
 	cmd/zpool/Makefile
+	cmd/zpool_id/Makefile
+	cmd/zpool_layout/Makefile
 	cmd/ztest/Makefile
 	cmd/zpios/Makefile
 	module/Makefile
@@ -84,9 +94,20 @@ AC_CONFIG_FILES([
 	module/zcommon/Makefile
 	module/zfs/Makefile
 	module/zpios/Makefile
+	include/Makefile
+	include/sys/Makefile
+	include/sys/fs/Makefile
+	include/sys/fm/Makefile
+	include/sys/fm/fs/Makefile
 	scripts/Makefile
+	scripts/zpios-profile/Makefile
+	scripts/zpios-test/Makefile
+	scripts/zpool-config/Makefile
+	scripts/zpool-layout/Makefile
+	scripts/common.sh
 	zfs.spec
 	zfs-modules.spec
+	zfs-script-config.sh
 ])
 
 AC_OUTPUT

@@ -19,12 +19,10 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
- * Use is subject to license terms.
+ * Copyright (c) 2007, 2010, Oracle and/or its affiliates. All rights reserved.
  */
 
 #include <sys/zfs_context.h>
-#include <sys/sunddi.h>
 #include <sys/dmu.h>
 #include <sys/avl.h>
 #include <sys/zap.h>
@@ -382,7 +380,7 @@ zfs_fuid_find_by_idx(zfsvfs_t *zfsvfs, uint32_t idx)
 
 	rw_enter(&zfsvfs->z_fuid_lock, RW_READER);
 
-	if (zfsvfs->z_fuid_obj)
+	if (zfsvfs->z_fuid_obj || zfsvfs->z_fuid_dirty)
 		domain = zfs_fuid_idx_domain(&zfsvfs->z_fuid_idx, idx);
 	else
 		domain = nulldomain;
@@ -396,10 +394,8 @@ zfs_fuid_find_by_idx(zfsvfs_t *zfsvfs, uint32_t idx)
 void
 zfs_fuid_map_ids(znode_t *zp, cred_t *cr, uid_t *uidp, uid_t *gidp)
 {
-	*uidp = zfs_fuid_map_id(zp->z_zfsvfs, zp->z_phys->zp_uid,
-	    cr, ZFS_OWNER);
-	*gidp = zfs_fuid_map_id(zp->z_zfsvfs, zp->z_phys->zp_gid,
-	    cr, ZFS_GROUP);
+	*uidp = zfs_fuid_map_id(zp->z_zfsvfs, zp->z_uid, cr, ZFS_OWNER);
+	*gidp = zfs_fuid_map_id(zp->z_zfsvfs, zp->z_gid, cr, ZFS_GROUP);
 }
 
 uid_t
@@ -440,7 +436,7 @@ zfs_fuid_map_id(zfsvfs_t *zfsvfs, uint64_t fuid,
  * If ACL has multiple domains, then keep only one copy of each unique
  * domain.
  */
-static void
+void
 zfs_fuid_node_add(zfs_fuid_info_t **fuidpp, const char *domain, uint32_t rid,
     uint64_t idx, uint64_t id, zfs_fuid_type_t type)
 {
@@ -501,6 +497,11 @@ zfs_fuid_node_add(zfs_fuid_info_t **fuidpp, const char *domain, uint32_t rid,
 
 /*
  * Create a file system FUID, based on information in the users cred
+ *
+ * If cred contains KSID_OWNER then it should be used to determine
+ * the uid otherwise cred's uid will be used. By default cred's gid
+ * is used unless it's an ephemeral ID in which case KSID_GROUP will
+ * be used if it exists.
  */
 uint64_t
 zfs_fuid_create_cred(zfsvfs_t *zfsvfs, zfs_fuid_type_t type,
@@ -516,17 +517,26 @@ zfs_fuid_create_cred(zfsvfs_t *zfsvfs, zfs_fuid_type_t type,
 	VERIFY(type == ZFS_OWNER || type == ZFS_GROUP);
 
 	ksid = crgetsid(cr, (type == ZFS_OWNER) ? KSID_OWNER : KSID_GROUP);
-	if (ksid) {
-		id = ksid_getid(ksid);
-	} else {
-		if (type == ZFS_OWNER)
-			id = crgetuid(cr);
-		else
-			id = crgetgid(cr);
+
+	if (!zfsvfs->z_use_fuids || (ksid == NULL)) {
+		id = (type == ZFS_OWNER) ? crgetuid(cr) : crgetgid(cr);
+
+		if (IS_EPHEMERAL(id))
+			return ((type == ZFS_OWNER) ? UID_NOBODY : GID_NOBODY);
+
+		return ((uint64_t)id);
 	}
 
-	if (!zfsvfs->z_use_fuids || (!IS_EPHEMERAL(id)))
+	/*
+	 * ksid is present and FUID is supported
+	 */
+	id = (type == ZFS_OWNER) ? ksid_getid(ksid) : crgetgid(cr);
+
+	if (!IS_EPHEMERAL(id))
 		return ((uint64_t)id);
+
+	if (type == ZFS_GROUP)
+		id = ksid_getid(ksid);
 
 	rid = ksid_getrid(ksid);
 	domain = ksid_getdomain(ksid);

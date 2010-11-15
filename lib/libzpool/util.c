@@ -19,8 +19,7 @@
  * CDDL HEADER END
  */
 /*
- * Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
- * Use is subject to license terms.
+ * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  */
 
 #include <assert.h>
@@ -41,24 +40,24 @@ void
 nicenum(uint64_t num, char *buf)
 {
 	uint64_t n = num;
-	int i = 0;
+	int index = 0;
 	char u;
 
 	while (n >= 1024) {
 		n = (n + (1024 / 2)) / 1024; /* Round up or down */
-		i++;
+		index++;
 	}
 
-	u = " KMGTPE"[i];
+	u = " KMGTPE"[index];
 
-	if (i == 0) {
+	if (index == 0) {
 		(void) sprintf(buf, "%llu", (u_longlong_t)n);
 	} else if (n < 10 && (num & (num - 1)) != 0) {
 		(void) sprintf(buf, "%.2f%c",
-		    (double)num / (1ULL << 10 * i), u);
+		    (double)num / (1ULL << 10 * index), u);
 	} else if (n < 100 && (num & (num - 1)) != 0) {
 		(void) sprintf(buf, "%.1f%c",
-		    (double)num / (1ULL << 10 * i), u);
+		    (double)num / (1ULL << 10 * index), u);
 	} else {
 		(void) sprintf(buf, "%llu%c", (u_longlong_t)n, u);
 	}
@@ -90,7 +89,7 @@ show_vdev_stats(const char *desc, const char *ctype, nvlist_t *nv, int indent)
 		if (is_log)
 			prefix = "log ";
 
-		if (nvlist_lookup_uint64_array(nv, ZPOOL_CONFIG_STATS,
+		if (nvlist_lookup_uint64_array(nv, ZPOOL_CONFIG_VDEV_STATS,
 		    (uint64_t **)&vs, &c) != 0)
 			vs = &v0;
 

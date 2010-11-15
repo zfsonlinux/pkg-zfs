@@ -787,11 +787,13 @@ ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
 LIBOBJS
-USERDEBUG
+DEBUG_STACKFLAGS
+DEBUG_CFLAGS
 CONFIG_KERNEL_FALSE
 CONFIG_KERNEL_TRUE
 CONFIG_USER_FALSE
 CONFIG_USER_TRUE
+FRAME_LARGER_THAN
 LIBBLKID
 LIBUUID
 ZLIB
@@ -807,13 +809,8 @@ LINUX_OBJ
 LINUX
 ZFS_CONFIG
 TARGET_ASM_DIR
-SCRIPTDIR
-MODDIR
-CMDDIR
-LIBDIR
-BUILDDIR
-TOPDIR
 DEFAULT_PACKAGE
+VENDOR
 ALIEN_VERSION
 ALIEN
 HAVE_ALIEN
@@ -829,7 +826,6 @@ HAVE_RPMBUILD
 RPM_VERSION
 RPM
 HAVE_RPM
-LICENSE
 am__fastdepCCAS_FALSE
 am__fastdepCCAS_TRUE
 CCASDEPMODE
@@ -871,9 +867,6 @@ CPPFLAGS
 LDFLAGS
 CFLAGS
 CC
-MAINT
-MAINTAINER_MODE_FALSE
-MAINTAINER_MODE_TRUE
 am__untar
 am__tar
 AMTAR
@@ -897,6 +890,11 @@ am__isrc
 INSTALL_DATA
 INSTALL_SCRIPT
 INSTALL_PROGRAM
+AM_BACKSLASH
+AM_DEFAULT_VERBOSITY
+MAINT
+MAINTAINER_MODE_FALSE
+MAINTAINER_MODE_TRUE
 target_os
 target_vendor
 target_cpu
@@ -915,6 +913,7 @@ ZFS_META_LT_CURRENT
 ZFS_META_AUTHOR
 ZFS_META_DATA
 ZFS_META_ALIAS
+ZFS_META_LICENSE
 ZFS_META_RELEASE
 ZFS_META_VERSION
 ZFS_META_NAME
@@ -959,6 +958,7 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 enable_maintainer_mode
+enable_silent_rules
 enable_dependency_tracking
 enable_shared
 enable_static
@@ -1616,6 +1616,8 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-maintainer-mode  enable make rules and dependencies not useful
 			  (and sometimes confusing) to the casual installer
+  --enable-silent-rules          less verbose build output (undo: `make V=1')
+  --disable-silent-rules         verbose build output (undo: `make V=0')
   --disable-dependency-tracking  speeds up one-time build
   --enable-dependency-tracking   do not reject slow dependency extractors
   --enable-shared[=PKGS]  build shared libraries [default=yes]
@@ -1623,7 +1625,7 @@ Optional Features:
   --enable-fast-install[=PKGS]
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
-  --enable-debug          Enable generic debug support (default off)
+  --enable-debug          Enable generic debug support [default=no]
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -2165,6 +2167,25 @@ _ACEOF
 
 		fi
 
+		ZFS_META_LICENSE=`perl -n\
+		-e "BEGIN { \\$key=shift @ARGV; }"\
+		-e "next unless s/^\s*\\$key[:=]//i;"\
+		-e "s/^((?:[^'\"#]*(?:(['\"])[^\2]*\2)*)*)#.*/\\$1/;"\
+		-e "s/^\s+//;"\
+		-e "s/\s+$//;"\
+		-e "s/^(['\"])(.*)\1/\\$2/;"\
+		-e "\\$val=\\$_;"\
+		-e "END { print \\$val if defined \\$val; }"\
+		'LICENSE' $META`;
+		if test -n "$ZFS_META_LICENSE"; then
+
+cat >>confdefs.h <<_ACEOF
+#define ZFS_META_LICENSE "$ZFS_META_LICENSE"
+_ACEOF
+
+
+		fi
+
 		if test -n "$ZFS_META_NAME" -a -n "$ZFS_META_VERSION"; then
 				ZFS_META_ALIAS="$ZFS_META_NAME-$ZFS_META_VERSION"
 				test -n "$ZFS_META_RELEASE" &&
@@ -2434,6 +2455,41 @@ test -n "$target_alias" &&
   test "$program_prefix$program_suffix$program_transform_name" = \
     NONENONEs,x,x, &&
   program_prefix=${target_alias}-
+
+{ $as_echo "$as_me:$LINENO: checking whether to enable maintainer-specific portions of Makefiles" >&5
+$as_echo_n "checking whether to enable maintainer-specific portions of Makefiles... " >&6; }
+    # Check whether --enable-maintainer-mode was given.
+if test "${enable_maintainer_mode+set}" = set; then
+  enableval=$enable_maintainer_mode; USE_MAINTAINER_MODE=$enableval
+else
+  USE_MAINTAINER_MODE=no
+fi
+
+  { $as_echo "$as_me:$LINENO: result: $USE_MAINTAINER_MODE" >&5
+$as_echo "$USE_MAINTAINER_MODE" >&6; }
+   if test $USE_MAINTAINER_MODE = yes; then
+  MAINTAINER_MODE_TRUE=
+  MAINTAINER_MODE_FALSE='#'
+else
+  MAINTAINER_MODE_TRUE='#'
+  MAINTAINER_MODE_FALSE=
+fi
+
+  MAINT=$MAINTAINER_MODE_TRUE
+
+
+# Check whether --enable-silent-rules was given.
+if test "${enable_silent_rules+set}" = set; then
+  enableval=$enable_silent_rules;
+fi
+
+case $enable_silent_rules in
+yes) AM_DEFAULT_VERBOSITY=0;;
+no)  AM_DEFAULT_VERBOSITY=1;;
+*)   AM_DEFAULT_VERBOSITY=1;;
+esac
+AM_BACKSLASH='\'
+
 am__api_version='1.11'
 
 # Find a good install program.  We prefer a C program (faster),
@@ -2925,31 +2981,6 @@ am__tar='${AMTAR} chof - "$$tardir"'; am__untar='${AMTAR} xf -'
 
 
 ac_config_headers="$ac_config_headers zfs_config.h"
-
-
-
-
-{ $as_echo "$as_me:$LINENO: checking whether to enable maintainer-specific portions of Makefiles" >&5
-$as_echo_n "checking whether to enable maintainer-specific portions of Makefiles... " >&6; }
-    # Check whether --enable-maintainer-mode was given.
-if test "${enable_maintainer_mode+set}" = set; then
-  enableval=$enable_maintainer_mode; USE_MAINTAINER_MODE=$enableval
-else
-  USE_MAINTAINER_MODE=no
-fi
-
-  { $as_echo "$as_me:$LINENO: result: $USE_MAINTAINER_MODE" >&5
-$as_echo "$USE_MAINTAINER_MODE" >&6; }
-   if test $USE_MAINTAINER_MODE = yes; then
-  MAINTAINER_MODE_TRUE=
-  MAINTAINER_MODE_FALSE='#'
-else
-  MAINTAINER_MODE_TRUE='#'
-  MAINTAINER_MODE_FALSE=
-fi
-
-  MAINT=$MAINTAINER_MODE_TRUE
-
 
 
 # Find a good install program.  We prefer a C program (faster),
@@ -4786,13 +4817,13 @@ if test "${lt_cv_nm_interface+set}" = set; then
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:4789: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:4820: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:4792: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:4823: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:4795: output\"" >&5)
+  (eval echo "\"\$as_me:4826: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -5998,7 +6029,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 6001 "configure"' > conftest.$ac_ext
+  echo '#line 6032 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -7851,11 +7882,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7854: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7885: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7858: \$? = $ac_status" >&5
+   echo "$as_me:7889: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -8190,11 +8221,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8193: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8224: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8197: \$? = $ac_status" >&5
+   echo "$as_me:8228: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -8295,11 +8326,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8298: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8329: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:8302: \$? = $ac_status" >&5
+   echo "$as_me:8333: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -8350,11 +8381,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8353: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8384: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:8357: \$? = $ac_status" >&5
+   echo "$as_me:8388: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -11153,7 +11184,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11156 "configure"
+#line 11187 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11249,7 +11280,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11252 "configure"
+#line 11283 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11610,20 +11641,15 @@ fi
 
 
 
+	{ $as_echo "$as_me:$LINENO: checking zfs author" >&5
+$as_echo_n "checking zfs author... " >&6; }
+	{ $as_echo "$as_me:$LINENO: result: $ZFS_META_AUTHOR" >&5
+$as_echo "$ZFS_META_AUTHOR" >&6; }
+
 	{ $as_echo "$as_me:$LINENO: checking zfs license" >&5
 $as_echo_n "checking zfs license... " >&6; }
-	LICENSE=`grep MODULE_LICENSE module/zfs/zfs_ioctl.c | cut -f2 -d'"'`
-	{ $as_echo "$as_me:$LINENO: result: $LICENSE" >&5
-$as_echo "$LICENSE" >&6; }
-	if test "$LICENSE" = GPL; then
-
-cat >>confdefs.h <<\_ACEOF
-#define HAVE_GPL_ONLY_SYMBOLS 1
-_ACEOF
-
-	fi
-
-
+	{ $as_echo "$as_me:$LINENO: result: $ZFS_META_LICENSE" >&5
+$as_echo "$ZFS_META_LICENSE" >&6; }
 
 
 
@@ -11749,7 +11775,28 @@ fi
 
 
 
-	VENDOR=$(echo $ac_build_alias | cut -f2 -d'-')
+	{ $as_echo "$as_me:$LINENO: checking linux distribution" >&5
+$as_echo_n "checking linux distribution... " >&6; }
+	if test -f /etc/redhat-release ; then
+		VENDOR=redhat ;
+	elif test -f /etc/fedora-release ; then
+		VENDOR=fedora ;
+	elif test -f /etc/lsb-release ; then
+		VENDOR=ubuntu ;
+	elif test -f /etc/debian_version ; then
+		VENDOR=debian ;
+	elif test -f /etc/SuSE-release ; then
+		VENDOR=sles ;
+	elif test -f /etc/slackware-version ; then
+		VENDOR=slackware ;
+	elif test -f /etc/gentoo-release ; then
+		VENDOR=gentoo ;
+	else
+		VENDOR= ;
+	fi
+	{ $as_echo "$as_me:$LINENO: result: $VENDOR" >&5
+$as_echo "$VENDOR" >&6; }
+
 
 	{ $as_echo "$as_me:$LINENO: checking default package type" >&5
 $as_echo_n "checking default package type... " >&6; }
@@ -11769,20 +11816,7 @@ $as_echo "$DEFAULT_PACKAGE" >&6; }
 
 
 
-	TOPDIR=`readlink -f ${srcdir}`
-	BUILDDIR=$TOPDIR
-	LIBDIR=$TOPDIR/lib
-	CMDDIR=$TOPDIR/cmd
-	MODDIR=$TOPDIR/module
-	SCRIPTDIR=$TOPDIR/scripts
 	TARGET_ASM_DIR=asm-generic
-
-
-
-
-
-
-
 
 
 	ZFS_CONFIG=all
@@ -11819,20 +11853,28 @@ fi
 	{ $as_echo "$as_me:$LINENO: checking kernel source directory" >&5
 $as_echo_n "checking kernel source directory... " >&6; }
 	if test -z "$kernelsrc"; then
-		sourcelink=`ls -1d /usr/src/kernels/* /usr/src/linux-* \
-		            2>/dev/null | grep -v obj | tail -1`
+		headersdir="/lib/modules/$(uname -r)/build"
+		if test -e "$headersdir"; then
+			sourcelink=$(readlink -f "$headersdir")
+		else
+			sourcelink=$(ls -1d /usr/src/kernels/* \
+				     /usr/src/linux-* \
+			             2>/dev/null | grep -v obj | tail -1)
+		fi
 
-		if test -e $sourcelink; then
+		if test -n "$sourcelink" && test -e ${sourcelink}; then
 			kernelsrc=`readlink -f ${sourcelink}`
 		else
 			{ $as_echo "$as_me:$LINENO: result: Not found" >&5
 $as_echo "Not found" >&6; }
 			{ { $as_echo "$as_me:$LINENO: error:
-			*** Please specify the location of the kernel source
-			*** with the '--with-linux=PATH' option" >&5
+	*** Please make sure the kernel devel package for your distribution
+	*** is installed then try again.  If that fails you can specify the
+	*** location of the kernel source with the '--with-linux=PATH' option." >&5
 $as_echo "$as_me: error:
-			*** Please specify the location of the kernel source
-			*** with the '--with-linux=PATH' option" >&2;}
+	*** Please make sure the kernel devel package for your distribution
+	*** is installed then try again.  If that fails you can specify the
+	*** location of the kernel source with the '--with-linux=PATH' option." >&2;}
    { (exit 1); exit 1; }; }
 		fi
 	else
@@ -11846,12 +11888,12 @@ $as_echo "$kernelsrc" >&6; }
 	{ $as_echo "$as_me:$LINENO: checking kernel build directory" >&5
 $as_echo_n "checking kernel build directory... " >&6; }
 	if test -z "$kernelbuild"; then
-		if test -d ${kernelsrc}-obj/`arch`/`arch`; then
-			kernelbuild=${kernelsrc}-obj/`arch`/`arch`
-		elif test -d ${kernelsrc}-obj/`arch`/default; then
-		        kernelbuild=${kernelsrc}-obj/`arch`/default
-		elif test -d `dirname ${kernelsrc}`/build-`arch`; then
-			kernelbuild=`dirname ${kernelsrc}`/build-`arch`
+		if test -d ${kernelsrc}-obj/${target_cpu}/${target_cpu}; then
+			kernelbuild=${kernelsrc}-obj/${target_cpu}/${target_cpu}
+		elif test -d ${kernelsrc}-obj/${target_cpu}/default; then
+		        kernelbuild=${kernelsrc}-obj/${target_cpu}/default
+		elif test -d `dirname ${kernelsrc}`/build-${target_cpu}; then
+			kernelbuild=`dirname ${kernelsrc}`/build-${target_cpu}
 		else
 			kernelbuild=${kernelsrc}
 		fi
@@ -11861,32 +11903,35 @@ $as_echo "$kernelbuild" >&6; }
 
 	{ $as_echo "$as_me:$LINENO: checking kernel source version" >&5
 $as_echo_n "checking kernel source version... " >&6; }
-	if test -r $kernelbuild/include/linux/version.h &&
-		fgrep -q UTS_RELEASE $kernelbuild/include/linux/version.h; then
-
-		kernsrcver=`(echo "#include <linux/version.h>";
-		             echo "kernsrcver=UTS_RELEASE") |
-		             cpp -I $kernelbuild/include |
-		             grep "^kernsrcver=" | cut -d \" -f 2`
-
-	elif test -r $kernelbuild/include/linux/utsrelease.h &&
-		fgrep -q UTS_RELEASE $kernelbuild/include/linux/utsrelease.h; then
-
-		kernsrcver=`(echo "#include <linux/utsrelease.h>";
-		             echo "kernsrcver=UTS_RELEASE") |
-		             cpp -I $kernelbuild/include |
-		             grep "^kernsrcver=" | cut -d \" -f 2`
+	utsrelease1=$kernelbuild/include/linux/version.h
+	utsrelease2=$kernelbuild/include/linux/utsrelease.h
+	utsrelease3=$kernelbuild/include/generated/utsrelease.h
+	if test -r $utsrelease1 && fgrep -q UTS_RELEASE $utsrelease1; then
+		utsrelease=linux/version.h
+	elif test -r $utsrelease2 && fgrep -q UTS_RELEASE $utsrelease2; then
+		utsrelease=linux/utsrelease.h
+	elif test -r $utsrelease3 && fgrep -q UTS_RELEASE $utsrelease3; then
+		utsrelease=generated/utsrelease.h
 	fi
 
-	if test -z "$kernsrcver"; then
+	if test "$utsrelease"; then
+		kernsrcver=`(echo "#include <$utsrelease>";
+		             echo "kernsrcver=UTS_RELEASE") |
+		             cpp -I $kernelbuild/include |
+		             grep "^kernsrcver=" | cut -d \" -f 2`
+
+		if test -z "$kernsrcver"; then
+			{ $as_echo "$as_me:$LINENO: result: Not found" >&5
+$as_echo "Not found" >&6; }
+			{ { $as_echo "$as_me:$LINENO: error: *** Cannot determine kernel version." >&5
+$as_echo "$as_me: error: *** Cannot determine kernel version." >&2;}
+   { (exit 1); exit 1; }; }
+		fi
+	else
 		{ $as_echo "$as_me:$LINENO: result: Not found" >&5
 $as_echo "Not found" >&6; }
-		{ { $as_echo "$as_me:$LINENO: error:
-		*** Cannot determine the version of the linux kernel source.
-		*** Please prepare the kernel before running this script" >&5
-$as_echo "$as_me: error:
-		*** Cannot determine the version of the linux kernel source.
-		*** Please prepare the kernel before running this script" >&2;}
+		{ { $as_echo "$as_me:$LINENO: error: *** Cannot find UTS_RELEASE definition." >&5
+$as_echo "$as_me: error: *** Cannot find UTS_RELEASE definition." >&2;}
    { (exit 1); exit 1; }; }
 	fi
 
@@ -11941,17 +11986,23 @@ $as_echo_n "checking spl source directory... " >&6; }
 		sourcelink=`ls -1d /usr/src/spl-*/${LINUX_VERSION} \
 		            2>/dev/null | tail -1`
 
+		if test -z "$sourcelink" || test ! -e $sourcelink; then
+			sourcelink=../spl
+		fi
+
 		if test -e $sourcelink; then
 			splsrc=`readlink -f ${sourcelink}`
 		else
 			{ $as_echo "$as_me:$LINENO: result: Not found" >&5
 $as_echo "Not found" >&6; }
 			{ { $as_echo "$as_me:$LINENO: error:
-			*** Please specify the location of the spl source
-			*** with the '--with-spl=PATH' option" >&5
+	*** Please make sure the spl devel package for your distribution
+	*** is installed then try again.  If that fails you can specify the
+	*** location of the spl source with the '--with-spl=PATH' option." >&5
 $as_echo "$as_me: error:
-			*** Please specify the location of the spl source
-			*** with the '--with-spl=PATH' option" >&2;}
+	*** Please make sure the spl devel package for your distribution
+	*** is installed then try again.  If that fails you can specify the
+	*** location of the spl source with the '--with-spl=PATH' option." >&2;}
    { (exit 1); exit 1; }; }
 		fi
 	else
@@ -11966,23 +12017,19 @@ $as_echo "$splsrc" >&6; }
 	{ $as_echo "$as_me:$LINENO: checking spl build directory" >&5
 $as_echo_n "checking spl build directory... " >&6; }
 	if test -z "$splbuild"; then
-		if test -d ${splsrc}/module; then
-			splbuild=${splsrc}/module
-		else
-			splbuild=${splsrc}
-		fi
+		splbuild=${splsrc}
 	fi
 	{ $as_echo "$as_me:$LINENO: result: $splbuild" >&5
 $as_echo "$splbuild" >&6; }
 
 	{ $as_echo "$as_me:$LINENO: checking spl source version" >&5
 $as_echo_n "checking spl source version... " >&6; }
-	if test -r $splsrc/spl_config.h &&
-		fgrep -q SPL_META_VERSION $splsrc/spl_config.h; then
+	if test -r $splbuild/spl_config.h &&
+		fgrep -q SPL_META_VERSION $splbuild/spl_config.h; then
 
 		splsrcver=`(echo "#include <spl_config.h>";
 		            echo "splsrcver=SPL_META_VERSION") |
-		            cpp -I $splsrc |
+		            cpp -I $splbuild |
 		            grep "^splsrcver=" | cut -d \" -f 2`
 	fi
 
@@ -12016,14 +12063,104 @@ $as_echo_n "checking spl file name for module symbols... " >&6; }
 		SPL_SYMBOLS=Module.symvers
 	elif test -r $SPL_OBJ/Modules.symvers; then
 		SPL_SYMBOLS=Modules.symvers
+	elif test -r $SPL_OBJ/module/Module.symvers; then
+		SPL_SYMBOLS=Module.symvers
+	elif test -r $SPL_OBJ/module/Modules.symvers; then
+		SPL_SYMBOLS=Modules.symvers
 	else
-		SPL_SYMBOLS=NONE
+		SPL_SYMBOLS=$LINUX_SYMBOLS
 	fi
 
 	{ $as_echo "$as_me:$LINENO: result: $SPL_SYMBOLS" >&5
 $as_echo "$SPL_SYMBOLS" >&6; }
 
 
+
+
+
+	if test "$ZFS_META_LICENSE" = CDDL; then
+		{ $as_echo "$as_me:$LINENO: checking whether Linux was built with CONFIG_DEBUG_LOCK_ALLOC" >&5
+$as_echo_n "checking whether Linux was built with CONFIG_DEBUG_LOCK_ALLOC... " >&6; }
+
+
+cat confdefs.h - <<_ACEOF >conftest.c
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+
+		#ifndef AUTOCONF_INCLUDED
+		#include <linux/config.h>
+		#endif
+
+int
+main (void)
+{
+
+		#ifndef CONFIG_DEBUG_LOCK_ALLOC
+		#error CONFIG_DEBUG_LOCK_ALLOC not #defined
+		#endif
+
+  ;
+  return 0;
+}
+
+_ACEOF
+
+
+	rm -Rf build && mkdir -p build
+	echo "obj-m := conftest.o" >build/Makefile
+	if { ac_try='cp conftest.c build && make modules -C $LINUX_OBJ EXTRA_CFLAGS="-Werror-implicit-function-declaration $EXTRA_KCFLAGS" $ARCH_UM M=$PWD/build'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } >/dev/null && { ac_try='test -s build/conftest.o'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+
+		{ $as_echo "$as_me:$LINENO: result: yes" >&5
+$as_echo "yes" >&6; }
+		{ { $as_echo "$as_me:$LINENO: error:
+		*** Kernel built with CONFIG_DEBUG_LOCK_ALLOC which is
+		*** incompatible with the CDDL license.  You must rebuild
+		*** your kernel without this option." >&5
+$as_echo "$as_me: error:
+		*** Kernel built with CONFIG_DEBUG_LOCK_ALLOC which is
+		*** incompatible with the CDDL license.  You must rebuild
+		*** your kernel without this option." >&2;}
+   { (exit 1); exit 1; }; }
+
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+		{ $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+
+
+
+
+fi
+
+	rm -Rf build
+
+
+
+	fi
+
+	if test "$ZFS_META_LICENSE" = GPL; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_GPL_ONLY_SYMBOLS 1
+_ACEOF
+
+	fi
 
 
 	{ $as_echo "$as_me:$LINENO: checking block device operation prototypes" >&5
@@ -12106,11 +12243,141 @@ fi
 
 
 
+	{ $as_echo "$as_me:$LINENO: checking whether kernel defines fmode_t" >&5
+$as_echo_n "checking whether kernel defines fmode_t... " >&6; }
+
+
+cat confdefs.h - <<_ACEOF >conftest.c
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+
+		#include <linux/types.h>
+
+int
+main (void)
+{
+
+		fmode_t *ptr;
+
+  ;
+  return 0;
+}
+
+_ACEOF
+
+
+	rm -Rf build && mkdir -p build
+	echo "obj-m := conftest.o" >build/Makefile
+	if { ac_try='cp conftest.c build && make modules -C $LINUX_OBJ EXTRA_CFLAGS="-Werror-implicit-function-declaration $EXTRA_KCFLAGS" $ARCH_UM M=$PWD/build'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } >/dev/null && { ac_try='test -s build/conftest.o'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+
+		{ $as_echo "$as_me:$LINENO: result: yes" >&5
+$as_echo "yes" >&6; }
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_FMODE_T 1
+_ACEOF
+
+
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+		{ $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+
+
+
+fi
+
+	rm -Rf build
+
+
+
+
+	{ $as_echo "$as_me:$LINENO: checking whether kernel defines KOBJ_NAME_LEN" >&5
+$as_echo_n "checking whether kernel defines KOBJ_NAME_LEN... " >&6; }
+
+
+cat confdefs.h - <<_ACEOF >conftest.c
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+
+		#include <linux/kobject.h>
+
+int
+main (void)
+{
+
+		int val;
+		val = KOBJ_NAME_LEN;
+
+  ;
+  return 0;
+}
+
+_ACEOF
+
+
+	rm -Rf build && mkdir -p build
+	echo "obj-m := conftest.o" >build/Makefile
+	if { ac_try='cp conftest.c build && make modules -C $LINUX_OBJ EXTRA_CFLAGS="-Werror-implicit-function-declaration $EXTRA_KCFLAGS" $ARCH_UM M=$PWD/build'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } >/dev/null && { ac_try='test -s build/conftest.o'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+
+		{ $as_echo "$as_me:$LINENO: result: yes" >&5
+$as_echo "yes" >&6; }
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_KOBJ_NAME_LEN 1
+_ACEOF
+
+
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+		{ $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+
+
+
+fi
+
+	rm -Rf build
+
+
+
 
 	{ $as_echo "$as_me:$LINENO: checking whether symbol open_bdev_exclusive is exported" >&5
 $as_echo_n "checking whether symbol open_bdev_exclusive is exported... " >&6; }
 	grep -q -E '[[:space:]]open_bdev_exclusive[[:space:]]' \
-		$LINUX_OBJ/Module*.symvers $SPL_OBJ/Module*.symvers 2>/dev/null
+		$LINUX_OBJ/$LINUX_SYMBOLS 2>/dev/null
 	rc=$?
 	if test $rc -ne 0; then
 		export=0
@@ -13216,15 +13483,14 @@ fi
 
 
 
-			KERNELMAKE_PARAMS="V=1"
-
-			KERNELCPPFLAGS="$KERNELCPPFLAGS -Werror -DHAVE_SPL -DLINUX_PORT -D_KERNEL"
-	KERNELCPPFLAGS="$KERNELCPPFLAGS -DTEXT_DOMAIN=\\\"zfs-linux-kernel\\\""
-	KERNELCPPFLAGS="$KERNELCPPFLAGS -I$TOPDIR -I$SPL -I$SPL/include"
-
 	if test "$LINUX_OBJ" != "$LINUX"; then
 		KERNELMAKE_PARAMS="$KERNELMAKE_PARAMS O=$LINUX_OBJ"
 	fi
+
+
+
+			KERNELCPPFLAGS="$KERNELCPPFLAGS -DHAVE_SPL -DLINUX_PORT -D_KERNEL"
+	KERNELCPPFLAGS="$KERNELCPPFLAGS -DTEXT_DOMAIN=\\\"zfs-linux-kernel\\\""
 
 
 
@@ -13964,10 +14230,10 @@ else
   { { $as_echo "$as_me:$LINENO: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 { { $as_echo "$as_me:$LINENO: error:
-	*** uuid/uuid.h missing, e2fsprogs-devel package required
+	*** uuid/uuid.h missing, libuuid-devel package required
 See \`config.log' for more details." >&5
 $as_echo "$as_me: error:
-	*** uuid/uuid.h missing, e2fsprogs-devel package required
+	*** uuid/uuid.h missing, libuuid-devel package required
 See \`config.log' for more details." >&2;}
    { (exit 1); exit 1; }; }; }
 fi
@@ -14051,10 +14317,10 @@ else
   { { $as_echo "$as_me:$LINENO: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 { { $as_echo "$as_me:$LINENO: error:
-	*** uuid_generate() missing, e2fsprogs-devel package required
+	*** uuid_generate() missing, libuuid-devel package required
 See \`config.log' for more details." >&5
 $as_echo "$as_me: error:
-	*** uuid_generate() missing, e2fsprogs-devel package required
+	*** uuid_generate() missing, libuuid-devel package required
 See \`config.log' for more details." >&2;}
    { (exit 1); exit 1; }; }; }
 fi
@@ -14137,10 +14403,10 @@ else
   { { $as_echo "$as_me:$LINENO: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 { { $as_echo "$as_me:$LINENO: error:
-	*** uuid_is_null() missing, e2fsprogs-devel package required
+	*** uuid_is_null() missing, libuuid-devel package required
 See \`config.log' for more details." >&5
 $as_echo "$as_me: error:
-	*** uuid_is_null() missing, e2fsprogs-devel package required
+	*** uuid_is_null() missing, libuuid-devel package required
 See \`config.log' for more details." >&2;}
    { (exit 1); exit 1; }; }; }
 fi
@@ -14381,6 +14647,196 @@ fi
 fi
 
 
+
+	{ $as_echo "$as_me:$LINENO: checking for -Wframe-larger-than=<size> support" >&5
+$as_echo_n "checking for -Wframe-larger-than=<size> support... " >&6; }
+
+	saved_flags="$CFLAGS"
+	CFLAGS="$CFLAGS -Wframe-larger-than=1024"
+
+	if test "$cross_compiling" = yes; then
+  { { $as_echo "$as_me:$LINENO: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+{ { $as_echo "$as_me:$LINENO: error: cannot run test program while cross compiling
+See \`config.log' for more details." >&5
+$as_echo "$as_me: error: cannot run test program while cross compiling
+See \`config.log' for more details." >&2;}
+   { (exit 1); exit 1; }; }; }
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_link") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+
+		FRAME_LARGER_THAN=-Wframe-larger-than=1024
+		{ $as_echo "$as_me:$LINENO: result: yes" >&5
+$as_echo "yes" >&6; }
+
+else
+  $as_echo "$as_me: program exited with status $ac_status" >&5
+$as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+( exit $ac_status )
+
+		FRAME_LARGER_THAN=
+		{ $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -rf conftest.dSYM
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
+fi
+
+
+
+	CFLAGS="$saved_flags"
+
+
+
+
+	{ $as_echo "$as_me:$LINENO: checking whether pthread stack includes guard" >&5
+$as_echo_n "checking whether pthread stack includes guard... " >&6; }
+
+	saved_CFLAGS="$CFLAGS"
+	CFLAGS="-fstack-check"
+	saved_LDFLAGS="$LDFLAGS"
+	LDFLAGS="-lpthread"
+
+	if test "$cross_compiling" = yes; then
+  { { $as_echo "$as_me:$LINENO: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+{ { $as_echo "$as_me:$LINENO: error: cannot run test program while cross compiling
+See \`config.log' for more details." >&5
+$as_echo "$as_me: error: cannot run test program while cross compiling
+See \`config.log' for more details." >&2;}
+   { (exit 1); exit 1; }; }; }
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+		#include <pthread.h>
+		#include <sys/resource.h>
+		#include <unistd.h>
+		#include <bits/local_lim.h>
+
+		#define PAGESIZE (sysconf(_SC_PAGESIZE))
+		#define STACK_SIZE 8192
+		#define BUFSIZE 4096
+
+		void * func(void *arg)
+		{
+			char buf[BUFSIZE];
+		}
+
+int
+main ()
+{
+
+		pthread_t tid;
+		pthread_attr_t attr;
+		struct rlimit l;
+
+		l.rlim_cur = 0;
+		l.rlim_max = 0;
+		setrlimit(RLIMIT_CORE, &l);
+		pthread_attr_init(&attr);
+		pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN + STACK_SIZE);
+		pthread_attr_setguardsize(&attr, PAGESIZE);
+		pthread_create(&tid, &attr, func, NULL);
+		pthread_join(tid, NULL);
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_link") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+
+		{ $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+
+else
+  $as_echo "$as_me: program exited with status $ac_status" >&5
+$as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+( exit $ac_status )
+
+
+cat >>confdefs.h <<\_ACEOF
+#define NPTL_GUARD_WITHIN_STACK 1
+_ACEOF
+
+		{ $as_echo "$as_me:$LINENO: result: yes" >&5
+$as_echo "yes" >&6; }
+
+fi
+rm -rf conftest.dSYM
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
+fi
+
+
+	CFLAGS="$saved_CFLAGS"
+	LDFLAGS="$saved_LDFLAGS"
+
    ;;
 		all)
 
@@ -14401,20 +14857,28 @@ fi
 	{ $as_echo "$as_me:$LINENO: checking kernel source directory" >&5
 $as_echo_n "checking kernel source directory... " >&6; }
 	if test -z "$kernelsrc"; then
-		sourcelink=`ls -1d /usr/src/kernels/* /usr/src/linux-* \
-		            2>/dev/null | grep -v obj | tail -1`
+		headersdir="/lib/modules/$(uname -r)/build"
+		if test -e "$headersdir"; then
+			sourcelink=$(readlink -f "$headersdir")
+		else
+			sourcelink=$(ls -1d /usr/src/kernels/* \
+				     /usr/src/linux-* \
+			             2>/dev/null | grep -v obj | tail -1)
+		fi
 
-		if test -e $sourcelink; then
+		if test -n "$sourcelink" && test -e ${sourcelink}; then
 			kernelsrc=`readlink -f ${sourcelink}`
 		else
 			{ $as_echo "$as_me:$LINENO: result: Not found" >&5
 $as_echo "Not found" >&6; }
 			{ { $as_echo "$as_me:$LINENO: error:
-			*** Please specify the location of the kernel source
-			*** with the '--with-linux=PATH' option" >&5
+	*** Please make sure the kernel devel package for your distribution
+	*** is installed then try again.  If that fails you can specify the
+	*** location of the kernel source with the '--with-linux=PATH' option." >&5
 $as_echo "$as_me: error:
-			*** Please specify the location of the kernel source
-			*** with the '--with-linux=PATH' option" >&2;}
+	*** Please make sure the kernel devel package for your distribution
+	*** is installed then try again.  If that fails you can specify the
+	*** location of the kernel source with the '--with-linux=PATH' option." >&2;}
    { (exit 1); exit 1; }; }
 		fi
 	else
@@ -14428,12 +14892,12 @@ $as_echo "$kernelsrc" >&6; }
 	{ $as_echo "$as_me:$LINENO: checking kernel build directory" >&5
 $as_echo_n "checking kernel build directory... " >&6; }
 	if test -z "$kernelbuild"; then
-		if test -d ${kernelsrc}-obj/`arch`/`arch`; then
-			kernelbuild=${kernelsrc}-obj/`arch`/`arch`
-		elif test -d ${kernelsrc}-obj/`arch`/default; then
-		        kernelbuild=${kernelsrc}-obj/`arch`/default
-		elif test -d `dirname ${kernelsrc}`/build-`arch`; then
-			kernelbuild=`dirname ${kernelsrc}`/build-`arch`
+		if test -d ${kernelsrc}-obj/${target_cpu}/${target_cpu}; then
+			kernelbuild=${kernelsrc}-obj/${target_cpu}/${target_cpu}
+		elif test -d ${kernelsrc}-obj/${target_cpu}/default; then
+		        kernelbuild=${kernelsrc}-obj/${target_cpu}/default
+		elif test -d `dirname ${kernelsrc}`/build-${target_cpu}; then
+			kernelbuild=`dirname ${kernelsrc}`/build-${target_cpu}
 		else
 			kernelbuild=${kernelsrc}
 		fi
@@ -14443,32 +14907,35 @@ $as_echo "$kernelbuild" >&6; }
 
 	{ $as_echo "$as_me:$LINENO: checking kernel source version" >&5
 $as_echo_n "checking kernel source version... " >&6; }
-	if test -r $kernelbuild/include/linux/version.h &&
-		fgrep -q UTS_RELEASE $kernelbuild/include/linux/version.h; then
-
-		kernsrcver=`(echo "#include <linux/version.h>";
-		             echo "kernsrcver=UTS_RELEASE") |
-		             cpp -I $kernelbuild/include |
-		             grep "^kernsrcver=" | cut -d \" -f 2`
-
-	elif test -r $kernelbuild/include/linux/utsrelease.h &&
-		fgrep -q UTS_RELEASE $kernelbuild/include/linux/utsrelease.h; then
-
-		kernsrcver=`(echo "#include <linux/utsrelease.h>";
-		             echo "kernsrcver=UTS_RELEASE") |
-		             cpp -I $kernelbuild/include |
-		             grep "^kernsrcver=" | cut -d \" -f 2`
+	utsrelease1=$kernelbuild/include/linux/version.h
+	utsrelease2=$kernelbuild/include/linux/utsrelease.h
+	utsrelease3=$kernelbuild/include/generated/utsrelease.h
+	if test -r $utsrelease1 && fgrep -q UTS_RELEASE $utsrelease1; then
+		utsrelease=linux/version.h
+	elif test -r $utsrelease2 && fgrep -q UTS_RELEASE $utsrelease2; then
+		utsrelease=linux/utsrelease.h
+	elif test -r $utsrelease3 && fgrep -q UTS_RELEASE $utsrelease3; then
+		utsrelease=generated/utsrelease.h
 	fi
 
-	if test -z "$kernsrcver"; then
+	if test "$utsrelease"; then
+		kernsrcver=`(echo "#include <$utsrelease>";
+		             echo "kernsrcver=UTS_RELEASE") |
+		             cpp -I $kernelbuild/include |
+		             grep "^kernsrcver=" | cut -d \" -f 2`
+
+		if test -z "$kernsrcver"; then
+			{ $as_echo "$as_me:$LINENO: result: Not found" >&5
+$as_echo "Not found" >&6; }
+			{ { $as_echo "$as_me:$LINENO: error: *** Cannot determine kernel version." >&5
+$as_echo "$as_me: error: *** Cannot determine kernel version." >&2;}
+   { (exit 1); exit 1; }; }
+		fi
+	else
 		{ $as_echo "$as_me:$LINENO: result: Not found" >&5
 $as_echo "Not found" >&6; }
-		{ { $as_echo "$as_me:$LINENO: error:
-		*** Cannot determine the version of the linux kernel source.
-		*** Please prepare the kernel before running this script" >&5
-$as_echo "$as_me: error:
-		*** Cannot determine the version of the linux kernel source.
-		*** Please prepare the kernel before running this script" >&2;}
+		{ { $as_echo "$as_me:$LINENO: error: *** Cannot find UTS_RELEASE definition." >&5
+$as_echo "$as_me: error: *** Cannot find UTS_RELEASE definition." >&2;}
    { (exit 1); exit 1; }; }
 	fi
 
@@ -14523,17 +14990,23 @@ $as_echo_n "checking spl source directory... " >&6; }
 		sourcelink=`ls -1d /usr/src/spl-*/${LINUX_VERSION} \
 		            2>/dev/null | tail -1`
 
+		if test -z "$sourcelink" || test ! -e $sourcelink; then
+			sourcelink=../spl
+		fi
+
 		if test -e $sourcelink; then
 			splsrc=`readlink -f ${sourcelink}`
 		else
 			{ $as_echo "$as_me:$LINENO: result: Not found" >&5
 $as_echo "Not found" >&6; }
 			{ { $as_echo "$as_me:$LINENO: error:
-			*** Please specify the location of the spl source
-			*** with the '--with-spl=PATH' option" >&5
+	*** Please make sure the spl devel package for your distribution
+	*** is installed then try again.  If that fails you can specify the
+	*** location of the spl source with the '--with-spl=PATH' option." >&5
 $as_echo "$as_me: error:
-			*** Please specify the location of the spl source
-			*** with the '--with-spl=PATH' option" >&2;}
+	*** Please make sure the spl devel package for your distribution
+	*** is installed then try again.  If that fails you can specify the
+	*** location of the spl source with the '--with-spl=PATH' option." >&2;}
    { (exit 1); exit 1; }; }
 		fi
 	else
@@ -14548,23 +15021,19 @@ $as_echo "$splsrc" >&6; }
 	{ $as_echo "$as_me:$LINENO: checking spl build directory" >&5
 $as_echo_n "checking spl build directory... " >&6; }
 	if test -z "$splbuild"; then
-		if test -d ${splsrc}/module; then
-			splbuild=${splsrc}/module
-		else
-			splbuild=${splsrc}
-		fi
+		splbuild=${splsrc}
 	fi
 	{ $as_echo "$as_me:$LINENO: result: $splbuild" >&5
 $as_echo "$splbuild" >&6; }
 
 	{ $as_echo "$as_me:$LINENO: checking spl source version" >&5
 $as_echo_n "checking spl source version... " >&6; }
-	if test -r $splsrc/spl_config.h &&
-		fgrep -q SPL_META_VERSION $splsrc/spl_config.h; then
+	if test -r $splbuild/spl_config.h &&
+		fgrep -q SPL_META_VERSION $splbuild/spl_config.h; then
 
 		splsrcver=`(echo "#include <spl_config.h>";
 		            echo "splsrcver=SPL_META_VERSION") |
-		            cpp -I $splsrc |
+		            cpp -I $splbuild |
 		            grep "^splsrcver=" | cut -d \" -f 2`
 	fi
 
@@ -14598,14 +15067,104 @@ $as_echo_n "checking spl file name for module symbols... " >&6; }
 		SPL_SYMBOLS=Module.symvers
 	elif test -r $SPL_OBJ/Modules.symvers; then
 		SPL_SYMBOLS=Modules.symvers
+	elif test -r $SPL_OBJ/module/Module.symvers; then
+		SPL_SYMBOLS=Module.symvers
+	elif test -r $SPL_OBJ/module/Modules.symvers; then
+		SPL_SYMBOLS=Modules.symvers
 	else
-		SPL_SYMBOLS=NONE
+		SPL_SYMBOLS=$LINUX_SYMBOLS
 	fi
 
 	{ $as_echo "$as_me:$LINENO: result: $SPL_SYMBOLS" >&5
 $as_echo "$SPL_SYMBOLS" >&6; }
 
 
+
+
+
+	if test "$ZFS_META_LICENSE" = CDDL; then
+		{ $as_echo "$as_me:$LINENO: checking whether Linux was built with CONFIG_DEBUG_LOCK_ALLOC" >&5
+$as_echo_n "checking whether Linux was built with CONFIG_DEBUG_LOCK_ALLOC... " >&6; }
+
+
+cat confdefs.h - <<_ACEOF >conftest.c
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+
+		#ifndef AUTOCONF_INCLUDED
+		#include <linux/config.h>
+		#endif
+
+int
+main (void)
+{
+
+		#ifndef CONFIG_DEBUG_LOCK_ALLOC
+		#error CONFIG_DEBUG_LOCK_ALLOC not #defined
+		#endif
+
+  ;
+  return 0;
+}
+
+_ACEOF
+
+
+	rm -Rf build && mkdir -p build
+	echo "obj-m := conftest.o" >build/Makefile
+	if { ac_try='cp conftest.c build && make modules -C $LINUX_OBJ EXTRA_CFLAGS="-Werror-implicit-function-declaration $EXTRA_KCFLAGS" $ARCH_UM M=$PWD/build'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } >/dev/null && { ac_try='test -s build/conftest.o'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+
+		{ $as_echo "$as_me:$LINENO: result: yes" >&5
+$as_echo "yes" >&6; }
+		{ { $as_echo "$as_me:$LINENO: error:
+		*** Kernel built with CONFIG_DEBUG_LOCK_ALLOC which is
+		*** incompatible with the CDDL license.  You must rebuild
+		*** your kernel without this option." >&5
+$as_echo "$as_me: error:
+		*** Kernel built with CONFIG_DEBUG_LOCK_ALLOC which is
+		*** incompatible with the CDDL license.  You must rebuild
+		*** your kernel without this option." >&2;}
+   { (exit 1); exit 1; }; }
+
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+		{ $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+
+
+
+
+fi
+
+	rm -Rf build
+
+
+
+	fi
+
+	if test "$ZFS_META_LICENSE" = GPL; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_GPL_ONLY_SYMBOLS 1
+_ACEOF
+
+	fi
 
 
 	{ $as_echo "$as_me:$LINENO: checking block device operation prototypes" >&5
@@ -14688,11 +15247,141 @@ fi
 
 
 
+	{ $as_echo "$as_me:$LINENO: checking whether kernel defines fmode_t" >&5
+$as_echo_n "checking whether kernel defines fmode_t... " >&6; }
+
+
+cat confdefs.h - <<_ACEOF >conftest.c
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+
+		#include <linux/types.h>
+
+int
+main (void)
+{
+
+		fmode_t *ptr;
+
+  ;
+  return 0;
+}
+
+_ACEOF
+
+
+	rm -Rf build && mkdir -p build
+	echo "obj-m := conftest.o" >build/Makefile
+	if { ac_try='cp conftest.c build && make modules -C $LINUX_OBJ EXTRA_CFLAGS="-Werror-implicit-function-declaration $EXTRA_KCFLAGS" $ARCH_UM M=$PWD/build'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } >/dev/null && { ac_try='test -s build/conftest.o'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+
+		{ $as_echo "$as_me:$LINENO: result: yes" >&5
+$as_echo "yes" >&6; }
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_FMODE_T 1
+_ACEOF
+
+
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+		{ $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+
+
+
+fi
+
+	rm -Rf build
+
+
+
+
+	{ $as_echo "$as_me:$LINENO: checking whether kernel defines KOBJ_NAME_LEN" >&5
+$as_echo_n "checking whether kernel defines KOBJ_NAME_LEN... " >&6; }
+
+
+cat confdefs.h - <<_ACEOF >conftest.c
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+
+		#include <linux/kobject.h>
+
+int
+main (void)
+{
+
+		int val;
+		val = KOBJ_NAME_LEN;
+
+  ;
+  return 0;
+}
+
+_ACEOF
+
+
+	rm -Rf build && mkdir -p build
+	echo "obj-m := conftest.o" >build/Makefile
+	if { ac_try='cp conftest.c build && make modules -C $LINUX_OBJ EXTRA_CFLAGS="-Werror-implicit-function-declaration $EXTRA_KCFLAGS" $ARCH_UM M=$PWD/build'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } >/dev/null && { ac_try='test -s build/conftest.o'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+
+		{ $as_echo "$as_me:$LINENO: result: yes" >&5
+$as_echo "yes" >&6; }
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_KOBJ_NAME_LEN 1
+_ACEOF
+
+
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+		{ $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+
+
+
+fi
+
+	rm -Rf build
+
+
+
 
 	{ $as_echo "$as_me:$LINENO: checking whether symbol open_bdev_exclusive is exported" >&5
 $as_echo_n "checking whether symbol open_bdev_exclusive is exported... " >&6; }
 	grep -q -E '[[:space:]]open_bdev_exclusive[[:space:]]' \
-		$LINUX_OBJ/Module*.symvers $SPL_OBJ/Module*.symvers 2>/dev/null
+		$LINUX_OBJ/$LINUX_SYMBOLS 2>/dev/null
 	rc=$?
 	if test $rc -ne 0; then
 		export=0
@@ -15798,15 +16487,14 @@ fi
 
 
 
-			KERNELMAKE_PARAMS="V=1"
-
-			KERNELCPPFLAGS="$KERNELCPPFLAGS -Werror -DHAVE_SPL -DLINUX_PORT -D_KERNEL"
-	KERNELCPPFLAGS="$KERNELCPPFLAGS -DTEXT_DOMAIN=\\\"zfs-linux-kernel\\\""
-	KERNELCPPFLAGS="$KERNELCPPFLAGS -I$TOPDIR -I$SPL -I$SPL/include"
-
 	if test "$LINUX_OBJ" != "$LINUX"; then
 		KERNELMAKE_PARAMS="$KERNELMAKE_PARAMS O=$LINUX_OBJ"
 	fi
+
+
+
+			KERNELCPPFLAGS="$KERNELCPPFLAGS -DHAVE_SPL -DLINUX_PORT -D_KERNEL"
+	KERNELCPPFLAGS="$KERNELCPPFLAGS -DTEXT_DOMAIN=\\\"zfs-linux-kernel\\\""
 
 
 
@@ -16546,10 +17234,10 @@ else
   { { $as_echo "$as_me:$LINENO: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 { { $as_echo "$as_me:$LINENO: error:
-	*** uuid/uuid.h missing, e2fsprogs-devel package required
+	*** uuid/uuid.h missing, libuuid-devel package required
 See \`config.log' for more details." >&5
 $as_echo "$as_me: error:
-	*** uuid/uuid.h missing, e2fsprogs-devel package required
+	*** uuid/uuid.h missing, libuuid-devel package required
 See \`config.log' for more details." >&2;}
    { (exit 1); exit 1; }; }; }
 fi
@@ -16633,10 +17321,10 @@ else
   { { $as_echo "$as_me:$LINENO: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 { { $as_echo "$as_me:$LINENO: error:
-	*** uuid_generate() missing, e2fsprogs-devel package required
+	*** uuid_generate() missing, libuuid-devel package required
 See \`config.log' for more details." >&5
 $as_echo "$as_me: error:
-	*** uuid_generate() missing, e2fsprogs-devel package required
+	*** uuid_generate() missing, libuuid-devel package required
 See \`config.log' for more details." >&2;}
    { (exit 1); exit 1; }; }; }
 fi
@@ -16719,10 +17407,10 @@ else
   { { $as_echo "$as_me:$LINENO: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 { { $as_echo "$as_me:$LINENO: error:
-	*** uuid_is_null() missing, e2fsprogs-devel package required
+	*** uuid_is_null() missing, libuuid-devel package required
 See \`config.log' for more details." >&5
 $as_echo "$as_me: error:
-	*** uuid_is_null() missing, e2fsprogs-devel package required
+	*** uuid_is_null() missing, libuuid-devel package required
 See \`config.log' for more details." >&2;}
    { (exit 1); exit 1; }; }; }
 fi
@@ -16963,6 +17651,196 @@ fi
 fi
 
 
+
+	{ $as_echo "$as_me:$LINENO: checking for -Wframe-larger-than=<size> support" >&5
+$as_echo_n "checking for -Wframe-larger-than=<size> support... " >&6; }
+
+	saved_flags="$CFLAGS"
+	CFLAGS="$CFLAGS -Wframe-larger-than=1024"
+
+	if test "$cross_compiling" = yes; then
+  { { $as_echo "$as_me:$LINENO: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+{ { $as_echo "$as_me:$LINENO: error: cannot run test program while cross compiling
+See \`config.log' for more details." >&5
+$as_echo "$as_me: error: cannot run test program while cross compiling
+See \`config.log' for more details." >&2;}
+   { (exit 1); exit 1; }; }; }
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_link") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+
+		FRAME_LARGER_THAN=-Wframe-larger-than=1024
+		{ $as_echo "$as_me:$LINENO: result: yes" >&5
+$as_echo "yes" >&6; }
+
+else
+  $as_echo "$as_me: program exited with status $ac_status" >&5
+$as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+( exit $ac_status )
+
+		FRAME_LARGER_THAN=
+		{ $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -rf conftest.dSYM
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
+fi
+
+
+
+	CFLAGS="$saved_flags"
+
+
+
+
+	{ $as_echo "$as_me:$LINENO: checking whether pthread stack includes guard" >&5
+$as_echo_n "checking whether pthread stack includes guard... " >&6; }
+
+	saved_CFLAGS="$CFLAGS"
+	CFLAGS="-fstack-check"
+	saved_LDFLAGS="$LDFLAGS"
+	LDFLAGS="-lpthread"
+
+	if test "$cross_compiling" = yes; then
+  { { $as_echo "$as_me:$LINENO: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+{ { $as_echo "$as_me:$LINENO: error: cannot run test program while cross compiling
+See \`config.log' for more details." >&5
+$as_echo "$as_me: error: cannot run test program while cross compiling
+See \`config.log' for more details." >&2;}
+   { (exit 1); exit 1; }; }; }
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+		#include <pthread.h>
+		#include <sys/resource.h>
+		#include <unistd.h>
+		#include <bits/local_lim.h>
+
+		#define PAGESIZE (sysconf(_SC_PAGESIZE))
+		#define STACK_SIZE 8192
+		#define BUFSIZE 4096
+
+		void * func(void *arg)
+		{
+			char buf[BUFSIZE];
+		}
+
+int
+main ()
+{
+
+		pthread_t tid;
+		pthread_attr_t attr;
+		struct rlimit l;
+
+		l.rlim_cur = 0;
+		l.rlim_max = 0;
+		setrlimit(RLIMIT_CORE, &l);
+		pthread_attr_init(&attr);
+		pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN + STACK_SIZE);
+		pthread_attr_setguardsize(&attr, PAGESIZE);
+		pthread_create(&tid, &attr, func, NULL);
+		pthread_join(tid, NULL);
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_link") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+
+		{ $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+
+else
+  $as_echo "$as_me: program exited with status $ac_status" >&5
+$as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+( exit $ac_status )
+
+
+cat >>confdefs.h <<\_ACEOF
+#define NPTL_GUARD_WITHIN_STACK 1
+_ACEOF
+
+		{ $as_echo "$as_me:$LINENO: result: yes" >&5
+$as_echo "yes" >&6; }
+
+fi
+rm -rf conftest.dSYM
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
+fi
+
+
+	CFLAGS="$saved_CFLAGS"
+	LDFLAGS="$saved_LDFLAGS"
+
    ;;
 		srpm)                        ;;
 		*)
@@ -16995,115 +17873,40 @@ fi
 
 
 
-	cat >.script-config <<EOF
-KERNELSRC=${LINUX}
-KERNELBUILD=${LINUX_OBJ}
-KERNELSRCVER=${LINUX_VERSION}
-KERNELMOD=/lib/modules/\${KERNELSRCVER}/kernel
-
-SPLSRC=${SPL}
-SPLBUILD=${SPL_OBJ}
-SPLSRCVER=${SPL_VERSION}
-
-TOPDIR=${TOPDIR}
-BUILDDIR=${BUILDDIR}
-LIBDIR=${LIBDIR}
-CMDDIR=${CMDDIR}
-MODDIR=${MODDIR}
-SCRIPTDIR=${SCRIPTDIR}
-UDEVDIR=\${TOPDIR}/scripts/udev-rules
-ZPOOLDIR=\${TOPDIR}/scripts/zpool-config
-ZPIOSDIR=\${TOPDIR}/scripts/zpios-test
-ZPIOSPROFILEDIR=\${TOPDIR}/scripts/zpios-profile
-
-ZDB=\${CMDDIR}/zdb/zdb
-ZFS=\${CMDDIR}/zfs/zfs
-ZINJECT=\${CMDDIR}/zinject/zinject
-ZPOOL=\${CMDDIR}/zpool/zpool
-ZTEST=\${CMDDIR}/ztest/ztest
-ZPIOS=\${CMDDIR}/zpios/zpios
-
-COMMON_SH=\${SCRIPTDIR}/common.sh
-ZFS_SH=\${SCRIPTDIR}/zfs.sh
-ZPOOL_CREATE_SH=\${SCRIPTDIR}/zpool-create.sh
-ZPIOS_SH=\${SCRIPTDIR}/zpios.sh
-ZPIOS_SURVEY_SH=\${SCRIPTDIR}/zpios-survey.sh
-
-LDMOD=/sbin/insmod
-
-KERNEL_MODULES=(                                      \\
-        \${KERNELMOD}/lib/zlib_deflate/zlib_deflate.ko \\
-)
-
-SPL_MODULES=(                                         \\
-        \${SPLBUILD}/spl/spl.ko                        \\
-)
-
-ZFS_MODULES=(                                         \\
-        \${MODDIR}/avl/zavl.ko                         \\
-        \${MODDIR}/nvpair/znvpair.ko                   \\
-        \${MODDIR}/unicode/zunicode.ko                 \\
-        \${MODDIR}/zcommon/zcommon.ko                  \\
-        \${MODDIR}/zfs/zfs.ko                          \\
-)
-
-ZPIOS_MODULES=(                                       \\
-        \${MODDIR}/zpios/zpios.ko                      \\
-)
-
-MODULES=(                                             \\
-        \${KERNEL_MODULES[*]}                          \\
-        \${SPL_MODULES[*]}                             \\
-        \${ZFS_MODULES[*]}                             \\
-)
-EOF
-
-
-
 	{ $as_echo "$as_me:$LINENO: checking whether debugging is enabled" >&5
 $as_echo_n "checking whether debugging is enabled... " >&6; }
 	# Check whether --enable-debug was given.
 if test "${enable_debug+set}" = set; then
-  enableval=$enable_debug;  case "$enableval" in
-			yes) zfs_ac_debug=yes ;;
-			no)  zfs_ac_debug=no  ;;
-			*) { $as_echo "$as_me:$LINENO: result: Error!" >&5
-$as_echo "Error!" >&6; }
-			{ { $as_echo "$as_me:$LINENO: error: Bad value \"$enableval\" for --enable-debug" >&5
-$as_echo "$as_me: error: Bad value \"$enableval\" for --enable-debug" >&2;}
-   { (exit 1); exit 1; }; } ;;
-		esac
-
+  enableval=$enable_debug;
+else
+  enable_debug=no
 fi
 
-if test "$zfs_ac_debug" = yes; then
-	{ $as_echo "$as_me:$LINENO: result: yes" >&5
-$as_echo "yes" >&6; }
 
-cat >>confdefs.h <<\_ACEOF
-#define DEBUG 1
-_ACEOF
+	if test "x$enable_debug" = xyes; then
 
-		KERNELCPPFLAGS="${KERNELCPPFLAGS} -DDEBUG "
-		HOSTCFLAGS="${HOSTCFLAGS} -DDEBUG "
-		USERDEBUG="-DDEBUG"
-	else
-		{ $as_echo "$as_me:$LINENO: result: no" >&5
-$as_echo "no" >&6; }
+		KERNELCPPFLAGS="${KERNELCPPFLAGS} -DDEBUG -Werror"
+		HOSTCFLAGS="${HOSTCFLAGS} -DDEBUG -Werror"
+		DEBUG_CFLAGS="-DDEBUG -Werror"
+		DEBUG_STACKFLAGS="-fstack-check"
 
-cat >>confdefs.h <<\_ACEOF
-#define NDEBUG 1
-_ACEOF
+else
 
 		KERNELCPPFLAGS="${KERNELCPPFLAGS} -DNDEBUG "
 		HOSTCFLAGS="${HOSTCFLAGS} -DNDEBUG "
-		USERDEBUG="-DNDEBUG"
-	fi
+		DEBUG_CFLAGS="-DNDEBUG"
+		DEBUG_STACKFLAGS=""
+
+fi
 
 
 
 
-ac_config_files="$ac_config_files Makefile config/Makefile man/Makefile man/man8/Makefile doc/Makefile lib/Makefile lib/libspl/Makefile lib/libspl/asm-generic/Makefile lib/libspl/asm-i386/Makefile lib/libspl/asm-x86_64/Makefile lib/libspl/include/Makefile lib/libavl/Makefile lib/libefi/Makefile lib/libnvpair/Makefile lib/libunicode/Makefile lib/libuutil/Makefile lib/libzpool/Makefile lib/libzpool/include/Makefile lib/libzfs/Makefile cmd/Makefile cmd/zdb/Makefile cmd/zfs/Makefile cmd/zinject/Makefile cmd/zpool/Makefile cmd/ztest/Makefile cmd/zpios/Makefile module/Makefile module/avl/Makefile module/nvpair/Makefile module/unicode/Makefile module/zcommon/Makefile module/zfs/Makefile module/zpios/Makefile scripts/Makefile zfs.spec zfs-modules.spec"
+	{ $as_echo "$as_me:$LINENO: result: $enable_debug" >&5
+$as_echo "$enable_debug" >&6; }
+
+
+ac_config_files="$ac_config_files Makefile etc/Makefile man/Makefile man/man8/Makefile lib/Makefile lib/libspl/Makefile lib/libspl/asm-generic/Makefile lib/libspl/asm-i386/Makefile lib/libspl/asm-x86_64/Makefile lib/libspl/include/Makefile lib/libspl/include/ia32/Makefile lib/libspl/include/ia32/sys/Makefile lib/libspl/include/rpc/Makefile lib/libspl/include/sys/Makefile lib/libspl/include/sys/sysevent/Makefile lib/libspl/include/sys/dktp/Makefile lib/libspl/include/util/Makefile lib/libavl/Makefile lib/libefi/Makefile lib/libnvpair/Makefile lib/libunicode/Makefile lib/libuutil/Makefile lib/libzpool/Makefile lib/libzfs/Makefile cmd/Makefile cmd/zdb/Makefile cmd/zfs/Makefile cmd/zinject/Makefile cmd/zpool/Makefile cmd/zpool_id/Makefile cmd/zpool_layout/Makefile cmd/ztest/Makefile cmd/zpios/Makefile module/Makefile module/avl/Makefile module/nvpair/Makefile module/unicode/Makefile module/zcommon/Makefile module/zfs/Makefile module/zpios/Makefile include/Makefile include/sys/Makefile include/sys/fs/Makefile include/sys/fm/Makefile include/sys/fm/fs/Makefile scripts/Makefile scripts/zpios-profile/Makefile scripts/zpios-test/Makefile scripts/zpool-config/Makefile scripts/zpool-layout/Makefile scripts/common.sh zfs.spec zfs-modules.spec zfs-script-config.sh"
 
 
 cat >confcache <<\_ACEOF
@@ -17203,6 +18006,13 @@ LIBOBJS=$ac_libobjs
 LTLIBOBJS=$ac_ltlibobjs
 
 
+if test -z "${MAINTAINER_MODE_TRUE}" && test -z "${MAINTAINER_MODE_FALSE}"; then
+  { { $as_echo "$as_me:$LINENO: error: conditional \"MAINTAINER_MODE\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+$as_echo "$as_me: error: conditional \"MAINTAINER_MODE\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
  if test -n "$EXEEXT"; then
   am__EXEEXT_TRUE=
   am__EXEEXT_FALSE='#'
@@ -17211,13 +18021,6 @@ else
   am__EXEEXT_FALSE=
 fi
 
-if test -z "${MAINTAINER_MODE_TRUE}" && test -z "${MAINTAINER_MODE_FALSE}"; then
-  { { $as_echo "$as_me:$LINENO: error: conditional \"MAINTAINER_MODE\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-$as_echo "$as_me: error: conditional \"MAINTAINER_MODE\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
 if test -z "${AMDEP_TRUE}" && test -z "${AMDEP_FALSE}"; then
   { { $as_echo "$as_me:$LINENO: error: conditional \"AMDEP\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
@@ -18020,29 +18823,36 @@ do
     "depfiles") CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
     "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
-    "config/Makefile") CONFIG_FILES="$CONFIG_FILES config/Makefile" ;;
+    "etc/Makefile") CONFIG_FILES="$CONFIG_FILES etc/Makefile" ;;
     "man/Makefile") CONFIG_FILES="$CONFIG_FILES man/Makefile" ;;
     "man/man8/Makefile") CONFIG_FILES="$CONFIG_FILES man/man8/Makefile" ;;
-    "doc/Makefile") CONFIG_FILES="$CONFIG_FILES doc/Makefile" ;;
     "lib/Makefile") CONFIG_FILES="$CONFIG_FILES lib/Makefile" ;;
     "lib/libspl/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libspl/Makefile" ;;
     "lib/libspl/asm-generic/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libspl/asm-generic/Makefile" ;;
     "lib/libspl/asm-i386/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libspl/asm-i386/Makefile" ;;
     "lib/libspl/asm-x86_64/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libspl/asm-x86_64/Makefile" ;;
     "lib/libspl/include/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libspl/include/Makefile" ;;
+    "lib/libspl/include/ia32/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libspl/include/ia32/Makefile" ;;
+    "lib/libspl/include/ia32/sys/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libspl/include/ia32/sys/Makefile" ;;
+    "lib/libspl/include/rpc/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libspl/include/rpc/Makefile" ;;
+    "lib/libspl/include/sys/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libspl/include/sys/Makefile" ;;
+    "lib/libspl/include/sys/sysevent/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libspl/include/sys/sysevent/Makefile" ;;
+    "lib/libspl/include/sys/dktp/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libspl/include/sys/dktp/Makefile" ;;
+    "lib/libspl/include/util/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libspl/include/util/Makefile" ;;
     "lib/libavl/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libavl/Makefile" ;;
     "lib/libefi/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libefi/Makefile" ;;
     "lib/libnvpair/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libnvpair/Makefile" ;;
     "lib/libunicode/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libunicode/Makefile" ;;
     "lib/libuutil/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libuutil/Makefile" ;;
     "lib/libzpool/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libzpool/Makefile" ;;
-    "lib/libzpool/include/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libzpool/include/Makefile" ;;
     "lib/libzfs/Makefile") CONFIG_FILES="$CONFIG_FILES lib/libzfs/Makefile" ;;
     "cmd/Makefile") CONFIG_FILES="$CONFIG_FILES cmd/Makefile" ;;
     "cmd/zdb/Makefile") CONFIG_FILES="$CONFIG_FILES cmd/zdb/Makefile" ;;
     "cmd/zfs/Makefile") CONFIG_FILES="$CONFIG_FILES cmd/zfs/Makefile" ;;
     "cmd/zinject/Makefile") CONFIG_FILES="$CONFIG_FILES cmd/zinject/Makefile" ;;
     "cmd/zpool/Makefile") CONFIG_FILES="$CONFIG_FILES cmd/zpool/Makefile" ;;
+    "cmd/zpool_id/Makefile") CONFIG_FILES="$CONFIG_FILES cmd/zpool_id/Makefile" ;;
+    "cmd/zpool_layout/Makefile") CONFIG_FILES="$CONFIG_FILES cmd/zpool_layout/Makefile" ;;
     "cmd/ztest/Makefile") CONFIG_FILES="$CONFIG_FILES cmd/ztest/Makefile" ;;
     "cmd/zpios/Makefile") CONFIG_FILES="$CONFIG_FILES cmd/zpios/Makefile" ;;
     "module/Makefile") CONFIG_FILES="$CONFIG_FILES module/Makefile" ;;
@@ -18052,9 +18862,20 @@ do
     "module/zcommon/Makefile") CONFIG_FILES="$CONFIG_FILES module/zcommon/Makefile" ;;
     "module/zfs/Makefile") CONFIG_FILES="$CONFIG_FILES module/zfs/Makefile" ;;
     "module/zpios/Makefile") CONFIG_FILES="$CONFIG_FILES module/zpios/Makefile" ;;
+    "include/Makefile") CONFIG_FILES="$CONFIG_FILES include/Makefile" ;;
+    "include/sys/Makefile") CONFIG_FILES="$CONFIG_FILES include/sys/Makefile" ;;
+    "include/sys/fs/Makefile") CONFIG_FILES="$CONFIG_FILES include/sys/fs/Makefile" ;;
+    "include/sys/fm/Makefile") CONFIG_FILES="$CONFIG_FILES include/sys/fm/Makefile" ;;
+    "include/sys/fm/fs/Makefile") CONFIG_FILES="$CONFIG_FILES include/sys/fm/fs/Makefile" ;;
     "scripts/Makefile") CONFIG_FILES="$CONFIG_FILES scripts/Makefile" ;;
+    "scripts/zpios-profile/Makefile") CONFIG_FILES="$CONFIG_FILES scripts/zpios-profile/Makefile" ;;
+    "scripts/zpios-test/Makefile") CONFIG_FILES="$CONFIG_FILES scripts/zpios-test/Makefile" ;;
+    "scripts/zpool-config/Makefile") CONFIG_FILES="$CONFIG_FILES scripts/zpool-config/Makefile" ;;
+    "scripts/zpool-layout/Makefile") CONFIG_FILES="$CONFIG_FILES scripts/zpool-layout/Makefile" ;;
+    "scripts/common.sh") CONFIG_FILES="$CONFIG_FILES scripts/common.sh" ;;
     "zfs.spec") CONFIG_FILES="$CONFIG_FILES zfs.spec" ;;
     "zfs-modules.spec") CONFIG_FILES="$CONFIG_FILES zfs-modules.spec" ;;
+    "zfs-script-config.sh") CONFIG_FILES="$CONFIG_FILES zfs-script-config.sh" ;;
 
   *) { { $as_echo "$as_me:$LINENO: error: invalid argument: $ac_config_target" >&5
 $as_echo "$as_me: error: invalid argument: $ac_config_target" >&2;}
@@ -18709,6 +19530,10 @@ $as_echo "$as_me: executing $ac_file commands" >&6;}
 
 
   case $ac_file$ac_mode in
+    "zfs_config.h":H)
+	(mv zfs_config.h zfs_config.h.tmp &&
+	awk -f ${ac_srcdir}/config/config.awk zfs_config.h.tmp >zfs_config.h &&
+	rm zfs_config.h.tmp) || exit 1 ;;
     "depfiles":C) test x"$AMDEP_TRUE" != x"" || {
   # Autoconf 2.62 quotes --file arguments for eval, but not when files
   # are listed without --file.  Let's play safe and only enable the eval

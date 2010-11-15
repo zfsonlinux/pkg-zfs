@@ -20,8 +20,7 @@
  */
 
 /*
- * Copyright 2009 Sun Microsystems, Inc.  All rights reserved.
- * Use is subject to license terms.
+ * Copyright (c) 2002, 2010, Oracle and/or its affiliates. All rights reserved.
  */
 
 #include <stdio.h>
@@ -61,8 +60,8 @@ static struct uuid_to_ptag {
 	{ EFI_RESERVED },
 	{ EFI_SYSTEM },
 	{ EFI_LEGACY_MBR },
-	{ EFI_RESV3 },
-	{ EFI_RESV4 },
+	{ EFI_SYMC_PUB },
+	{ EFI_SYMC_CDS },
 	{ EFI_MSFT_RESV },
 	{ EFI_DELL_BASIC },
 	{ EFI_DELL_RAID },
@@ -149,9 +148,15 @@ static int
 efi_get_info(int fd, struct dk_cinfo *dki_info)
 {
 #if defined(__linux__)
-	char path[PATH_MAX];
+	char *path;
 	char *dev_path;
 	int rval = 0;
+
+	memset(dki_info, 0, sizeof(*dki_info));
+
+	path = calloc(PATH_MAX, 1);
+	if (path == NULL)
+		goto error;
 
 	/*
 	 * The simplest way to get the partition number under linux is
@@ -166,9 +171,11 @@ efi_get_info(int fd, struct dk_cinfo *dki_info)
 	 * /proc/self/fd/<fd>.  Aside from the partition number we collect
 	 * some additional device info.
 	 */
-	memset(dki_info, 0, sizeof(*dki_info));
 	(void) sprintf(path, "/proc/self/fd/%d", fd);
-	if ((dev_path = realpath(path, NULL)) == NULL)
+	dev_path = realpath(path, NULL);
+	free(path);
+
+	if (dev_path == NULL)
 		goto error;
 
 	if ((strncmp(dev_path, "/dev/sd", 7) == 0)) {

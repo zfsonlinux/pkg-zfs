@@ -20,11 +20,8 @@
  */
 
 /*
- * Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
- * Use is subject to license terms.
+ * Copyright (c) 2000, 2010, Oracle and/or its affiliates. All rights reserved.
  */
-
-
 
 #include <sys/stropts.h>
 #include <sys/debug.h>
@@ -257,6 +254,12 @@ nvlist_init(nvlist_t *nvl, uint32_t nvflag, nvpriv_t *priv)
 	nvl->nvl_priv = (uint64_t)(uintptr_t)priv;
 	nvl->nvl_flag = 0;
 	nvl->nvl_pad = 0;
+}
+
+uint_t
+nvlist_nvflag(nvlist_t *nvl)
+{
+	return (nvl->nvl_nvflag);
 }
 
 /*
@@ -690,6 +693,18 @@ nvlist_remove(nvlist_t *nvl, const char *name, data_type_t type)
 	}
 
 	return (ENOENT);
+}
+
+int
+nvlist_remove_nvpair(nvlist_t *nvl, nvpair_t *nvp)
+{
+	if (nvl == NULL || nvp == NULL)
+		return (EINVAL);
+
+	nvp_buf_unlink(nvl, nvp);
+	nvpair_free(nvp);
+	nvp_buf_free(nvl, nvp);
+	return (0);
 }
 
 /*
@@ -1160,6 +1175,42 @@ nvlist_next_nvpair(nvlist_t *nvl, nvpair_t *nvp)
 	priv->nvp_curr = curr;
 
 	return (curr != NULL ? &curr->nvi_nvp : NULL);
+}
+
+nvpair_t *
+nvlist_prev_nvpair(nvlist_t *nvl, nvpair_t *nvp)
+{
+	nvpriv_t *priv;
+	i_nvp_t *curr;
+
+	if (nvl == NULL ||
+	    (priv = (nvpriv_t *)(uintptr_t)nvl->nvl_priv) == NULL)
+		return (NULL);
+
+	curr = NVPAIR2I_NVP(nvp);
+
+	if (nvp == NULL)
+		curr = priv->nvp_last;
+	else if (priv->nvp_curr == curr || nvlist_contains_nvp(nvl, nvp))
+		curr = curr->nvi_prev;
+	else
+		curr = NULL;
+
+	priv->nvp_curr = curr;
+
+	return (curr != NULL ? &curr->nvi_nvp : NULL);
+}
+
+boolean_t
+nvlist_empty(nvlist_t *nvl)
+{
+	nvpriv_t *priv;
+
+	if (nvl == NULL ||
+	    (priv = (nvpriv_t *)(uintptr_t)nvl->nvl_priv) == NULL)
+		return (B_TRUE);
+
+	return (priv->nvp_list == NULL);
 }
 
 char *
@@ -3246,15 +3297,16 @@ nvs_xdr(nvstream_t *nvs, nvlist_t *nvl, char *buf, size_t *buflen)
 }
 
 #if defined(_KERNEL) && defined(HAVE_SPL)
+
 static int nvpair_init(void) { return 0; }
 static int nvpair_fini(void) { return 0; }
 
 spl_module_init(nvpair_init);
 spl_module_exit(nvpair_fini);
 
-MODULE_AUTHOR("Sun Microsystems, Inc");
 MODULE_DESCRIPTION("Generic name/value pair implementation");
-MODULE_LICENSE("CDDL");
+MODULE_AUTHOR(ZFS_META_AUTHOR);
+MODULE_LICENSE(ZFS_META_LICENSE);
 
 EXPORT_SYMBOL(nv_alloc_init);
 EXPORT_SYMBOL(nv_alloc_reset);
@@ -3301,9 +3353,13 @@ EXPORT_SYMBOL(nvlist_add_int64_array);
 EXPORT_SYMBOL(nvlist_add_uint64_array);
 EXPORT_SYMBOL(nvlist_add_string_array);
 EXPORT_SYMBOL(nvlist_add_nvlist_array);
+EXPORT_SYMBOL(nvlist_next_nvpair);
+EXPORT_SYMBOL(nvlist_prev_nvpair);
+EXPORT_SYMBOL(nvlist_empty);
 EXPORT_SYMBOL(nvlist_add_hrtime);
 
 EXPORT_SYMBOL(nvlist_remove);
+EXPORT_SYMBOL(nvlist_remove_nvpair);
 EXPORT_SYMBOL(nvlist_remove_all);
 
 EXPORT_SYMBOL(nvlist_lookup_boolean);
@@ -3338,7 +3394,6 @@ EXPORT_SYMBOL(nvlist_lookup_nvpair);
 EXPORT_SYMBOL(nvlist_exists);
 
 /* processing nvpair */
-EXPORT_SYMBOL(nvlist_next_nvpair);
 EXPORT_SYMBOL(nvpair_name);
 EXPORT_SYMBOL(nvpair_type);
 EXPORT_SYMBOL(nvpair_value_boolean_value);

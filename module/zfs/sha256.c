@@ -23,8 +23,6 @@
  * Use is subject to license terms.
  */
 
-
-
 #include <sys/zfs_context.h>
 #include <sys/zio.h>
 #include <sys/zio_checksum.h>
