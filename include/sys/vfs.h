@@ -1,11 +1,30 @@
+/*****************************************************************************\
+ *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
+ *  UCRL-CODE-235197
+ *
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
+ *
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
+ *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ *  for more details.
+ *
+ *  You should have received a copy of the GNU General Public License along
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+\*****************************************************************************/
+
 #ifndef _SPL_ZFS_H
 #define _SPL_ZFS_H
-
-#include <sys/vnode.h>
-
-/*
- *  Defining magic for ZFS for linux, 0xZFSLZFSL
- */
+#include <sys/types.h>
 
 #define ZFS_MAGIC   0x2fc12fc1
 
@@ -27,57 +46,9 @@ typedef struct vfs {
 	void (*vfs_set_inode_ops)(struct inode *inode); /* set inode ops */
 } vfs_t;
 
-#define ZFSVFSTOSUPER(zfsvfs)   (zfsvfs->z_vfs->vfs_super)
-
-/*
- * VFS flags.
- */
-#define	VFS_RDONLY	0x01		/* read-only vfs */
-#define	VFS_NOMNTTAB	0x02		/* vfs not seen in mnttab */
-#define	VFS_NOSETUID	0x08		/* setuid disallowed */
-#define	VFS_REMOUNT	0x10		/* modify mount options only */
-#define	VFS_NOTRUNC	0x20		/* does not truncate long file names */
-#define	VFS_UNLINKABLE	0x40		/* unlink(2) can be applied to root */
-#define	VFS_PXFS	0x80		/* clustering: global fs proxy vfs */
-#define	VFS_UNMOUNTED	0x100		/* file system has been unmounted */
-#define	VFS_NBMAND	0x200		/* allow non-blocking mandatory locks */
-#define	VFS_XATTR	0x400		/* fs supports extended attributes */
-#define	VFS_NODEVICES	0x800		/* device-special files disallowed */
-#define	VFS_NOEXEC	0x1000		/* executables disallowed */
-#define	VFS_STATS	0x2000		/* file system can collect stats */
-#define	VFS_XID		0x4000		/* file system supports extended ids */
-
-#define VFS_ATIME   0x8000		/* file system can modify atime */
-#define VFS_SUID    0x10000		/* file system has suid flag set */
-
-#define	VFS_NORESOURCE	"unspecified_resource"
-#define	VFS_NOMNTPT	"unspecified_mountpoint"
-
-
-/*
- * VFS features are implemented as bits set in the vfs_t.
- * The vfs_feature_t typedef is a 64-bit number that will translate
- * into an element in an array of bitmaps and a bit in that element.
- * Developers must not depend on the implementation of this and
- * need to use vfs_has_feature()/vfs_set_feature() routines.
- */
-typedef	uint64_t	vfs_feature_t;
-
-#define	VFSFT_XVATTR		0x100000001	/* Supports xvattr for attrs */
-#define	VFSFT_CASEINSENSITIVE	0x100000002	/* Supports case-insensitive */
-#define	VFSFT_NOCASESENSITIVE	0x100000004	/* NOT case-sensitive */
-#define	VFSFT_DIRENTFLAGS	0x100000008	/* Supports dirent flags */
-#define	VFSFT_ACLONCREATE	0x100000010	/* Supports ACL on create */
-#define	VFSFT_ACEMASKONACCESS	0x100000020	/* Can use ACEMASK for access */
-#define	VFSFT_SYSATTR_VIEWS	0x100000040	/* Supports sysattr view i/f */
-
 #define MAXFIDSZ	64
 
-#ifdef HAVE_ZPL
 typedef struct fid {
-#else
-typedef struct lzfs_fid {
-#endif
 	union {
 		long fid_pad;
 		struct {
@@ -87,8 +58,8 @@ typedef struct lzfs_fid {
 	} un;
 } fid_t;
 
-#define	fid_len		un._fid.len
-#define	fid_data	un._fid.data
+#define fid_len         un._fid.len
+#define fid_data        un._fid.data
 
 #ifndef FSTYPSZ
 #define FSTYPSZ 16 /* max size of fs identifier */
@@ -113,12 +84,31 @@ typedef struct statvfs64 {
 	unsigned long f_filler[16]; /* reserved for future expansion */
 #endif/* _LP64 */
 } statvfs64_t;
-
 /*
- * VFS_SYNC flags.
+ * VFS flags.
  */
-#define SYNC_ATTR       0x01            /* sync attributes only */
+#define	VFS_RDONLY	0x01		/* read-only vfs */
+#define	VFS_NOMNTTAB	0x02		/* vfs not seen in mnttab */
+#define	VFS_NOSETUID	0x08		/* setuid disallowed */
+#define	VFS_REMOUNT	0x10		/* modify mount options only */
+#define	VFS_NOTRUNC	0x20		/* does not truncate long file names */
+#define	VFS_UNLINKABLE	0x40		/* unlink(2) can be applied to root */
+#define	VFS_PXFS	0x80		/* clustering: global fs proxy vfs */
+#define	VFS_UNMOUNTED	0x100		/* file system has been unmounted */
+#define	VFS_NBMAND	0x200		/* allow non-blocking mandatory locks */
+#define	VFS_XATTR	0x400		/* fs supports extended attributes */
+#define	VFS_NODEVICES	0x800		/* device-special files disallowed */
+#define	VFS_NOEXEC	0x1000		/* executables disallowed */
+#define	VFS_STATS	0x2000		/* file system can collect stats */
+#define	VFS_XID		0x4000		/* file system supports extended ids */
 
+#define VFS_ATIME   0x8000		/* file system can modify atime */
+#define VFS_SUID    0x10000		/* file system has suid flag set */
+
+#define	VFS_NORESOURCE	"unspecified_resource"
+#define	VFS_NOMNTPT	"unspecified_mountpoint"
+
+#define SYNC_ATTR       0x01            /* sync attributes only */
 #define vfs_devismounted(dev)  (0)
 static inline void vfs_clearmntopt(struct vfs *vfs, const char *s) 
 { }
@@ -185,5 +175,4 @@ struct mounta {
 #define VFS_HOLD(vfs_t)
 #define VFS_RELE(vfs_t)
 
-#endif /* SPL_ZFS_H */ 
-
+#endif /* SPL_ZFS_H */

@@ -1,28 +1,28 @@
-/*
- *  This file is part of the SPL: Solaris Porting Layer.
- *
- *  Copyright (c) 2008 Lawrence Livermore National Security, LLC.
- *  Produced at Lawrence Livermore National Laboratory
- *  Written by:
- *          Brian Behlendorf <behlendorf1@llnl.gov>,
- *          Herb Wartens <wartens2@llnl.gov>,
- *          Jim Garlick <garlick@llnl.gov>
+/*****************************************************************************\
+ *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
  *  UCRL-CODE-235197
  *
- *  This is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
  *
- *  This is distributed in the hope that it will be useful, but WITHOUT
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
  *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  *  for more details.
  *
  *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
- */
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+ *****************************************************************************
+ *  Solaris Porting LAyer Tests (SPLAT) Mutex Tests.
+\*****************************************************************************/
 
 #include "splat-internal.h"
 
@@ -55,6 +55,7 @@ typedef struct mutex_priv {
         struct file *mp_file;
         kmutex_t mp_mtx;
         int mp_rc;
+        int mp_rc2;
 } mutex_priv_t;
 
 static void
@@ -240,37 +241,96 @@ out:
         return rc;
 }
 
+static void
+splat_mutex_owned(void *priv)
+{
+        mutex_priv_t *mp = (mutex_priv_t *)priv;
+
+        ASSERT(mp->mp_magic == SPLAT_MUTEX_TEST_MAGIC);
+        mp->mp_rc = mutex_owned(&mp->mp_mtx);
+        mp->mp_rc2 = MUTEX_HELD(&mp->mp_mtx);
+}
+
 static int
 splat_mutex_test3(struct file *file, void *arg)
 {
-        kmutex_t mtx;
+        mutex_priv_t mp;
+        taskq_t *tq;
         int rc = 0;
 
-        mutex_init(&mtx, SPLAT_MUTEX_TEST_NAME, MUTEX_DEFAULT, NULL);
-        mutex_enter(&mtx);
+        mp.mp_magic = SPLAT_MUTEX_TEST_MAGIC;
+        mp.mp_file = file;
+        mutex_init(&mp.mp_mtx, SPLAT_MUTEX_TEST_NAME, MUTEX_DEFAULT, NULL);
+
+        if ((tq = taskq_create(SPLAT_MUTEX_TEST_NAME, 1, maxclsyspri,
+                               50, INT_MAX, TASKQ_PREPOPULATE)) == NULL) {
+                splat_vprint(file, SPLAT_MUTEX_TEST3_NAME, "Taskq '%s' "
+                             "create failed\n", SPLAT_MUTEX_TEST3_NAME);
+                return -EINVAL;
+        }
+
+        mutex_enter(&mp.mp_mtx);
 
         /* Mutex should be owned by current */
-        if (!mutex_owned(&mtx)) {
+        if (!mutex_owned(&mp.mp_mtx)) {
                 splat_vprint(file, SPLAT_MUTEX_TEST3_NAME, "Unowned mutex "
-                           "should be owned by pid %d\n", current->pid);
+                             "should be owned by pid %d\n", current->pid);
+                rc = -EINVAL;
+                goto out_exit;
+        }
+
+        if (taskq_dispatch(tq, splat_mutex_owned, &mp, TQ_SLEEP) == 0) {
+                splat_vprint(file, SPLAT_MUTEX_TEST3_NAME, "Failed to "
+                             "dispatch function '%s' to taskq\n",
+                             sym2str(splat_mutex_owned));
+                rc = -EINVAL;
+                goto out_exit;
+        }
+        taskq_wait(tq);
+
+        /* Mutex should not be owned which checked from a different thread */
+        if (mp.mp_rc || mp.mp_rc2) {
+                splat_vprint(file, SPLAT_MUTEX_TEST3_NAME, "Mutex owned by "
+                             "pid %d not by taskq\n", current->pid);
+                rc = -EINVAL;
+                goto out_exit;
+        }
+
+        mutex_exit(&mp.mp_mtx);
+
+        /* Mutex should not be owned by current */
+        if (mutex_owned(&mp.mp_mtx)) {
+                splat_vprint(file, SPLAT_MUTEX_TEST3_NAME, "Mutex owned by "
+                             "pid %d it should be unowned\b", current->pid);
                 rc = -EINVAL;
                 goto out;
         }
 
-        mutex_exit(&mtx);
+        if (taskq_dispatch(tq, splat_mutex_owned, &mp, TQ_SLEEP) == 0) {
+                splat_vprint(file, SPLAT_MUTEX_TEST3_NAME, "Failed to "
+                             "dispatch function '%s' to taskq\n",
+                             sym2str(splat_mutex_owned));
+                rc = -EINVAL;
+                goto out;
+        }
+        taskq_wait(tq);
 
-        /* Mutex should not be owned by any task */
-        if (mutex_owned(&mtx)) {
+        /* Mutex should be owned by no one */
+        if (mp.mp_rc || mp.mp_rc2) {
                 splat_vprint(file, SPLAT_MUTEX_TEST3_NAME, "Mutex owned by "
-                           "pid %d should be unowned\b", current->pid);
+                             "no one, %d/%d disagrees\n", mp.mp_rc, mp.mp_rc2);
                 rc = -EINVAL;
                 goto out;
         }
 
         splat_vprint(file, SPLAT_MUTEX_TEST3_NAME, "%s",
                    "Correct mutex_owned() behavior\n");
+        goto out;
+out_exit:
+        mutex_exit(&mp.mp_mtx);
 out:
-        mutex_destroy(&mtx);
+        mutex_destroy(&mp.mp_mtx);
+        taskq_destroy(tq);
 
         return rc;
 }
@@ -283,12 +343,28 @@ splat_mutex_test4(struct file *file, void *arg)
         int rc = 0;
 
         mutex_init(&mtx, SPLAT_MUTEX_TEST_NAME, MUTEX_DEFAULT, NULL);
+
+        /*
+         * Verify mutex owner is cleared after being dropped.  Depending
+         * on how you build your kernel this behavior changes, ensure the
+         * SPL mutex implementation is properly detecting this.
+         */
+        mutex_enter(&mtx);
+        msleep(100);
+        mutex_exit(&mtx);
+        if (MUTEX_HELD(&mtx)) {
+                splat_vprint(file, SPLAT_MUTEX_TEST4_NAME, "Mutex should "
+                           "not be held, bit is by %p\n", mutex_owner(&mtx));
+                rc = -EINVAL;
+                goto out;
+        }
+
         mutex_enter(&mtx);
 
         /* Mutex should be owned by current */
         owner = mutex_owner(&mtx);
         if (current != owner) {
-                splat_vprint(file, SPLAT_MUTEX_TEST3_NAME, "Mutex should "
+                splat_vprint(file, SPLAT_MUTEX_TEST4_NAME, "Mutex should "
                            "be owned by pid %d but is owned by pid %d\n",
                            current->pid, owner ? owner->pid : -1);
                 rc = -EINVAL;
@@ -300,7 +376,7 @@ splat_mutex_test4(struct file *file, void *arg)
         /* Mutex should not be owned by any task */
         owner = mutex_owner(&mtx);
         if (owner) {
-                splat_vprint(file, SPLAT_MUTEX_TEST3_NAME, "Mutex should not "
+                splat_vprint(file, SPLAT_MUTEX_TEST4_NAME, "Mutex should not "
                            "be owned but is owned by pid %d\n", owner->pid);
                 rc = -EINVAL;
                 goto out;

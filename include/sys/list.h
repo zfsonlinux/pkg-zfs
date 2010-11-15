@@ -1,10 +1,35 @@
+/*****************************************************************************\
+ *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
+ *  UCRL-CODE-235197
+ *
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
+ *
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
+ *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ *  for more details.
+ *
+ *  You should have received a copy of the GNU General Public License along
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+\*****************************************************************************/
+
 #ifndef _SPL_LIST_H
 #define _SPL_LIST_H
 
 #include <sys/types.h>
 #include <linux/list.h>
 
-/* NOTE: We have implemented the Solaris list API in terms of the native
+/*
+ * NOTE: I have implemented the Solaris list API in terms of the native
  * linux API.  This has certain advantages in terms of leveraging the linux
  * list debugging infrastructure, but it also means that the internals of a
  * list differ slightly than on Solaris.  This is not a problem as long as
@@ -167,7 +192,7 @@ list_prev(list_t *list, void *object)
 static inline int
 list_link_active(list_node_t *node)
 {
-        return (node->next != LIST_POISON1) && (node->prev != LIST_POISON2);
+	return (node->next != LIST_POISON1) && (node->prev != LIST_POISON2);
 }
 
 static inline void
@@ -177,5 +202,18 @@ spl_list_move_tail(list_t *dst, list_t *src)
 }
 
 #define list_move_tail(dst, src)	spl_list_move_tail(dst, src)
+
+static inline void
+list_link_replace(list_node_t *old_node, list_node_t *new_node)
+{
+	ASSERT(list_link_active(old_node));
+	ASSERT(!list_link_active(new_node));
+
+	new_node->next = old_node->next;
+	new_node->prev = old_node->prev;
+	old_node->prev->next = new_node;
+	old_node->next->prev = new_node;
+	list_link_init(old_node);
+}
 
 #endif /* SPL_LIST_H */

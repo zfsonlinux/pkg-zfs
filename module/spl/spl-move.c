@@ -31,11 +31,11 @@ uiomove(void *p, size_t n, enum uio_rw rw, struct uio *uio)
 				/* * UIO_READ = copy data from kernel to user * */
 				if (copy_to_user(iov->iov_base, p, cnt))
 					return EFAULT;
-				/* error = xcopyout_nta(p, iov->iov_base, cnt,
+				/* error = xcopyout_nta(p, iov->iov_base, cnt, 
 				 * (uio->uio_extflg & UIO_COPY_CACHED)); */
 			} else {
 				/* * UIO_WRITE = copy data from user to kernel * */
-				/* error = xcopyin_nta(iov->iov_base, p, cnt,
+				/* error = xcopyin_nta(iov->iov_base, p, cnt, 
 				 * (uio->uio_extflg & UIO_COPY_CACHED)); */
 				if (copy_from_user(p, iov->iov_base, cnt))
 					return EFAULT;
@@ -157,11 +157,11 @@ uiocopy(void *p, size_t n, enum uio_rw rw, struct uio *uio, size_t *cbytes)
 				/* * UIO_READ = copy data from kernel to user * */
 				if (copy_to_user(iov->iov_base, p, cnt))
 					return EFAULT;
-				/* error = xcopyout_nta(p, iov->iov_base, cnt,
+				/* error = xcopyout_nta(p, iov->iov_base, cnt, 
 				 * (uio->uio_extflg & UIO_COPY_CACHED)); */
 			} else {
 				/* * UIO_WRITE = copy data from user to kernel * */
-				/* error = xcopyin_nta(iov->iov_base, p, cnt,
+				/* error = xcopyin_nta(iov->iov_base, p, cnt, 
 				 * (uio->uio_extflg & UIO_COPY_CACHED)); */
 				if (copy_from_user(p, iov->iov_base, cnt))
 					return EFAULT;

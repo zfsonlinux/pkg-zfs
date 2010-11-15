@@ -1,66 +1,70 @@
-/*
- *  This file is part of the SPL: Solaris Porting Layer.
- *
- *  Copyright (c) 2008 Lawrence Livermore National Security, LLC.
- *  Produced at Lawrence Livermore National Laboratory
- *  Written by:
- *          Brian Behlendorf <behlendorf1@llnl.gov>,
- *          Herb Wartens <wartens2@llnl.gov>,
- *          Jim Garlick <garlick@llnl.gov>
+/*****************************************************************************\
+ *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
  *  UCRL-CODE-235197
  *
- *  This is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
  *
- *  This is distributed in the hope that it will be useful, but WITHOUT
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
  *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  *  for more details.
  *
  *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
- */
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+\*****************************************************************************/
 
 #ifndef _SPL_SYSMACROS_H
 #define _SPL_SYSMACROS_H
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
-
 #include <linux/module.h>
+#include <linux/cpumask.h>
 #include <sys/debug.h>
 #include <sys/varargs.h>
 #include <sys/zone.h>
 #include <sys/signal.h>
 
 #ifndef _KERNEL
-#define _KERNEL                         __KERNEL__
+#define _KERNEL				__KERNEL__
 #endif
 
-/* Missing defines.
- */
 #define FALSE				0
 #define TRUE				1
 
-#define INT32_MAX                       INT_MAX
-#define INT32_MIN                       INT_MIN
+#define INT8_MAX			(127)
+#define INT8_MIN			(-128)
+#define UINT8_MAX			(255)
+#define UINT8_MIN			(0)
+
+#define INT16_MAX			(32767)
+#define INT16_MIN			(-32768)
+#define UINT16_MAX			(65535)
+#define UINT16_MIN			(0)
+
+#define INT32_MAX			INT_MAX
+#define INT32_MIN			INT_MIN
 #define UINT32_MAX			UINT_MAX
 #define UINT32_MIN			UINT_MIN
+
 #define INT64_MAX			LLONG_MAX
 #define INT64_MIN			LLONG_MIN
-#define UINT64_MAX                      ULLONG_MAX
+#define UINT64_MAX			ULLONG_MAX
 #define UINT64_MIN			ULLONG_MIN
 
-#define NBBY                            8
-#define ENOTSUP                         ENOTSUPP
+#define NBBY				8
+#define ENOTSUP				ENOTSUPP
 
 #define MAXMSGLEN			256
-#define MAXNAMELEN                      256
-#define MAXPATHLEN                      PATH_MAX
+#define MAXNAMELEN			256
+#define MAXPATHLEN			PATH_MAX
 
 #ifdef _LP64
 #define MAXOFFSET_T			0x7fffffffffffffffl
@@ -72,11 +76,12 @@ extern "C" {
 #define DEV_BSIZE			512
 #define DEV_BSHIFT			9 /* log2(DEV_BSIZE) */
 
-#define curproc				current
 #define proc_pageout			NULL
-#define max_ncpus                       64
-#define CPU_SEQID			smp_processor_id() /* I think... */
+#define curproc				get_current()
+#define max_ncpus			num_possible_cpus()
+#define CPU_SEQID			smp_processor_id()
 #define _NOTE(x)
+#define is_system_labeled()		0
 
 
 #define RLIM64_INFINITY			RLIM_INFINITY
@@ -87,26 +92,26 @@ extern "C" {
  *
  * Treat shim tasks as SCHED_NORMAL tasks
  */
-#define minclsyspri                     (MAX_RT_PRIO)
-#define maxclsyspri                     (MAX_PRIO-1)
+#define minclsyspri			(MAX_RT_PRIO)
+#define maxclsyspri			(MAX_PRIO-1)
 
 #define NICE_TO_PRIO(nice)		(MAX_RT_PRIO + (nice) + 20)
 #define PRIO_TO_NICE(prio)		((prio) - MAX_RT_PRIO - 20)
 
 /* Missing macros
  */
-#define PAGESIZE                        PAGE_SIZE
+#define PAGESIZE			PAGE_SIZE
 
 /* from Solaris sys/byteorder.h */
-#define BSWAP_8(x)      ((x) & 0xff)
-#define BSWAP_16(x)     ((BSWAP_8(x) << 8) | BSWAP_8((x) >> 8))
-#define BSWAP_32(x)     ((BSWAP_16(x) << 16) | BSWAP_16((x) >> 16))
-#define BSWAP_64(x)     ((BSWAP_32(x) << 32) | BSWAP_32((x) >> 32))
+#define BSWAP_8(x)	((x) & 0xff)
+#define BSWAP_16(x)	((BSWAP_8(x) << 8) | BSWAP_8((x) >> 8))
+#define BSWAP_32(x)	((BSWAP_16(x) << 16) | BSWAP_16((x) >> 16))
+#define BSWAP_64(x)	((BSWAP_32(x) << 32) | BSWAP_32((x) >> 32))
 
 /* Map some simple functions.
  */
-#define bzero(ptr,size)                 memset(ptr,0,size)
-#define bcopy(src,dest,size)            memcpy(dest,src,size)
+#define bzero(ptr,size)			memset(ptr,0,size)
+#define bcopy(src,dest,size)		memmove(dest,src,size)
 #define bcmp(src,dest,size)		memcmp((src), (dest), (size_t)(size))
 
 /* Dtrace probes do not exist in the linux kernel */
@@ -139,7 +144,6 @@ extern "C" {
 extern char spl_version[16];
 extern long spl_hostid;
 extern char hw_serial[11];
-extern int p0;
 
 /* Missing misc functions */
 extern int highbit(unsigned long i);
@@ -169,15 +173,15 @@ extern void spl_cleanup(void);
 /*
  * Compatibility macros/typedefs needed for Solaris -> Linux port
  */
-#define P2ALIGN(x, align)    ((x) & -(align))
-#define P2CROSS(x, y, align) (((x) ^ (y)) > (align) - 1)
-#define P2ROUNDUP(x, align)  (-(-(x) & -(align)))
-#define P2PHASE(x, align)    ((x) & ((align) - 1))
-#define P2NPHASE(x, align)   (-(x) & ((align) - 1))
-#define ISP2(x)              (((x) & ((x) - 1)) == 0)
-#define IS_P2ALIGNED(v, a)   ((((uintptr_t)(v)) & ((uintptr_t)(a) - 1)) == 0)
+#define P2ALIGN(x, align)	((x) & -(align))
+#define P2CROSS(x, y, align)	(((x) ^ (y)) > (align) - 1)
+#define P2ROUNDUP(x, align)	(-(-(x) & -(align)))
+#define P2PHASE(x, align)	((x) & ((align) - 1))
+#define P2NPHASE(x, align)	(-(x) & ((align) - 1))
+#define ISP2(x)			(((x) & ((x) - 1)) == 0)
+#define IS_P2ALIGNED(v, a)	((((uintptr_t)(v)) & ((uintptr_t)(a) - 1))==0)
 #define P2BOUNDARY(off, len, align) \
-                             (((off) ^ ((off) + (len) - 1)) > (align) - 1)
+				(((off) ^ ((off) + (len) - 1)) > (align) - 1)
 
 /*
  * Typed version of the P2* macros.  These macros should be used to ensure
@@ -186,6 +190,7 @@ extern void spl_cleanup(void);
  * type of the alignment.  For example, if (x) is of type uint64_t,
  * and we want to round it up to a page boundary using "PAGESIZE" as
  * the alignment, we can do either
+ *
  * P2ROUNDUP(x, (uint64_t)PAGESIZE)
  * or
  * P2ROUNDUP_TYPED(x, PAGESIZE, uint64_t)
@@ -212,10 +217,6 @@ extern void spl_cleanup(void);
 /* avoid any possibility of clashing with <stddef.h> version */
 
 #define offsetof(s, m)  ((size_t)(&(((s *)0)->m)))
-#endif
-
-#ifdef  __cplusplus
-}
 #endif
 
 #endif  /* _SPL_SYSMACROS_H */

@@ -26,6 +26,7 @@
 #include <sys/tsd_hashtable.h>
 #include <linux/list.h>
 #include <linux/slab.h>
+#include <spl-debug.h>
 
 #ifdef DEBUG_SUBSYSTEM
 #undef DEBUG_SUBSYSTEM
@@ -68,13 +69,13 @@ init_tsd_hash_table(unsigned long bits)
 	    return NULL;
 	}
 
-	ENTRY;
+	SENTRY;
 	table->bits = bits;
 	table->bins = bins;
 	table->count = count;
 	table->entries = 0;
 
-	EXIT;
+	SEXIT;
 	return table;
 }
 EXPORT_SYMBOL(init_tsd_hash_table);
@@ -111,9 +112,9 @@ tsd_hash_add(struct tsd_hash_table *table, tsd_wrap_thread_t *tsd_wrap)
 		(struct tsd_hash_entry *) kmalloc(sizeof(struct tsd_hash_entry),
 				GFP_KERNEL);
 
-	ENTRY;
+	SENTRY;
 	if (unlikely(!new)) {
-		EXIT;
+		SEXIT;
 		return -ENOMEM;
 	}
 	new->pid = tsd_wrap->tpid;
@@ -123,7 +124,7 @@ tsd_hash_add(struct tsd_hash_table *table, tsd_wrap_thread_t *tsd_wrap)
 	table->entries++;
 	table->count[hash]++;
 
-	EXIT;
+	SEXIT;
 	return 0;
 }
 
@@ -140,17 +141,17 @@ tsd_hash_del(struct tsd_hash_table *table, pid_t pid)
 {
 	struct tsd_hash_entry *entry = __tsd_hash_search(table, pid);
 
-	ENTRY;
+	SENTRY;
 	/* Entry not found in table */
 	if (!entry) {
-		EXIT;
+		SEXIT;
 		return -ENODATA;
 	}
 
 	hlist_del(&entry->list);
 	kfree(entry);
 
-	EXIT;
+	SEXIT;
 	return 0;
 }
 
@@ -168,7 +169,7 @@ __tsd_hash_search(struct tsd_hash_table *table, pid_t pid)
 	struct hlist_node *hcurrent;
 	struct tsd_hash_entry *entry = NULL;
 	struct tsd_hash_entry *match = NULL;
-	ENTRY;
+	SENTRY;
 	/* Search through chain to find pid */
 	hlist_for_each_entry(entry, hcurrent, bin, list) {
 		if (entry->pid == pid) {
@@ -176,7 +177,7 @@ __tsd_hash_search(struct tsd_hash_table *table, pid_t pid)
 			break;
 		}
 	}
-	EXIT;
+	SEXIT;
 	return match;
 }
 
@@ -193,7 +194,7 @@ tsd_hash_search(struct tsd_hash_table *table, pid_t pid)
 {
 	struct tsd_hash_entry *entry;
 
-	ENTRY;
+	SENTRY;
 
 	entry = __tsd_hash_search(table, pid);
 
@@ -201,6 +202,6 @@ tsd_hash_search(struct tsd_hash_table *table, pid_t pid)
 	if (entry == NULL) {
 		return NULL;
 	}
-	EXIT;
+	SEXIT;
 	return entry->tsd_wrap;
 }

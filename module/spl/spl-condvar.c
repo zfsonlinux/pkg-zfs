@@ -1,43 +1,44 @@
-/*
- *  This file is part of the SPL: Solaris Porting Layer.
- *
- *  Copyright (c) 2008 Lawrence Livermore National Security, LLC.
- *  Produced at Lawrence Livermore National Laboratory
- *  Written by:
- *          Brian Behlendorf <behlendorf1@llnl.gov>,
- *          Herb Wartens <wartens2@llnl.gov>,
- *          Jim Garlick <garlick@llnl.gov>
+/*****************************************************************************\
+ *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
  *  UCRL-CODE-235197
  *
- *  This is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
  *
- *  This is distributed in the hope that it will be useful, but WITHOUT
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
  *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  *  for more details.
  *
  *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
- */
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+ *****************************************************************************
+ *  Solaris Porting Layer (SPL) Credential Implementation.
+\*****************************************************************************/
 
 #include <sys/condvar.h>
+#include <spl-debug.h>
 
-#ifdef DEBUG_SUBSYSTEM
-#undef DEBUG_SUBSYSTEM
+#ifdef SS_DEBUG_SUBSYS
+#undef SS_DEBUG_SUBSYS
 #endif
 
-#define DEBUG_SUBSYSTEM S_CONDVAR
+#define SS_DEBUG_SUBSYS SS_CONDVAR
 
 void
 __cv_init(kcondvar_t *cvp, char *name, kcv_type_t type, void *arg)
 {
 	int flags = KM_SLEEP;
 
-	ENTRY;
+	SENTRY;
 	ASSERT(cvp);
 	ASSERT(name);
 	ASSERT(type == CV_DEFAULT);
@@ -61,14 +62,14 @@ __cv_init(kcondvar_t *cvp, char *name, kcv_type_t type, void *arg)
 	if (cvp->cv_name)
 	        strcpy(cvp->cv_name, name);
 
-	EXIT;
+	SEXIT;
 }
 EXPORT_SYMBOL(__cv_init);
 
 void
 __cv_destroy(kcondvar_t *cvp)
 {
-	ENTRY;
+	SENTRY;
 	ASSERT(cvp);
 	ASSERT(cvp->cv_magic == CV_MAGIC);
 	spin_lock(&cvp->cv_lock);
@@ -80,15 +81,15 @@ __cv_destroy(kcondvar_t *cvp)
 
 	spin_unlock(&cvp->cv_lock);
 	memset(cvp, CV_POISON, sizeof(*cvp));
-	EXIT;
+	SEXIT;
 }
 EXPORT_SYMBOL(__cv_destroy);
 
-void
-__cv_wait(kcondvar_t *cvp, kmutex_t *mp)
+static void
+cv_wait_common(kcondvar_t *cvp, kmutex_t *mp, int state)
 {
 	DEFINE_WAIT(wait);
-	ENTRY;
+	SENTRY;
 
 	ASSERT(cvp);
         ASSERT(mp);
@@ -103,8 +104,7 @@ __cv_wait(kcondvar_t *cvp, kmutex_t *mp)
 	ASSERT(cvp->cv_mutex == mp);
 	spin_unlock(&cvp->cv_lock);
 
-	prepare_to_wait_exclusive(&cvp->cv_event, &wait,
-				  TASK_UNINTERRUPTIBLE);
+	prepare_to_wait_exclusive(&cvp->cv_event, &wait, state);
 	atomic_inc(&cvp->cv_waiters);
 
 	/* Mutex should be dropped after prepare_to_wait() this
@@ -116,9 +116,22 @@ __cv_wait(kcondvar_t *cvp, kmutex_t *mp)
 
 	atomic_dec(&cvp->cv_waiters);
 	finish_wait(&cvp->cv_event, &wait);
-	EXIT;
+	SEXIT;
+}
+
+void
+__cv_wait(kcondvar_t *cvp, kmutex_t *mp)
+{
+	cv_wait_common(cvp, mp, TASK_UNINTERRUPTIBLE);
 }
 EXPORT_SYMBOL(__cv_wait);
+
+void
+__cv_wait_interruptible(kcondvar_t *cvp, kmutex_t *mp)
+{
+	cv_wait_common(cvp, mp, TASK_INTERRUPTIBLE);
+}
+EXPORT_SYMBOL(__cv_wait_interruptible);
 
 /* 'expire_time' argument is an absolute wall clock time in jiffies.
  * Return value is time left (expire_time - now) or -1 if timeout occurred.
@@ -128,7 +141,7 @@ __cv_timedwait(kcondvar_t *cvp, kmutex_t *mp, clock_t expire_time)
 {
 	DEFINE_WAIT(wait);
 	clock_t time_left;
-	ENTRY;
+	SENTRY;
 
 	ASSERT(cvp);
         ASSERT(mp);
@@ -146,7 +159,7 @@ __cv_timedwait(kcondvar_t *cvp, kmutex_t *mp, clock_t expire_time)
 	/* XXX - Does not handle jiffie wrap properly */
 	time_left = expire_time - jiffies;
 	if (time_left <= 0)
-		RETURN(-1);
+		SRETURN(-1);
 
 	prepare_to_wait_exclusive(&cvp->cv_event, &wait,
 				  TASK_UNINTERRUPTIBLE);
@@ -162,14 +175,14 @@ __cv_timedwait(kcondvar_t *cvp, kmutex_t *mp, clock_t expire_time)
 	atomic_dec(&cvp->cv_waiters);
 	finish_wait(&cvp->cv_event, &wait);
 
-	RETURN(time_left > 0 ? time_left : -1);
+	SRETURN(time_left > 0 ? time_left : -1);
 }
 EXPORT_SYMBOL(__cv_timedwait);
 
 void
 __cv_signal(kcondvar_t *cvp)
 {
-	ENTRY;
+	SENTRY;
 	ASSERT(cvp);
 	ASSERT(cvp->cv_magic == CV_MAGIC);
 
@@ -180,7 +193,7 @@ __cv_signal(kcondvar_t *cvp)
 	if (atomic_read(&cvp->cv_waiters) > 0)
 		wake_up(&cvp->cv_event);
 
-	EXIT;
+	SEXIT;
 }
 EXPORT_SYMBOL(__cv_signal);
 
@@ -189,13 +202,13 @@ __cv_broadcast(kcondvar_t *cvp)
 {
 	ASSERT(cvp);
 	ASSERT(cvp->cv_magic == CV_MAGIC);
-	ENTRY;
+	SENTRY;
 
 	/* Wake_up_all() will wake up all waiters even those which
 	 * have the WQ_FLAG_EXCLUSIVE flag set. */
 	if (atomic_read(&cvp->cv_waiters) > 0)
 		wake_up_all(&cvp->cv_event);
 
-	EXIT;
+	SEXIT;
 }
 EXPORT_SYMBOL(__cv_broadcast);

@@ -1,37 +1,29 @@
-/*
- *  This file is part of the SPL: Solaris Porting Layer.
- *
- *  Copyright (c) 2008 Lawrence Livermore National Security, LLC.
- *  Produced at Lawrence Livermore National Laboratory
- *  Written by:
- *          Brian Behlendorf <behlendorf1@llnl.gov>,
- *          Herb Wartens <wartens2@llnl.gov>,
- *          Jim Garlick <garlick@llnl.gov>
+/*****************************************************************************\
+ *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
  *  UCRL-CODE-235197
  *
- *  This is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
  *
- *  This is distributed in the hope that it will be useful, but WITHOUT
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
  *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  *  for more details.
  *
  *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
- */
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+\*****************************************************************************/
 
 #ifndef _SPL_KMEM_H
 #define	_SPL_KMEM_H
-
-#ifdef	__cplusplus
-extern "C" {
-#endif
-
-#undef DEBUG_KMEM_UNIMPLEMENTED
 
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -41,20 +33,21 @@ extern "C" {
 #include <linux/rwsem.h>
 #include <linux/hash.h>
 #include <linux/ctype.h>
-#include <asm/atomic_compat.h>
+#include <asm/atomic.h>
 #include <sys/types.h>
-#include <sys/debug.h>
 #include <sys/vmsystm.h>
+#include <sys/kstat.h>
 
 /*
  * Memory allocation interfaces
  */
-#define KM_SLEEP                        GFP_KERNEL
+#define KM_SLEEP                        GFP_NOFS
 #define KM_NOSLEEP                      GFP_ATOMIC
 #undef  KM_PANIC                        /* No linux analog */
 #define KM_PUSHPAGE                     (KM_SLEEP | __GFP_HIGH)
 #define KM_VMFLAGS                      GFP_LEVEL_MASK
 #define KM_FLAGS                        __GFP_BITS_MASK
+#define KM_NODEBUG                      __GFP_NOWARN
 
 /*
  * Used internally, the kernel does not need to support this flag
@@ -94,10 +87,10 @@ kzalloc_nofail(size_t size, gfp_t flags)
 	return ptr;
 }
 
-#ifdef HAVE_KMALLOC_NODE
 static inline void *
 kmalloc_node_nofail(size_t size, gfp_t flags, int node)
 {
+#ifdef HAVE_KMALLOC_NODE
 	void *ptr;
 
 	do {
@@ -105,106 +98,190 @@ kmalloc_node_nofail(size_t size, gfp_t flags, int node)
 	} while (ptr == NULL && (flags & __GFP_WAIT));
 
 	return ptr;
-}
+#else
+	return kmalloc_nofail(size, flags);
 #endif /* HAVE_KMALLOC_NODE */
+}
+
+static inline void *
+vmalloc_nofail(size_t size, gfp_t flags)
+{
+	void *ptr;
+
+	/*
+	 * Retry failed __vmalloc() allocations once every second.  The
+	 * rational for the delay is that the likely failure modes are:
+	 *
+	 * 1) The system has completely exhausted memory, in which case
+	 *    delaying 1 second for the memory reclaim to run is reasonable
+	 *    to avoid thrashing the system.
+	 * 2) The system has memory but has exhausted the small virtual
+	 *    address space available on 32-bit systems.  Retrying the
+	 *    allocation immediately will only result in spinning on the
+	 *    virtual address space lock.  It is better delay a second and
+	 *    hope that another process will free some of the address space.
+	 *    But the bottom line is there is not much we can actually do
+	 *    since we can never safely return a failure and honor the
+	 *    Solaris semantics.
+	 */
+	while (1) {
+		ptr = __vmalloc(size, flags | __GFP_HIGHMEM, PAGE_KERNEL);
+		if (unlikely((ptr == NULL) && (flags & __GFP_WAIT))) {
+			set_current_state(TASK_INTERRUPTIBLE);
+			schedule_timeout(HZ);
+		} else {
+			break;
+		}
+	}
+
+	return ptr;
+}
+
+static inline void *
+vzalloc_nofail(size_t size, gfp_t flags)
+{
+	void *ptr;
+
+	ptr = vmalloc_nofail(size, flags);
+	if (ptr)
+		memset(ptr, 0, (size));
+
+	return ptr;
+}
 
 #ifdef DEBUG_KMEM
+
+/*
+ * Memory accounting functions to be used only when DEBUG_KMEM is set.
+ */
+# ifdef HAVE_ATOMIC64_T
+
+# define kmem_alloc_used_add(size)      atomic64_add(size, &kmem_alloc_used)
+# define kmem_alloc_used_sub(size)      atomic64_sub(size, &kmem_alloc_used)
+# define kmem_alloc_used_read()         atomic64_read(&kmem_alloc_used)
+# define kmem_alloc_used_set(size)      atomic64_set(&kmem_alloc_used, size)
+# define vmem_alloc_used_add(size)      atomic64_add(size, &vmem_alloc_used)
+# define vmem_alloc_used_sub(size)      atomic64_sub(size, &vmem_alloc_used)
+# define vmem_alloc_used_read()         atomic64_read(&vmem_alloc_used)
+# define vmem_alloc_used_set(size)      atomic64_set(&vmem_alloc_used, size)
 
 extern atomic64_t kmem_alloc_used;
 extern unsigned long long kmem_alloc_max;
 extern atomic64_t vmem_alloc_used;
 extern unsigned long long vmem_alloc_max;
 
-# define kmem_alloc(size, flags)             __kmem_alloc((size), (flags), 0, 0)
-# define kmem_zalloc(size, flags)            __kmem_alloc((size), ((flags) |  \
-                                                 __GFP_ZERO), 0, 0)
+# else  /* HAVE_ATOMIC64_T */
 
-/* The node alloc functions are only used by the SPL code itself */
-# ifdef HAVE_KMALLOC_NODE
-#  define kmem_alloc_node(size, flags, node) __kmem_alloc((size), (flags), 1, \
-                                                 node)
-# else
-#  define kmem_alloc_node(size, flags, node) __kmem_alloc((size), (flags), 0, 0)
-# endif
+# define kmem_alloc_used_add(size)      atomic_add(size, &kmem_alloc_used)
+# define kmem_alloc_used_sub(size)      atomic_sub(size, &kmem_alloc_used)
+# define kmem_alloc_used_read()         atomic_read(&kmem_alloc_used)
+# define kmem_alloc_used_set(size)      atomic_set(&kmem_alloc_used, size)
+# define vmem_alloc_used_add(size)      atomic_add(size, &vmem_alloc_used)
+# define vmem_alloc_used_sub(size)      atomic_sub(size, &vmem_alloc_used)
+# define vmem_alloc_used_read()         atomic_read(&vmem_alloc_used)
+# define vmem_alloc_used_set(size)      atomic_set(&vmem_alloc_used, size)
 
-# define vmem_zalloc(size, flags)            vmem_alloc((size), ((flags) |    \
-                                                 __GFP_ZERO))
+extern atomic_t kmem_alloc_used;
+extern unsigned long long kmem_alloc_max;
+extern atomic_t vmem_alloc_used;
+extern unsigned long long vmem_alloc_max;
+
+# endif /* HAVE_ATOMIC64_T */
 
 # ifdef DEBUG_KMEM_TRACKING
+/*
+ * DEBUG_KMEM && DEBUG_KMEM_TRACKING
+ *
+ * The maximum level of memory debugging.  All memory will be accounted
+ * for and each allocation will be explicitly tracked.  Any allocation
+ * which is leaked will be reported on module unload and the exact location
+ * where that memory was allocation will be reported.  This level of memory
+ * tracking will have a significant impact on performance and should only
+ * be enabled for debugging.  This feature may be enabled by passing
+ * --enable-debug-kmem-tracking to configure.
+ */
+#  define kmem_alloc(sz, fl)            kmem_alloc_track((sz), (fl),           \
+                                             __FUNCTION__, __LINE__, 0, 0)
+#  define kmem_zalloc(sz, fl)           kmem_alloc_track((sz), (fl)|__GFP_ZERO,\
+                                             __FUNCTION__, __LINE__, 0, 0)
+#  define kmem_alloc_node(sz, fl, nd)   kmem_alloc_track((sz), (fl),           \
+                                             __FUNCTION__, __LINE__, 1, nd)
+#  define kmem_free(ptr, sz)            kmem_free_track((ptr), (sz))
 
-extern void *kmem_alloc_track(size_t size, int flags, const char *func,
-    int line, int node_alloc, int node);
-extern void kmem_free_track(void *ptr, size_t size);
-extern void *vmem_alloc_track(size_t size, int flags, const char *func,
-    int line);
-extern void vmem_free_track(void *ptr, size_t size);
+#  define vmem_alloc(sz, fl)            vmem_alloc_track((sz), (fl),           \
+                                             __FUNCTION__, __LINE__)
+#  define vmem_zalloc(sz, fl)           vmem_alloc_track((sz), (fl)|__GFP_ZERO,\
+                                             __FUNCTION__, __LINE__)
+#  define vmem_free(ptr, sz)            vmem_free_track((ptr), (sz))
 
-#  define __kmem_alloc(size, flags, na, node) kmem_alloc_track((size),        \
-                                                  (flags), __FUNCTION__,      \
-                                                  __LINE__, (na), (node))
-#  define kmem_free(ptr, size)                kmem_free_track((ptr), (size))
-#  define vmem_alloc(size, flags)             vmem_alloc_track((size),        \
-                                                  (flags),__FUNCTION__,       \
-                                                  __LINE__)
-#  define vmem_free(ptr, size)                vmem_free_track((ptr), (size))
+extern void *kmem_alloc_track(size_t, int, const char *, int, int, int);
+extern void kmem_free_track(void *, size_t);
+extern void *vmem_alloc_track(size_t, int, const char *, int);
+extern void vmem_free_track(void *, size_t);
 
 # else /* DEBUG_KMEM_TRACKING */
+/*
+ * DEBUG_KMEM && !DEBUG_KMEM_TRACKING
+ *
+ * The default build will set DEBUG_KEM.  This provides basic memory
+ * accounting with little to no impact on performance.  When the module
+ * is unloaded in any memory was leaked the total number of leaked bytes
+ * will be reported on the console.  To disable this basic accounting
+ * pass the --disable-debug-kmem option to configure.
+ */
+#  define kmem_alloc(sz, fl)            kmem_alloc_debug((sz), (fl),           \
+                                             __FUNCTION__, __LINE__, 0, 0)
+#  define kmem_zalloc(sz, fl)           kmem_alloc_debug((sz), (fl)|__GFP_ZERO,\
+                                             __FUNCTION__, __LINE__, 0, 0)
+#  define kmem_alloc_node(sz, fl, nd)   kmem_alloc_debug((sz), (fl),           \
+                                             __FUNCTION__, __LINE__, 1, nd)
+#  define kmem_free(ptr, sz)            kmem_free_debug((ptr), (sz))
 
-extern void *kmem_alloc_debug(size_t size, int flags, const char *func,
-    int line, int node_alloc, int node);
-extern void kmem_free_debug(void *ptr, size_t size);
-extern void *vmem_alloc_debug(size_t size, int flags, const char *func,
-    int line);
-extern void vmem_free_debug(void *ptr, size_t size);
+#  define vmem_alloc(sz, fl)            vmem_alloc_debug((sz), (fl),           \
+                                             __FUNCTION__, __LINE__)
+#  define vmem_zalloc(sz, fl)           vmem_alloc_debug((sz), (fl)|__GFP_ZERO,\
+                                             __FUNCTION__, __LINE__)
+#  define vmem_free(ptr, sz)            vmem_free_debug((ptr), (sz))
 
-#  define __kmem_alloc(size, flags, na, node) kmem_alloc_debug((size),        \
-                                                  (flags), __FUNCTION__,      \
-                                                  __LINE__, (na), (node))
-#  define kmem_free(ptr, size)                kmem_free_debug((ptr), (size))
-#  define vmem_alloc(size, flags)             vmem_alloc_debug((size),        \
-                                                  (flags), __FUNCTION__,      \
-                                                  __LINE__)
-#  define vmem_free(ptr, size)                vmem_free_debug((ptr), (size))
+extern void *kmem_alloc_debug(size_t, int, const char *, int, int, int);
+extern void kmem_free_debug(void *, size_t);
+extern void *vmem_alloc_debug(size_t, int, const char *, int);
+extern void vmem_free_debug(void *, size_t);
 
 # endif /* DEBUG_KMEM_TRACKING */
-
 #else /* DEBUG_KMEM */
+/*
+ * !DEBUG_KMEM && !DEBUG_KMEM_TRACKING
+ *
+ * All debugging is disabled.  There will be no overhead even for
+ * minimal memory accounting.  To enable basic accounting pass the
+ * --enable-debug-kmem option to configure.
+ */
+# define kmem_alloc(sz, fl)             kmalloc_nofail((sz), (fl))
+# define kmem_zalloc(sz, fl)            kzalloc_nofail((sz), (fl))
+# define kmem_alloc_node(sz, fl, nd)    kmalloc_node_nofail((sz), (fl), (nd))
+# define kmem_free(ptr, sz)             ((void)(sz), kfree(ptr))
 
-# define kmem_alloc(size, flags)              kmalloc_nofail((size), (flags))
-# define kmem_zalloc(size, flags)             kzalloc_nofail((size), (flags))
-# define kmem_free(ptr, size)                 ((void)(size), kfree(ptr))
-
-# ifdef HAVE_KMALLOC_NODE
-#  define kmem_alloc_node(size, flags, node)                                  \
-          kmalloc_node_nofail((size), (flags), (node))
-# else
-#  define kmem_alloc_node(size, flags, node)                                  \
-          kmalloc_nofail((size), (flags))
-# endif
-
-# define vmem_alloc(size, flags)              __vmalloc((size), ((flags) |    \
-                                                  __GFP_HIGHMEM), PAGE_KERNEL)
-# define vmem_zalloc(size, flags)                                             \
-({                                                                            \
-        void *_ptr_ = __vmalloc((size),((flags)|__GFP_HIGHMEM),PAGE_KERNEL);  \
-        if (_ptr_)                                                            \
-                memset(_ptr_, 0, (size));                                     \
-        _ptr_;                                                                \
-})
-# define vmem_free(ptr, size)           ((void)(size), vfree(ptr))
+# define vmem_alloc(sz, fl)             vmalloc_nofail((sz), (fl))
+# define vmem_zalloc(sz, fl)            vzalloc_nofail((sz), (fl))
+# define vmem_free(ptr, sz)             ((void)(sz), vfree(ptr))
 
 #endif /* DEBUG_KMEM */
 
-#ifdef DEBUG_KMEM_UNIMPLEMENTED
-static __inline__ void *
-kmem_alloc_tryhard(size_t size, size_t *alloc_size, int kmflags)
-{
-#error "kmem_alloc_tryhard() not implemented"
-}
-#endif /* DEBUG_KMEM_UNIMPLEMENTED */
+extern int kmem_debugging(void);
+extern char *kmem_vasprintf(const char *fmt, va_list ap);
+extern char *kmem_asprintf(const char *fmt, ...);
+extern char *strdup(const char *str);
+extern void strfree(char *str);
+
 
 /*
- * Slab allocation interfaces
+ * Slab allocation interfaces.  The SPL slab differs from the standard
+ * Linux SLAB or SLUB primarily in that each cache may be backed by slabs
+ * allocated from the physical or virtal memory address space.  The virtual
+ * slabs allow for good behavior when allocation large objects of identical
+ * size.  This slab implementation also supports both constructors and
+ * destructions which the Linux slab does not.
  */
 enum {
 	KMC_BIT_NOTOUCH		= 0,	/* Don't update ages */
@@ -218,6 +295,15 @@ enum {
 	KMC_BIT_REAPING		= 16,	/* Reaping in progress */
 	KMC_BIT_DESTROY		= 17,	/* Destroy in progress */
 };
+
+/* kmem move callback return values */
+typedef enum kmem_cbrc {
+	KMEM_CBRC_YES		= 0,	/* Object moved */
+	KMEM_CBRC_NO		= 1,	/* Object not moved */
+	KMEM_CBRC_LATER		= 2,	/* Object not moved, try again later */
+	KMEM_CBRC_DONT_NEED	= 3,	/* Neither object is needed */
+	KMEM_CBRC_DONT_KNOW	= 4,	/* Object unknown */
+} kmem_cbrc_t;
 
 #define KMC_NOTOUCH		(1 << KMC_BIT_NOTOUCH)
 #define KMC_NODEBUG		(1 << KMC_BIT_NODEBUG)
@@ -233,48 +319,6 @@ enum {
 #define KMC_REAP_CHUNK			INT_MAX
 #define KMC_DEFAULT_SEEKS		1
 
-#ifdef DEBUG_KMEM_UNIMPLEMENTED
-static __inline__ void kmem_init(void) {
-#error "kmem_init() not implemented"
-}
-
-static __inline__ void kmem_thread_init(void) {
-#error "kmem_thread_init() not implemented"
-}
-
-static __inline__ void kmem_mp_init(void) {
-#error "kmem_mp_init() not implemented"
-}
-
-static __inline__ void kmem_reap_idspace(void) {
-#error "kmem_reap_idspace() not implemented"
-}
-
-static __inline__ size_t kmem_avail(void) {
-#error "kmem_avail() not implemented"
-}
-
-static __inline__ size_t kmem_maxavail(void) {
-#error "kmem_maxavail() not implemented"
-}
-
-static __inline__ uint64_t kmem_cache_stat(spl_kmem_cache_t *cache) {
-#error "kmem_cache_stat() not implemented"
-}
-#endif /* DEBUG_KMEM_UNIMPLEMENTED */
-
-/* XXX - Used by arc.c to adjust its memory footprint. We may want
- *       to use this hook in the future to adjust behavior based on
- *       debug levels.  For now it's safe to always return 0.
- */
-static __inline__ int
-kmem_debugging(void)
-{
-        return 0;
-}
-
-extern int kmem_set_warning(int flag);
-
 extern struct list_head spl_kmem_cache_list;
 extern struct rw_semaphore spl_kmem_cache_sem;
 
@@ -288,6 +332,9 @@ extern struct rw_semaphore spl_kmem_cache_sem;
 #define SPL_KMEM_CACHE_OBJ_PER_SLAB	32	/* Target objects per slab */
 #define SPL_KMEM_CACHE_OBJ_PER_SLAB_MIN	8	/* Minimum objects per slab */
 #define SPL_KMEM_CACHE_ALIGN		8	/* Default object alignment */
+
+#define POINTER_IS_VALID(p)		0	/* Unimplemented */
+#define POINTER_INVALIDATE(pp)			/* Unimplemented */
 
 typedef int (*spl_kmem_ctor_t)(void *, void *, int);
 typedef void (*spl_kmem_dtor_t)(void *, void *);
@@ -358,11 +405,11 @@ typedef struct spl_kmem_cache {
 } spl_kmem_cache_t;
 #define kmem_cache_t		spl_kmem_cache_t
 
-extern spl_kmem_cache_t *
-spl_kmem_cache_create(char *name, size_t size, size_t align,
-        spl_kmem_ctor_t ctor, spl_kmem_dtor_t dtor, spl_kmem_reclaim_t reclaim,
-        void *priv, void *vmp, int flags);
-
+extern spl_kmem_cache_t *spl_kmem_cache_create(char *name, size_t size,
+	size_t align, spl_kmem_ctor_t ctor, spl_kmem_dtor_t dtor,
+	spl_kmem_reclaim_t reclaim, void *priv, void *vmp, int flags);
+extern void spl_kmem_cache_set_move(kmem_cache_t *,
+	kmem_cbrc_t (*)(void *, void *, size_t, void *));
 extern void spl_kmem_cache_destroy(spl_kmem_cache_t *skc);
 extern void *spl_kmem_cache_alloc(spl_kmem_cache_t *skc, int flags);
 extern void spl_kmem_cache_free(spl_kmem_cache_t *skc, void *obj);
@@ -375,6 +422,7 @@ void spl_kmem_fini(void);
 
 #define kmem_cache_create(name,size,align,ctor,dtor,rclm,priv,vmp,flags) \
         spl_kmem_cache_create(name,size,align,ctor,dtor,rclm,priv,vmp,flags)
+#define kmem_cache_set_move(skc, move)	spl_kmem_cache_set_move(skc, move)
 #define kmem_cache_destroy(skc)		spl_kmem_cache_destroy(skc)
 #define kmem_cache_alloc(skc, flags)	spl_kmem_cache_alloc(skc, flags)
 #define kmem_cache_free(skc, obj)	spl_kmem_cache_free(skc, obj)
@@ -382,9 +430,5 @@ void spl_kmem_fini(void);
 #define kmem_reap()			spl_kmem_reap()
 #define kmem_virt(ptr)			(((ptr) >= (void *)VMALLOC_START) && \
 					 ((ptr) <  (void *)VMALLOC_END))
-
-#ifdef	__cplusplus
-}
-#endif
 
 #endif	/* _SPL_KMEM_H */

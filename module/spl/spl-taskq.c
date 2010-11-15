@@ -1,37 +1,38 @@
-/*
- *  This file is part of the SPL: Solaris Porting Layer.
- *
- *  Copyright (c) 2008 Lawrence Livermore National Security, LLC.
- *  Produced at Lawrence Livermore National Laboratory
- *  Written by:
- *          Brian Behlendorf <behlendorf1@llnl.gov>,
- *          Herb Wartens <wartens2@llnl.gov>,
- *          Jim Garlick <garlick@llnl.gov>
+/*****************************************************************************\
+ *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
  *  UCRL-CODE-235197
  *
- *  This is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
  *
- *  This is distributed in the hope that it will be useful, but WITHOUT
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
  *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  *  for more details.
  *
  *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
- */
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+ *****************************************************************************
+ *  Solaris Porting Layer (SPL) Task Queue Implementation.
+\*****************************************************************************/
 
 #include <sys/taskq.h>
 #include <sys/kmem.h>
+#include <spl-debug.h>
 
-#ifdef DEBUG_SUBSYSTEM
-#undef DEBUG_SUBSYSTEM
+#ifdef SS_DEBUG_SUBSYS
+#undef SS_DEBUG_SUBSYS
 #endif
 
-#define DEBUG_SUBSYSTEM S_TASKQ
+#define SS_DEBUG_SUBSYS SS_TASKQ
 
 /* Global system-wide dynamic task queue available for all consumers */
 taskq_t *system_taskq;
@@ -45,7 +46,8 @@ typedef struct spl_task {
         void                    *t_arg;
 } spl_task_t;
 
-/* NOTE: Must be called with tq->tq_lock held, returns a list_t which
+/*
+ * NOTE: Must be called with tq->tq_lock held, returns a list_t which
  * is not attached to the free, work, or pending taskq lists.
  */
 static spl_task_t *
@@ -53,7 +55,7 @@ task_alloc(taskq_t *tq, uint_t flags)
 {
         spl_task_t *t;
         int count = 0;
-        ENTRY;
+        SENTRY;
 
         ASSERT(tq);
         ASSERT(flags & (TQ_SLEEP | TQ_NOSLEEP));               /* One set */
@@ -64,59 +66,60 @@ retry:
         if (!list_empty(&tq->tq_free_list) && !(flags & TQ_NEW)) {
                 t = list_entry(tq->tq_free_list.next, spl_task_t, t_list);
                 list_del_init(&t->t_list);
-                RETURN(t);
+                SRETURN(t);
         }
 
         /* Free list is empty and memory allocations are prohibited */
         if (flags & TQ_NOALLOC)
-                RETURN(NULL);
+                SRETURN(NULL);
 
         /* Hit maximum spl_task_t pool size */
         if (tq->tq_nalloc >= tq->tq_maxalloc) {
                 if (flags & TQ_NOSLEEP)
-                        RETURN(NULL);
+                        SRETURN(NULL);
 
-                /* Sleep periodically polling the free list for an available
-                 * spl_task_t.  If a full second passes and we have not found
-                 * one gives up and return a NULL to the caller. */
-                if (flags & TQ_SLEEP) {
-                        spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
-                        schedule_timeout(HZ / 100);
-                        spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
-                        if (count < 100)
-                                GOTO(retry, count++);
-
-                        RETURN(NULL);
-                }
-
-                /* Unreachable, TQ_SLEEP or TQ_NOSLEEP */
-                SBUG();
+                /*
+                 * Sleep periodically polling the free list for an available
+                 * spl_task_t. Dispatching with TQ_SLEEP should always succeed
+                 * but we cannot block forever waiting for an spl_taskq_t to
+                 * show up in the free list, otherwise a deadlock can happen.
+                 *
+                 * Therefore, we need to allocate a new task even if the number
+                 * of allocated tasks is above tq->tq_maxalloc, but we still
+                 * end up delaying the task allocation by one second, thereby
+                 * throttling the task dispatch rate.
+                 */
+                 spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
+                 schedule_timeout(HZ / 100);
+                 spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
+                 if (count < 100)
+                        SGOTO(retry, count++);
         }
 
-	spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
-        t = kmem_alloc(sizeof(spl_task_t), flags & (TQ_SLEEP | TQ_NOSLEEP) & 
-				(~(__GFP_FS)));
+        spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
+        t = kmem_alloc(sizeof(spl_task_t), flags & (TQ_SLEEP | TQ_NOSLEEP));
         spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
 
-	if (t) {
-		spin_lock_init(&t->t_lock);
+        if (t) {
+                spin_lock_init(&t->t_lock);
                 INIT_LIST_HEAD(&t->t_list);
-		t->t_id = 0;
-		t->t_func = NULL;
-		t->t_arg = NULL;
-		tq->tq_nalloc++;
-	}
+                t->t_id = 0;
+                t->t_func = NULL;
+                t->t_arg = NULL;
+                tq->tq_nalloc++;
+        }
 
-        RETURN(t);
+        SRETURN(t);
 }
 
-/* NOTE: Must be called with tq->tq_lock held, expects the spl_task_t
+/*
+ * NOTE: Must be called with tq->tq_lock held, expects the spl_task_t
  * to already be removed from the free, work, or pending taskq lists.
  */
 static void
 task_free(taskq_t *tq, spl_task_t *t)
 {
-        ENTRY;
+        SENTRY;
 
         ASSERT(tq);
         ASSERT(t);
@@ -126,16 +129,17 @@ task_free(taskq_t *tq, spl_task_t *t)
         kmem_free(t, sizeof(spl_task_t));
         tq->tq_nalloc--;
 
-	EXIT;
+	SEXIT;
 }
 
-/* NOTE: Must be called with tq->tq_lock held, either destroys the
+/*
+ * NOTE: Must be called with tq->tq_lock held, either destroys the
  * spl_task_t if too many exist or moves it to the free list for later use.
  */
 static void
 task_done(taskq_t *tq, spl_task_t *t)
 {
-	ENTRY;
+	SENTRY;
 	ASSERT(tq);
 	ASSERT(t);
 	ASSERT(spin_is_locked(&tq->tq_lock));
@@ -151,16 +155,32 @@ task_done(taskq_t *tq, spl_task_t *t)
 		task_free(tq, t);
 	}
 
-        EXIT;
+        SEXIT;
 }
 
-/* Taskqid's are handed out in a monotonically increasing fashion per
- * taskq_t.  We don't handle taskqid wrapping yet, but fortunately it is
- * a 64-bit value so this is probably never going to happen.  The lowest
- * pending taskqid is stored in the taskq_t to make it easy for any
- * taskq_wait()'ers to know if the tasks they're waiting for have
- * completed.  Unfortunately, tq_task_lowest is kept up to date is
- * a pretty brain dead way, something more clever should be done.
+/*
+ * As tasks are submitted to the task queue they are assigned a
+ * monotonically increasing taskqid and added to the tail of the pending
+ * list.  As worker threads become available the tasks are removed from
+ * the head of the pending or priority list, giving preference to the
+ * priority list.  The tasks are then added to the work list, preserving
+ * the ordering by taskqid.  Finally, as tasks complete they are removed
+ * from the work list.  This means that the pending and work lists are
+ * always kept sorted by taskqid.  Thus the lowest outstanding
+ * incomplete taskqid can be determined simply by checking the min
+ * taskqid for each head item on the pending, priority, and work list.
+ * This value is stored in tq->tq_lowest_id and only updated to the new
+ * lowest id when the previous lowest id completes.  All taskqids lower
+ * than tq->tq_lowest_id must have completed.  It is also possible
+ * larger taskqid's have completed because they may be processed in
+ * parallel by several worker threads.  However, this is not a problem
+ * because the behavior of taskq_wait_id() is to block until all
+ * previously submitted taskqid's have completed.
+ *
+ * XXX: Taskqid_t wrapping is not handled.  However, taskqid_t's are
+ * 64-bit values so even if a taskq is processing 2^24 (16,777,216)
+ * taskqid_ts per second it will still take 2^40 seconds, 34,865 years,
+ * before the wrap occurs.  I can live with that for now.
  */
 static int
 taskq_wait_check(taskq_t *tq, taskqid_t id)
@@ -170,21 +190,19 @@ taskq_wait_check(taskq_t *tq, taskqid_t id)
 	spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
 	rc = (id < tq->tq_lowest_id);
 	spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
-	RETURN(rc);
+
+	SRETURN(rc);
 }
 
-/* Expected to wait for all previously scheduled tasks to complete.  We do
- * not need to wait for tasked scheduled after this call to complete.  In
- * other words we do not need to drain the entire taskq. */
 void
 __taskq_wait_id(taskq_t *tq, taskqid_t id)
 {
-	ENTRY;
+	SENTRY;
 	ASSERT(tq);
 
 	wait_event(tq->tq_wait_waitq, taskq_wait_check(tq, id));
 
-	EXIT;
+	SEXIT;
 }
 EXPORT_SYMBOL(__taskq_wait_id);
 
@@ -192,7 +210,7 @@ void
 __taskq_wait(taskq_t *tq)
 {
 	taskqid_t id;
-	ENTRY;
+	SENTRY;
 	ASSERT(tq);
 
 	/* Wait for the largest outstanding taskqid */
@@ -202,7 +220,7 @@ __taskq_wait(taskq_t *tq)
 
 	__taskq_wait_id(tq, id);
 
-	EXIT;
+	SEXIT;
 
 }
 EXPORT_SYMBOL(__taskq_wait);
@@ -211,16 +229,16 @@ int
 __taskq_member(taskq_t *tq, void *t)
 {
         int i;
-        ENTRY;
+        SENTRY;
 
 	ASSERT(tq);
         ASSERT(t);
 
         for (i = 0; i < tq->tq_nthreads; i++)
                 if (tq->tq_threads[i] == (struct task_struct *)t)
-                        RETURN(1);
+                        SRETURN(1);
 
-        RETURN(0);
+        SRETURN(0);
 }
 EXPORT_SYMBOL(__taskq_member);
 
@@ -229,65 +247,114 @@ __taskq_dispatch(taskq_t *tq, task_func_t func, void *arg, uint_t flags)
 {
         spl_task_t *t;
 	taskqid_t rc = 0;
-        ENTRY;
+        SENTRY;
 
         ASSERT(tq);
         ASSERT(func);
-        if (unlikely(in_atomic() && (flags & TQ_SLEEP))) {
-		CERROR("May schedule while atomic: %s/0x%08x/%d\n",
-                       current->comm, preempt_count(), current->pid);
-		SBUG();
-	}
+
+	/* Solaris assumes TQ_SLEEP if not passed explicitly */
+	if (!(flags & (TQ_SLEEP | TQ_NOSLEEP)))
+		flags |= TQ_SLEEP;
+
+	if (unlikely(in_atomic() && (flags & TQ_SLEEP)))
+		PANIC("May schedule while atomic: %s/0x%08x/%d\n",
+		    current->comm, preempt_count(), current->pid);
 
         spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
 
 	/* Taskq being destroyed and all tasks drained */
 	if (!(tq->tq_flags & TQ_ACTIVE))
-		GOTO(out, rc = 0);
+		SGOTO(out, rc = 0);
 
 	/* Do not queue the task unless there is idle thread for it */
 	ASSERT(tq->tq_nactive <= tq->tq_nthreads);
 	if ((flags & TQ_NOQUEUE) && (tq->tq_nactive == tq->tq_nthreads))
-		GOTO(out, rc = 0);
+		SGOTO(out, rc = 0);
 
         if ((t = task_alloc(tq, flags)) == NULL)
-		GOTO(out, rc = 0);
+		SGOTO(out, rc = 0);
 
 	spin_lock(&t->t_lock);
-	list_add_tail(&t->t_list, &tq->tq_pend_list);
+
+	/* Queue to the priority list instead of the pending list */
+	if (flags & TQ_FRONT)
+		list_add_tail(&t->t_list, &tq->tq_prio_list);
+	else
+		list_add_tail(&t->t_list, &tq->tq_pend_list);
+
 	t->t_id = rc = tq->tq_next_id;
 	tq->tq_next_id++;
         t->t_func = func;
         t->t_arg = arg;
 	spin_unlock(&t->t_lock);
-	
+
 	wake_up(&tq->tq_work_waitq);
 out:
 	spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
-	RETURN(rc);
+	SRETURN(rc);
 }
 EXPORT_SYMBOL(__taskq_dispatch);
 
-/* NOTE: Must be called with tq->tq_lock held */
+/*
+ * Returns the lowest incomplete taskqid_t.  The taskqid_t may
+ * be queued on the pending list, on the priority list,  or on
+ * the work list currently being handled, but it is not 100%
+ * complete yet.
+ */
 static taskqid_t
 taskq_lowest_id(taskq_t *tq)
 {
 	taskqid_t lowest_id = tq->tq_next_id;
         spl_task_t *t;
-	ENTRY;
+	SENTRY;
 
 	ASSERT(tq);
 	ASSERT(spin_is_locked(&tq->tq_lock));
 
-	list_for_each_entry(t, &tq->tq_pend_list, t_list)
-		if (t->t_id < lowest_id)
-			lowest_id = t->t_id;
+	if (!list_empty(&tq->tq_pend_list)) {
+		t = list_entry(tq->tq_pend_list.next, spl_task_t, t_list);
+		lowest_id = MIN(lowest_id, t->t_id);
+	}
 
-	list_for_each_entry(t, &tq->tq_work_list, t_list)
-		if (t->t_id < lowest_id)
-			lowest_id = t->t_id;
+	if (!list_empty(&tq->tq_prio_list)) {
+		t = list_entry(tq->tq_prio_list.next, spl_task_t, t_list);
+		lowest_id = MIN(lowest_id, t->t_id);
+	}
 
-	RETURN(lowest_id);
+	if (!list_empty(&tq->tq_work_list)) {
+		t = list_entry(tq->tq_work_list.next, spl_task_t, t_list);
+		lowest_id = MIN(lowest_id, t->t_id);
+	}
+
+	SRETURN(lowest_id);
+}
+
+/*
+ * Insert a task into a list keeping the list sorted by increasing
+ * taskqid.
+ */
+static void
+taskq_insert_in_order(taskq_t *tq, spl_task_t *t)
+{
+	spl_task_t *w;
+	struct list_head *l;
+
+	SENTRY;
+	ASSERT(tq);
+	ASSERT(t);
+	ASSERT(spin_is_locked(&tq->tq_lock));
+
+	list_for_each_prev(l, &tq->tq_work_list) {
+		w = list_entry(l, spl_task_t, t_list);
+		if (w->t_id < t->t_id) {
+			list_add(&t->t_list, l);
+			break;
+		}
+	}
+	if (l == &tq->tq_work_list)
+		list_add(&t->t_list, &tq->tq_work_list);
+
+	SEXIT;
 }
 
 static int
@@ -298,7 +365,8 @@ taskq_thread(void *args)
 	taskqid_t id;
         taskq_t *tq = args;
         spl_task_t *t;
-	ENTRY;
+	struct list_head *pend_list;
+	SENTRY;
 
         ASSERT(tq);
         current->flags |= PF_NOFREEZE;
@@ -315,7 +383,8 @@ taskq_thread(void *args)
         while (!kthread_should_stop()) {
 
 		add_wait_queue(&tq->tq_work_waitq, &wait);
-		if (list_empty(&tq->tq_pend_list)) {
+		if (list_empty(&tq->tq_pend_list) &&
+		    list_empty(&tq->tq_prio_list)) {
 			spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
 			schedule();
 			spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
@@ -324,10 +393,18 @@ taskq_thread(void *args)
 		}
 
 		remove_wait_queue(&tq->tq_work_waitq, &wait);
-                if (!list_empty(&tq->tq_pend_list)) {
-                        t = list_entry(tq->tq_pend_list.next,spl_task_t,t_list);
+
+		if (!list_empty(&tq->tq_prio_list))
+			pend_list = &tq->tq_prio_list;
+		else if (!list_empty(&tq->tq_pend_list))
+			pend_list = &tq->tq_pend_list;
+		else
+			pend_list = NULL;
+
+		if (pend_list) {
+                        t = list_entry(pend_list->next, spl_task_t, t_list);
                         list_del_init(&t->t_list);
-			list_add_tail(&t->t_list, &tq->tq_work_list);
+			taskq_insert_in_order(tq, t);
                         tq->tq_nactive++;
 			spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
 
@@ -357,7 +434,7 @@ taskq_thread(void *args)
         tq->tq_nthreads--;
         spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
 
-	RETURN(0);
+	SRETURN(0);
 }
 
 taskq_t *
@@ -367,7 +444,7 @@ __taskq_create(const char *name, int nthreads, pri_t pri,
         taskq_t *tq;
         struct task_struct *t;
         int rc = 0, i, j = 0;
-        ENTRY;
+        SENTRY;
 
         ASSERT(name != NULL);
         ASSERT(pri <= maxclsyspri);
@@ -386,12 +463,12 @@ __taskq_create(const char *name, int nthreads, pri_t pri,
 
         tq = kmem_alloc(sizeof(*tq), KM_SLEEP);
         if (tq == NULL)
-                RETURN(NULL);
+                SRETURN(NULL);
 
         tq->tq_threads = kmem_alloc(nthreads * sizeof(t), KM_SLEEP);
         if (tq->tq_threads == NULL) {
                 kmem_free(tq, sizeof(*tq));
-                RETURN(NULL);
+                SRETURN(NULL);
         }
 
         spin_lock_init(&tq->tq_lock);
@@ -409,6 +486,7 @@ __taskq_create(const char *name, int nthreads, pri_t pri,
         INIT_LIST_HEAD(&tq->tq_free_list);
         INIT_LIST_HEAD(&tq->tq_work_list);
         INIT_LIST_HEAD(&tq->tq_pend_list);
+        INIT_LIST_HEAD(&tq->tq_prio_list);
         init_waitqueue_head(&tq->tq_work_waitq);
         init_waitqueue_head(&tq->tq_wait_waitq);
 
@@ -440,7 +518,7 @@ __taskq_create(const char *name, int nthreads, pri_t pri,
                 tq = NULL;
         }
 
-        RETURN(tq);
+        SRETURN(tq);
 }
 EXPORT_SYMBOL(__taskq_create);
 
@@ -449,7 +527,7 @@ __taskq_destroy(taskq_t *tq)
 {
 	spl_task_t *t;
 	int i, nthreads;
-	ENTRY;
+	SENTRY;
 
 	ASSERT(tq);
 	spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
@@ -477,34 +555,35 @@ __taskq_destroy(taskq_t *tq)
         ASSERT(list_empty(&tq->tq_free_list));
         ASSERT(list_empty(&tq->tq_work_list));
         ASSERT(list_empty(&tq->tq_pend_list));
+        ASSERT(list_empty(&tq->tq_prio_list));
 
         spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
         kmem_free(tq->tq_threads, nthreads * sizeof(spl_task_t *));
         kmem_free(tq, sizeof(taskq_t));
 
-	EXIT;
+	SEXIT;
 }
 EXPORT_SYMBOL(__taskq_destroy);
 
 int
 spl_taskq_init(void)
 {
-        ENTRY;
+        SENTRY;
 
 	/* Solaris creates a dynamic taskq of up to 64 threads, however in
 	 * a Linux environment 1 thread per-core is usually about right */
         system_taskq = taskq_create("spl_system_taskq", num_online_cpus(),
 				    minclsyspri, 4, 512, TASKQ_PREPOPULATE);
 	if (system_taskq == NULL)
-		RETURN(1);
+		SRETURN(1);
 
-        RETURN(0);
+        SRETURN(0);
 }
 
 void
 spl_taskq_fini(void)
 {
-        ENTRY;
+        SENTRY;
 	taskq_destroy(system_taskq);
-        EXIT;
+        SEXIT;
 }

@@ -1,31 +1,39 @@
-/*
- *  This file is part of the SPL: Solaris Porting Layer.
+/*****************************************************************************\
+ *  Copyright (c) 2008-2010 Sun Microsystems, Inc.
+ *  Written by Ricardo Correia <Ricardo.M.Correia@Sun.COM>
  *
- *  Copyright (c) 2008 Sun Microsystems, Inc.
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
  *
- *  This is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
  *
- *  This is distributed in the hope that it will be useful, but WITHOUT
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
  *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  *  for more details.
  *
  *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
- */
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+ *****************************************************************************
+ *  Solaris Porting Layer (SPL) XDR Implementation.
+\*****************************************************************************/
 
 #include <linux/string.h>
-
 #include <sys/kmem.h>
 #include <sys/debug.h>
 #include <sys/types.h>
-
 #include <rpc/types.h>
 #include <rpc/xdr.h>
+#include <spl-debug.h>
+
+#ifdef SS_DEBUG_SUBSYS
+#undef SS_DEBUG_SUBSYS
+#endif
+
+#define SS_DEBUG_SUBSYS SS_XDR
 
 /*
  * SPL's XDR mem implementation.
@@ -142,7 +150,7 @@ xdrmem_create(XDR *xdrs, const caddr_t addr, const uint_t size,
 			xdrs->x_ops = &xdrmem_decode_ops;
 			break;
 		default:
-			CWARN("Invalid op value: %d\n", op);
+			SWARN("Invalid op value: %d\n", op);
 			xdrs->x_ops = NULL; /* Let the caller know we failed */
 			return;
 	}
@@ -152,7 +160,7 @@ xdrmem_create(XDR *xdrs, const caddr_t addr, const uint_t size,
 	xdrs->x_addr_end = addr + size;
 
 	if (xdrs->x_addr_end < xdrs->x_addr) {
-		CWARN("Overflow while creating xdrmem: %p, %u\n", addr, size);
+		SWARN("Overflow while creating xdrmem: %p, %u\n", addr, size);
 		xdrs->x_ops = NULL;
 	}
 }
@@ -164,7 +172,7 @@ xdrmem_control(XDR *xdrs, int req, void *info)
 	struct xdr_bytesrec *rec = (struct xdr_bytesrec *) info;
 
 	if (req != XDR_GET_BYTES_AVAIL) {
-		CWARN("Called with unknown request: %d\n", req);
+		SWARN("Called with unknown request: %d\n", req);
 		return FALSE;
 	}
 
@@ -263,7 +271,7 @@ static bool_t
 xdrmem_enc_char(XDR *xdrs, char *cp)
 {
 	uint32_t val;
-	
+
 	BUILD_BUG_ON(sizeof(char) != 1);
 	val = *((unsigned char *) cp);
 

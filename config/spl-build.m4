@@ -1,40 +1,36 @@
-dnl #
-dnl # Default SPL kernel configuration
-dnl #
+###############################################################################
+# Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+# Copyright (C) 2007 The Regents of the University of California.
+# Written by Brian Behlendorf <behlendorf1@llnl.gov>.
+###############################################################################
+# SPL_AC_CONFIG_KERNEL: Default SPL kernel configuration.
+###############################################################################
+
 AC_DEFUN([SPL_AC_CONFIG_KERNEL], [
 	SPL_AC_KERNEL
-
-	dnl # Kernel build make options
-	dnl # KERNELMAKE_PARAMS="V=1"   # Enable verbose module build
-	KERNELMAKE_PARAMS="V=1"
-
-	dnl # -Wall -fno-strict-aliasing -Wstrict-prototypes and other
-	dnl # compiler options are added by the kernel build system.
-	abs_srcdir=`readlink -f ${srcdir}`
-	KERNELCPPFLAGS="$KERNELCPPFLAGS -Wstrict-prototypes -Werror"
-	KERNELCPPFLAGS="$KERNELCPPFLAGS -I${abs_srcdir} -I${abs_srcdir}/include"
 
 	if test "${LINUX_OBJ}" != "${LINUX}"; then
 		KERNELMAKE_PARAMS="$KERNELMAKE_PARAMS O=$LINUX_OBJ"
 	fi
-
 	AC_SUBST(KERNELMAKE_PARAMS)
+
+	KERNELCPPFLAGS="$KERNELCPPFLAGS -Wstrict-prototypes"
 	AC_SUBST(KERNELCPPFLAGS)
 
 	SPL_AC_DEBUG
 	SPL_AC_DEBUG_KMEM
 	SPL_AC_DEBUG_KMEM_TRACKING
 	SPL_AC_ATOMIC_SPINLOCK
-	SPL_AC_TYPE_UINTPTR_T
-	SPL_AC_TYPE_ATOMIC64_T
 	SPL_AC_TYPE_ATOMIC64_CMPXCHG
 	SPL_AC_TYPE_ATOMIC64_XCHG
+	SPL_AC_TYPE_UINTPTR_T
 	SPL_AC_3ARGS_INIT_WORK
 	SPL_AC_2ARGS_REGISTER_SYSCTL
 	SPL_AC_SET_SHRINKER
 	SPL_AC_PATH_IN_NAMEIDATA
 	SPL_AC_TASK_CURR
 	SPL_AC_CTL_UNNUMBERED
+	SPL_AC_CTL_NAME
 	SPL_AC_FLS64
 	SPL_AC_DEVICE_CREATE
 	SPL_AC_5ARGS_DEVICE_CREATE
@@ -51,8 +47,6 @@ AC_DEFUN([SPL_AC_CONFIG_KERNEL], [
 	SPL_AC_INODE_I_MUTEX
 	SPL_AC_MUTEX_OWNER
 	SPL_AC_MUTEX_LOCK_NESTED
-	SPL_AC_DIV64_64
-	SPL_AC_DIV64_U64
 	SPL_AC_3ARGS_ON_EACH_CPU
 	SPL_AC_KALLSYMS_LOOKUP_NAME
 	SPL_AC_GET_VMALLOC_INFO
@@ -66,6 +60,7 @@ AC_DEFUN([SPL_AC_CONFIG_KERNEL], [
 	SPL_AC_ZONE_STAT_ITEM_INACTIVE
 	SPL_AC_ZONE_STAT_ITEM_ACTIVE
 	SPL_AC_GET_ZONE_COUNTS
+	SPL_AC_USER_PATH_DIR
 	SPL_AC_SET_FS_PWD
 	SPL_AC_2ARGS_SET_FS_PWD
 	SPL_AC_2ARGS_VFS_UNLINK
@@ -74,6 +69,8 @@ AC_DEFUN([SPL_AC_CONFIG_KERNEL], [
 	SPL_AC_GROUPS_SEARCH
 	SPL_AC_PUT_TASK_STRUCT
 	SPL_AC_5ARGS_PROC_HANDLER
+	SPL_AC_KVASPRINTF
+	SPL_AC_3ARGS_FILE_FSYNC
 	SPL_AC_EXPORTED_RWSEM_IS_LOCKED
 ])
 
@@ -106,16 +103,23 @@ AC_DEFUN([SPL_AC_KERNEL], [
 
 	AC_MSG_CHECKING([kernel source directory])
 	if test -z "$kernelsrc"; then
-		sourcelink=`ls -1d /usr/src/kernels/* /usr/src/linux-* \
-                            2>/dev/null | grep -v obj | tail -1`
+		headersdir="/lib/modules/$(uname -r)/build"
+		if test -e "$headersdir"; then
+			sourcelink=$(readlink -f "$headersdir")
+		else
+			sourcelink=$(ls -1d /usr/src/kernels/* \
+				     /usr/src/linux-* \
+			             2>/dev/null | grep -v obj | tail -1)
+		fi
 
-		if test -e ${sourcelink}; then
+		if test -n "$sourcelink" && test -e ${sourcelink}; then
 			kernelsrc=`readlink -f ${sourcelink}`
 		else
 			AC_MSG_RESULT([Not found])
 			AC_MSG_ERROR([
-			*** Please specify the location of the kernel source
-			*** with the '--with-linux=PATH' option])
+	*** Please make sure the kernel devel package for your distribution
+	*** is installed then try again.  If that fails you can specify the
+	*** location of the kernel source with the '--with-linux=PATH' option.])
 		fi
 	else
 		if test "$kernelsrc" = "NONE"; then
@@ -126,12 +130,12 @@ AC_DEFUN([SPL_AC_KERNEL], [
 	AC_MSG_RESULT([$kernelsrc])
 	AC_MSG_CHECKING([kernel build directory])
 	if test -z "$kernelbuild"; then
-		if test -d ${kernelsrc}-obj/`arch`/`arch`; then
-			kernelbuild=${kernelsrc}-obj/`arch`/`arch`
-		elif test -d ${kernelsrc}-obj/`arch`/default; then
-			kernelbuild=${kernelsrc}-obj/`arch`/default
-		elif test -d `dirname ${kernelsrc}`/build-`arch`; then
-			kernelbuild=`dirname ${kernelsrc}`/build-`arch`
+		if test -d ${kernelsrc}-obj/${target_cpu}/${target_cpu}; then
+			kernelbuild=${kernelsrc}-obj/${target_cpu}/${target_cpu}
+		elif test -d ${kernelsrc}-obj/${target_cpu}/default; then
+			kernelbuild=${kernelsrc}-obj/${target_cpu}/default
+		elif test -d `dirname ${kernelsrc}`/build-${target_cpu}; then
+			kernelbuild=`dirname ${kernelsrc}`/build-${target_cpu}
 		else
 			kernelbuild=${kernelsrc}
 		fi
@@ -139,28 +143,30 @@ AC_DEFUN([SPL_AC_KERNEL], [
 	AC_MSG_RESULT([$kernelbuild])
 
 	AC_MSG_CHECKING([kernel source version])
-	if test -r $kernelbuild/include/linux/version.h && 
-		fgrep -q UTS_RELEASE $kernelbuild/include/linux/version.h; then
-
-		kernsrcver=`(echo "#include <linux/version.h>"; 
-		             echo "kernsrcver=UTS_RELEASE") | 
-		             cpp -I $kernelbuild/include |
-		             grep "^kernsrcver=" | cut -d \" -f 2`
-
-	elif test -r $kernelbuild/include/linux/utsrelease.h && 
-		fgrep -q UTS_RELEASE $kernelbuild/include/linux/utsrelease.h; then
-
-		kernsrcver=`(echo "#include <linux/utsrelease.h>"; 
-		             echo "kernsrcver=UTS_RELEASE") | 
-		             cpp -I $kernelbuild/include |
-		             grep "^kernsrcver=" | cut -d \" -f 2`
+	utsrelease1=$kernelbuild/include/linux/version.h
+	utsrelease2=$kernelbuild/include/linux/utsrelease.h
+	utsrelease3=$kernelbuild/include/generated/utsrelease.h
+	if test -r $utsrelease1 && fgrep -q UTS_RELEASE $utsrelease1; then
+		utsrelease=linux/version.h
+	elif test -r $utsrelease2 && fgrep -q UTS_RELEASE $utsrelease2; then
+		utsrelease=linux/utsrelease.h
+	elif test -r $utsrelease3 && fgrep -q UTS_RELEASE $utsrelease3; then
+		utsrelease=generated/utsrelease.h
 	fi
 
-	if test -z "$kernsrcver"; then
+	if test "$utsrelease"; then
+		kernsrcver=`(echo "#include <$utsrelease>";
+		             echo "kernsrcver=UTS_RELEASE") | 
+		             cpp -I $kernelbuild/include |
+		             grep "^kernsrcver=" | cut -d \" -f 2`
+
+		if test -z "$kernsrcver"; then
+			AC_MSG_RESULT([Not found])
+			AC_MSG_ERROR([*** Cannot determine kernel version.])
+		fi
+	else
 		AC_MSG_RESULT([Not found])
-		AC_MSG_ERROR([
-		*** Cannot determine the version of the linux kernel source.
-		*** Please prepare the kernel before running this script])
+		AC_MSG_ERROR([*** Cannot find UTS_RELEASE definition.])
 	fi
 
 	AC_MSG_RESULT([$kernsrcver])
@@ -177,28 +183,24 @@ AC_DEFUN([SPL_AC_KERNEL], [
 ])
 
 dnl #
-dnl dnl # 2.6.32 API change,
-dnl dnl # Unused 'struct file *' removed from prototype.
-dnl dnl #
-AC_DEFUN([SPL_AC_5ARGS_PROC_HANDLER], [
-     AC_MSG_CHECKING([whether proc_handler() wants 5 args])
-     SPL_LINUX_TRY_COMPILE([
-           #include <linux/sysctl.h>
-     ],[
-           proc_dostring(NULL, 0, NULL, NULL, NULL);
-     ],[
-           AC_MSG_RESULT(yes)
-           AC_DEFINE(HAVE_5ARGS_PROC_HANDLER, 1,
-                [proc_handler() wants 5 args])
-     ],[
-                AC_MSG_RESULT(no)
-     ])
+dnl # Explicitly check for gawk, we require it for the the usermode
+dnl # helper.  For some reason the standard awk command does not
+dnl # behave correctly when invoked from the usermode helper.
+dnl #
+AC_DEFUN([SPL_AC_GAWK], [
+	AS_IF([test "x$AWK" != xgawk], [
+                AC_MSG_ERROR([
+	*** Required util gawk missing.  Please install the required
+	*** gawk package for your distribution and try again.])
+	])
 ])
 
 dnl #
 dnl # Default SPL user configuration
 dnl #
-AC_DEFUN([SPL_AC_CONFIG_USER], [])
+AC_DEFUN([SPL_AC_CONFIG_USER], [
+	SPL_AC_GAWK
+])
 
 dnl #
 dnl # Check for rpm+rpmbuild to build RPM packages.  If these tools
@@ -306,139 +308,26 @@ dnl # Using the VENDOR tag from config.guess set the default
 dnl # package type for 'make pkg': (rpm | deb | tgz)
 dnl #
 AC_DEFUN([SPL_AC_DEFAULT_PACKAGE], [
-	VENDOR=$(echo $ac_build_alias | cut -f2 -d'-')
-
-	AC_MSG_CHECKING([default package type])
-	case "$VENDOR" in
-		fedora)     DEFAULT_PACKAGE=rpm ;;
-		redhat)     DEFAULT_PACKAGE=rpm ;;
-		sles)       DEFAULT_PACKAGE=rpm ;;
-		ubuntu)     DEFAULT_PACKAGE=deb ;;
-		debian)     DEFAULT_PACKAGE=deb ;;
-		slackware)  DEFAULT_PACKAGE=tgz ;;
-		*)          DEFAULT_PACKAGE=rpm ;;
-	esac
-
-	AC_MSG_RESULT([$DEFAULT_PACKAGE])
-	AC_SUBST(DEFAULT_PACKAGE)
-])
-
-dnl #
-dnl # Default SPL user configuration
-dnl #
-AC_DEFUN([SPL_AC_PACKAGE], [
-	SPL_AC_RPM
-	SPL_AC_DPKG
-	SPL_AC_ALIEN
-	SPL_AC_DEFAULT_PACKAGE
-])
-dnl #
-dnl # Check for rpm+rpmbuild to build RPM packages.  If these tools
-dnl # are missing it is non-fatal but you will not be able to build
-dnl # RPM packages and will be warned if you try too.
-dnl #
-AC_DEFUN([SPL_AC_RPM], [
-	RPM=rpm
-	RPMBUILD=rpmbuild
-
-	AC_MSG_CHECKING([whether $RPM is available])
-	AS_IF([tmp=$($RPM --version 2>/dev/null)], [
-		RPM_VERSION=$(echo $tmp | $AWK '/RPM/ { print $[3] }')
-		HAVE_RPM=yes
-		AC_MSG_RESULT([$HAVE_RPM ($RPM_VERSION)])
-	],[
-		HAVE_RPM=no
-		AC_MSG_RESULT([$HAVE_RPM])
-	])
-
-	AC_MSG_CHECKING([whether $RPMBUILD is available])
-	AS_IF([tmp=$($RPMBUILD --version 2>/dev/null)], [
-		RPMBUILD_VERSION=$(echo $tmp | $AWK '/RPM/ { print $[3] }')
-		HAVE_RPMBUILD=yes
-		AC_MSG_RESULT([$HAVE_RPMBUILD ($RPMBUILD_VERSION)])
-	],[
-		HAVE_RPMBUILD=no
-		AC_MSG_RESULT([$HAVE_RPMBUILD])
-	])
-
-	AC_SUBST(HAVE_RPM)
-	AC_SUBST(RPM)
-	AC_SUBST(RPM_VERSION)
-
-	AC_SUBST(HAVE_RPMBUILD)
-	AC_SUBST(RPMBUILD)
-	AC_SUBST(RPMBUILD_VERSION)
-])
-
-dnl #
-dnl # Check for dpkg+dpkg-buildpackage to build DEB packages.  If these
-dnl # tools are missing it is non-fatal but you will not be able to build
-dnl # DEB packages and will be warned if you try too.
-dnl #
-AC_DEFUN([SPL_AC_DPKG], [
-	DPKG=dpkg
-	DPKGBUILD=dpkg-buildpackage
-
-	AC_MSG_CHECKING([whether $DPKG is available])
-	AS_IF([tmp=$($DPKG --version 2>/dev/null)], [
-		DPKG_VERSION=$(echo $tmp | $AWK '/Debian/ { print $[7] }')
-		HAVE_DPKG=yes
-		AC_MSG_RESULT([$HAVE_DPKG ($DPKG_VERSION)])
-	],[
-		HAVE_DPKG=no
-		AC_MSG_RESULT([$HAVE_DPKG])
-	])
-
-	AC_MSG_CHECKING([whether $DPKGBUILD is available])
-	AS_IF([tmp=$($DPKGBUILD --version 2>/dev/null)], [
-		DPKGBUILD_VERSION=$(echo $tmp | \
-		    $AWK '/Debian/ { print $[4] }' | cut -f-4 -d'.')
-		HAVE_DPKGBUILD=yes
-		AC_MSG_RESULT([$HAVE_DPKGBUILD ($DPKGBUILD_VERSION)])
-	],[
-		HAVE_DPKGBUILD=no
-		AC_MSG_RESULT([$HAVE_DPKGBUILD])
-	])
-
-	AC_SUBST(HAVE_DPKG)
-	AC_SUBST(DPKG)
-	AC_SUBST(DPKG_VERSION)
-
-	AC_SUBST(HAVE_DPKGBUILD)
-	AC_SUBST(DPKGBUILD)
-	AC_SUBST(DPKGBUILD_VERSION)
-])
-
-dnl #
-dnl # Until native packaging for various different packing systems
-dnl # can be added the least we can do is attempt to use alien to
-dnl # convert the RPM packages to the needed package type.  This is
-dnl # a hack but so far it has worked reasonable well.
-dnl #
-AC_DEFUN([SPL_AC_ALIEN], [
-	ALIEN=alien
-
-	AC_MSG_CHECKING([whether $ALIEN is available])
-	AS_IF([tmp=$($ALIEN --version 2>/dev/null)], [
-		ALIEN_VERSION=$(echo $tmp | $AWK '{ print $[3] }')
-		HAVE_ALIEN=yes
-		AC_MSG_RESULT([$HAVE_ALIEN ($ALIEN_VERSION)])
-	],[
-		HAVE_ALIEN=no
-		AC_MSG_RESULT([$HAVE_ALIEN])
-	])
-
-	AC_SUBST(HAVE_ALIEN)
-	AC_SUBST(ALIEN)
-	AC_SUBST(ALIEN_VERSION)
-])
-
-dnl #
-dnl # Using the VENDOR tag from config.guess set the default
-dnl # package type for 'make pkg': (rpm | deb | tgz)
-dnl #
-AC_DEFUN([SPL_AC_DEFAULT_PACKAGE], [
-	VENDOR=$(echo $ac_build_alias | cut -f2 -d'-')
+	AC_MSG_CHECKING([linux distribution])
+	if test -f /etc/redhat-release ; then
+		VENDOR=redhat ;
+	elif test -f /etc/fedora-release ; then
+		VENDOR=fedora ;
+	elif test -f /etc/lsb-release ; then
+		VENDOR=ubuntu ;
+	elif test -f /etc/debian_version ; then
+		VENDOR=debian ;
+	elif test -f /etc/SuSE-release ; then
+		VENDOR=sles ;
+	elif test -f /etc/slackware-version ; then
+		VENDOR=slackware ;
+	elif test -f /etc/gentoo-release ; then
+		VENDOR=gentoo ;
+	else
+		VENDOR= ;
+	fi
+	AC_MSG_RESULT([$VENDOR])
+	AC_SUBST(VENDOR)
 
 	AC_MSG_CHECKING([default package type])
 	case "$VENDOR" in
@@ -509,6 +398,7 @@ dnl # Enable if the SPL should be compiled with internal debugging enabled.
 dnl # By default this support is disabled.
 dnl #
 AC_DEFUN([SPL_AC_DEBUG], [
+	AC_MSG_CHECKING([whether debugging is enabled])
 	AC_ARG_ENABLE([debug],
 		[AS_HELP_STRING([--enable-debug],
 		[Enable generic debug support @<:@default=no@:>@])],
@@ -516,10 +406,16 @@ AC_DEFUN([SPL_AC_DEBUG], [
 		[enable_debug=no])
 
 	AS_IF([test "x$enable_debug" = xyes],
-		[KERNELCPPFLAGS="${KERNELCPPFLAGS} -DDEBUG"],
-		[KERNELCPPFLAGS="${KERNELCPPFLAGS} -DNDEBUG"])
+	[
+		KERNELCPPFLAGS="${KERNELCPPFLAGS} -DDEBUG -Werror"
+		DEBUG_CFLAGS="-DDEBUG -Werror"
+	],
+	[
+		KERNELCPPFLAGS="${KERNELCPPFLAGS} -DNDEBUG"
+		DEBUG_CFLAGS="-DNDEBUG"
+	])
 
-	AC_MSG_CHECKING([whether debugging is enabled])
+	AC_SUBST(DEBUG_CFLAGS)
 	AC_MSG_RESULT([$enable_debug])
 ])
 
@@ -569,27 +465,6 @@ AC_DEFUN([SPL_AC_DEBUG_KMEM_TRACKING], [
 
 	AC_MSG_CHECKING([whether detailed kmem tracking is enabled])
 	AC_MSG_RESULT([$enable_debug_kmem_tracking])
-])
-
-dnl #
-dnl # Use the atomic implemenation based on global spinlocks.  This
-dnl # should never be needed, however it has been left in place as
-dnl # a fallback option in case problems are observed with directly
-dnl # mapping to the native Linux atomic operations.
-dnl #
-AC_DEFUN([SPL_AC_ATOMIC_SPINLOCK], [
-	AC_ARG_ENABLE([atomic-spinlocks],
-		[AS_HELP_STRING([--enable-atomic-spinlocks],
-		[Atomic types use spinlocks @<:@default=no@:>@])],
-		[],
-		[enable_atomic_spinlocks=no])
-
-	AS_IF([test "x$enable_atomic_spinlocks" = xyes],
-		[AC_DEFINE([ATOMIC_SPINLOCK], [1],
-		[Atomic types use spinlocks])])
-
-	AC_MSG_CHECKING([whether atomic types use spinlocks])
-	AC_MSG_RESULT([$enable_atomic_spinlocks])
 ])
 
 dnl #
@@ -719,41 +594,55 @@ AC_DEFUN([SPL_CHECK_HEADER],
 ])
 
 dnl #
-dnl # 2.6.24 API change,
-dnl # check if uintptr_t typedef is defined
+dnl # Use the atomic implemenation based on global spinlocks.  This
+dnl # should only be needed by 32-bit kernels which do not provide
+dnl # the atomic64_* API.  It may be optionally enabled as a fallback
+dnl # if problems are observed with the direct mapping to the native
+dnl # Linux atomic operations.  You may not disable atomic spinlocks
+dnl # if you kernel does not an atomic64_* API.
 dnl #
-AC_DEFUN([SPL_AC_TYPE_UINTPTR_T],
-	[AC_MSG_CHECKING([whether kernel defines uintptr_t])
-	SPL_LINUX_TRY_COMPILE([
-		#include <linux/types.h>
-	],[
-		uintptr_t *ptr;
-	],[
-		AC_MSG_RESULT([yes])
-		AC_DEFINE(HAVE_UINTPTR_T, 1,
-		          [kernel defines uintptr_t])
-	],[
-		AC_MSG_RESULT([no])
-	])
-])
+AC_DEFUN([SPL_AC_ATOMIC_SPINLOCK], [
+	AC_ARG_ENABLE([atomic-spinlocks],
+		[AS_HELP_STRING([--enable-atomic-spinlocks],
+		[Atomic types use spinlocks @<:@default=check@:>@])],
+		[],
+		[enable_atomic_spinlocks=check])
 
-dnl #
-dnl # 2.6.x API change,
-dnl # check if atomic64_t typedef is defined
-dnl #
-AC_DEFUN([SPL_AC_TYPE_ATOMIC64_T],
-	[AC_MSG_CHECKING([whether kernel defines atomic64_t])
 	SPL_LINUX_TRY_COMPILE([
 		#include <asm/atomic.h>
 	],[
 		atomic64_t *ptr;
 	],[
-		AC_MSG_RESULT([yes])
+		have_atomic64_t=yes
 		AC_DEFINE(HAVE_ATOMIC64_T, 1,
-		          [kernel defines atomic64_t])
+			[kernel defines atomic64_t])
 	],[
-		AC_MSG_RESULT([no])
+		have_atomic64_t=no
 	])
+
+	AS_IF([test "x$enable_atomic_spinlocks" = xcheck], [
+		AS_IF([test "x$have_atomic64_t" = xyes], [
+			enable_atomic_spinlocks=no
+		],[
+			enable_atomic_spinlocks=yes
+		])
+	])
+
+	AS_IF([test "x$enable_atomic_spinlocks" = xyes], [
+		AC_DEFINE([ATOMIC_SPINLOCK], [1],
+			[Atomic types use spinlocks])
+	],[
+		AS_IF([test "x$have_atomic64_t" = xno], [
+			AC_MSG_FAILURE(
+			[--disable-atomic-spinlocks given but required atomic64 support is unavailable])
+		])
+	])
+
+	AC_MSG_CHECKING([whether atomic types use spinlocks])
+	AC_MSG_RESULT([$enable_atomic_spinlocks])
+
+	AC_MSG_CHECKING([whether kernel defines atomic64_t])
+	AC_MSG_RESULT([$have_atomic64_t])
 ])
 
 dnl #
@@ -764,6 +653,7 @@ AC_DEFUN([SPL_AC_TYPE_ATOMIC64_CMPXCHG],
 	[AC_MSG_CHECKING([whether kernel defines atomic64_cmpxchg])
 	SPL_LINUX_TRY_COMPILE([
 		#include <asm/atomic.h>
+		#include <asm/system.h>
 	],[
 		atomic64_cmpxchg((atomic64_t *)NULL, 0, 0);
 	],[
@@ -789,6 +679,25 @@ AC_DEFUN([SPL_AC_TYPE_ATOMIC64_XCHG],
 		AC_MSG_RESULT([yes])
 		AC_DEFINE(HAVE_ATOMIC64_XCHG, 1,
 		          [kernel defines atomic64_xchg])
+	],[
+		AC_MSG_RESULT([no])
+	])
+])
+
+dnl #
+dnl # 2.6.24 API change,
+dnl # check if uintptr_t typedef is defined
+dnl #
+AC_DEFUN([SPL_AC_TYPE_UINTPTR_T],
+	[AC_MSG_CHECKING([whether kernel defines uintptr_t])
+	SPL_LINUX_TRY_COMPILE([
+		#include <linux/types.h>
+	],[
+		uintptr_t *ptr;
+	],[
+		AC_MSG_RESULT([yes])
+		AC_DEFINE(HAVE_UINTPTR_T, 1,
+		          [kernel defines uintptr_t])
 	],[
 		AC_MSG_RESULT([no])
 	])
@@ -899,6 +808,25 @@ AC_DEFUN([SPL_AC_CTL_UNNUMBERED],
 		AC_MSG_RESULT(yes)
 		AC_DEFINE(HAVE_CTL_UNNUMBERED, 1,
 		          [unnumbered sysctl support exists])
+	],[
+		AC_MSG_RESULT(no)
+	])
+])
+
+dnl #
+dnl # 2.6.33 API change,
+dnl # Removed .ctl_name from struct ctl_table.
+dnl #
+AC_DEFUN([SPL_AC_CTL_NAME], [
+	AC_MSG_CHECKING([whether struct ctl_table has ctl_name])
+	SPL_LINUX_TRY_COMPILE([
+		#include <linux/sysctl.h>
+	],[
+		struct ctl_table ctl;
+		ctl.ctl_name = 0;
+	],[
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(HAVE_CTL_NAME, 1, [struct ctl_table has ctl_name])
 	],[
 		AC_MSG_RESULT(no)
 	])
@@ -1173,32 +1101,6 @@ AC_DEFUN([SPL_AC_MUTEX_LOCK_NESTED], [
 	],[
 		AC_MSG_RESULT(no)
 	])
-])
-
-dnl #
-dnl # 2.6.22 API change,
-dnl # First introduced 'div64_64()' in lib/div64.c
-dnl 
-AC_DEFUN([SPL_AC_DIV64_64], [
-	SPL_CHECK_SYMBOL_EXPORT(
-		[div64_64],
-		[],
-		[AC_DEFINE(HAVE_DIV64_64, 1,
-		[div64_64() is available])],
-		[])
-])
-
-dnl #
-dnl # 2.6.26 API change,
-dnl # Renamed 'div64_64()' to 'div64_u64' in lib/div64.c
-dnl #
-AC_DEFUN([SPL_AC_DIV64_U64], [
-	SPL_CHECK_SYMBOL_EXPORT(
-		[div64_u64],
-		[],
-		[AC_DEFINE(HAVE_DIV64_U64, 1,
-		[div64_u64() is available])],
-		[])
 ])
 
 dnl #
@@ -1534,6 +1436,19 @@ AC_DEFUN([SPL_AC_GET_ZONE_COUNTS], [
 ])
 
 dnl #
+dnl # 2.6.27 API change,
+dnl # The user_path_dir() replaces __user_walk()
+dnl #
+AC_DEFUN([SPL_AC_USER_PATH_DIR], [
+	SPL_CHECK_SYMBOL_EXPORT(
+		[user_path_at],
+		[],
+		[AC_DEFINE(HAVE_USER_PATH_DIR, 1,
+		[user_path_dir() is available])],
+		[])
+])
+
+dnl #
 dnl # Symbol available in RHEL kernels not in stock kernels.
 dnl #
 AC_DEFUN([SPL_AC_SET_FS_PWD], [
@@ -1648,6 +1563,57 @@ AC_DEFUN([SPL_AC_PUT_TASK_STRUCT], [
 ])
 
 dnl #
+dnl # 2.6.32 API change,
+dnl # Unused 'struct file *' removed from prototype.
+dnl #
+AC_DEFUN([SPL_AC_5ARGS_PROC_HANDLER], [
+	AC_MSG_CHECKING([whether proc_handler() wants 5 args])
+	SPL_LINUX_TRY_COMPILE([
+		#include <linux/sysctl.h>
+	],[
+		proc_dostring(NULL, 0, NULL, NULL, NULL);
+	],[
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(HAVE_5ARGS_PROC_HANDLER, 1,
+		          [proc_handler() wants 5 args])
+	],[
+		AC_MSG_RESULT(no)
+	])
+])
+
+dnl #
+dnl # 2.6.x API change,
+dnl # kvasprintf() function added.
+dnl #
+AC_DEFUN([SPL_AC_KVASPRINTF], [
+	SPL_CHECK_SYMBOL_EXPORT(
+		[kvasprintf],
+		[],
+		[AC_DEFINE(HAVE_KVASPRINTF, 1,
+		[kvasprintf() is available])],
+		[])
+])
+
+dnl #
+dnl # 2.6.35 API change,
+dnl # Unused 'struct dentry *' removed from prototype.
+dnl #
+AC_DEFUN([SPL_AC_3ARGS_FILE_FSYNC], [
+	AC_MSG_CHECKING([whether file_fsync() wants 3 args])
+	SPL_LINUX_TRY_COMPILE([
+		#include <linux/buffer_head.h>
+	],[
+		file_fsync(NULL, NULL, 0);
+	],[
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(HAVE_3ARGS_FILE_FSYNC, 1,
+		          [file_fsync() wants 3 args])
+	],[
+		AC_MSG_RESULT(no)
+	])
+])
+
+dnl #
 dnl # 2.6.33 API change. Also backported in RHEL5 as of 2.6.18-190.el5.
 dnl # Earlier versions of rwsem_is_locked() were inline and had a race
 dnl # condition.  The fixed version is exported as a symbol.  The race
@@ -1655,12 +1621,10 @@ dnl # condition is fixed by acquiring sem->wait_lock, so we must not
 dnl # call that version while holding sem->wait_lock.
 dnl #
 AC_DEFUN([SPL_AC_EXPORTED_RWSEM_IS_LOCKED], [
-       SPL_CHECK_SYMBOL_EXPORT(
-               [rwsem_is_locked],
-               [lib/rwsem-spinlock.c],
-               [AC_DEFINE(RWSEM_IS_LOCKED_TAKES_WAIT_LOCK, 1,
-               [rwsem_is_locked() acquires sem->wait_lock])],
-               [])
+	SPL_CHECK_SYMBOL_EXPORT(
+		[rwsem_is_locked],
+		[lib/rwsem-spinlock.c],
+		[AC_DEFINE(RWSEM_IS_LOCKED_TAKES_WAIT_LOCK, 1,
+		[rwsem_is_locked() acquires sem->wait_lock])],
+		[])
 ])
-
-

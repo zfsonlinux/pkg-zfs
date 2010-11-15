@@ -1,38 +1,38 @@
-/*
- *  This file is part of the SPL: Solaris Porting Layer.
- *
- *  Copyright (c) 2008 Lawrence Livermore National Security, LLC.
- *  Produced at Lawrence Livermore National Laboratory
- *  Written by:
- *          Brian Behlendorf <behlendorf1@llnl.gov>,
- *          Herb Wartens <wartens2@llnl.gov>,
- *          Jim Garlick <garlick@llnl.gov>
+/*****************************************************************************\
+ *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
  *  UCRL-CODE-235197
  *
- *  This is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
  *
- *  This is distributed in the hope that it will be useful, but WITHOUT
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
  *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  *  for more details.
  *
  *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
- */
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+ *****************************************************************************
+ *  Solaris Porting Layer (SPL) Thread Implementation.
+\*****************************************************************************/
 
 #include <sys/thread.h>
 #include <sys/kmem.h>
-#include <sys/tsd_wrapper.h>
+#include <spl-debug.h>
 
-#ifdef DEBUG_SUBSYSTEM
-#undef DEBUG_SUBSYSTEM
+#ifdef SS_DEBUG_SUBSYS
+#undef SS_DEBUG_SUBSYS
 #endif
 
-#define DEBUG_SUBSYSTEM S_THREAD
+#define SS_DEBUG_SUBSYS SS_THREAD
 
 /*
  * Thread interfaces
@@ -72,9 +72,8 @@ thread_generic_wrapper(void *arg)
 void
 __thread_exit(void)
 {
-	ENTRY;
-	EXIT;
-	tsd_exit();  /* Clean up this thread's TSD */
+	SENTRY;
+	SEXIT;
 	complete_and_exit(NULL, 0);
 	/* Unreachable */
 }
@@ -85,13 +84,13 @@ EXPORT_SYMBOL(__thread_exit);
  * style callers likely never check for... since it can't fail. */
 kthread_t *
 __thread_create(caddr_t stk, size_t  stksize, thread_func_t func,
-		const char *name, void *args, size_t len, int *pp,
+		const char *name, void *args, size_t len, proc_t *pp,
 		int state, pri_t pri)
 {
 	thread_priv_t *tp;
 	struct task_struct *tsk;
 	char *p;
-	ENTRY;
+	SENTRY;
 
 	/* Option pp is simply ignored */
 	/* Variable stack size unsupported */
@@ -99,7 +98,7 @@ __thread_create(caddr_t stk, size_t  stksize, thread_func_t func,
 
 	tp = kmem_alloc(sizeof(thread_priv_t), KM_SLEEP);
 	if (tp == NULL)
-		RETURN(NULL);
+		SRETURN(NULL);
 
 	tp->tp_magic = TP_MAGIC;
 	tp->tp_name_size = strlen(name) + 1;
@@ -107,7 +106,7 @@ __thread_create(caddr_t stk, size_t  stksize, thread_func_t func,
 	tp->tp_name = kmem_alloc(tp->tp_name_size, KM_SLEEP);
         if (tp->tp_name == NULL) {
 		kmem_free(tp, sizeof(thread_priv_t));
-		RETURN(NULL);
+		SRETURN(NULL);
 	}
 
 	strncpy(tp->tp_name, name, tp->tp_name_size);
@@ -125,13 +124,14 @@ __thread_create(caddr_t stk, size_t  stksize, thread_func_t func,
 	tp->tp_state = state;
 	tp->tp_pri   = pri;
 
-	tsk = kthread_create(thread_generic_wrapper, (void *)tp, tp->tp_name);
+	tsk = kthread_create(thread_generic_wrapper, (void *)tp,
+			     "%s", tp->tp_name);
 	if (IS_ERR(tsk)) {
-		CERROR("Failed to create thread: %ld\n", PTR_ERR(tsk));
-		RETURN(NULL);
+		SERROR("Failed to create thread: %ld\n", PTR_ERR(tsk));
+		SRETURN(NULL);
 	}
 
 	wake_up_process(tsk);
-	RETURN((kthread_t *)tsk);
+	SRETURN((kthread_t *)tsk);
 }
 EXPORT_SYMBOL(__thread_create);

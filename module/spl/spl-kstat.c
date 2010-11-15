@@ -1,30 +1,38 @@
-/*
- *  This file is part of the SPL: Solaris Porting Layer.
- *
- *  Copyright (c) 2008 Lawrence Livermore National Security, LLC.
- *  Produced at Lawrence Livermore National Laboratory
- *  Written by:
- *          Brian Behlendorf <behlendorf1@llnl.gov>,
- *          Herb Wartens <wartens2@llnl.gov>,
- *          Jim Garlick <garlick@llnl.gov>
+/*****************************************************************************\
+ *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
  *  UCRL-CODE-235197
  *
- *  This is free software; you can redistribute it and/or modify it
- *  under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
+ *  This file is part of the SPL, Solaris Porting Layer.
+ *  For details, see <http://github.com/behlendorf/spl/>.
  *
- *  This is distributed in the hope that it will be useful, but WITHOUT
+ *  The SPL is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the
+ *  Free Software Foundation; either version 2 of the License, or (at your
+ *  option) any later version.
+ *
+ *  The SPL is distributed in the hope that it will be useful, but WITHOUT
  *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
  *  for more details.
  *
  *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, write to the Free Software Foundation, Inc.,
- *  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA.
- */
+ *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
+ *****************************************************************************
+ *  Solaris Porting Layer (SPL) Kstat Implementation.
+\*****************************************************************************/
 
+#include <linux/seq_file.h>
 #include <sys/kstat.h>
+#include <spl-debug.h>
+
+#ifdef SS_DEBUG_SUBSYS
+#undef SS_DEBUG_SUBSYS
+#endif
+
+#define SS_DEBUG_SUBSYS SS_KSTAT
 
 static spinlock_t kstat_lock;
 static struct list_head kstat_list;
@@ -71,7 +79,7 @@ kstat_seq_show_headers(struct seq_file *f)
                                    "min", "max", "start", "stop");
                         break;
                 default:
-                        SBUG(); /* Unreachable */
+                        PANIC("Undefined kstat type %d\n", ksp->ks_type);
         }
 }
 
@@ -134,7 +142,7 @@ kstat_seq_show_named(struct seq_file *f, kstat_named_t *knp)
                         seq_printf(f, "%s", KSTAT_NAMED_STR_PTR(knp));
                         break;
                 default:
-                        SBUG(); /* Unreachable */
+                        PANIC("Undefined kstat data type %d\n", knp->data_type);
         }
 
         seq_printf(f, "\n");
@@ -209,7 +217,7 @@ kstat_seq_show(struct seq_file *f, void *p)
                         rc = kstat_seq_show_timer(f, (kstat_timer_t *)p);
                         break;
                 default:
-                        SBUG(); /* Unreachable */
+                        PANIC("Undefined kstat type %d\n", ksp->ks_type);
         }
 
         return rc;
@@ -219,7 +227,7 @@ static void *
 kstat_seq_data_addr(kstat_t *ksp, loff_t n)
 {
         void *rc = NULL;
-        ENTRY;
+        SENTRY;
 
 	switch (ksp->ks_type) {
                 case KSTAT_TYPE_RAW:
@@ -238,10 +246,10 @@ kstat_seq_data_addr(kstat_t *ksp, loff_t n)
                         rc = ksp->ks_data + n * sizeof(kstat_timer_t);
                         break;
                 default:
-                        SBUG(); /* Unreachable */
+                        PANIC("Undefined kstat type %d\n", ksp->ks_type);
         }
 
-        RETURN(rc);
+        SRETURN(rc);
 }
 
 static void *
@@ -250,7 +258,7 @@ kstat_seq_start(struct seq_file *f, loff_t *pos)
         loff_t n = *pos;
         kstat_t *ksp = (kstat_t *)f->private;
         ASSERT(ksp->ks_magic == KS_MAGIC);
-        ENTRY;
+        SENTRY;
 
         spin_lock(&ksp->ks_lock);
 	ksp->ks_snaptime = gethrtime();
@@ -259,9 +267,9 @@ kstat_seq_start(struct seq_file *f, loff_t *pos)
                 kstat_seq_show_headers(f);
 
         if (n >= ksp->ks_ndata)
-                RETURN(NULL);
+                SRETURN(NULL);
 
-        RETURN(kstat_seq_data_addr(ksp, n));
+        SRETURN(kstat_seq_data_addr(ksp, n));
 }
 
 static void *
@@ -269,13 +277,13 @@ kstat_seq_next(struct seq_file *f, void *p, loff_t *pos)
 {
         kstat_t *ksp = (kstat_t *)f->private;
         ASSERT(ksp->ks_magic == KS_MAGIC);
-        ENTRY;
+        SENTRY;
 
         ++*pos;
         if (*pos >= ksp->ks_ndata)
-                RETURN(NULL);
+                SRETURN(NULL);
 
-        RETURN(kstat_seq_data_addr(ksp, *pos));
+        SRETURN(kstat_seq_data_addr(ksp, *pos));
 }
 
 static void
@@ -376,7 +384,7 @@ __kstat_create(const char *ks_module, int ks_instance, const char *ks_name,
                         ksp->ks_data_size = ks_ndata * sizeof(kstat_timer_t);
                         break;
                 default:
-                        SBUG(); /* Unreachable */
+                        PANIC("Undefined kstat type %d\n", ksp->ks_type);
         }
 
 	if (ksp->ks_flags & KSTAT_FLAG_VIRTUAL) {
@@ -399,7 +407,7 @@ __kstat_install(kstat_t *ksp)
 	struct proc_dir_entry *de_module, *de_name;
 	kstat_t *tmp;
 	int rc = 0;
-	ENTRY;
+	SENTRY;
 
 	spin_lock(&kstat_lock);
 
@@ -407,7 +415,7 @@ __kstat_install(kstat_t *ksp)
         list_for_each_entry(tmp, &kstat_list, ks_list) {
                 if (tmp == ksp) {
 		        spin_unlock(&kstat_lock);
-			GOTO(out, rc = -EEXIST);
+			SGOTO(out, rc = -EEXIST);
 		}
 	}
 
@@ -418,12 +426,12 @@ __kstat_install(kstat_t *ksp)
 	if (de_module == NULL) {
                 de_module = proc_mkdir(ksp->ks_module, proc_spl_kstat);
 		if (de_module == NULL)
-			GOTO(out, rc = -EUNATCH);
+			SGOTO(out, rc = -EUNATCH);
 	}
 
 	de_name = create_proc_entry(ksp->ks_name, 0444, de_module);
 	if (de_name == NULL)
-		GOTO(out, rc = -EUNATCH);
+		SGOTO(out, rc = -EUNATCH);
 
 	spin_lock(&ksp->ks_lock);
 	ksp->ks_proc = de_name;
@@ -437,7 +445,7 @@ out:
 		spin_unlock(&kstat_lock);
 	}
 
-	EXIT;
+	SEXIT;
 }
 EXPORT_SYMBOL(__kstat_install);
 
@@ -471,18 +479,18 @@ EXPORT_SYMBOL(__kstat_delete);
 int
 kstat_init(void)
 {
-	ENTRY;
+	SENTRY;
 	spin_lock_init(&kstat_lock);
 	INIT_LIST_HEAD(&kstat_list);
         kstat_id = 0;
-	RETURN(0);
+	SRETURN(0);
 }
 
 void
 kstat_fini(void)
 {
-	ENTRY;
+	SENTRY;
 	ASSERT(list_empty(&kstat_list));
-	EXIT;
+	SEXIT;
 }
 
