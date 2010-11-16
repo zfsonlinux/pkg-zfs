@@ -588,12 +588,6 @@ extern int zpool_in_use(libzfs_handle_t *, int, pool_state_t *, char **,
 extern int zpool_read_label(int, nvlist_t **);
 
 /*
- * Create and remove zvol /dev links.
- */
-extern int zpool_create_zvol_links(zpool_handle_t *);
-extern int zpool_remove_zvol_links(zpool_handle_t *);
-
-/*
  * Management interfaces for SMB ACL files
  */
 

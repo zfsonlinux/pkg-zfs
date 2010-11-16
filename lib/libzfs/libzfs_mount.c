@@ -1162,11 +1162,12 @@ zpool_enable_datasets(zpool_handle_t *zhp, const char *mntopts, int flags)
 	 * of the configuration. Good should never be NULL since
 	 * zfs_alloc is supposed to exit if memory isn't available.
 	 */
+#ifdef HAVE_ZPL
 	for (i = 0; i < cb.cb_used; i++) {
 		if (good[i] && zfs_share(cb.cb_handles[i]) != 0)
 			ret = -1;
 	}
-
+#endif
 	free(good);
 
 out:
@@ -1349,18 +1350,16 @@ zfs_is_shared(zfs_handle_t *zhp)
 	return B_FALSE;
 }
 
+#if defined (HAVE_ZPL)
 int
 zpool_enable_datasets(zpool_handle_t *zhp, const char *mntopts, int flags)
 {
 	return B_FALSE;
 }
 
-#if defined (HAVE_ZPL)
 int
 zpool_disable_datasets(zpool_handle_t *zhp, boolean_t force)
 {
 	return B_FALSE;
 }
 #endif
-
-#endif /* HAVE_ZPL */

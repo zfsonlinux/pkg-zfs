@@ -1026,8 +1026,6 @@ zpool_destroy(zpool_handle_t *zhp)
 	if (zhp->zpool_state == POOL_STATE_ACTIVE &&
 	    (zfp = zfs_open(hdl, zhp->zpool_name, ZFS_TYPE_FILESYSTEM)) == NULL)
 		return (-1);
-	if (zpool_remove_zvol_links(zhp) != 0)
-		return (-1);
 
 	(void) strlcpy(zc.zc_name, zhp->zpool_name, sizeof (zc.zc_name));
 
