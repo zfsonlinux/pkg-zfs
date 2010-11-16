@@ -111,6 +111,8 @@
 #endif
 
 #define LOOKUP_XATTR	0x02	/*lookup extended attr dir */
+#define CREATE_XATTR_DIR        0x04    /* Create extended attr dir */
+
 #define IS_DEVVP(vp)	\
 	((vp)->v_type == VCHR || (vp)->v_type == VBLK || (vp)->v_type == VFIFO)
 
