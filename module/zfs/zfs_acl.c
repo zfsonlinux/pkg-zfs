@@ -1149,6 +1149,7 @@ void
 zfs_acl_data_locator(void **dataptr, uint32_t *length, uint32_t buflen,
     boolean_t start, void *userdata)
 {
+
 	zfs_acl_locator_cb_t *cb = (zfs_acl_locator_cb_t *)userdata;
 
 	if (start) {
@@ -1159,6 +1160,7 @@ zfs_acl_data_locator(void **dataptr, uint32_t *length, uint32_t buflen,
 	}
 	*dataptr = cb->cb_acl_node->z_acldata;
 	*length = cb->cb_acl_node->z_size;
+
 }
 
 int
