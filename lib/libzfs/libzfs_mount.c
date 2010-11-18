@@ -430,10 +430,6 @@ zfs_unmount(zfs_handle_t *zhp, const char *mountpoint, int flags)
              #endif   
 	    return (-1);
         }
-        if (unmount_one(hdl, mntpt, flags) != 0) {
-            free(mntpt);
-            return (-1);
-        }
 #endif
         libzfs_mnttab_remove(hdl, zhp->zfs_name);
 #if defined(LINUX_PORT)
