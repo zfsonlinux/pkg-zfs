@@ -1,0 +1,14 @@
+Source: zfs
+Section: kernels
+Priority: extra
+Maintainer: kqinfo <zfs@kqinfotech.com>
+Build-Depends: debhelper (>= 7), autotools-dev
+Standards-Version: 3.8.3
+Homepage: http://zfs.kqinfotech.com
+
+Package: zfs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Native ZFS for Linux! ZFS is an advanced file system and volume manager which was originally developed for Solaris. It has been successfully ported to FreeBSD and now there is a functional Linux ZFS kernel port too. The port currently includes a fully functional and stable SPA, DMU, and ZVOL with a ZFS Posix Layer (ZPL) on the way!
+
+

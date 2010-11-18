@@ -1,0 +1,5 @@
+zfs (0.5-1) unstable; urgency=low
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- root <zfs@kqinfotech.com>  Thu, 18 Nov 2010 12:52:11 +0530
