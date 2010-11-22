@@ -728,10 +728,24 @@ clean:
 		fi \
 	done
 
-check:
+#Here this NORUNCHECK variable is set to TRUE manually but at the later stage we need to set it using th#e script for debain packaing. 
+
+NORUNCHECK:= TRUE
+ifeq ($(NORUNCHECK), TRUE)
+        CHECK=check1-nop
+else
+        CHECK=check1
+endif
+
+check: $(CHECK)
+
+check1-nop:
+
+check1:
+	@echo ******$(NORUNCHECK)******	
 	@echo
 	@echo -n "===================================="
-	@echo -n " ZTEST "
+	@echo -n " ZTEST1 "
 	@echo    "===================================="
 	@echo
 	@$(ZFS)
