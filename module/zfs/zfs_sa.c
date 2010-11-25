@@ -200,15 +200,23 @@ zfs_sa_upgrade(sa_handle_t *hdl, dmu_tx_t *tx)
 	dmu_buf_t *db = sa_get_db(hdl);
 	znode_t *zp = sa_get_userdata(hdl);
 	zfsvfs_t *zfsvfs = zp->z_zfsvfs;
-	sa_bulk_attr_t bulk[20];
+	sa_bulk_attr_t *bulk = NULL;
 	int count = 0;
-	sa_bulk_attr_t sa_attrs[20] = {{0}};
+	sa_bulk_attr_t *sa_attrs = NULL;
 	zfs_acl_locator_cb_t locate = { 0 };
 	uint64_t uid, gid, mode, rdev, xattr, parent;
 	uint64_t crtime[2], mtime[2], ctime[2];
 	zfs_acl_phys_t znode_acl;
 	char scanstamp[AV_SCANSTAMP_SZ];
 	boolean_t drop_lock = B_FALSE;
+
+	int alloc_size = sizeof(sa_bulk_attr_t) * 20;
+
+	sa_attrs = kmem_zalloc(alloc_size, KM_SLEEP);
+	ASSERT(sa_attrs != NULL);
+
+	bulk = kmem_alloc(alloc_size, KM_SLEEP);
+	ASSERT(bulk != NULL);
 
 	/*
 	 * No upgrade if ACL isn't cached
@@ -217,7 +225,7 @@ zfs_sa_upgrade(sa_handle_t *hdl, dmu_tx_t *tx)
 	 * interfaces that would be messy
 	 */
 	if (zp->z_acl_cached == NULL || ZTOV(zp)->v_type == VLNK)
-		return;
+		goto MEM_FREE;
 
 	/*
 	 * If the z_lock is held and we aren't the owner
@@ -230,7 +238,7 @@ zfs_sa_upgrade(sa_handle_t *hdl, dmu_tx_t *tx)
 	 */
 	if (mutex_owner(&zp->z_lock) != curthread) {
 		if (mutex_tryenter(&zp->z_lock) == 0)
-			return;
+			goto MEM_FREE;
 		else
 			drop_lock = B_TRUE;
 	}
@@ -316,6 +324,12 @@ zfs_sa_upgrade(sa_handle_t *hdl, dmu_tx_t *tx)
 done:
 	if (drop_lock)
 		mutex_exit(&zp->z_lock);
+MEM_FREE:
+	if (sa_attrs)
+		kmem_free(sa_attrs, alloc_size);
+
+	if (bulk)
+		kmem_free(bulk, alloc_size);
 }
 
 void

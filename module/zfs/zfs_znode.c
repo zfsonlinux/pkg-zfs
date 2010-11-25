@@ -959,9 +959,14 @@ zfs_mknode(znode_t *dzp, vattr_t *vap, dmu_tx_t *tx, cred_t *cr,
 #ifdef LINUX_PORT
 	struct inode *inode;
 #endif
-	sa_bulk_attr_t	sa_attrs[ZPL_END];
+	sa_bulk_attr_t	*sa_attrs = NULL;
+	int alloc_size = sizeof(sa_bulk_attr_t) * ZPL_END;
 	int		cnt = 0;
 	zfs_acl_locator_cb_t locate = { 0 };
+
+	sa_attrs = kmem_alloc(alloc_size, KM_SLEEP);
+	ASSERT(sa_attrs != NULL);
+
 	ASSERT(vap && (vap->va_mask & (AT_TYPE|AT_MODE)) == (AT_TYPE|AT_MODE));
 
 	if (zfsvfs->z_replay) {
@@ -1203,6 +1208,7 @@ zfs_mknode(znode_t *dzp, vattr_t *vap, dmu_tx_t *tx, cred_t *cr,
 		ASSERT3S(err, ==, 0);
 	}
 	ZFS_OBJ_HOLD_EXIT(zfsvfs, obj);
+	kmem_free(sa_attrs, alloc_size);
 }
 
 /*
