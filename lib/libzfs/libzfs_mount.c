@@ -87,10 +87,10 @@
 
 #if defined(HAVE_ZPL)
 static int zfs_share_proto(zfs_handle_t *, zfs_share_proto_t *);
+#endif
 zfs_share_type_t zfs_is_shared_proto(zfs_handle_t *, char **,
     zfs_share_proto_t);
 
-#endif
 /*
  * The share protocols table must be in the same order as the zfs_share_prot_t
  * enum in libzfs_impl.h
@@ -107,24 +107,30 @@ proto_table_t proto_table[PROTO_END] = {
 	{ZFS_PROP_SHARESMB, "smb", EZFS_SHARESMBFAILED, EZFS_UNSHARESMBFAILED},
 };
 
-#if defined(HAVE_ZPL)
 zfs_share_proto_t nfs_only[] = {
 	PROTO_NFS,
 	PROTO_END
 };
 
+#if defined(HAVE_ZPL)
 zfs_share_proto_t smb_only[] = {
 	PROTO_SMB,
 	PROTO_END
 };
 #endif 
+
 zfs_share_proto_t share_all_proto[] = {
 	PROTO_NFS,
 	PROTO_SMB,
 	PROTO_END
 };
 
-#if defined(HAVE_ZPL)
+static inline int match_mntpt(char *buf, const char *mountpoint)
+{
+   return ((strncmp(buf, mountpoint, strlen(mountpoint)) == 0) ? 
+           B_TRUE : B_FALSE);
+}
+
 /*
  * Search the sharetab for the given mountpoint and protocol, returning
  * a zfs_share_type_t value.
@@ -132,6 +138,7 @@ zfs_share_proto_t share_all_proto[] = {
 static zfs_share_type_t
 is_shared(libzfs_handle_t *hdl, const char *mountpoint, zfs_share_proto_t proto)
 {
+#if defined(HAVE_ZPL)
 	char buf[MAXPATHLEN], *tab;
 	char *ptr;
 
@@ -174,8 +181,57 @@ is_shared(libzfs_handle_t *hdl, const char *mountpoint, zfs_share_proto_t proto)
 	}
 
 	return (SHARED_NOT_SHARED);
-}
+#else
+   int fds[2];
+   int pid;
+   int rc;
+
+   if (pipe(fds) < 0)
+       return (SHARED_NOT_SHARED);
+
+   if ((pid = fork()) < 0)
+       return (SHARED_NOT_SHARED);
+   else if (pid == 0) {
+       /* child process */
+       /* exec exportfs */
+       char *argv[] = {
+           "exportfs",
+           NULL
+       };
+
+       close(fds[0]); /* close the reading pipe */
+
+       /* duplicate the writing pipe with stdout */
+       close(STDOUT_FILENO);
+       if ((rc = dup(fds[1])) < 0)
+           return -1;
+
+       ASSERT(rc == STDOUT_FILENO);
+       execvp("exportfs", argv);
+       return -1;
+   } else {
+       FILE *fp = NULL;
+       char buf[1024];
+
+       close(fds[1]); /* close the writing pipe */
+
+       fp = fdopen(fds[0], "r");
+       ASSERT(fp != NULL);
+       while (!feof (fp) && !ferror (fp) &&
+               fgets (buf, sizeof (buf), fp) != NULL) {
+           /* search mountpoint */
+//           fprintf(stdout, "Checking buf=%s mountpoint=%s ", buf, mountpoint);
+           if (match_mntpt(buf, mountpoint) == B_TRUE) {
+               /* mountpoint matched */
+//               fprintf(stdout, "matched.\n");
+               return SHARED_NFS;
+           }
+//               fprintf(stdout, "not matched.\n");
+       }
+       return SHARED_NOT_SHARED;
+   }
 #endif
+}
 
 /*
  * Returns true if the specified directory is empty.  If we can't open the
@@ -468,7 +524,6 @@ zfs_unmountall(zfs_handle_t *zhp, int flags)
 	return (ret);
 }
 
-#ifdef HAVE_ZPL
 boolean_t
 zfs_is_shared(zfs_handle_t *zhp)
 {
@@ -485,6 +540,7 @@ zfs_is_shared(zfs_handle_t *zhp)
 	return (rc ? B_TRUE : B_FALSE);
 }
 
+#ifdef HAVE_ZPL
 int
 zfs_share(zfs_handle_t *zhp)
 {
@@ -498,6 +554,7 @@ zfs_unshare(zfs_handle_t *zhp)
 	assert(!ZFS_IS_VOLUME(zhp));
 	return (zfs_unshareall(zhp));
 }
+#endif
 
 /*
  * Check to see if the filesystem is currently shared.
@@ -511,7 +568,7 @@ zfs_is_shared_proto(zfs_handle_t *zhp, char **where, zfs_share_proto_t proto)
 	if (!zfs_is_mounted(zhp, &mountpoint))
 		return (SHARED_NOT_SHARED);
 
-	if (rc = is_shared(zhp->zfs_hdl, mountpoint, proto)) {
+	if ((rc = is_shared(zhp->zfs_hdl, mountpoint, proto))) {
 		if (where != NULL)
 			*where = mountpoint;
 		else
@@ -523,6 +580,7 @@ zfs_is_shared_proto(zfs_handle_t *zhp, char **where, zfs_share_proto_t proto)
 	}
 }
 
+#if defined(HAVE_ZPL)
 boolean_t
 zfs_is_shared_nfs(zfs_handle_t *zhp, char **where)
 {
@@ -748,27 +806,36 @@ zfs_sa_disable_share(sa_share_t share, char *proto)
 }
 #endif
 
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/vfs.h>
+
+
 /*
  * Share the given filesystem according to the options in the specified
  * protocol specific properties (sharenfs, sharesmb).  We rely
  * on "libshare" to the dirty work for us.
  */
-#if defined(HAVE_ZPL)
 static int
 zfs_share_proto(zfs_handle_t *zhp, zfs_share_proto_t *proto)
 {
 	char mountpoint[ZFS_MAXPROPLEN];
 	char shareopts[ZFS_MAXPROPLEN];
 	char sourcestr[ZFS_MAXPROPLEN];
+#if defined(HAVE_ZPL)
 	libzfs_handle_t *hdl = zhp->zfs_hdl;
 	sa_share_t share;
+#endif
 	zfs_share_proto_t *curr_proto;
 	zprop_source_t sourcetype;
+#if defined(HAVE_ZPL)
 	int ret;
+#endif
 
 	if (!zfs_is_mountable(zhp, mountpoint, sizeof (mountpoint), NULL))
 		return (0);
 
+#if defined(HAVE_ZPL)
 	if ((ret = zfs_init_libshare(hdl, SA_INIT_SHARE_API)) != SA_OK) {
 		(void) zfs_error_fmt(hdl, EZFS_SHARENFSFAILED,
 		    dgettext(TEXT_DOMAIN, "cannot share '%s': %s"),
@@ -776,6 +843,7 @@ zfs_share_proto(zfs_handle_t *zhp, zfs_share_proto_t *proto)
 		    _sa_errorstr(ret) : "");
 		return (-1);
 	}
+#endif
 
 	for (curr_proto = proto; *curr_proto != PROTO_END; curr_proto++) {
 		/*
@@ -795,7 +863,56 @@ zfs_share_proto(zfs_handle_t *zhp, zfs_share_proto_t *proto)
 		 */
 		if (zfs_prop_get_int(zhp, ZFS_PROP_ZONED))
 			continue;
+#if !defined(HAVE_ZPL)
+       if (*curr_proto == PROTO_NFS) {
+           int pid;
+           int rc;
+           if ((pid = fork()) < 0) {
+               fprintf(stderr, "cannot share '%s'", zfs_get_name(zhp));
+               return -1;
+           } else if (pid == 0) {
+               /* child process */
+               /* exec exportfs */
+               char export_string[PATH_MAX];
+               char options[100];
+               char *argv [] = {
+                   "exportfs",
+                   "-v",
+                   "-i",
+                   export_string,
+                   "-o",
+                   options,
+                   NULL
+               };
+               struct statfs buf;
+               int fsid_arr[2];
+               uint64_t fsid;
 
+               if (statfs(mountpoint, &buf) < 0)
+                   return -1;
+
+               memcpy((void *)fsid_arr, (void *) &buf.f_fsid, sizeof(int) * 2);
+               fsid = fsid_arr[0];
+               fsid |= (((uint64_t)fsid_arr[1]) << 32);
+//               fprintf(stderr, "using fsid=%lu\n", fsid);
+
+               sprintf(export_string, "*:%s", mountpoint);
+               sprintf(options, "rw,sync,fsid=%lu", fsid);
+               execvp("exportfs", argv);
+               return -1;
+           }
+           /* parent process */
+           if (waitpid(pid, &rc, WUNTRACED) != pid) {
+               fprintf(stderr, "cannot share '%s'", zfs_get_name(zhp));
+               return -1;
+           }
+
+           if (!WIFEXITED(rc) || WEXITSTATUS(rc) != 0) {
+               fprintf(stderr, "cannot share '%s'", zfs_get_name(zhp));
+               return -1;
+           }
+       }
+#else
 		share = zfs_sa_find_share(hdl->libzfs_sharehdl, mountpoint);
 		if (share == NULL) {
 			/*
@@ -839,7 +956,7 @@ zfs_share_proto(zfs_handle_t *zhp, zfs_share_proto_t *proto)
 			    zfs_get_name(zhp));
 			return (-1);
 		}
-
+#endif
 	}
 	return (0);
 }
@@ -850,6 +967,7 @@ zfs_share_nfs(zfs_handle_t *zhp)
 	return (zfs_share_proto(zhp, nfs_only));
 }
 
+#if defined(HAVE_ZPL)
 int
 zfs_share_smb(zfs_handle_t *zhp)
 {
@@ -861,6 +979,7 @@ zfs_shareall(zfs_handle_t *zhp)
 {
 	return (zfs_share_proto(zhp, share_all_proto));
 }
+#endif
 
 /*
  * Unshare a filesystem by mountpoint.
@@ -869,6 +988,7 @@ static int
 unshare_one(libzfs_handle_t *hdl, const char *name, const char *mountpoint,
     zfs_share_proto_t proto)
 {
+#if defined(HAVE_ZPL)
 	sa_share_t share;
 	int err;
 	char *mntpt;
@@ -903,6 +1023,43 @@ unshare_one(libzfs_handle_t *hdl, const char *name, const char *mountpoint,
 		    name));
 	}
 	return (0);
+#else
+	int rc;
+
+	if (proto == PROTO_NFS) {
+		int pid;
+		if ((pid = fork()) < 0) {
+			fprintf(stderr, "cannot unshare '%s'\n", mountpoint);
+			return -1;
+		} else if (pid == 0) {
+			/* child process */
+			/* exec exportfs */
+			char export_string[PATH_MAX];
+			char *argv[] = {
+				"exportfs",
+				"-v",
+				"-u",
+				export_string,
+				NULL
+			};
+			sprintf(export_string, "*:%s", mountpoint);
+			execvp("exportfs", argv);
+			return -1;
+		}
+		/* parent process */
+		if (waitpid(pid, &rc, WUNTRACED) != pid) {
+			fprintf(stderr, "cannot unshare '%s'", mountpoint);
+			return -1;
+		}
+
+		if (!WIFEXITED(rc) || WEXITSTATUS(rc) != 0) {
+			fprintf(stderr, "cannot unshare '%s'", mountpoint);
+			return -1;
+		}
+		return 0;
+	}
+	return -1;
+#endif
 }
 
 /*
@@ -952,6 +1109,7 @@ zfs_unshare_nfs(zfs_handle_t *zhp, const char *mountpoint)
 	return (zfs_unshare_proto(zhp, mountpoint, nfs_only));
 }
 
+#if defined(HAVE_ZPL)
 int
 zfs_unshare_smb(zfs_handle_t *zhp, const char *mountpoint)
 {
@@ -1338,7 +1496,6 @@ void
 remove_mountpoint(zfs_handle_t *zhp) {
 	return;
 }
-#endif 	/* HAVE_ZPL */
 
 boolean_t
 zfs_is_shared(zfs_handle_t *zhp)
@@ -1346,7 +1503,6 @@ zfs_is_shared(zfs_handle_t *zhp)
 	return B_FALSE;
 }
 
-#if defined (HAVE_ZPL)
 int
 zpool_enable_datasets(zpool_handle_t *zhp, const char *mntopts, int flags)
 {

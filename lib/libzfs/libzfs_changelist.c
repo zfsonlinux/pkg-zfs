@@ -162,9 +162,7 @@ int
 changelist_postfix(prop_changelist_t *clp)
 {
 	prop_changenode_t *cn;
-#ifdef HAVE_ZPL	
 	char shareopts[ZFS_MAXPROPLEN];
-#endif /* HAVE_ZPL */
 	int errors = 0;
 #ifdef HAVE_ZPL
 	libzfs_handle_t *hdl;
@@ -205,8 +203,8 @@ changelist_postfix(prop_changelist_t *clp)
 	for (cn = uu_list_last(clp->cl_list); cn != NULL;
 	    cn = uu_list_prev(clp->cl_list, cn)) {
 
-#ifdef HAVE_ZPL
 		boolean_t sharenfs;
+#ifdef HAVE_ZPL
 		boolean_t sharesmb;
 #endif /* HAVE_ZPL */
 		boolean_t mounted;
@@ -235,11 +233,11 @@ changelist_postfix(prop_changelist_t *clp)
 		 * Remount if previously mounted or mountpoint was legacy,
 		 * or sharenfs or sharesmb  property is set.
 		 */
-#ifdef HAVE_ZPL
 		sharenfs = ((zfs_prop_get(cn->cn_handle, ZFS_PROP_SHARENFS,
 		    shareopts, sizeof (shareopts), NULL, NULL, 0,
 		    B_FALSE) == 0) && (strcmp(shareopts, "off") != 0));
 
+#ifdef HAVE_ZPL
 		sharesmb = ((zfs_prop_get(cn->cn_handle, ZFS_PROP_SHARESMB,
 		    shareopts, sizeof (shareopts), NULL, NULL, 0,
 		    B_FALSE) == 0) && (strcmp(shareopts, "off") != 0));
@@ -248,16 +246,15 @@ changelist_postfix(prop_changelist_t *clp)
 		mounted = zfs_is_mounted(cn->cn_handle, NULL);
 
 		if (!mounted && (cn->cn_mounted 
-#ifdef HAVE_ZPL			
 			||
-		    ((sharenfs || sharesmb || clp->cl_waslegacy) 
-#endif /* HAVE_ZPL */			
+		    ((sharenfs 
+#ifdef HAVE_ZPL
+			  || sharesmb || clp->cl_waslegacy 
+#endif
+			)
 			&&
 			(zfs_prop_get_int(cn->cn_handle,
-			ZFS_PROP_CANMOUNT) == ZFS_CANMOUNT_ON)
-#ifdef HAVE_ZPL			
-		 ) 
-#endif /* HAVE_ZPL */
+			ZFS_PROP_CANMOUNT) == ZFS_CANMOUNT_ON)) 
 			)) {
 
 			if (zfs_mount(cn->cn_handle, NULL, 0) != 0)
@@ -271,11 +268,11 @@ changelist_postfix(prop_changelist_t *clp)
 		 * if the filesystem is currently shared, so that we can
 		 * adopt any new options.
 		 */
-#ifdef HAVE_ZPL
 		if (sharenfs && mounted)
 			errors += zfs_share_nfs(cn->cn_handle);
 		else if (cn->cn_shared || clp->cl_waslegacy)
 			errors += zfs_unshare_nfs(cn->cn_handle, NULL);
+#ifdef HAVE_ZPL
 		if (sharesmb && mounted)
 			errors += zfs_share_smb(cn->cn_handle);
 		else if (cn->cn_shared || clp->cl_waslegacy)

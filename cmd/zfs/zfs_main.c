@@ -3027,9 +3027,7 @@ share_mount_one(zfs_handle_t *zhp, int op, int flags, char *protocol,
 	const char *cmdname = op == OP_SHARE ? "share" : "mount";
 	struct mnttab mnt;
 	uint64_t zoned, canmount;
-#ifdef HAVE_ZPL
 	boolean_t shared_nfs, shared_smb;
-#endif
 
 	assert(zfs_get_type(zhp) & ZFS_TYPE_FILESYSTEM);
 
@@ -3141,15 +3139,14 @@ share_mount_one(zfs_handle_t *zhp, int op, int flags, char *protocol,
 	 */
 	switch (op) {
 	case OP_SHARE:
-#ifdef HAVE_ZPL
 		shared_nfs = zfs_is_shared_nfs(zhp, NULL);
 		shared_smb = zfs_is_shared_smb(zhp, NULL);
 
-		if (shared_nfs && shared_smb ||
-		    (shared_nfs && strcmp(shareopts, "on") == 0 &&
-		    strcmp(smbshareopts, "off") == 0) ||
-		    (shared_smb && strcmp(smbshareopts, "on") == 0 &&
-		    strcmp(shareopts, "off") == 0)) {
+		if ((shared_nfs && shared_smb) ||
+		    ((shared_nfs && strcmp(shareopts, "on") == 0) &&
+		    (strcmp(smbshareopts, "off") == 0)) ||
+		    ((shared_smb && strcmp(smbshareopts, "on") == 0) &&
+		    (strcmp(shareopts, "off") == 0))) {
 			if (!explicit)
 				return (0);
 
@@ -3181,7 +3178,6 @@ share_mount_one(zfs_handle_t *zhp, int op, int flags, char *protocol,
 		}
 
 		break;
-#endif /* HAVE_ZPL */
 	case OP_MOUNT:
 		if (options == NULL)
 			mnt.mnt_mntopts = "";
