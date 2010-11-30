@@ -2728,14 +2728,12 @@ zfs_getattr(vnode_t *vp, vattr_t *vap, int flags, cred_t *cr,
 #else
 	vap->va_mode = zp->z_mode;
 #endif
-	printk("mode is vap %d znode %d, function %s line %d \n", vap->va_mode, zp->z_mode,__FUNCTION__, __LINE__);
 	/* FUIDs are not implemented yet. So setting uid/gid manually.
          * We were returning crgetuid and crgetgid from cr of current process.
          * On Solaris we get uid/gid by looking SID/RID
          * SID: Security Identifier. RID: Relative ID*/
 	vap->va_uid = zp->z_uid;
 	vap->va_gid = zp->z_gid;
-	printk("uid at vap %d gid vap %d, function %s line %d \n", vap->va_uid, vap->va_gid,__FUNCTION__, __LINE__);
 	vap->va_fsid = zp->z_zfsvfs->z_vfs->vfs_dev;
 	vap->va_nodeid = zp->z_id;
 	if ((vp->v_flag & VROOT) && zfs_show_ctldir(zp))
@@ -3325,7 +3323,6 @@ top:
 		else
 			dmu_tx_hold_sa(tx, zp->z_sa_hdl, B_FALSE);
 	}
-	printk("mode setattr %d function %s line %d \n", zp->z_mode, __FUNCTION__, __LINE__);
 
 	if (attrzp) {
 		dmu_tx_hold_sa(tx, attrzp->z_sa_hdl, B_FALSE);
@@ -3354,7 +3351,6 @@ top:
 	 */
 
 
-	printk("mode setattr %d function %s line %d \n", zp->z_mode, __FUNCTION__, __LINE__);
 	if (mask & (AT_UID|AT_GID|AT_MODE))
 		mutex_enter(&zp->z_acl_lock);
 	mutex_enter(&zp->z_lock);
@@ -3363,7 +3359,6 @@ top:
 	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_FLAGS(zfsvfs), NULL,
 	    &zp->z_pflags, sizeof (zp->z_pflags));
 
-	printk("mode setattr %d function %s line %d \n", zp->z_mode, __FUNCTION__, __LINE__);
 	if (attrzp) {
 		if (mask & (AT_UID|AT_GID|AT_MODE))
 			mutex_enter(&attrzp->z_acl_lock);
@@ -3373,7 +3368,6 @@ top:
 		    sizeof (attrzp->z_pflags));
 	}
 
-	printk("zp mode %d function %s line %d \n", zp->z_mode, __FUNCTION__, __LINE__);
 	if (mask & (AT_UID|AT_GID)) {
 
 		if (mask & AT_UID) {
@@ -3433,7 +3427,6 @@ top:
 #endif
 	}
 
-	printk("mode setattr %d function %s line %d \n", zp->z_mode, __FUNCTION__, __LINE__);
 	if (mask & AT_ATIME) {
 		ZFS_TIME_ENCODE(&vap->va_atime, zp->z_atime);
 		SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_ATIME(zfsvfs), NULL,
@@ -3546,7 +3539,6 @@ out:
 		zfs_inode_update(zp);
 	}
 
-	printk("mode setattr %d function %s line %d \n", zp->z_mode, __FUNCTION__, __LINE__);
 out2:
 	if (zfsvfs->z_os->os_sync == ZFS_SYNC_ALWAYS)
 		zil_commit(zilog, 0);

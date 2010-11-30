@@ -659,7 +659,6 @@ zfs_inode_alloc(zfsvfs_t *zfsvfs, znode_t *zp, dmu_buf_t *db,
 	 * issues because of that.
 	 */ 
 	
-	printk("inode number %lu function %s line %d\n", inode->i_ino, __FUNCTION__, __LINE__);
 	ASSERT(inode->i_state & I_NEW);
 	vp = LZFS_ITOV(inode);
 	if(!zfsvfs->z_replay)
@@ -669,11 +668,8 @@ zfs_inode_alloc(zfsvfs_t *zfsvfs, znode_t *zp, dmu_buf_t *db,
 	vp->v_vfsp = vfs;
 	vp->v_count = 1;
 
-	printk("mode %llu  line %d function %s\n", mode, __LINE__, __FUNCTION__);
-//	printk("  vp->v_data is at %p and  zp is at %p  in %s  \n" ,vp->v_data, zp, __FUNCTION__);
         zfs_znode_sa_init(zfsvfs, zp, db, obj_type, hdl);
 
-	printk("mode %llu  line %d function %s\n", mode, __LINE__, __FUNCTION__);
 	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_MODE(zfsvfs), NULL, &mode, 8);
 	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_GEN(zfsvfs), NULL, &zp->z_gen, 8);
 	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_SIZE(zfsvfs), NULL,
@@ -690,7 +686,6 @@ zfs_inode_alloc(zfsvfs_t *zfsvfs, znode_t *zp, dmu_buf_t *db,
 	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_GID(zfsvfs), NULL,
 	    &zp->z_gid, 8);
 
-	printk("mode %llu  line %d function %s\n", mode, __LINE__, __FUNCTION__);
 	if (sa_bulk_lookup(zp->z_sa_hdl, bulk, count) != 0 || zp->z_gen == 0) {
 		if (hdl == NULL)
 			sa_handle_destroy(zp->z_sa_hdl);
@@ -698,7 +693,6 @@ zfs_inode_alloc(zfsvfs_t *zfsvfs, znode_t *zp, dmu_buf_t *db,
 //		return (NULL);
 	}
 	
-	printk("mode %llu  line %d function %s\n", mode, __LINE__, __FUNCTION__);
 	zp->z_mode = mode;
 	vp->v_type = IFTOVT((mode_t)zp->z_mode);
 	zp->z_gen = zp->z_gen;
@@ -711,7 +705,6 @@ zfs_inode_alloc(zfsvfs_t *zfsvfs, znode_t *zp, dmu_buf_t *db,
 	if ((S_ISCHR(inode->i_mode)) ||  (S_ISBLK(inode->i_mode))) {
 		inode->i_rdev = SA_ZPL_RDEV(zfsvfs); 
 	}
-	printk("mode is inode %d znode %d, function %s line %d \n", inode->i_mode, zp->z_mode,__FUNCTION__, __LINE__);
 #if 0
 	/* struct inode members are updated in zfs_inode_update
 	 * */
@@ -768,8 +761,6 @@ void zfs_inode_update(znode_t *zp)
 	 * 	modify inode number of blocks 
 	 * 	modify inode block size
 	 */
-	printk("atime0 %llu atime1 %llu function %s line %d\n ", atime[0], atime[1], __FUNCTION__, __LINE__);
-	printk("mtime0 %llu mtime1 %llu function %s line %d\n ", mtime[0], mtime[1], __FUNCTION__, __LINE__);
 	ZFS_TIME_DECODE(&inode->i_atime, atime);
 	ZFS_TIME_DECODE(&inode->i_mtime, mtime);
 	ZFS_TIME_DECODE(&inode->i_ctime, ctime);
@@ -1076,14 +1067,12 @@ zfs_mknode(znode_t *dzp, vattr_t *vap, dmu_tx_t *tx, cred_t *cr,
 	} else {
 		ZFS_TIME_ENCODE(&now, atime);
 	}
-	printk("atime0 %llu atime1 %llu function %s line %d\n ", atime[0], atime[1], __FUNCTION__, __LINE__);
 	
 	if (vap->va_mask & AT_MTIME) {
 		ZFS_TIME_ENCODE(&vap->va_mtime, mtime);
 	} else {
 		ZFS_TIME_ENCODE(&now, mtime);
 	}
-	printk("mtime0 %llu mtime1 %llu function %s line %d\n ", mtime[0], mtime[1], __FUNCTION__, __LINE__);
 
 	/* Now add in all of the "SA" attributes */
 	VERIFY(0 == sa_handle_get_from_db(zfsvfs->z_os, db, NULL, SA_HDL_SHARED,
@@ -1387,7 +1376,6 @@ zfs_zget(zfsvfs_t *zfsvfs, uint64_t obj_num, znode_t **zpp)
 	ASSERT(zfsvfs->z_vfs->vfs_super != NULL);
 	inode = iget_locked(zfsvfs->z_vfs->vfs_super, obj_num);
 	ASSERT(inode != NULL && atomic_read(&inode->i_count) > 0);
-	printk("inode number %lu function %s line %d\n", inode->i_ino, __FUNCTION__, __LINE__);
 
 	zp = zfs_znode_alloc(zfsvfs, db, doi.doi_data_block_size, 
 			doi.doi_bonus_type, NULL, inode);
