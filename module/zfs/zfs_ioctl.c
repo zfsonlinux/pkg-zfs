@@ -944,8 +944,10 @@ zfs_secpolicy_userspace_one(zfs_cmd_t *zc, cred_t *cr)
 #endif
 				return (0);
 		} else {
+#ifdef HAVE_ZPL
 			if (groupmember(zc->zc_guid, cr))
 				return (0);
+#endif
 		}
 	}
 
