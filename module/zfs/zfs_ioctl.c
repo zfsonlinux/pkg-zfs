@@ -2085,7 +2085,6 @@ top:
 static int
 zfs_prop_set_userquota(const char *dsname, nvpair_t *pair)
 {
-#ifdef HAVE_ZPL
 	const char *propname = nvpair_name(pair);
 	uint64_t *valary;
 	unsigned int vallen;
@@ -2126,9 +2125,6 @@ zfs_prop_set_userquota(const char *dsname, nvpair_t *pair)
 	}
 
 	return (err);
-#else
-	return ENOTSUP;
-#endif
 }
 
 /*
