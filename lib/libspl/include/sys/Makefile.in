@@ -355,6 +355,7 @@ libspl_HEADERS = \
 	$(top_srcdir)/lib/libspl/include/sys/systeminfo.h \
 	$(top_srcdir)/lib/libspl/include/sys/systm.h \
 	$(top_srcdir)/lib/libspl/include/sys/time.h \
+	$(top_srcdir)/lib/libspl/include/sys/tsd_wrapper.h \
 	$(top_srcdir)/lib/libspl/include/sys/types32.h \
 	$(top_srcdir)/lib/libspl/include/sys/types.h \
 	$(top_srcdir)/lib/libspl/include/sys/tzfile.h \
