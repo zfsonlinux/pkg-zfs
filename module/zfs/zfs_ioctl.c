@@ -3305,6 +3305,7 @@ static int
 zfs_ioc_rename(zfs_cmd_t *zc)
 {
 	boolean_t recursive = zc->zc_cookie & 1;
+	int error = -1;
 
 	zc->zc_value[sizeof (zc->zc_value) - 1] = '\0';
 	if (dataset_namecheck(zc->zc_value, NULL, NULL) != 0 ||
@@ -3317,14 +3318,19 @@ zfs_ioc_rename(zfs_cmd_t *zc)
 	 * to unmount.
 	 */
 	if (!recursive && strchr(zc->zc_name, '@') != NULL &&
-	    zc->zc_objset_type == DMU_OST_ZFS) {
+			zc->zc_objset_type == DMU_OST_ZFS) {
 		int err = zfs_unmount_snap(zc->zc_name, NULL);
 		if (err)
 			return (err);
 	}
-	if (zc->zc_objset_type == DMU_OST_ZVOL)
+
+	error = dmu_objset_rename(zc->zc_name, zc->zc_value, recursive);
+
+	if (zc->zc_objset_type == DMU_OST_ZVOL && error == 0) {
 		(void) zvol_remove_minor(zc->zc_name);
-	return (dmu_objset_rename(zc->zc_name, zc->zc_value, recursive));
+		(void) zvol_create_minor(zc->zc_value);
+	}
+	return error;
 }
 
 static int
