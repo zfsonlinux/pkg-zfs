@@ -944,8 +944,10 @@ zfs_secpolicy_userspace_one(zfs_cmd_t *zc, cred_t *cr)
 #endif
 				return (0);
 		} else {
+#ifdef HAVE_ZPL
 			if (groupmember(zc->zc_guid, cr))
 				return (0);
+#endif
 		}
 	}
 
@@ -2085,7 +2087,6 @@ top:
 static int
 zfs_prop_set_userquota(const char *dsname, nvpair_t *pair)
 {
-#ifdef HAVE_ZPL
 	const char *propname = nvpair_name(pair);
 	uint64_t *valary;
 	unsigned int vallen;
@@ -2126,9 +2127,6 @@ zfs_prop_set_userquota(const char *dsname, nvpair_t *pair)
 	}
 
 	return (err);
-#else
-	return ENOTSUP;
-#endif
 }
 
 /*
