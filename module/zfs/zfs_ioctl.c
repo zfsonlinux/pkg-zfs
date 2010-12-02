@@ -1168,7 +1168,6 @@ zfsvfs_hold(const char *name, void *tag, zfsvfs_t **zfvp, boolean_t writer)
 static void
 zfsvfs_rele(zfsvfs_t *zfsvfs, void *tag)
 {
-#ifdef HAVE_ZPL
 	rrw_exit(&zfsvfs->z_teardown_lock, tag);
 
 	if (zfsvfs->z_vfs) {
@@ -1177,7 +1176,6 @@ zfsvfs_rele(zfsvfs_t *zfsvfs, void *tag)
 		dmu_objset_disown(zfsvfs->z_os, zfsvfs);
 		zfsvfs_free(zfsvfs);
 	}
-#endif
 }
 
 static int
