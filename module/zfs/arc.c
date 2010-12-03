@@ -2835,7 +2835,6 @@ top:
 
 		ASSERT(!GHOST_STATE(hdr->b_state));
 		acb = kmem_zalloc(sizeof (arc_callback_t), KM_SLEEP & (~(__GFP_FS)));
-		acb = kmem_zalloc(sizeof (arc_callback_t), KM_SLEEP);
 		acb->acb_done = done;
 		acb->acb_private = private;
 
