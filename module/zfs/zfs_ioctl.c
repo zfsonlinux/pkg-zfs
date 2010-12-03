@@ -5247,8 +5247,10 @@ _fini(void)
 		(void) ddi_modclose(sharefs_mod);
 
 	mutex_destroy(&zfs_share_lock);
-	tsd_destroy(&zfs_fsyncer_key);
 #endif /* HAVE_ZPL */
+	tsd_destroy(&zfs_fsyncer_key);
+        destroy_tsd_destructor();
+
 
 	printk(KERN_NOTICE "ZFS: Unloaded ZFS Filesystem v%s%s\n",
 	       ZFS_META_VERSION, ZFS_DEBUG_STR);
