@@ -1299,12 +1299,10 @@ top:
 	VERIFY(0 == sa_update(zp->z_sa_hdl, SA_ZPL_XATTR(zfsvfs), &xzp->z_id,
 	    sizeof (xzp->z_id), tx));
 
-#ifdef HAVE_ZPL
 	(void) zfs_log_create(zfsvfs->z_log, tx, TX_MKXATTR, zp,
 	    xzp, "", NULL, acl_ids.z_fuidp, vap);
 
 	zfs_acl_ids_free(&acl_ids);
-#endif /* HAVE_ZPL */
 	dmu_tx_commit(tx);
 
 	*xvpp = ZTOV(xzp);
