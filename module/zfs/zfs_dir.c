@@ -1239,6 +1239,7 @@ zfs_dirent(znode_t *zp)
 }
 
 
+#endif /* HAVE_ZPL */
 /*
  * Link zp into dl.  Can only fail if zp has been unlinked.
  */
@@ -1255,7 +1256,7 @@ zfs_make_xattrdir(znode_t *zp, vattr_t *vap, vnode_t **xvpp, cred_t *cr)
 
 	*xvpp = NULL;
 
-	if (error = zfs_zaccess(zp, ACE_WRITE_NAMED_ATTRS, 0, B_FALSE, cr))
+	if ((error = zfs_zaccess(zp, ACE_WRITE_NAMED_ATTRS, 0, B_FALSE, cr)))
 		return (error);
 
 	if ((error = zfs_acl_ids_create(zp, IS_XATTR, vap, cr, NULL,
@@ -1288,8 +1289,10 @@ top:
 	}
 	zfs_mknode(zp, vap, tx, cr, IS_XATTR, &xzp, &acl_ids);
 
+#ifdef HAVE_ZPL
 	if (fuid_dirtied)
 		zfs_fuid_sync(zfsvfs, tx);
+#endif /* HAVE_ZPL */
 
 #ifdef DEBUG
 	error = sa_lookup(xzp->z_sa_hdl, SA_ZPL_PARENT(zfsvfs),
@@ -1380,7 +1383,6 @@ top:
 	return (error);
 }
 
-#endif /* HAVE_ZPL */
 /*
  * Decide whether it is okay to remove within a sticky directory.
  *
