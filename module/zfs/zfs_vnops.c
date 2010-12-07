@@ -668,7 +668,7 @@ zfs_write(vnode_t *vp, uio_t *uio, int ioflag, cred_t *cr, caller_context_t *ct)
 	if (n == 0)
 		return (0);
 
-	printk("uio.uio_segflg %d  function %s line %d\n", uio->uio_segflg, __FUNCTION__, __LINE__ );
+//	printk("uio.uio_segflg %d  function %s line %d\n", uio->uio_segflg, __FUNCTION__, __LINE__ );
 
 	if (limit == RLIM64_INFINITY || limit > MAXOFFSET_T)
 		limit = MAXOFFSET_T;
@@ -683,7 +683,7 @@ zfs_write(vnode_t *vp, uio_t *uio, int ioflag, cred_t *cr, caller_context_t *ct)
 	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_FLAGS(zfsvfs), NULL,
 	    &zp->z_pflags, 8);
 
-	printk("uio.uio_segflg %d  function %s line %d\n", uio->uio_segflg, __FUNCTION__, __LINE__ );
+//	printk("uio.uio_segflg %d  function %s line %d\n", uio->uio_segflg, __FUNCTION__, __LINE__ );
 
 	/*
 	 * If immutable or not appending then return EPERM
@@ -718,7 +718,7 @@ zfs_write(vnode_t *vp, uio_t *uio, int ioflag, cred_t *cr, caller_context_t *ct)
 	}
 #endif
 
-	printk("uio.uio_segflg %d  function %s line %d\n", uio->uio_segflg, __FUNCTION__, __LINE__ );
+//	printk("uio.uio_segflg %d  function %s line %d\n", uio->uio_segflg, __FUNCTION__, __LINE__ );
 
 	/*
 	 * Pre-fault the pages to ensure slow (eg NFS) pages
@@ -731,7 +731,7 @@ zfs_write(vnode_t *vp, uio_t *uio, int ioflag, cred_t *cr, caller_context_t *ct)
 	else
 		uio_prefaultpages(MIN(n, max_blksz), uio);
 
-	printk("uio.uio_segflg %d  function %s line %d\n", uio->uio_segflg, __FUNCTION__, __LINE__ );
+//	printk("uio.uio_segflg %d  function %s line %d\n", uio->uio_segflg, __FUNCTION__, __LINE__ );
 
 	/*
 	 * If in append mode, set the io offset pointer to eof.
@@ -984,7 +984,7 @@ again:
 			uio_prefaultpages(MIN(n, max_blksz), uio);
 	}
 
-	printk("uio.uio_segflg %d  function %s line %d\n", uio->uio_segflg, __FUNCTION__, __LINE__ );
+//	printk("uio.uio_segflg %d  function %s line %d\n", uio->uio_segflg, __FUNCTION__, __LINE__ );
 
 	zfs_range_unlock(rl);
 
