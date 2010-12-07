@@ -1289,12 +1289,10 @@ zfs_lookup(vnode_t *dvp, char *nm, vnode_t **vpp, struct pathname *pnp,
 			ZFS_EXIT(zfsvfs);
 			return (EINVAL);
 		}
-#ifdef HAVE_ZPL
-		if (error = zfs_get_xattrdir(VTOZ(dvp), vpp, cr, flags)) {
+		if ((error = zfs_get_xattrdir(VTOZ(dvp), vpp, cr, flags))) {
 			ZFS_EXIT(zfsvfs);
 			return (error);
 		}
-#endif
 		/*
 		 * Do we have permission to get into attribute directory?
 		 */
