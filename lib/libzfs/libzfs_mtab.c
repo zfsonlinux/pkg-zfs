@@ -37,7 +37,7 @@ int zfs_linux_add_entry(char *mountpoint, char *zfs_name, const char *mtab_file)
 	mnt.mnt_dir    =  mountpoint;
 	mnt.mnt_type   = "zfs";
 	mnt.mnt_fsname = zfs_name;
-	if (!system("selinuxenabled")) {
+	if (!system("selinuxenabled > /dev/null 2>&1")) {
 		mnt.mnt_opts   = "rw,context=\"system_u:object_r:file_t:s0\"";
 	}
 	else {

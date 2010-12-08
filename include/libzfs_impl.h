@@ -228,7 +228,7 @@ os_mount(const char *src, const char *mntpt, int mflag, char *fstype,
 	assert(mflag == 0);
 	assert(strcmp(fstype, MNTTYPE_ZFS) == 0);
 
-	if(!system("selinuxenabled")) {
+	if(!system("selinuxenabled > /dev/null 2>&1")) {
 		ret = mount(src, mntpt, (char *)MNTTYPE_ZFS, mflag, 
 			"defaults,context=\"system_u:object_r:file_t:s0\"");
 	}
