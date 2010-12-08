@@ -1888,12 +1888,16 @@ zfs_do_userspace(int argc, char **argv)
 	 * Try the python version.  If the execv fails, we'll continue
 	 * and do a simplistic implementation.
 	 */
+#ifdef HAVE_ZPL
+	/* 
+	 * NOT REQUIRED AS NO PYTHON VERSION IS AVAILABLE ON LINUX
+	 */
 	(void) execv(pypath, argv-1);
 
 	(void) printf("internal error: %s not found\n"
 	    "falling back on built-in implementation, "
 	    "some features will not work\n", pypath);
-
+#endif
 	if ((zhp = zfs_open(g_zfs, argv[argc-1], ZFS_TYPE_DATASET)) == NULL)
 		return (1);
 

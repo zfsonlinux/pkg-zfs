@@ -725,7 +725,6 @@ zfs_userquota_prop_to_obj(zfsvfs_t *zfsvfs, zfs_userquota_prop_t type)
 	return (0);
 }
 
-#ifdef HAVE_ZPL
 int
 zfs_userspace_many(zfsvfs_t *zfsvfs, zfs_userquota_prop_t type,
     uint64_t *cookiep, void *vbuf, uint64_t *bufsizep)
@@ -752,9 +751,11 @@ zfs_userspace_many(zfsvfs_t *zfsvfs, zfs_userquota_prop_t type,
 		    *bufsizep)
 			break;
 
+#ifdef HAVE_ZPL
 		fuidstr_to_sid(zfsvfs, za.za_name,
 		    buf->zu_domain, sizeof (buf->zu_domain), &buf->zu_rid);
-
+#endif /* HAVE_ZPL */
+		buf->zu_rid = simple_strtoul(za.za_name, NULL, 10);
 		buf->zu_space = za.za_first_integer;
 		buf++;
 	}
@@ -768,6 +769,7 @@ zfs_userspace_many(zfsvfs_t *zfsvfs, zfs_userquota_prop_t type,
 	return (error);
 }
 
+#ifdef HAVE_ZPL
 /*
  * buf must be big enough (eg, 32 bytes)
  */
@@ -811,7 +813,7 @@ zfs_userspace_one(zfsvfs_t *zfsvfs, zfs_userquota_prop_t type,
 		return (err);
 #endif
 
-	(void) sprintf(buf, "%llx", (longlong_t)rid);
+	(void) sprintf(buf, "%llu", (longlong_t)rid);
 	err = zap_lookup(zfsvfs->z_os, obj, buf, 8, 1, valp);
 	if (err == ENOENT)
 		err = 0;
@@ -846,7 +848,7 @@ zfs_set_userquota(zfsvfs_t *zfsvfs, zfs_userquota_prop_t type,
 	fuid_dirtied = zfsvfs->z_fuid_dirty;
 #endif 
 
-	(void) sprintf(buf, "%llx", (longlong_t)rid);
+	(void) sprintf(buf, "%llu", (longlong_t)rid);
 	tx = dmu_tx_create(zfsvfs->z_os);
 	dmu_tx_hold_zap(tx, *objp ? *objp : DMU_NEW_OBJECT, B_TRUE, NULL);
 	if (*objp == 0) {

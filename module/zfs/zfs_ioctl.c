@@ -4113,18 +4113,19 @@ zfs_ioc_userspace_one(zfs_cmd_t *zc)
 static int
 zfs_ioc_userspace_many(zfs_cmd_t *zc)
 {
-#ifdef HAVE_ZPL
 	zfsvfs_t *zfsvfs;
 	int bufsize = zc->zc_nvlist_dst_size;
+
+	int error = 0;
+	void *buf = kmem_alloc(bufsize, KM_SLEEP);
+	bzero(buf, bufsize);
 
 	if (bufsize <= 0)
 		return (ENOMEM);
 
-	int error = zfsvfs_hold(zc->zc_name, FTAG, &zfsvfs, B_FALSE);
+	error = zfsvfs_hold(zc->zc_name, FTAG, &zfsvfs, B_FALSE);
 	if (error)
 		return (error);
-
-	void *buf = kmem_alloc(bufsize, KM_SLEEP);
 
 	error = zfs_userspace_many(zfsvfs, zc->zc_objset_type, &zc->zc_cookie,
 	    buf, &zc->zc_nvlist_dst_size);
@@ -4138,9 +4139,6 @@ zfs_ioc_userspace_many(zfs_cmd_t *zc)
 	zfsvfs_rele(zfsvfs, FTAG);
 
 	return (error);
-#else
-	return (ENOTSUP);
-#endif /* HAVE_ZPL */
 }
 
 /*
