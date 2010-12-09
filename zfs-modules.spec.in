@@ -213,12 +213,12 @@ URL:             git://eris.llnl.gov/zfs.git
 BuildRoot:       %{_tmppath}/%{name}-%{version}-%{release}-%(%{__id} -un)
 Source:          @PACKAGE@-%{version}.tar.gz
 %if %{defined krequires}
-Requires:        %{krequires}
+Requires:        %{krequires} 
 %endif
 %if %{defined kdevpkg}
 BuildRequires:   %{kdevpkg}
 %endif
-Requires:        %{splrequires}
+Requires:        %{splrequires} spl
 BuildRequires:   %{spldevpkg}
 
 %description
@@ -229,7 +229,7 @@ the %{name} file system.
 Summary:         ZFS File System Headers and Symbols
 Group:           Development/Libraries
 %if %{defined krequires}
-Requires:        %{krequires}
+Requires:        %{krequires} 
 %endif
 Requires:        %{splrequires}
 %if %{defined kdevpkg}

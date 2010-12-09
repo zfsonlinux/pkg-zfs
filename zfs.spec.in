@@ -12,7 +12,7 @@ License:         CDDL
 URL:             git://eris.llnl.gov/zfs.git
 BuildRoot:       %{_tmppath}/%{name}-%{version}-%{release}-%(%{__id} -un)
 Source:          %{name}-%{version}.tar.gz
-Requires:        zlib e2fsprogs
+Requires:        zlib e2fsprogs spl
 BuildRequires:   zlib-devel e2fsprogs-devel
 
 %description
@@ -23,7 +23,7 @@ for the zfs file system.
 Summary:         ZFS File System User Headers
 Group:           Development/Libraries
 %if %{defined ch5} || %{defined el6} || %{defined fc12}
-Requires:        zlib libuuid libblkid
+Requires:        zlib libuuid libblkid spl
 BuildRequires:   zlib-devel libuuid-devel libblkid-devel
 %else
 Requires:        zlib e2fsprogs
