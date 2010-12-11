@@ -94,23 +94,29 @@
 
 #include <sys/zfs_rlock.h>
 
+static inline void release_rl(rl_t *rl)
+{
+	ASSERT(0 == atomic_read(&rl->r_cv_waiters));
+
+	if (rl->r_read_wanted) {
+		cv_destroy(&rl->r_rd_cv);
+	}
+	if (rl->r_write_wanted) {
+		cv_destroy(&rl->r_wr_cv);
+	}
+
+	/* free the rl_t memory */
+	kmem_free(rl, sizeof (rl_t));
+}
+
 static inline void do_delayed_release(rl_t *rl)
 {
     if (rl->r_delayed_release == B_FALSE)
         return;
 
-    if (0 == atomic_dec_return(&rl->r_cv_waiters)) {
+    if (0 == atomic_dec_return(&rl->r_cv_waiters))
         /* destroy the condition variables */
-        if (rl->r_read_wanted) {
-            cv_destroy(&rl->r_rd_cv);
-        }
-        if (rl->r_write_wanted) {
-            cv_destroy(&rl->r_wr_cv);
-        }
-
-        /* free the rl_t memory */
-        kmem_free(rl, sizeof (rl_t));
-    }
+		release_rl(rl);
 }
 
 /*
@@ -565,17 +571,17 @@ zfs_range_unlock_reader(znode_t *zp, rl_t *remove)
 					cv_destroy(&rl->r_rd_cv);
 #endif
 				}
-				if (0 == atomic_read(&rl->r_cv_waiters))
-					kmem_free(rl, sizeof (rl_t));
-				else
-					rl->r_delayed_release = B_TRUE;
+				rl->r_delayed_release = B_TRUE;
+				if (0 == atomic_read(&rl->r_cv_waiters)) {
+					release_rl(rl);
+				}
 			}
 		}
 	}
-	if (0 == atomic_read(&remove->r_cv_waiters))
-		kmem_free(remove, sizeof (rl_t));
-	else
-		remove->r_delayed_release = B_TRUE;
+	remove->r_delayed_release = B_TRUE;
+	if (0 == atomic_read(&remove->r_cv_waiters)) {
+		release_rl(remove);
+	}
 }
 
 /*
@@ -615,10 +621,10 @@ zfs_range_unlock(rl_t *rl)
 			cv_destroy(&rl->r_rd_cv);
 #endif
 		}
-		if (0 == atomic_read(&rl->r_cv_waiters))
-			kmem_free(rl, sizeof (rl_t));
-		else
-			rl->r_delayed_release = B_TRUE;
+		rl->r_delayed_release = B_TRUE;
+		if (0 == atomic_read(&rl->r_cv_waiters)) {
+			release_rl(rl);
+		}
 	} else {
 		/*
 		 * lock may be shared, let zfs_range_unlock_reader()
