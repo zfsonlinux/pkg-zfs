@@ -254,6 +254,7 @@ get_usage(zfs_help_t idx)
 		return (gettext("\tunshare "
 		    "<-a | filesystem|mountpoint>\n"));
 	case HELP_ALLOW:
+#ifdef HAVE_ZPL
 		return (gettext("\tallow <filesystem|volume>\n"
 		    "\tallow [-ldug] "
 		    "<\"everyone\"|user|group>[,...] <perm|@setname>[,...]\n"
@@ -263,7 +264,11 @@ get_usage(zfs_help_t idx)
 		    "\tallow -c <perm|@setname>[,...] <filesystem|volume>\n"
 		    "\tallow -s @setname <perm|@setname>[,...] "
 		    "<filesystem|volume>\n"));
+#else
+		return (gettext("\tallow not supported.\n"));
+#endif	/* HAVE_ZPL */
 	case HELP_UNALLOW:
+#ifdef HAVE_ZPL
 		return (gettext("\tunallow [-rldug] "
 		    "<\"everyone\"|user|group>[,...]\n"
 		    "\t    [<perm|@setname>[,...]] <filesystem|volume>\n"
@@ -273,6 +278,9 @@ get_usage(zfs_help_t idx)
 		    "<filesystem|volume>\n"
 		    "\tunallow [-r] -s @setname [<perm|@setname>[,...]] "
 		    "<filesystem|volume>\n"));
+#else
+		return (gettext("\tunallow not supported.\n"));
+#endif	/* HAVE_ZPL */
 	case HELP_USERSPACE:
 		return (gettext("\tuserspace [-hniHp] [-o field[,...]] "
 		    "[-sS field] ... [-t type[,...]]\n"
@@ -433,9 +441,18 @@ usage(boolean_t requested)
 		(void) fprintf(fp,
 		    gettext("\nFor the property list, run: %s\n"),
 		    "zfs set|get");
+#ifdef HAVE_ZPL
 		(void) fprintf(fp,
 		    gettext("\nFor the delegated permission list, run: %s\n"),
 		    "zfs allow|unallow");
+#else
+		(void) fprintf(fp,
+		    gettext("\nFor the delegated permission list, run: %s\n"),
+		    "zfs allow|unallow");
+		(void) fprintf(fp,
+		    gettext("\n%s not supported with this version.\n"),
+		    "zfs allow|unallow");
+#endif
 	}
 
 	/*
@@ -3848,8 +3865,12 @@ zfs_do_unshare(int argc, char **argv)
 static int
 zfs_do_python(int argc, char **argv)
 {
+#ifdef HAVE_ZPL
 	(void) execv(pypath, argv-1);
 	(void) printf("internal error: %s not found\n", pypath);
+#else
+	(void) printf("operation not supported.\n");
+#endif	/* HAVE_ZPL */
 	return (-1);
 }
 
