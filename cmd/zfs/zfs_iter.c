@@ -372,7 +372,6 @@ zfs_for_each(int argc, char **argv, int flags, zfs_type_t types,
 	 */
 	if (cb.cb_proplist && *cb.cb_proplist) {
 		zprop_list_t *p = *cb.cb_proplist;
-
 		while (p) {
 			if (p->pl_prop >= ZFS_PROP_TYPE &&
 			    p->pl_prop < ZFS_NUM_PROPS) {
@@ -441,7 +440,7 @@ zfs_for_each(int argc, char **argv, int flags, zfs_type_t types,
 	 * over each one and execute the real user callback.
 	 */
 	for (node = uu_avl_first(cb.cb_avl); node != NULL;
-	    node = uu_avl_next(cb.cb_avl, node))
+	    node = uu_avl_next(cb.cb_avl, node)) 
 		ret |= callback(node->zn_handle, data);
 
 	/*

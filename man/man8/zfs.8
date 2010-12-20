@@ -18,11 +18,13 @@ zfs \- configures ZFS file systems
 .LP
 .nf
 \fBzfs\fR \fBcreate\fR [\fB-p\fR] [\fB-o\fR \fIproperty\fR=\fIvalue\fR] ... \fIfilesystem\fR
+	\fBThe casesensitivity property is not supported on Linux.\fR
 .fi
 
 .LP
 .nf
 \fBzfs\fR \fBcreate\fR [\fB-ps\fR] [\fB-b\fR \fIblocksize\fR] [\fB-o\fR \fIproperty\fR=\fIvalue\fR] ... \fB-V\fR \fIsize\fR \fIvolume\fR
+	\fBThe casesensitivity property is not supported on Linux.\fR
 .fi
 
 .LP
@@ -81,12 +83,14 @@ zfs \- configures ZFS file systems
 .LP
 .nf
 \fBzfs\fR \fBset\fR \fIproperty\fR=\fIvalue\fR \fIfilesystem\fR|\fIvolume\fR|\fIsnapshot\fR ...
+     \fBThe casesensitivity property is not supported on Linux.\fR
 .fi
 
 .LP
 .nf
 \fBzfs\fR \fBget\fR [\fB-r\fR|\fB-d\fR \fIdepth\fR][\fB-Hp\fR][\fB-o\fR \fIfield\fR[,...]] [\fB-s\fR \fIsource\fR[,...]]
      "\fIall\fR" | \fIproperty\fR[,...] \fIfilesystem\fR|\fIvolume\fR|\fIsnapshot\fR ...
+     \fBThe casesensitivity property is not supported on Linux.\fR
 .fi
 
 .LP

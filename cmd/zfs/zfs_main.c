@@ -200,8 +200,10 @@ get_usage(zfs_help_t idx)
 	case HELP_CREATE:
 		return (gettext("\tcreate [-p] [-o property=value] ... "
 		    "<filesystem>\n"
+		    "\t    The casesensitivity property is not supported on Linux.\n"
 		    "\tcreate [-ps] [-b blocksize] [-o property=value] ... "
-		    "-V <size> <volume>\n"));
+		    "-V <size> <volume>\n"
+		    "\t    The casesensitivity property is not supported on Linux.\n"));
 	case HELP_DESTROY:
 		return (gettext("\tdestroy [-rRf] <filesystem|volume>\n"
 		    "\tdestroy [-rRd] <snapshot>\n"));
@@ -209,7 +211,8 @@ get_usage(zfs_help_t idx)
 		return (gettext("\tget [-rHp] [-d max] "
 		    "[-o \"all\" | field[,...]] [-s source[,...]]\n"
 		    "\t    <\"all\" | property[,...]> "
-		    "[filesystem|volume|snapshot] ...\n"));
+		    "[filesystem|volume|snapshot] ...\n"
+		    "\t    The casesensitivity property is not supported on Linux.\n"));
 	case HELP_INHERIT:
 		return (gettext("\tinherit [-rS] <property> "
 		    "<filesystem|volume|snapshot> ...\n"));
@@ -241,7 +244,8 @@ get_usage(zfs_help_t idx)
 		return (gettext("\tsend [-RDp] [-[iI] snapshot] <snapshot>\n"));
 	case HELP_SET:
 		return (gettext("\tset <property=value> "
-		    "<filesystem|volume|snapshot> ...\n"));
+		    "<filesystem|volume|snapshot> ...\n"
+		    "\t    The casesensitivity property is not supported on Linux.\n"));
 	case HELP_SHARE:
 		return (gettext("\tshare <-a | filesystem>\n"));
 	case HELP_SNAPSHOT:
@@ -471,6 +475,7 @@ parseprop(nvlist_t *props)
 {
 	char *propname = optarg;
 	char *propval, *strval;
+	char *property = "casesensitivity";
 
 	if ((propval = strchr(propname, '=')) == NULL) {
 		(void) fprintf(stderr, gettext("missing "
@@ -484,6 +489,10 @@ parseprop(nvlist_t *props)
 		    "specified multiple times\n"), propname);
 		return (-1);
 	}
+        if (strncmp(property, propname, strlen(property)) == 0) {
+                (void) fprintf(stderr,"The casesensitivity property is not supported on Linux.\n");
+                return (-1);
+        }
 	if (nvlist_add_string(props, propname, propval) != 0)
 		nomem();
 	return (0);
@@ -2539,6 +2548,7 @@ static int
 zfs_do_set(int argc, char **argv)
 {
 	set_cbdata_t cb;
+        char *property = "casesensitivity";
 	int ret;
 
 	/* check for options */
@@ -2547,7 +2557,6 @@ zfs_do_set(int argc, char **argv)
 		    argv[1][1]);
 		usage(B_FALSE);
 	}
-
 	/* check number of arguments */
 	if (argc < 2) {
 		(void) fprintf(stderr, gettext("missing property=value "
@@ -2570,6 +2579,11 @@ zfs_do_set(int argc, char **argv)
 
 	*cb.cb_value = '\0';
 	cb.cb_value++;
+
+        if (strncmp(property,cb.cb_propname, strlen(property)) == 0) {
+                (void) fprintf(stderr,"The casesensitivity property is not supported on linux.\n");
+                return (-1);
+        }
 
 	if (*cb.cb_propname == '\0') {
 		(void) fprintf(stderr,
