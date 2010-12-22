@@ -1597,23 +1597,24 @@ dmu_snapname_to_id(objset_t *os, const char *snapname)
 	dsl_dataset_t *ds = os->os_dsl_dataset;
 	zap_cursor_t cursor;
 	zap_attribute_t attr;
+	uint64_t ret = 0;
 
 	if (ds->ds_phys->ds_snapnames_zapobj == 0) {
-		return (ENOENT);
+		return 0;
 	}
-	zap_cursor_init(&cursor,
-					ds->ds_dir->dd_pool->dp_meta_objset,
-					ds->ds_phys->ds_snapnames_zapobj);
+	zap_cursor_init(&cursor, ds->ds_dir->dd_pool->dp_meta_objset,
+			ds->ds_phys->ds_snapnames_zapobj);
 	if(!(zap_cursor_move_to_key(&cursor, snapname, MT_EXACT))) {
-		if (zap_cursor_retrieve(&cursor, &attr) != 0) {
-			zap_cursor_fini(&cursor); 
-	/* not returning ENOENT as that might be the id no */           
-			return 0; // no snapshot by name snapname
-		}
-		return attr.za_first_integer;
-	} else {
-		return 0; // no snapshot by name snapname        
+		if (zap_cursor_retrieve(&cursor, &attr) == 0)
+			ret = attr.za_first_integer;
 	}
+
+	/*
+	 * We return zero if snapshot is not present or there was an
+	 * error reading it.
+	 */
+	zap_cursor_fini(&cursor);
+	return ret;
 }
 
 
