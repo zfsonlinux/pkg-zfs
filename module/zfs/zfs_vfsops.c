@@ -755,6 +755,7 @@ zfs_userspace_many(zfsvfs_t *zfsvfs, zfs_userquota_prop_t type,
 		fuidstr_to_sid(zfsvfs, za.za_name,
 		    buf->zu_domain, sizeof (buf->zu_domain), &buf->zu_rid);
 #endif /* HAVE_ZPL */
+	        sprintf(za.za_name,"%lld",(longlong_t)strtonum(za.za_name, NULL));
 		buf->zu_rid = simple_strtoul(za.za_name, NULL, 10);
 		buf->zu_space = za.za_first_integer;
 		buf++;
@@ -848,7 +849,7 @@ zfs_set_userquota(zfsvfs_t *zfsvfs, zfs_userquota_prop_t type,
 	fuid_dirtied = zfsvfs->z_fuid_dirty;
 #endif 
 
-	(void) sprintf(buf, "%llu", (longlong_t)rid);
+	(void) sprintf(buf, "%llx", (longlong_t)rid);
 	tx = dmu_tx_create(zfsvfs->z_os);
 	dmu_tx_hold_zap(tx, *objp ? *objp : DMU_NEW_OBJECT, B_TRUE, NULL);
 	if (*objp == 0) {
@@ -907,7 +908,6 @@ zfs_fuid_overquota(zfsvfs_t *zfsvfs, boolean_t isgroup, uint64_t fuid)
 	err = zap_lookup(zfsvfs->z_os, quotaobj, buf, 8, 1, &quota);
 	if (err != 0)
 		return (B_FALSE);
-
 	err = zap_lookup(zfsvfs->z_os, usedobj, buf, 8, 1, &used);
 	if (err != 0)
 		return (B_FALSE);
