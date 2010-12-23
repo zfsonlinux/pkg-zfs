@@ -653,19 +653,20 @@ zfs_do_clone(int argc, char **argv)
 	ret = zfs_clone(zhp, argv[1], props);
 
 	/* create the mountpoint if necessary */
-#ifdef HAVE_ZPL
 	if (ret == 0) {
 		zfs_handle_t *clone;
 
 		clone = zfs_open(g_zfs, argv[1], ZFS_TYPE_DATASET);
 		if (clone != NULL) {
 			if (zfs_get_type(clone) != ZFS_TYPE_VOLUME)
-				if ((ret = zfs_mount(clone, NULL, 0)) == 0)
+				if ((ret = zfs_mount(clone, NULL, 0)) == 0) {
+#ifdef HAVE_ZPL
 					ret = zfs_share(clone);
+#endif /* HAVE_ZPL */
+				}
 			zfs_close(clone);
 		}
 	}
-#endif /* HAVE_ZPL */
 
 	zfs_close(zhp);
 	nvlist_free(props);
