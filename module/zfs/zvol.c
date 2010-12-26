@@ -239,10 +239,8 @@ zvol_update_volsize(zvol_state_t *zv, uint64_t volsize)
 		return EIO;
 
 	/* KQI: Open the block device */
-	if (blkdev_get(bdev, mode)) {
-		bdput(bdev);
+	if (blkdev_get(bdev, mode))
 		return EIO;
-	}
 
 	/* Opening block device should set the zv->zv_objset */
 	ASSERT(zv->zv_objset != NULL);
@@ -281,7 +279,6 @@ zvol_update_volsize(zvol_state_t *zv, uint64_t volsize)
 err_out:
 	/* KQI: Close and release the block device */
 	blkdev_put(bdev, mode);
-	bdput(bdev);
 	return (error);
 }
 
