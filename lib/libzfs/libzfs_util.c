@@ -989,6 +989,7 @@ zprop_print_one_property(const char *name, zprop_get_cbdata_t *cbp,
 {
 	int i;
 	const char *str = NULL;
+	const char *property = "casesensitivity";
 	char buf[128];
 
 	/*
@@ -1011,7 +1012,10 @@ zprop_print_one_property(const char *name, zprop_get_cbdata_t *cbp,
 			break;
 
 		case GET_COL_VALUE:
-			str = value;
+			if (strncmp(property, propname, strlen(property)) == 0) {
+				str = "Not Supported";
+			} else
+				str = value;
 			break;
 
 		case GET_COL_SOURCE:

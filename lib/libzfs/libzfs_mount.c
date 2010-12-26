@@ -454,53 +454,55 @@ unmount_one(libzfs_handle_t *hdl, const char *mountpoint, int flags)
 int
 zfs_unmount(zfs_handle_t *zhp, const char *mountpoint, int flags)
 {
-    libzfs_handle_t *hdl = zhp->zfs_hdl;
-    struct mnttab entry;
-    char *mntpt = NULL;
+	libzfs_handle_t *hdl = zhp->zfs_hdl;
+	struct mnttab entry;
+	char *mntpt = NULL;
 
-    /* check to see if we need to unmount the filesystem */
-    if (mountpoint != NULL || ((zfs_get_type(zhp) == ZFS_TYPE_FILESYSTEM) &&
-                libzfs_mnttab_find(hdl, zhp->zfs_name, &entry) == 0)) {
-        /*
-         * mountpoint may have come from a call to
-         * getmnt/getmntany if it isn't NULL. If it is NULL,
-         * we know it comes from libzfs_mnttab_find which can
-         * then get freed later. We strdup it to play it safe.
-         */
-        if (mountpoint == NULL)
-            mntpt = zfs_strdup(hdl, entry.mnt_mountp);
-        else
-            mntpt = zfs_strdup(hdl, mountpoint);
+	/* check to see if we need to unmount the filesystem */
+	if (mountpoint != NULL || ((zfs_get_type(zhp) == ZFS_TYPE_FILESYSTEM ||
+				    zfs_get_type(zhp) == ZFS_TYPE_SNAPSHOT ) &&
+				   libzfs_mnttab_find(hdl, zhp->zfs_name,
+						      &entry) == 0)) {
+		/*
+		 * mountpoint may have come from a call to
+		 * getmnt/getmntany if it isn't NULL. If it is NULL,
+		 * we know it comes from libzfs_mnttab_find which can
+		 * then get freed later. We strdup it to play it safe.
+		 */
+		if (mountpoint == NULL)
+			mntpt = zfs_strdup(hdl, entry.mnt_mountp);
+		else
+			mntpt = zfs_strdup(hdl, mountpoint);
 
 #if defined(HAVE_ZPL)
-        /*
-         * Unshare and unmount the filesystem
-         */
-        if (zfs_unshare_proto(zhp, mntpt, share_all_proto) != 0)
-            return (-1);
+		/*
+		 * Unshare and unmount the filesystem
+		 */
+		if (zfs_unshare_proto(zhp, mntpt, share_all_proto) != 0)
+			return (-1);
 #else
-        if (unmount_one(hdl, mntpt, flags) != 0) {
-            free(mntpt);
-             #if defined(HAVE_ZPL)
-	            (void) zfs_shareall(zhp);
-             #endif   
-	    return (-1);
-        }
+		if (unmount_one(hdl, mntpt, flags) != 0) {
+			free(mntpt);
+#if defined(HAVE_ZPL)
+			(void) zfs_shareall(zhp);
 #endif
-        libzfs_mnttab_remove(hdl, zhp->zfs_name);
+			return (-1);
+		}
+#endif
+		libzfs_mnttab_remove(hdl, zhp->zfs_name);
 #if defined(LINUX_PORT)
-        /* remove a /etc/mtab entry */
-        if (zfs_linux_remove_entry(mntpt, zhp->zfs_name, MTAB_FILE) < 0) {
-            free(mntpt);
-            return (zfs_error_fmt(hdl, EZFS_MOUNTFAILED,
-                        dgettext(TEXT_DOMAIN, "failed to remove from /etc/mtab '%s'"),
-                        zhp->zfs_name));
-        }
+		/* remove a /etc/mtab entry */
+		if (zfs_linux_remove_entry(mntpt, zhp->zfs_name, MTAB_FILE) < 0) {
+			free(mntpt);
+			return (zfs_error_fmt(hdl, EZFS_MOUNTFAILED,
+				  dgettext(TEXT_DOMAIN, "failed to remove from /etc/mtab '%s'"),
+					      zhp->zfs_name));
+		}
 #endif
-        free(mntpt);
-    }
+		free(mntpt);
+	}
 
-    return (0);
+	return (0);
 }
 
 /*
