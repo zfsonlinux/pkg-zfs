@@ -3666,12 +3666,8 @@ unshare_unmount(int op, int argc, char **argv)
 			if (strcmp(entry.mnt_fstype, MNTTYPE_ZFS) != 0)
 				continue;
 
-			/* ignore snapshots */
-			if (strchr(entry.mnt_special, '@') != NULL)
-				continue;
-
 			if ((zhp = zfs_open(g_zfs, entry.mnt_special,
-			    ZFS_TYPE_FILESYSTEM)) == NULL) {
+			    ZFS_TYPE_FILESYSTEM | ZFS_TYPE_SNAPSHOT)) == NULL) {
 				ret = 1;
 				continue;
 			}
@@ -3695,10 +3691,17 @@ unshare_unmount(int op, int argc, char **argv)
 #endif  /* HAVE_ZPL */
 			case OP_MOUNT:
 				/* Ignore legacy mounts */
-				verify(zfs_prop_get(zhp, ZFS_PROP_MOUNTPOINT,
+
+				/* 
+				 * TODO: commented the assert below to
+				 * unmount snapshots when we do a zfs
+				 * umount -a
+				 */
+
+				/*verify(zfs_prop_get(zhp, ZFS_PROP_MOUNTPOINT,
 				    nfs_mnt_prop,
 				    sizeof (nfs_mnt_prop),
-				    NULL, NULL, 0, B_FALSE) == 0);
+				    NULL, NULL, 0, B_FALSE) == 0); */
 				if (strcmp(nfs_mnt_prop, "legacy") == 0)
 					continue;
 				/* Ignore canmount=noauto mounts */
