@@ -65,8 +65,6 @@
 #include <sys/sa.h>
 #include "zfs_comutil.h"
 
-extern struct tsd_hash_table *tsd_hash_table;
-extern struct tsd_hash_table *init_tsd_hash_table(unsigned long);
 int zfsfstype;
 
 static major_t zfs_major;
@@ -2321,12 +2319,6 @@ zfs_init(void)
 	/* TBD: Need to see how to take care of initialization for linux.
 	*/
 	mutex_init(&zfs_dev_mtx, NULL, MUTEX_DEFAULT, NULL);
-	/* Allocatting hash table for tsd's.
-	* Taking  default value 3 now, which creates 8 bins
-	* */
-	tsd_hash_table = init_tsd_hash_table(3);
-	ASSERT(tsd_hash_table != NULL);
-
 #endif
 }
 

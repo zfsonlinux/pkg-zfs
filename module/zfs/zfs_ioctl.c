@@ -67,7 +67,6 @@
 #include <sharefs/share.h>
 #include <sys/dmu_objset.h>
 #include <sys/fm/util.h>
-#include <sys/tsd_wrapper.h>
 
 #include <linux/miscdevice.h>
 
@@ -5247,8 +5246,6 @@ _fini(void)
 	mutex_destroy(&zfs_share_lock);
 #endif /* HAVE_ZPL */
 	tsd_destroy(&zfs_fsyncer_key);
-        destroy_tsd_destructor();
-
 
 	printk(KERN_NOTICE "ZFS: Unloaded ZFS Filesystem v%s%s\n",
 	       ZFS_META_VERSION, ZFS_DEBUG_STR);

@@ -26,7 +26,6 @@
 
 #include <sys/refcount.h>
 #include <sys/rrwlock.h>
-#include <sys/tsd_wrapper.h>
 
 /*
  * This file contains the implementation of a re-entrant read
