@@ -232,7 +232,18 @@ zvol_update_volsize(zvol_state_t *zv, uint64_t volsize)
 	struct block_device *bdev;
 	dmu_tx_t *tx;
 	int error;
+	int mode = FMODE_WRITE | FMODE_READ;
 
+	/* KQI: get the block device */
+	if ((bdev = bdget_disk(zv->zv_disk, 0)) == NULL)
+		return EIO;
+
+	/* KQI: Open the block device */
+	if (blkdev_get(bdev, mode))
+		return EIO;
+
+	/* Opening block device should set the zv->zv_objset */
+	ASSERT(zv->zv_objset != NULL);
 	ASSERT(MUTEX_HELD(&zvol_state_lock));
 
 	tx = dmu_tx_create(zv->zv_objset);
@@ -240,7 +251,7 @@ zvol_update_volsize(zvol_state_t *zv, uint64_t volsize)
 	error = dmu_tx_assign(tx, TXG_WAIT);
 	if (error) {
 		dmu_tx_abort(tx);
-		return (error);
+		goto err_out;
 	}
 
 	error = zap_update(zv->zv_objset, ZVOL_ZAP_OBJ, "size", 8, 1,
@@ -248,25 +259,27 @@ zvol_update_volsize(zvol_state_t *zv, uint64_t volsize)
 	dmu_tx_commit(tx);
 
 	if (error)
-		return (error);
+		goto err_out;
 
 	error = dmu_free_long_range(zv->zv_objset,
 	    ZVOL_OBJ, volsize, DMU_OBJECT_END);
 	if (error)
-		return (error);
+		goto err_out;
 
 	zv->zv_volsize = volsize;
 	zv->zv_changed = 1;
 
+#if 0
 	bdev = bdget_disk(zv->zv_disk, 0);
-	if (!bdev)
-		return EIO;
+#endif
 
 	error = check_disk_change(bdev);
 	ASSERT3U(error, !=, 0);
-	bdput(bdev);
-
-	return (0);
+	error = 0;
+err_out:
+	/* KQI: Close and release the block device */
+	blkdev_put(bdev, mode);
+	return (error);
 }
 
 /*

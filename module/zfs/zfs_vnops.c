@@ -3396,7 +3396,6 @@ top:
 			    NULL, &new_mode, sizeof (new_mode));
 			new_mode = zp->z_mode;
 		}
-	printk("mode setattr %d function %s line %d \n", zp->z_mode, __FUNCTION__, __LINE__);
 #ifdef HAVE_ZPL
 		err = zfs_acl_chown_setattr(zp);
 		ASSERT(err == 0);
@@ -3408,12 +3407,9 @@ top:
 	}
 
 	if (mask & AT_MODE) {
-	printk("mode setattr %d function %s line %d \n", zp->z_mode, __FUNCTION__, __LINE__);
 		SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_MODE(zfsvfs), NULL,
 		    &new_mode, sizeof (new_mode));
-	printk("mode setattr %d function %s line %d \n", zp->z_mode, __FUNCTION__, __LINE__);
 		zp->z_mode = new_mode;
-	printk("mode setattr %d function %s line %d \n", zp->z_mode, __FUNCTION__, __LINE__);
 #ifdef HAVE_ZPL
 		ASSERT3U((uintptr_t)aclp, !=, NULL);
 		err = zfs_aclset_common(zp, aclp, cr, tx);

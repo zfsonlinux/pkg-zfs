@@ -2290,22 +2290,8 @@ userquota_propname_decode(const char *propname, boolean_t zoned,
 #endif /* HAVE_IDMAP */
 	}
 
-	if (strncmp(cp, "S-1-", 4) == 0) {
-		/* It's a numeric SID (eg "S-1-234-567-89") */
-		(void) strlcpy(domain, cp, domainlen);
-		cp = strrchr(domain, '-');
-		*cp = '\0';
-		cp++;
 
-		errno = 0;
-		*ridp = strtoull(cp, &end, 10);
-		if (numericsid) {
-			free(numericsid);
-			numericsid = NULL;
-		}
-		if (errno != 0 || *end != '\0')
-			return (EINVAL);
-	} else if (!isdigit(*cp)) {
+	if (!isdigit(*cp)) {
 		/*
 		 * It's a user/group name (eg "user") that needs to be
 		 * turned into a uid/gid
@@ -2345,7 +2331,14 @@ userquota_propname_decode(const char *propname, boolean_t zoned,
 			*ridp = id;
 		}
 #else
-		return (ENOSYS);
+		/* It's a user/group ID (eg "12345"). */
+                uid_t id = strtoul(cp, &end, 10);
+                if (*end != '\0')
+                        return (EINVAL);
+                 if (id > MAXUID) {
+                        return (ENOSYS);
+                }
+                *ridp = id;
 #endif /* HAVE_IDMAP */
 	}
 
