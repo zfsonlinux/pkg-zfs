@@ -26,7 +26,8 @@
 #endif
 
 /* Add entry in the /etc/mtab */
-int zfs_linux_add_entry(char *mountpoint, char *zfs_name, const char *mtab_file)
+int zfs_linux_add_entry(char *mountpoint, char *zfs_name, const char *mtab_file,
+	char *mountopt)
 {
 	struct mntent mnt;
 	FILE *mtab = NULL;
@@ -38,10 +39,11 @@ int zfs_linux_add_entry(char *mountpoint, char *zfs_name, const char *mtab_file)
 	mnt.mnt_type   = "zfs";
 	mnt.mnt_fsname = zfs_name;
 	if (!system("selinuxenabled > /dev/null 2>&1")) {
-		mnt.mnt_opts   = "rw,context=\"system_u:object_r:file_t:s0\"";
-	}
-	else {
-		mnt.mnt_opts = "rw";
+		mnt.mnt_opts = (strcmp(mountopt, MNTOPT_RW) == 0) ? 
+			"rw,context=\"system_u:object_r:file_t:s0\"" :
+			"ro,context=\"system_u:object_r:file_t:s0\"";
+	} else {
+		mnt.mnt_opts = mountopt;
 	}
 	mnt.mnt_freq   = 0;
 	mnt.mnt_passno = 0;

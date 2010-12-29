@@ -412,7 +412,8 @@ zfs_mount(zfs_handle_t *zhp, const char *options, int flags)
 	    mntopts);
 
 #ifdef LINUX_PORT
-	if (zfs_linux_add_entry(mountpoint, zhp->zfs_name, MTAB_FILE) != 0) {
+	if (zfs_linux_add_entry(mountpoint, zhp->zfs_name, MTAB_FILE, 
+			MNTOPT_RW) != 0) {
 		return (zfs_error_fmt(hdl, EZFS_MOUNTFAILED,
 		    dgettext(TEXT_DOMAIN, "failed to add in /etc/mtab '%s'"),
 		    zhp->zfs_name));

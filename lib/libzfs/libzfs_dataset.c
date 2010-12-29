@@ -56,6 +56,7 @@
 #include "zfs_prop.h"
 #include "libzfs_impl.h"
 #include "zfs_deleg.h"
+#include "libzfs_mtab.h"
 
 static int zvol_create_link_common(libzfs_handle_t *, const char *, int);
 static int userquota_propname_decode(const char *propname, boolean_t zoned,
@@ -1423,6 +1424,8 @@ zfs_prop_set(zfs_handle_t *zhp, const char *propname, const char *propval)
 			(void) zfs_ioctl(hdl, ZFS_IOC_SET_PROP, &zc);
 		}
 	} else {
+		struct mnttab entry;
+
 		if (do_prefix)
 			ret = changelist_postfix(cl);
 
@@ -1430,8 +1433,24 @@ zfs_prop_set(zfs_handle_t *zhp, const char *propname, const char *propval)
 		 * Refresh the statistics so the new property value
 		 * is reflected.
 		 */
-		if (ret == 0)
+		if (ret == 0) {
 			(void) get_stats(zhp);
+		
+			if (prop == ZFS_PROP_READONLY) { 
+				libzfs_mnttab_find(hdl, zhp->zfs_name, &entry);
+				zfs_linux_remove_entry(entry.mnt_mountp,
+					zhp->zfs_name, MTAB_FILE);
+				if (strcmp(propval, "off") == 0) { 
+					zfs_linux_add_entry(entry.mnt_mountp, 
+						zhp->zfs_name, MTAB_FILE,
+							 MNTOPT_RO);
+				} else {
+					zfs_linux_add_entry(entry.mnt_mountp, 
+						zhp->zfs_name, MTAB_FILE,
+							 MNTOPT_RW);
+				}
+			}
+		}
 	}
 
 error:
