@@ -1435,7 +1435,7 @@ zfs_prop_set(zfs_handle_t *zhp, const char *propname, const char *propval)
 		 */
 		if (ret == 0) {
 			(void) get_stats(zhp);
-		
+
 			if (prop == ZFS_PROP_READONLY) { 
 				libzfs_mnttab_find(hdl, zhp->zfs_name, &entry);
 				zfs_linux_remove_entry(entry.mnt_mountp,
@@ -1443,11 +1443,11 @@ zfs_prop_set(zfs_handle_t *zhp, const char *propname, const char *propval)
 				if (strcmp(propval, "off") == 0) { 
 					zfs_linux_add_entry(entry.mnt_mountp, 
 						zhp->zfs_name, MTAB_FILE,
-							 MNTOPT_RO);
+							 MNTOPT_RW);
 				} else {
 					zfs_linux_add_entry(entry.mnt_mountp, 
 						zhp->zfs_name, MTAB_FILE,
-							 MNTOPT_RW);
+							 MNTOPT_RO);
 				}
 			}
 		}

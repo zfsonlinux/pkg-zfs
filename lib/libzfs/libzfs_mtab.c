@@ -32,7 +32,7 @@ int zfs_linux_add_entry(char *mountpoint, char *zfs_name, const char *mtab_file,
 	struct mntent mnt;
 	FILE *mtab = NULL;
 	int lock_fd;
-
+	
 	bzero(&mnt, sizeof(struct mntent));
 
 	mnt.mnt_dir    =  mountpoint;
