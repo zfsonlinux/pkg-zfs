@@ -757,17 +757,9 @@ void zfs_inode_update(znode_t *zp)
 	sa_lookup(zp->z_sa_hdl, SA_ZPL_ATIME(zfsvfs), &atime, 16);
 	sa_lookup(zp->z_sa_hdl, SA_ZPL_MTIME(zfsvfs), &mtime, 16);
 	sa_lookup(zp->z_sa_hdl, SA_ZPL_CTIME(zfsvfs), &ctime, 16);
-	/* TODO  (PRASAD) (Neependra Merging)
-	 * 	modify inode number of blocks 
-	 * 	modify inode block size
-	 */
 	ZFS_TIME_DECODE(&inode->i_atime, atime);
 	ZFS_TIME_DECODE(&inode->i_mtime, mtime);
 	ZFS_TIME_DECODE(&inode->i_ctime, ctime);
-/*      Need a way to update mtime and time
-	ZFS_TIME_DECODE(&inode->i_mtime, zp->zp_mtime);
-	ZFS_TIME_DECODE(&inode->i_ctime, zp->zp_ctime);
-*/
 	inode->i_generation = zp->z_gen;
 }
 
