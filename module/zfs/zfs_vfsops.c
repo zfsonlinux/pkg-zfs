@@ -1217,11 +1217,6 @@ zfs_domount(vfs_t *vfsp, char *osname)
 	}
 	zfsvfs->z_vfs = vfsp;
 
-#if defined(LINUX_PORT)
-	/* enable atimes mount option by default */
-	zfsvfs->z_atime	= B_TRUE;
-#endif
-
 	/* Initialize the generic filesystem structure. */
 	vfsp->vfs_data = NULL;
 
