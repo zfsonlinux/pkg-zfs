@@ -61,6 +61,7 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-, root, root)
 %doc AUTHORS ChangeLog COPYING COPYRIGHT DISCLAIMER
 %doc OPENSOLARIS.LICENSE README.markdown ZFS.RELEASE
+%doc META
 %{_sbindir}/*
 %{_bindir}/*
 %{_libdir}/*
