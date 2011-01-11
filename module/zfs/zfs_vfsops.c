@@ -2148,7 +2148,6 @@ zfs_vget(vfs_t *vfsp, vnode_t **vpp, fid_t *fidp)
 
 EXPORT_SYMBOL(zfs_vget);
 
-#ifdef HAVE_ZPL
 /*
  * Block out VOPs and close zfsvfs_t::z_os
  *
@@ -2226,12 +2225,14 @@ bail:
 		 * Since we couldn't reopen zfsvfs::z_os, force
 		 * unmount this file system.
 		 */
-		if (vn_vfswlock(zfsvfs->z_vfs->vfs_vnodecovered) == 0)
-			(void) dounmount(zfsvfs->z_vfs, MS_FORCE, CRED());
+		/* TODO : unmounting the file system is going to be fixed.*/
+		//if (vn_vfswlock(zfsvfs->z_vfs->vfs_vnodecovered) == 0)
+		//	(void) dounmount(zfsvfs->z_vfs, MS_FORCE, CRED());
 	}
 	return (err);
 }
 
+#ifdef HAVE_ZPL
 static void
 zfs_freevfs(vfs_t *vfsp)
 {
