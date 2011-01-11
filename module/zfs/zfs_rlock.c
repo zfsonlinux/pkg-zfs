@@ -111,10 +111,12 @@ static inline void release_rl(rl_t *rl)
 
 static inline void do_delayed_release(rl_t *rl)
 {
+	uint64_t rc = atomic_dec_return(&rl->r_cv_waiters);
+
     if (rl->r_delayed_release == B_FALSE)
         return;
 
-    if (0 == atomic_dec_return(&rl->r_cv_waiters))
+    if (0 == rc)
         /* destroy the condition variables */
 		release_rl(rl);
 }
@@ -235,6 +237,9 @@ zfs_range_proxify(avl_tree_t *tree, rl_t *rl)
 	proxy->r_proxy = B_TRUE;
 	proxy->r_write_wanted = B_FALSE;
 	proxy->r_read_wanted = B_FALSE;
+	/* KQI */
+	atomic_set(&proxy->r_cv_waiters, 0);
+	proxy->r_delayed_release = B_FALSE;
 	avl_add(tree, proxy);
 
 	return (proxy);
@@ -264,6 +269,9 @@ zfs_range_split(avl_tree_t *tree, rl_t *rl, uint64_t off)
 	rear->r_proxy = B_TRUE;
 	rear->r_write_wanted = B_FALSE;
 	rear->r_read_wanted = B_FALSE;
+	/* KQI */
+	atomic_set(&rear->r_cv_waiters, 0);
+	rear->r_delayed_release = B_FALSE;
 
 	front = zfs_range_proxify(tree, rl);
 	front->r_len = off - rl->r_off;
@@ -289,6 +297,9 @@ zfs_range_new_proxy(avl_tree_t *tree, uint64_t off, uint64_t len)
 	rl->r_proxy = B_TRUE;
 	rl->r_write_wanted = B_FALSE;
 	rl->r_read_wanted = B_FALSE;
+	/* KQI */
+	atomic_set(&rl->r_cv_waiters, 0);
+	rl->r_delayed_release = B_FALSE;
 	avl_add(tree, rl);
 }
 
@@ -469,6 +480,7 @@ zfs_range_lock(znode_t *zp, uint64_t off, uint64_t len, rl_type_t type)
 	new->r_proxy = B_FALSE;
 	new->r_write_wanted = B_FALSE;
 	new->r_read_wanted = B_FALSE;
+	/* KQI */
 	atomic_set(&new->r_cv_waiters, 0);
 	new->r_delayed_release = B_FALSE;
 
