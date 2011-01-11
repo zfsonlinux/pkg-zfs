@@ -25,6 +25,30 @@
 #define FLOCK_PATH  (FLOCK_DIR FLOCK_NAME)
 #endif
 
+/* Removing extra slashes in pathname */
+void zfs_linux_remove_slash(char *mntent_mnt_dir)
+{
+	char *ptr = mntent_mnt_dir;
+	char *mnt_dir = (char *) 
+			malloc(strlen(mntent_mnt_dir) + 1);
+	char *new_ptr = mnt_dir;
+
+	bzero(mnt_dir, strlen(mntent_mnt_dir) + 1);
+	while(*ptr != '\0') {
+		*new_ptr = *ptr++;
+		while (*new_ptr == '/' && *ptr == '/')
+			++ptr;
+		++new_ptr;
+	}
+	if ('/' != *(--new_ptr)) 
+		++new_ptr;
+	*new_ptr = '\0'; 
+
+	strcpy(mntent_mnt_dir, mnt_dir);
+	free(mnt_dir);
+}
+
+
 /* Add entry in the /etc/mtab */
 int zfs_linux_add_entry(char *mountpoint, char *zfs_name, const char *mtab_file,
 	char *mountopt)
@@ -138,6 +162,8 @@ int zfs_linux_remove_entry(const char *mountpoint, const char *zfs_name, const c
 
 	/* skip one entry and add rest of entries in the a duplicate file */
 	while (NULL != (mntent = getmntent(mtab))) {
+		zfs_linux_remove_slash(mntent->mnt_dir);
+
 		if (!strcmp(mntent->mnt_dir, mountpoint))
 			continue;
 		if (addmntent(dmtab, mntent) != 0) {
