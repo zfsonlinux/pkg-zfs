@@ -1,35 +1,60 @@
 This work was packaged for Debian by:
 
-    root <zfs@kqinfotech.com> on Thu, 18 Nov 2010 12:52:11 +0530
+    KQ Infotech <zfs@kqinfotech.com> on Mon, 10 Jan 2011 11:16:05 +0530
 
-It was downloaded from <url://example.com>
+    It was downloaded from git@github.com:zfs-linux/zfs.git
 
 Upstream Author(s):
 
-    <put author's name and email here>
-    <likewise for another author>
+    Brian Behlendorf <behlendorf1@llnl.gov>,
+    Herb Wartens <wartens2@llnl.gov>,
+    Jim Garlick <garlick@llnl.gov>,
+    Ricardo M. Correia <Ricardo.M.Correia@sun.com>
+    KQ Infotech <zfs@kqinfotech.com>
 
 Copyright:
+    The majority of the code in the ZFS on Linux port comes from OpenSolaris
+    which has been released under the terms of the CDDL open source license.
+    This includes the core ZFS code, libavl, libnvpair, libefi, libunicode,
+    and libutil.  The original OpenSolaris source can be downloaded from:
 
-    <Copyright (C) YYYY Name OfAuthor>
-    <likewise for another author>
+    http://dlc.sun.com/osol/on/downloads/b121/on-src.tar.bz2
+
+    Files which do not originate from OpenSolaris are noted in the file header
+    and attributed properly.  These exceptions include, but are not limited
+    to, the vdev_disk.c and zvol.c implementation which are licensed under
+    the CDDL.
+
+    The zpios test code is originally derived from the Lustre pios test code
+    which is licenced under the GPLv2.  As such the heaviliy modified zpios
+    kernel test code also remains licensed under the GPLv2.
+
+    The latest stable and development versions of this port can be downloaded
+    from the official ZFS on Linux site located at:
+
+    http://github.com/behlendorf/zfs/
+
+    This ZFS on Linux port was produced at the Lawrence Livermore National
+    Laboratory (LLNL) under Contract No. DE-AC52-07NA27344 (Contract 44)
+    between the U.S. Department of Energy (DOE) and Lawrence Livermore
+    National Security, LLC (LLNS) for the operation of LLNL.  It has been
+    approved for release under LLNL-CODE-403049.
+
+    Unless otherwise noted, all files in this distribution are released
+    under the Common Development and Distribution License (CDDL).
+    Exceptions are noted within the associated source files.  See the file
+    OPENSOLARIS.LICENSE for more information.
+
 
 License:
 
-    <Put the license of the package here indented by 4 spaces>
+    Unless otherwise noted, all files in this distribution are released
+    under the Common Development and Distribution License (CDDL).
+    Exceptions are noted within the associated source files.  See the file
+    OPENSOLARIS.LICENSE for more information.
 
 The Debian packaging is:
-
-    Copyright (C) 2010 root <zfs@kqinfotech.com>
-
-# Please chose a license for your packaging work. If the program you package
-# uses a mainstream license, using the same license is the safest choice.
-# Please avoid to pick license terms that are more restrictive than the
-# packaged work, as it may make Debian's contributions unacceptable upstream.
-# If you just want it to be GPL version 3, leave the following lines in.
-
-and is licensed under the GPL version 3, 
-see `/usr/share/common-licenses/GPL-3'.
-
-# Please also look if there are files or directories which have a
-# different copyright/license attached and list them here.
+    Copyright (c) 2010 Knowledge Quest Infotech Pvt. Ltd. 
+    Produced at Knowledge Quest Infotech Pvt. Ltd. 
+    Written by: Knowledge Quest Infotech Pvt. Ltd. 
+                zfs@kqinfotech.com

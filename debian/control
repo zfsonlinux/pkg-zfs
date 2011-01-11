@@ -1,10 +1,10 @@
 Source: zfs
-Section: kernels
+Section: kernel
 Priority: extra
 Maintainer: kqinfo <zfs@kqinfotech.com>
 Build-Depends: debhelper (>= 7), autotools-dev
 Standards-Version: 3.8.3
-Homepage: http://zfs.kqinfotech.com
+Homepage: http://kqstor.com/,http://zfsonlinux.org/
 
 Package: zfs
 Architecture: any
