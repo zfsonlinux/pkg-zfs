@@ -1,5 +1,8 @@
 zfs (0.5-1) unstable; urgency=low
 
-  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+  * Downoad the source code from https://github.com/zfs-linux/zfs.
+  * Look at the META for the commit id
+  * Do a checkout for that commit id. "git checkout <commit id>"
+  * Use the git commit logs for a full records of changes: 'git log'
 
- -- root <zfs@kqinfotech.com>  Thu, 18 Nov 2010 12:52:11 +0530
+ -- kqinfo <zfs@kqinfotech.com>  Mon, 10 Jan 2011 12:10:59 +0530
