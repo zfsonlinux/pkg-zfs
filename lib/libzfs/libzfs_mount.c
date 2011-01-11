@@ -416,12 +416,26 @@ zfs_mount(zfs_handle_t *zhp, const char *options, int flags)
 	    mntopts);
 
 #ifdef LINUX_PORT
-	if (zfs_linux_add_entry(mountpoint, zhp->zfs_name, MTAB_FILE, 
-			MNTOPT_RW) != 0) {
-		return (zfs_error_fmt(hdl, EZFS_MOUNTFAILED,
-		    dgettext(TEXT_DOMAIN, "failed to add in /etc/mtab '%s'"),
-		    zhp->zfs_name));
-	}
+	{
+		char origin[ZFS_MAXNAMELEN];
+
+		zfs_prop_get(zhp, ZFS_PROP_READONLY, origin, sizeof(origin), 
+			NULL, NULL, 0, B_FALSE);
+                     
+		if (zfs_linux_remove_entry(mountpoint, zhp->zfs_name, 
+			MTAB_FILE) != 0) { 
+			return (zfs_error_fmt(hdl, EZFS_UMOUNTFAILED,
+					dgettext(TEXT_DOMAIN, "failed to remove"
+					" in /etc/mtab '%s'"), zhp->zfs_name));
+		}
+
+		if (zfs_linux_add_entry(mountpoint, zhp->zfs_name, MTAB_FILE, 
+			!strcmp("on", origin) ? MNTOPT_RO : MNTOPT_RW) != 0) { 
+				return (zfs_error_fmt(hdl, EZFS_MOUNTFAILED,
+					dgettext(TEXT_DOMAIN, "failed to add in"
+					" /etc/mtab '%s'"), zhp->zfs_name));
+		}    
+	}    
 #endif
 	return (0);
 }
