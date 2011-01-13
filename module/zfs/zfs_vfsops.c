@@ -1840,27 +1840,11 @@ zfs_root(vfs_t *vfsp, vnode_t **vpp)
 	*vpp = NULL;
 
 	error = zfs_zget(zfsvfs, zfsvfs->z_root, &rootzp);
-	printk("error %d function %s \n", error, __FUNCTION__);
-	printk("inode %lu at %s function %d line \n",rootzp->z_vnode->v_inode.i_ino, __FUNCTION__, __LINE__);
 	if (error == 0) {
 	        *vpp = ZTOV(rootzp);
 	}
 	*vpp = rootzp->z_vnode;
-/*
-	printk("inode %lu at %s function %d line \n", LZFS_VTOI(ZTOV(rootzp))->i_ino, __FUNCTION__, __LINE__);
-        printk("root_vnode %p root_inode %p function %s \n", ZTOV(rootzp),LZFS_VTOI(ZTOV(rootzp)) ,__FUNCTION__);
-        printk("root_vnode %p v_file %p function %s \n", ZTOV(rootzp),&(ZTOV(rootzp))->v_file,__FUNCTION__);
-        printk("root_vnode %p v_lock %p function %s \n", ZTOV(rootzp),&(ZTOV(rootzp))->v_lock,__FUNCTION__);
-        printk("root_vnode %p  v_flag %p function %s \n", ZTOV(rootzp),&(ZTOV(rootzp))-> v_flag,__FUNCTION__);
-        printk("root_vnode %p v_data %p function %s \n", ZTOV(rootzp),&(ZTOV(rootzp))->v_data,__FUNCTION__);
-        printk("root_vnode %p v_vfsp %p function %s \n", ZTOV(rootzp),&(ZTOV(rootzp))->v_vfsp,__FUNCTION__);
-        printk("root_vnode %p v_stream %p function %s \n", ZTOV(rootzp),&(ZTOV(rootzp))->v_stream,__FUNCTION__);
-        printk("root_vnode %p v_type %p function %s \n", ZTOV(rootzp),&(ZTOV(rootzp))->v_type,__FUNCTION__);
-        printk("root_vnode %p v_rdev %p function %s \n", ZTOV(rootzp),&(ZTOV(rootzp))->v_rdev,__FUNCTION__);
-        printk("root_vnode %p  v_gfp_mask %p function %s \n", ZTOV(rootzp),&(ZTOV(rootzp))-> v_gfp_mask,__FUNCTION__);
-        printk("root_vnode %p v_inode %p function %s \n", ZTOV(rootzp),&(ZTOV(rootzp))->v_inode,__FUNCTION__);
-	printk("mutext size %lu  function %s \n", sizeof(kmutex_t), __FUNCTION__ );
-*/
+
 	ZFS_EXIT(zfsvfs);
 	return (error);
 }
@@ -2148,7 +2132,6 @@ zfs_vget(vfs_t *vfsp, vnode_t **vpp, fid_t *fidp)
 
 EXPORT_SYMBOL(zfs_vget);
 
-#ifdef HAVE_ZPL
 /*
  * Block out VOPs and close zfsvfs_t::z_os
  *
@@ -2226,12 +2209,14 @@ bail:
 		 * Since we couldn't reopen zfsvfs::z_os, force
 		 * unmount this file system.
 		 */
-		if (vn_vfswlock(zfsvfs->z_vfs->vfs_vnodecovered) == 0)
-			(void) dounmount(zfsvfs->z_vfs, MS_FORCE, CRED());
+		/* TODO : unmounting the file system is going to be fixed.*/
+		//if (vn_vfswlock(zfsvfs->z_vfs->vfs_vnodecovered) == 0)
+		//	(void) dounmount(zfsvfs->z_vfs, MS_FORCE, CRED());
 	}
 	return (err);
 }
 
+#ifdef HAVE_ZPL
 static void
 zfs_freevfs(vfs_t *vfsp)
 {

@@ -3209,7 +3209,6 @@ zfs_ioc_destroy(zfs_cmd_t *zc)
 static int
 zfs_ioc_rollback(zfs_cmd_t *zc)
 {
-#ifdef HAVE_ZPL
 	dsl_dataset_t *ds, *clone;
 	int error;
 	zfsvfs_t *zfsvfs;
@@ -3283,9 +3282,6 @@ out:
 	if (ds)
 		dsl_dataset_rele(ds, FTAG);
 	return (error);
-#else
-	return (ENOTSUP);
-#endif /* HAVE_ZPL */
 }
 
 /*
