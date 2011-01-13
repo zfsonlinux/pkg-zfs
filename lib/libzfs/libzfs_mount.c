@@ -344,10 +344,6 @@ zfs_mount(zfs_handle_t *zhp, const char *options, int flags)
 
 	if (!zfs_is_mountable(zhp, mountpoint, sizeof (mountpoint), NULL))
 		return (0);
-	/*
-	 * Removing extra slashes from mountpoint
-	 */
-	zfs_linux_remove_slash(mountpoint);
 
 	/* Create the directory if it doesn't already exist */
 	if (lstat(mountpoint, &buf) != 0) {
