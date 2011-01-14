@@ -107,4 +107,5 @@ EXTRA_DIST = \
 	$(top_srcdir)/module/zfs/zfs_vfsops.c \
 	$(top_srcdir)/module/zfs/zfs_vnops.c \
 	$(top_srcdir)/module/zfs/zvol.c \
-	$(top_srcdir)/module/zpios/pios.c
+	$(top_srcdir)/module/zpios/pios.c \
+	$(top_srcdir)/module/zcommon/zmove.c
