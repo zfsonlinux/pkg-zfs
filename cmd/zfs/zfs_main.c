@@ -56,6 +56,7 @@
 #include "zfs_iter.h"
 #include "zfs_util.h"
 #include "zfs_comutil.h"
+#include "libzfs_mtab.h"
 
 libzfs_handle_t *g_zfs;
 
@@ -475,7 +476,6 @@ parseprop(nvlist_t *props)
 {
 	char *propname = optarg;
 	char *propval, *strval;
-	char *property = "casesensitivity";
 
 	if ((propval = strchr(propname, '=')) == NULL) {
 		(void) fprintf(stderr, gettext("missing "
@@ -489,10 +489,24 @@ parseprop(nvlist_t *props)
 		    "specified multiple times\n"), propname);
 		return (-1);
 	}
-        if (strncmp(property, propname, strlen(property)) == 0) {
-                (void) fprintf(stderr,"The casesensitivity property is not supported on Linux.\n");
-                return (-1);
-        }
+
+	{
+		zfs_prop_t prop = zfs_name_to_prop(propname);
+
+		if (prop == ZFS_PROP_CASE) {
+                	(void) fprintf(stderr,"The casesensitivity property is "
+					"not supported on Linux.\n");
+        	        return (-1);
+        	}
+		if (prop == ZFS_PROP_MOUNTPOINT) 
+			zfs_linux_remove_slash(propval);
+		if (prop == ZFS_PROP_DEVICES) {
+			(void) fprintf(stderr,"The devices property is not "
+				"supported on Linux.\n");
+			return (-1);
+		}
+	}
+
 	if (nvlist_add_string(props, propname, propval) != 0)
 		nomem();
 	return (0);
@@ -2549,7 +2563,6 @@ static int
 zfs_do_set(int argc, char **argv)
 {
 	set_cbdata_t cb;
-        char *property = "casesensitivity";
 	int ret;
 
 	/* check for options */
@@ -2581,17 +2594,29 @@ zfs_do_set(int argc, char **argv)
 	*cb.cb_value = '\0';
 	cb.cb_value++;
 
-        if (strncmp(property,cb.cb_propname, strlen(property)) == 0) {
-                (void) fprintf(stderr,"The casesensitivity property is not supported on linux.\n");
-                return (-1);
-        }
-
 	if (*cb.cb_propname == '\0') {
 		(void) fprintf(stderr,
 		    gettext("missing property in property=value argument\n"));
 		usage(B_FALSE);
 	}
 
+	{
+		zfs_prop_t prop = zfs_name_to_prop(cb.cb_propname);
+
+		if (prop == ZFS_PROP_CASE) {
+			(void) fprintf(stderr,"The casesensitivity property is "
+					"not supported on Linux.\n");
+			return (-1);
+		}
+		if (prop == ZFS_PROP_MOUNTPOINT)
+			zfs_linux_remove_slash(cb.cb_value);
+		if (prop == ZFS_PROP_DEVICES) {
+			(void) fprintf(stderr,"The devices property is not "
+					"supported on Linux.\n");
+			return (-1);
+		}
+	}
+	
 	ret = zfs_for_each(argc - 2, argv + 2, 0,
 	    ZFS_TYPE_DATASET, NULL, NULL, 0, set_callback, &cb);
 
