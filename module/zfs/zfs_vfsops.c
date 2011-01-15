@@ -2199,10 +2199,8 @@ zfs_resume_fs(zfsvfs_t *zfsvfs, const char *osname)
 
 bail:
 	/* release the VOPs */
-#ifdef HAVE_ZPL
 	rw_exit(&zfsvfs->z_teardown_inactive_lock);
 	rrw_exit(&zfsvfs->z_teardown_lock, FTAG);
-#endif 
 
 	if (err) {
 		/*
