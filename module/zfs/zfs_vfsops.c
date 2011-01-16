@@ -1073,12 +1073,28 @@ out:
 static int
 zfsvfs_setup(zfsvfs_t *zfsvfs, boolean_t mounting)
 {
-#if defined(HAVE_ZPL)
 	int error;
-	error = zfs_register_callbacks(zfsvfs->z_vfs);
-	if (error)
-		return (error);
-#endif
+
+	/* KQI: Prasad
+	   mounting == FALSE
+	   		Register back the callbacks, the callbacks are removed as a 
+			process of rollback. Once the process finishes the callbacks 
+			need to be restored. zfs_resume_fs() calls zfsvfs_setup() 
+			with false value
+
+		mounting == TRUE
+			Do not register callbacks, this happens when a file system is 
+			mounted for the first time. ie. get_sb() calls fill_super() 
+			which results in call to this function. We are registering 
+			callback in get_sb(). So don't do it now.
+			Registering the callbacks now cacuses kernel panic. Need to 
+			look at more closely for better solution.
+	 */
+	if (mounting == B_FALSE) {
+		error = zfs_register_callbacks(zfsvfs->z_vfs);
+		if (error)
+			return (error);
+	}
 
 	/*
 	 * Set the objset user_ptr to track its zfsvfs.
