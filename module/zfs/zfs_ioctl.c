@@ -4117,10 +4117,12 @@ zfs_ioc_userspace_many(zfs_cmd_t *zc)
 	if (bufsize <= 0)
 		goto out;
 
-	buf = kmem_alloc(bufsize, KM_SLEEP);
+	/* XXX (KQI) This function always allocates memory more then 2 Pages. 
+	   We may want to change this behavior.
+	 */
+	buf = kmem_zalloc(bufsize, KM_SLEEP);
 	if (unlikely(!buf))
 		goto out;
-	bzero(buf, bufsize);
 
 	error = zfsvfs_hold(zc->zc_name, FTAG, &zfsvfs, B_FALSE);
 	if (error)
