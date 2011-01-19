@@ -4108,19 +4108,23 @@ zfs_ioc_userspace_one(zfs_cmd_t *zc)
 static int
 zfs_ioc_userspace_many(zfs_cmd_t *zc)
 {
+	/* This function has been modified by KQI */
 	zfsvfs_t *zfsvfs;
 	int bufsize = zc->zc_nvlist_dst_size;
-
-	int error = 0;
-	void *buf = kmem_alloc(bufsize, KM_SLEEP);
-	bzero(buf, bufsize);
+	int error = ENOMEM;
+	void *buf = NULL;
 
 	if (bufsize <= 0)
-		return (ENOMEM);
+		goto out;
+
+	buf = kmem_alloc(bufsize, KM_SLEEP);
+	if (unlikely(!buf))
+		goto out;
+	bzero(buf, bufsize);
 
 	error = zfsvfs_hold(zc->zc_name, FTAG, &zfsvfs, B_FALSE);
 	if (error)
-		return (error);
+		goto out;
 
 	error = zfs_userspace_many(zfsvfs, zc->zc_objset_type, &zc->zc_cookie,
 	    buf, &zc->zc_nvlist_dst_size);
@@ -4130,9 +4134,11 @@ zfs_ioc_userspace_many(zfs_cmd_t *zc)
 		    (void *)(uintptr_t)zc->zc_nvlist_dst,
 		    zc->zc_nvlist_dst_size);
 	}
-	kmem_free(buf, bufsize);
 	zfsvfs_rele(zfsvfs, FTAG);
 
+out:
+	if (buf)
+		kmem_free(buf, bufsize);
 	return (error);
 }
 
