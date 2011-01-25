@@ -4738,7 +4738,8 @@ zfs_ioc_events_next(zfs_cmd_t *zc)
 		return (error);
 
 	do {
-		error = zfs_zevent_next(ze, &event, &dropped);
+		error = zfs_zevent_next(ze, &event,
+			&zc->zc_nvlist_dst_size, &dropped);
 		if (event != NULL) {
 			zc->zc_cookie = dropped;
 			error = put_nvlist(zc, event);
