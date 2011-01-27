@@ -44,6 +44,7 @@ am__aclocal_m4_deps =  \
 	$(top_srcdir)/config/kernel-bdev-logical-size.m4 \
 	$(top_srcdir)/config/kernel-bio-empty-barrier.m4 \
 	$(top_srcdir)/config/kernel-bio-end-io-t-args.m4 \
+	$(top_srcdir)/config/kernel-bio-failfast.m4 \
 	$(top_srcdir)/config/kernel-bio-rw-syncio.m4 \
 	$(top_srcdir)/config/kernel-blk-end-request.m4 \
 	$(top_srcdir)/config/kernel-blk-fetch-request.m4 \
@@ -348,6 +349,7 @@ libspl_HEADERS = \
 	$(top_srcdir)/lib/libspl/include/sys/processor.h \
 	$(top_srcdir)/lib/libspl/include/sys/sdt.h \
 	$(top_srcdir)/lib/libspl/include/sys/stack.h \
+	$(top_srcdir)/lib/libspl/include/sys/stat.h \
 	$(top_srcdir)/lib/libspl/include/sys/stropts.h \
 	$(top_srcdir)/lib/libspl/include/sys/sunddi.h \
 	$(top_srcdir)/lib/libspl/include/sys/sysevent.h \

@@ -40,6 +40,7 @@
 #include <sys/mnttab.h>
 #include <sys/mntent.h>
 #include <sys/types.h>
+#include <wait.h>
 #include <libzfs.h>
 #include <sys/stat.h>
 #include "libzfs_impl.h"
@@ -602,6 +603,68 @@ libzfs_print_on_error(libzfs_handle_t *hdl, boolean_t printerr)
 	hdl->libzfs_printerr = printerr;
 }
 
+static int
+libzfs_module_loaded(const char *module)
+{
+	FILE *f;
+	int result = 0;
+	char name[256];
+
+	f = fopen("/proc/modules", "r");
+	if (f == NULL)
+		return -1;
+
+	while (fgets(name, sizeof(name), f)) {
+		char *c = strchr(name, ' ');
+		if (!c)
+			continue;
+		*c = 0;
+		if (strcmp(module, name) == 0) {
+			result = 1;
+			break;
+		}
+	}
+	fclose(f);
+
+	return result;
+}
+
+static int
+libzfs_run_process(const char *path, char *argv[])
+{
+	pid_t pid;
+	int rc;
+
+	pid = vfork();
+	if (pid == 0) {
+		close(1);
+		close(2);
+		(void) execvp(path, argv);
+		_exit(-1);
+	} else if (pid > 0) {
+		int status;
+
+		while ((rc = waitpid(pid, &status, 0)) == -1 &&
+			errno == EINTR);
+		if (rc < 0 || !WIFEXITED(status))
+			return -1;
+
+		return WEXITSTATUS(status);
+	}
+
+	return -1;
+}
+
+static int
+libzfs_load_module(const char *module)
+{
+	char *argv[4] = {"/sbin/modprobe", "-q", (char *)module, (char *)0};
+
+	if (libzfs_module_loaded(module))
+		return 0;
+	return libzfs_run_process("/sbin/modprobe", argv);
+}
+
 libzfs_handle_t *
 libzfs_init(void)
 {
@@ -622,6 +685,13 @@ libzfs_init(void)
 		}
 	} else close(fd);
 
+
+	if (libzfs_load_module("zfs") != 0) {
+		(void) fprintf(stderr, gettext("Failed to load ZFS module "
+			       "stack.\nLoad the module manually by running "
+			       "'insmod <location>/zfs.ko' as root.\n"));
+		return (NULL);
+	}
 
 	if ((hdl = calloc(1, sizeof (libzfs_handle_t))) == NULL) {
 		return (NULL);
@@ -743,6 +813,46 @@ zfs_path_to_zhandle(libzfs_handle_t *hdl, char *path, zfs_type_t argtype)
 	}
 
 	return (zfs_open(hdl, entry.mnt_special, ZFS_TYPE_FILESYSTEM));
+}
+
+/*
+ * Given a shorthand device name, check if a file by that name exists in a list
+ * of directories under /dev.  If one is found, store its full path in the
+ * buffer pointed to by the path argument and return 0, else return -1.  The
+ * path buffer must be allocated by the caller.
+ */
+int
+zfs_resolve_shortname(const char *name, char *path, size_t pathlen)
+{
+	int i, err;
+	char dirs[5][9] = {"by-id", "by-label", "by-path", "by-uuid", "zpool"};
+
+	(void) snprintf(path, pathlen, "%s/%s", DISK_ROOT, name);
+	err = access(path, F_OK);
+	for (i = 0; i < 5 && err < 0; i++) {
+		(void) snprintf(path, pathlen, "%s/%s/%s",
+		    UDISK_ROOT, dirs[i], name);
+		err = access(path, F_OK);
+	}
+	return err;
+}
+
+/*
+ * Append partition suffix to a device path.  This should be used to generate
+ * the name of a whole disk as it is stored in the vdev label.  The
+ * user-visible names of whole disks do not contain the partition information.
+ * Modifies buf which must be allocated by the caller.
+ */
+void
+zfs_append_partition(const char *path, char *buf, size_t buflen)
+{
+	if (strncmp(path, UDISK_ROOT, strlen(UDISK_ROOT)) == 0)
+		(void) snprintf(buf, buflen, "%s%s%s", path, "-part",
+			FIRST_SLICE);
+	else
+		(void) snprintf(buf, buflen, "%s%s%s", path,
+			isdigit(path[strlen(path)-1]) ?  "p" : "",
+			FIRST_SLICE);
 }
 
 /*

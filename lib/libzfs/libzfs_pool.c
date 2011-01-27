@@ -1644,38 +1644,6 @@ zpool_scan(zpool_handle_t *zhp, pool_scan_func_t func)
 }
 
 /*
- * This provides a very minimal check whether a given string is likely a
- * c#t#d# style string.  Users of this are expected to do their own
- * verification of the s# part.
- */
-#define	CTD_CHECK(str)  (str && str[0] == 'c' && isdigit(str[1]))
-
-/*
- * More elaborate version for ones which may start with "/dev/dsk/"
- * and the like.
- */
-static int
-ctd_check_path(char *str) {
-	/*
-	 * If it starts with a slash, check the last component.
-	 */
-	if (str && str[0] == '/') {
-		char *tmp = strrchr(str, '/');
-
-		/*
-		 * If it ends in "/old", check the second-to-last
-		 * component of the string instead.
-		 */
-		if (tmp != str && strcmp(tmp, "/old") == 0) {
-			for (tmp--; *tmp != '/'; tmp--)
-				;
-		}
-		str = tmp + 1;
-	}
-	return (CTD_CHECK(str));
-}
-
-/*
  * Find a vdev that matches the search criteria specified. We use the
  * the nvpair name to determine how we should look for the device.
  * 'avail_spare' is set to TRUE if the provided guid refers to an AVAIL
@@ -1722,47 +1690,24 @@ vdev_to_nvlist_iter(nvlist_t *nv, nvlist_t *search, boolean_t *avail_spare,
 		/*
 		 * Search for the requested value. Special cases:
 		 *
-		 * - ZPOOL_CONFIG_PATH for whole disk entries.  These end in
-		 *   "s0" or "s0/old".  The "s0" part is hidden from the user,
-		 *   but included in the string, so this matches around it.
+		 * - ZPOOL_CONFIG_PATH for whole disk entries.  These end in with a
+		 *   partition suffix "1", "-part1", or "p1".  The suffix is  hidden
+		 *   from the user, but included in the string, so this matches around
+		 *   it.
 		 * - looking for a top-level vdev name (i.e. ZPOOL_CONFIG_TYPE).
 		 *
 		 * Otherwise, all other searches are simple string compares.
 		 */
-		if (strcmp(srchkey, ZPOOL_CONFIG_PATH) == 0 &&
-		    ctd_check_path(val)) {
+		if (strcmp(srchkey, ZPOOL_CONFIG_PATH) == 0) {
 			uint64_t wholedisk = 0;
 
 			(void) nvlist_lookup_uint64(nv, ZPOOL_CONFIG_WHOLE_DISK,
 			    &wholedisk);
 			if (wholedisk) {
-				int slen = strlen(srchval);
-				int vlen = strlen(val);
+				char buf[MAXPATHLEN];
 
-				if (slen != vlen - 2)
-					break;
-
-				/*
-				 * make_leaf_vdev() should only set
-				 * wholedisk for ZPOOL_CONFIG_PATHs which
-				 * will include "/dev/dsk/", giving plenty of
-				 * room for the indices used next.
-				 */
-				ASSERT(vlen >= 6);
-
-				/*
-				 * strings identical except trailing "s0"
-				 */
-				if (strcmp(&val[vlen - 2], "s0") == 0 &&
-				    strncmp(srchval, val, slen) == 0)
-					return (nv);
-
-				/*
-				 * strings identical except trailing "s0/old"
-				 */
-				if (strcmp(&val[vlen - 6], "s0/old") == 0 &&
-				    strcmp(&srchval[slen - 4], "/old") == 0 &&
-				    strncmp(srchval, val, slen - 4) == 0)
+				zfs_append_partition(srchval, buf, sizeof (buf));
+				if (strcmp(val, buf) == 0)
 					return (nv);
 
 				break;
@@ -1930,7 +1875,10 @@ zpool_find_vdev(zpool_handle_t *zhp, const char *path, boolean_t *avail_spare,
 	} else if (zpool_vdev_is_interior(path)) {
 		verify(nvlist_add_string(search, ZPOOL_CONFIG_TYPE, path) == 0);
 	} else if (path[0] != '/') {
-		(void) snprintf(buf, sizeof (buf), "%s/%s", DISK_ROOT, path);
+		if (zfs_resolve_shortname(path, buf, sizeof (buf)) < 0) {
+			nvlist_free(search);
+			return (NULL);
+		}
 		verify(nvlist_add_string(search, ZPOOL_CONFIG_PATH, buf) == 0);
 	} else {
 		verify(nvlist_add_string(search, ZPOOL_CONFIG_PATH, path) == 0);
@@ -3049,6 +2997,35 @@ set_path(zpool_handle_t *zhp, nvlist_t *nv, const char *path)
 #define PATH_BUF_LEN    64
 
 /*
+ * Remove partition suffix from a vdev path.  Partition suffixes may take three
+ * forms: "-partX", "pX", or "X", where X is a string of digits.  The second
+ * case only occurs when the suffix is preceded by a digit, i.e. "md0p0" The
+ * third case only occurs when preceded by a string matching the regular
+ * expression "^[hs]d[a-z]+", i.e. a scsi or ide disk.
+ */
+static char *
+strip_partition(libzfs_handle_t *hdl, char *path)
+{
+	char *tmp = zfs_strdup(hdl, path);
+	char *part = NULL, *d = NULL;
+
+	if ((part = strstr(tmp, "-part")) && part != tmp) {
+		d = part + 5;
+	} else if ((part = strrchr(tmp, 'p')) &&
+	    part > tmp + 1 && isdigit(*(part-1))) {
+		d = part + 1;
+	} else if ((tmp[0] == 'h' || tmp[0] == 's') && tmp[1] == 'd') {
+		for (d = &tmp[2]; isalpha(*d); part = ++d);
+	}
+	if (part && d && *d != '\0') {
+		for (; isdigit(*d); d++);
+		if (*d == '\0')
+			*part = '\0';
+	}
+	return (tmp);
+}
+
+/*
  * Given a vdev, return the name to display in iostat.  If the vdev has a path,
  * we use that, stripping off any leading "/dev/dsk/"; if not, we use the type.
  * We also check if this is a whole disk, in which case we strip off the
@@ -3128,32 +3105,13 @@ zpool_vdev_name(libzfs_handle_t *hdl, zpool_handle_t *zhp, nvlist_t *nv,
 			path++;
 		}
 
-#if defined(__sun__) || defined(__sun)
 		/*
-		 * The following code strips the slice from the device path.
+		 * Remove the partition from the path it this is a whole disk.
 		 */
 		if (nvlist_lookup_uint64(nv, ZPOOL_CONFIG_WHOLE_DISK,
 		    &value) == 0 && value) {
-			int pathlen = strlen(path);
-			char *tmp = zfs_strdup(hdl, path);
-
-			/*
-			 * If it starts with c#, and ends with "s0", chop
-			 * the "s0" off, or if it ends with "s0/old", remove
-			 * the "s0" from the middle.
-			 */
-			if (CTD_CHECK(tmp)) {
-				if (strcmp(&tmp[pathlen - 2], "s0") == 0) {
-					tmp[pathlen - 2] = '\0';
-				} else if (pathlen > 6 &&
-				    strcmp(&tmp[pathlen - 6], "s0/old") == 0) {
-					(void) strcpy(&tmp[pathlen - 6],
-					    "/old");
-				}
-			}
-			return (tmp);
+			return strip_partition(hdl, path);
 		}
-#endif
 	} else {
 		verify(nvlist_lookup_string(nv, ZPOOL_CONFIG_TYPE, &path) == 0);
 
@@ -3162,6 +3120,7 @@ zpool_vdev_name(libzfs_handle_t *hdl, zpool_handle_t *zhp, nvlist_t *nv,
 		 */
 		if (strcmp(path, VDEV_TYPE_RAIDZ) == 0) {
                         char tmpbuf[PATH_BUF_LEN];
+
 			verify(nvlist_lookup_uint64(nv, ZPOOL_CONFIG_NPARITY,
 			    &value) == 0);
 			(void) snprintf(tmpbuf, sizeof (tmpbuf), "%s%llu", path,
