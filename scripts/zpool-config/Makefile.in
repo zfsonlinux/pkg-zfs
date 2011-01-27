@@ -43,6 +43,7 @@ am__aclocal_m4_deps =  \
 	$(top_srcdir)/config/kernel-bdev-logical-size.m4 \
 	$(top_srcdir)/config/kernel-bio-empty-barrier.m4 \
 	$(top_srcdir)/config/kernel-bio-end-io-t-args.m4 \
+	$(top_srcdir)/config/kernel-bio-failfast.m4 \
 	$(top_srcdir)/config/kernel-bio-rw-syncio.m4 \
 	$(top_srcdir)/config/kernel-blk-end-request.m4 \
 	$(top_srcdir)/config/kernel-blk-fetch-request.m4 \
@@ -272,32 +273,34 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 dist_pkglibexec_SCRIPTS = \
-        $(top_srcdir)/scripts/zpool-config/dm0-raid0.sh \
-        $(top_srcdir)/scripts/zpool-config/dragon-raid0-1x70.sh \
-        $(top_srcdir)/scripts/zpool-config/dragon-raid10-35x2.sh \
-        $(top_srcdir)/scripts/zpool-config/dragon-raidz2-7x10.sh \
-        $(top_srcdir)/scripts/zpool-config/dragon-raidz-7x10.sh \
-        $(top_srcdir)/scripts/zpool-config/file-raid0.sh \
-        $(top_srcdir)/scripts/zpool-config/file-raid10.sh \
-        $(top_srcdir)/scripts/zpool-config/file-raidz2.sh \
-        $(top_srcdir)/scripts/zpool-config/file-raidz.sh \
-        $(top_srcdir)/scripts/zpool-config/hda-raid0.sh \
-        $(top_srcdir)/scripts/zpool-config/lo-raid0.sh \
-        $(top_srcdir)/scripts/zpool-config/lo-raid10.sh \
-        $(top_srcdir)/scripts/zpool-config/lo-raidz2.sh \
-        $(top_srcdir)/scripts/zpool-config/lo-raidz.sh \
-        $(top_srcdir)/scripts/zpool-config/md0-raid10.sh \
-        $(top_srcdir)/scripts/zpool-config/md0-raid5.sh \
-        $(top_srcdir)/scripts/zpool-config/ram0-raid0.sh \
-        $(top_srcdir)/scripts/zpool-config/sda-raid0.sh \
-        $(top_srcdir)/scripts/zpool-config/supermicro-raid0-1x16.sh \
-        $(top_srcdir)/scripts/zpool-config/supermicro-raid10-8x2.sh \
-        $(top_srcdir)/scripts/zpool-config/supermicro-raidz2-4x4.sh \
-        $(top_srcdir)/scripts/zpool-config/supermicro-raidz-4x4.sh \
-        $(top_srcdir)/scripts/zpool-config/x4550-raid0-1x48.sh \
-        $(top_srcdir)/scripts/zpool-config/x4550-raid10-24x2.sh \
-        $(top_srcdir)/scripts/zpool-config/x4550-raidz2-8x6.sh \
-        $(top_srcdir)/scripts/zpool-config/x4550-raidz-8x6.sh
+	$(top_srcdir)/scripts/zpool-config/dm0-raid0.sh \
+	$(top_srcdir)/scripts/zpool-config/file-raid0.sh \
+	$(top_srcdir)/scripts/zpool-config/file-raid10.sh \
+	$(top_srcdir)/scripts/zpool-config/file-raidz2.sh \
+	$(top_srcdir)/scripts/zpool-config/file-raidz.sh \
+	$(top_srcdir)/scripts/zpool-config/hda-raid0.sh \
+	$(top_srcdir)/scripts/zpool-config/lo-raid0.sh \
+	$(top_srcdir)/scripts/zpool-config/lo-raid10.sh \
+	$(top_srcdir)/scripts/zpool-config/lo-raidz2.sh \
+	$(top_srcdir)/scripts/zpool-config/lo-raidz.sh \
+	$(top_srcdir)/scripts/zpool-config/lo-faulty-raid0.sh \
+	$(top_srcdir)/scripts/zpool-config/lo-faulty-raid10.sh \
+	$(top_srcdir)/scripts/zpool-config/lo-faulty-raidz.sh \
+	$(top_srcdir)/scripts/zpool-config/lo-faulty-raidz2.sh \
+	$(top_srcdir)/scripts/zpool-config/lo-faulty-raidz3.sh \
+	$(top_srcdir)/scripts/zpool-config/md0-raid10.sh \
+	$(top_srcdir)/scripts/zpool-config/md0-raid5.sh \
+	$(top_srcdir)/scripts/zpool-config/ram0-raid0.sh \
+	$(top_srcdir)/scripts/zpool-config/scsi_debug-noraid.sh \
+	$(top_srcdir)/scripts/zpool-config/scsi_debug-raid0.sh \
+	$(top_srcdir)/scripts/zpool-config/scsi_debug-raid10.sh \
+	$(top_srcdir)/scripts/zpool-config/scsi_debug-raidz.sh \
+	$(top_srcdir)/scripts/zpool-config/scsi_debug-raidz2.sh \
+	$(top_srcdir)/scripts/zpool-config/scsi_debug-raidz3.sh \
+	$(top_srcdir)/scripts/zpool-config/sda-raid0.sh \
+	$(top_srcdir)/scripts/zpool-config/zpool-raid0.sh \
+	$(top_srcdir)/scripts/zpool-config/zpool-raid10.sh \
+	$(top_srcdir)/scripts/zpool-config/zpool-raidz.sh
 
 all: all-am
 

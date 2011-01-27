@@ -15,6 +15,18 @@
 /* bio_empy_barrier() is defined */
 #undef HAVE_BIO_EMPTY_BARRIER
 
+/* REQ_FAILFAST_MASK is defined */
+#undef HAVE_BIO_REQ_FAILFAST_MASK
+
+/* BIO_RW_FAILFAST is defined */
+#undef HAVE_BIO_RW_FAILFAST
+
+/* BIO_RW_FAILFAST_* are defined */
+#undef HAVE_BIO_RW_FAILFAST_DTD
+
+/* BIO_RW_SYNC is defined */
+#undef HAVE_BIO_RW_SYNC
+
 /* BIO_RW_SYNCIO is defined */
 #undef HAVE_BIO_RW_SYNCIO
 
@@ -86,6 +98,9 @@
 
 /* open_bdev_exclusive() is available */
 #undef HAVE_OPEN_BDEV_EXCLUSIVE
+
+/* REQ_SYNC is defined */
+#undef HAVE_REQ_SYNC
 
 /* rq_for_each_segment() is available */
 #undef HAVE_RQ_FOR_EACH_SEGMENT

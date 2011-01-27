@@ -39,7 +39,7 @@ LDMOD=/sbin/insmod
 
 KERNEL_MODULES=(                                      \
         ${KERNELMOD}/lib/zlib_deflate/zlib_deflate.ko \
-        ${KERNELMOD}/lib/zlib_deflate/zlib_inflate.ko \
+        ${KERNELMOD}/lib/zlib_inflate/zlib_inflate.ko \
 )
 
 SPL_MODULES=(                                         \
