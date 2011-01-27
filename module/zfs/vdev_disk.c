@@ -91,6 +91,17 @@ bdev_capacity(struct block_device *bdev)
 	return get_capacity(bdev->bd_disk);
 }
 
+static void
+vdev_disk_error(zio_t *zio)
+{
+#ifdef ZFS_DEBUG
+	printk("ZFS: zio error=%d type=%d offset=%llu size=%llu "
+	    "flags=%x delay=%llu\n", zio->io_error, zio->io_type,
+	    (u_longlong_t)zio->io_offset, (u_longlong_t)zio->io_size,
+	    zio->io_flags, (u_longlong_t)zio->io_delay);
+#endif
+}
+
 static int
 vdev_disk_open(vdev_t *v, uint64_t *psize, uint64_t *ashift)
 {
@@ -133,9 +144,19 @@ vdev_disk_open(vdev_t *v, uint64_t *psize, uint64_t *ashift)
 	vd->vd_bdev = bdev;
 	block_size =  vdev_bdev_block_size(bdev);
 
-	/* Check if this is a whole device.  When bdev->bd_contains ==
-	 * bdev we have a whole device and not simply a partition. */
-	v->vdev_wholedisk = !!(bdev->bd_contains == bdev);
+	/* We think the wholedisk property should always be set when this
+	 * function is called.  ASSERT here so if any legitimate cases exist
+	 * where it's not set, we'll find them during debugging.  If we never
+	 * hit the ASSERT, this and the following conditional statement can be
+	 * removed. */
+	ASSERT3S(v->vdev_wholedisk, !=, -1ULL);
+
+	/* The wholedisk property was initialized to -1 in vdev_alloc() if it
+	 * was unspecified.  In that case, check if this is a whole device.
+	 * When bdev->bd_contains == bdev we have a whole device and not simply
+	 * a partition. */
+	if (v->vdev_wholedisk == -1ULL)
+		v->vdev_wholedisk = (bdev->bd_contains == bdev);
 
 	/* Clear the nowritecache bit, causes vdev_reopen() to try again. */
 	v->vdev_nowritecache = B_FALSE;
@@ -199,6 +220,27 @@ vdev_disk_dio_free(dio_request_t *dr)
 	          sizeof(struct bio *) * dr->dr_bio_count);
 }
 
+static int
+vdev_disk_dio_is_sync(dio_request_t *dr)
+{
+#ifdef HAVE_BIO_RW_SYNC
+	/* BIO_RW_SYNC preferred interface from 2.6.12-2.6.29 */
+        return (dr->dr_rw & (1 << BIO_RW_SYNC));
+#else
+# ifdef HAVE_BIO_RW_SYNCIO
+	/* BIO_RW_SYNCIO preferred interface from 2.6.30-2.6.35 */
+        return (dr->dr_rw & (1 << BIO_RW_SYNCIO));
+# else
+#  ifdef HAVE_REQ_SYNC
+	/* REQ_SYNC preferred interface from 2.6.36-2.6.xx */
+        return (dr->dr_rw & REQ_SYNC);
+#  else
+#   error "Unable to determine bio sync flag"
+#  endif /* HAVE_REQ_SYNC */
+# endif /* HAVE_BIO_RW_SYNC */
+#endif /* HAVE_BIO_RW_SYNCIO */
+}
+
 static void
 vdev_disk_dio_get(dio_request_t *dr)
 {
@@ -221,7 +263,12 @@ vdev_disk_dio_put(dio_request_t *dr)
 		vdev_disk_dio_free(dr);
 
 		if (zio) {
+			zio->io_delay = jiffies_to_msecs(
+			    jiffies_64 - zio->io_delay);
 			zio->io_error = error;
+			ASSERT3S(zio->io_error, >=, 0);
+			if (zio->io_error)
+				vdev_disk_error(zio);
 			zio_interrupt(zio);
 		}
 	}
@@ -249,16 +296,16 @@ BIO_END_IO_PROTO(vdev_disk_physio_completion, bio, size, error)
 #endif /* HAVE_2ARGS_BIO_END_IO_T */
 
 	if (error == 0 && !test_bit(BIO_UPTODATE, &bio->bi_flags))
-		error = EIO;
+		error = -EIO;
 
 	if (dr->dr_error == 0)
-		dr->dr_error = error;
+		dr->dr_error = -error;
 
 	/* Drop reference aquired by __vdev_disk_physio */
 	rc = vdev_disk_dio_put(dr);
 
 	/* Wake up synchronous waiter this is the last outstanding bio */
-	if ((rc == 1) && (dr->dr_rw & (1 << DIO_RW_SYNCIO)))
+	if ((rc == 1) && vdev_disk_dio_is_sync(dr))
 		complete(&dr->dr_comp);
 
 	BIO_END_IO_RETURN(0);
@@ -313,19 +360,19 @@ __vdev_disk_physio(struct block_device *bdev, zio_t *zio, caddr_t kbuf_ptr,
 	int bio_size, bio_count = 16;
 	int i = 0, error = 0, block_size;
 
+	ASSERT3U(kbuf_offset + kbuf_size, <=, bdev->bd_inode->i_size);
+
 retry:
 	dr = vdev_disk_dio_alloc(bio_count);
 	if (dr == NULL)
 		return ENOMEM;
 
+	if (zio && !(zio->io_flags & (ZIO_FLAG_IO_RETRY | ZIO_FLAG_TRYHARD)))
+			bio_set_flags_failfast(bdev, &flags);
+
 	dr->dr_zio = zio;
 	dr->dr_rw = flags;
 	block_size = vdev_bdev_block_size(bdev);
-
-#ifdef BIO_RW_FAILFAST
-	if (flags & (1 << BIO_RW_FAILFAST))
-		dr->dr_rw |= 1 << BIO_RW_FAILFAST;
-#endif /* BIO_RW_FAILFAST */
 
 	/*
 	 * When the IO size exceeds the maximum bio size for the request
@@ -381,6 +428,8 @@ retry:
 
 	/* Extra reference to protect dio_request during submit_bio */
 	vdev_disk_dio_get(dr);
+	if (zio)
+		zio->io_delay = jiffies_64;
 
 	/* Submit all bio's associated with this dio */
 	for (i = 0; i < dr->dr_bio_count; i++)
@@ -395,7 +444,7 @@ retry:
 	 * only synchronous consumer is vdev_disk_read_rootlabel() all other
 	 * IO originating from vdev_disk_io_start() is asynchronous.
 	 */
-	if (dr->dr_rw & (1 << DIO_RW_SYNCIO)) {
+	if (vdev_disk_dio_is_sync(dr)) {
 		wait_for_completion(&dr->dr_comp);
 		error = dr->dr_error;
 		ASSERT3S(atomic_read(&dr->dr_ref), ==, 1);
@@ -410,6 +459,7 @@ int
 vdev_disk_physio(struct block_device *bdev, caddr_t kbuf,
 		 size_t size, uint64_t offset, int flags)
 {
+	bio_set_flags_failfast(bdev, &flags);
 	return __vdev_disk_physio(bdev, NULL, kbuf, size, offset, flags);
 }
 
@@ -419,11 +469,15 @@ BIO_END_IO_PROTO(vdev_disk_io_flush_completion, bio, size, rc)
 {
 	zio_t *zio = bio->bi_private;
 
+	zio->io_delay = jiffies_to_msecs(jiffies_64 - zio->io_delay);
 	zio->io_error = -rc;
 	if (rc && (rc == -EOPNOTSUPP))
 		zio->io_vd->vdev_nowritecache = B_TRUE;
 
 	bio_put(bio);
+	ASSERT3S(zio->io_error, >=, 0);
+	if (zio->io_error)
+		vdev_disk_error(zio);
 	zio_interrupt(zio);
 
 	BIO_END_IO_RETURN(0);
@@ -446,6 +500,7 @@ vdev_disk_io_flush(struct block_device *bdev, zio_t *zio)
 	bio->bi_end_io = vdev_disk_io_flush_completion;
 	bio->bi_private = zio;
 	bio->bi_bdev = bdev;
+	zio->io_delay = jiffies_64;
 	submit_bio(WRITE_BARRIER, bio);
 
 	return 0;
@@ -512,11 +567,6 @@ vdev_disk_io_start(zio_t *zio)
 		zio->io_error = ENOTSUP;
 		return ZIO_PIPELINE_CONTINUE;
 	}
-
-#ifdef BIO_RW_FAILFAST
-	if (zio->io_flags & (ZIO_FLAG_IO_RETRY | ZIO_FLAG_TRYHARD))
-		flags |= (1 << BIO_RW_FAILFAST);
-#endif /* BIO_RW_FAILFAST */
 
 	error = __vdev_disk_physio(vd->vd_bdev, zio, zio->io_data,
 		                   zio->io_size, zio->io_offset, flags);
