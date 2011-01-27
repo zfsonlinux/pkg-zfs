@@ -163,6 +163,16 @@ __blk_rq_bytes(struct request *req)
 }
 #endif /* !HAVE_BLK_RQ_BYTES || HAVE_BLK_RQ_BYTES_GPL_ONLY */
 
+/*
+ * Most of the blk_* macros were removed in 2.6.36.  Ostensibly this was
+ * done to improve readability and allow easier grepping.  However, from
+ * a portability stand point the macros are helpful.  Therefore the needed
+ * macros are redefined here if they are missing from the kernel.
+ */
+#ifndef blk_fs_request
+#define blk_fs_request(rq)	((rq)->cmd_type == REQ_TYPE_FS)
+#endif
+
 #ifndef HAVE_GET_DISK_RO
 static inline int
 get_disk_ro(struct gendisk *disk)
@@ -201,6 +211,49 @@ struct req_iterator {
 	__rq_for_each_bio(_iter.bio, _rq)                       \
 		bio_for_each_segment(bvl, _iter.bio, _iter.i)
 #endif /* HAVE_RQ_FOR_EACH_SEGMENT */
+
+static inline void
+bio_set_flags_failfast(struct block_device *bdev, int *flags)
+{
+#ifdef CONFIG_BUG
+	/*
+	 * Disable FAILFAST for loopback devices because of the
+	 * following incorrect BUG_ON() in loop_make_request().
+	 * This support is also disabled for md devices because the
+	 * test suite layers md devices on top of loopback devices.
+	 * This may be removed when the loopback driver is fixed.
+	 *
+	 *   BUG_ON(!lo || (rw != READ && rw != WRITE));
+	 */
+	if ((MAJOR(bdev->bd_dev) == LOOP_MAJOR) ||
+	    (MAJOR(bdev->bd_dev) == MD_MAJOR))
+		return;
+
+#ifdef BLOCK_EXT_MAJOR
+	if (MAJOR(bdev->bd_dev) == BLOCK_EXT_MAJOR)
+		return;
+#endif /* BLOCK_EXT_MAJOR */
+#endif /* CONFIG_BUG */
+
+#ifdef HAVE_BIO_RW_FAILFAST_DTD
+	/* BIO_RW_FAILFAST_* preferred interface from 2.6.28 - 2.6.35 */
+	*flags |=
+	    ((1 << BIO_RW_FAILFAST_DEV) |
+	     (1 << BIO_RW_FAILFAST_TRANSPORT) |
+	     (1 << BIO_RW_FAILFAST_DRIVER));
+#else
+# ifdef HAVE_BIO_RW_FAILFAST
+	/* BIO_RW_FAILFAST preferred interface from 2.6.12 - 2.6.27 */
+	*flags |= (1 << BIO_RW_FAILFAST);
+# else
+#  ifdef HAVE_REQ_FAILFAST_MASK
+	/* REQ_FAILFAST_* preferred interface from 2.6.36 - 2.6.xx,
+	 * the BIO_* and REQ_* flags were unified under REQ_* flags. */
+	*flags |= REQ_FAILFAST_MASK;
+#  endif /* HAVE_REQ_FAILFAST_MASK */
+# endif /* HAVE_BIO_RW_FAILFAST */
+#endif /* HAVE_BIO_RW_FAILFAST_DTD */
+}
 
 #ifndef DISK_NAME_LEN
 #define DISK_NAME_LEN	32
