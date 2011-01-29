@@ -117,10 +117,6 @@ changelist_prefix(prop_changelist_t *clp)
 			continue;
 
 		if (!ZFS_IS_VOLUME(cn->cn_handle)) {
-#ifdef HAVE_ZPL
-#endif
-#if defined(HAVE_ZPL)
-#endif
 			/*
 			 * Do the property specific processing.
 			 */
@@ -132,19 +128,22 @@ changelist_prefix(prop_changelist_t *clp)
 					cn->cn_needpost = B_FALSE;
 				}
 				break;
-#if defined(HAVE_ZPL)
 			case ZFS_PROP_SHARESMB:
 				(void) zfs_unshare_smb(cn->cn_handle, NULL);
 				break;
-#endif
 			default:
 				break;
 			}
 		}
 	}
 
-	if (ret == -1)
+	if (ret == -1) {
+#if defined(HAVE_ZPL)
 		(void) changelist_postfix(clp);
+#else
+		ret = changelist_postfix(clp);
+#endif
+	}
 
 	return (ret);
 }
@@ -204,9 +203,7 @@ changelist_postfix(prop_changelist_t *clp)
 	    cn = uu_list_prev(clp->cl_list, cn)) {
 
 		boolean_t sharenfs;
-#ifdef HAVE_ZPL
 		boolean_t sharesmb;
-#endif /* HAVE_ZPL */
 		boolean_t mounted;
 
 		/*
@@ -237,20 +234,16 @@ changelist_postfix(prop_changelist_t *clp)
 		    shareopts, sizeof (shareopts), NULL, NULL, 0,
 		    B_FALSE) == 0) && (strcmp(shareopts, "off") != 0));
 
-#ifdef HAVE_ZPL
 		sharesmb = ((zfs_prop_get(cn->cn_handle, ZFS_PROP_SHARESMB,
 		    shareopts, sizeof (shareopts), NULL, NULL, 0,
 		    B_FALSE) == 0) && (strcmp(shareopts, "off") != 0));
 
-#endif /* HAVE_ZPL */
 		mounted = zfs_is_mounted(cn->cn_handle, NULL);
 
 		if (!mounted && (cn->cn_mounted 
 			||
 		    ((sharenfs 
-#ifdef HAVE_ZPL
 			  || sharesmb || clp->cl_waslegacy 
-#endif
 			)
 			&&
 			(zfs_prop_get_int(cn->cn_handle,
@@ -272,12 +265,10 @@ changelist_postfix(prop_changelist_t *clp)
 			errors += zfs_share_nfs(cn->cn_handle);
 		else if (cn->cn_shared || clp->cl_waslegacy)
 			errors += zfs_unshare_nfs(cn->cn_handle, NULL);
-#ifdef HAVE_ZPL
 		if (sharesmb && mounted)
 			errors += zfs_share_smb(cn->cn_handle);
 		else if (cn->cn_shared || clp->cl_waslegacy)
 			errors += zfs_unshare_smb(cn->cn_handle, NULL);
-#endif /* HAVE_ZPL */	
 	}
 
 	return (errors ? -1 : 0);

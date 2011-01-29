@@ -3432,6 +3432,8 @@ zfs_check_settable(const char *dsname, nvpair_t *pair, cred_t *cr)
 	case ZFS_PROP_SHARESMB:
 		if (zpl_earlier_version(dsname, ZPL_VERSION_FUID))
 			return (ENOTSUP);
+		/* KQI Modified */
+		return (ENOTSUP);
 		break;
 
 	case ZFS_PROP_ACLINHERIT:

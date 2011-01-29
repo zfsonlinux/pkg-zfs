@@ -112,12 +112,10 @@ zfs_share_proto_t nfs_only[] = {
 	PROTO_END
 };
 
-#if defined(HAVE_ZPL)
 zfs_share_proto_t smb_only[] = {
 	PROTO_SMB,
 	PROTO_END
 };
-#endif 
 
 zfs_share_proto_t share_all_proto[] = {
 	PROTO_NFS,
@@ -839,8 +837,8 @@ zfs_share_proto(zfs_handle_t *zhp, zfs_share_proto_t *proto)
 	char mountpoint[ZFS_MAXPROPLEN];
 	char shareopts[ZFS_MAXPROPLEN];
 	char sourcestr[ZFS_MAXPROPLEN];
-#if defined(HAVE_ZPL)
 	libzfs_handle_t *hdl = zhp->zfs_hdl;
+#if defined(HAVE_ZPL)
 	sa_share_t share;
 #endif
 	zfs_share_proto_t *curr_proto;
@@ -886,6 +884,7 @@ zfs_share_proto(zfs_handle_t *zhp, zfs_share_proto_t *proto)
            int rc;
            if ((pid = fork()) < 0) {
                fprintf(stderr, "cannot share '%s'", zfs_get_name(zhp));
+				hdl->libzfs_error = EZFS_SHARENFSFAILED;
                return -1;
            } else if (pid == 0) {
                /* child process */
@@ -905,8 +904,10 @@ zfs_share_proto(zfs_handle_t *zhp, zfs_share_proto_t *proto)
                int fsid_arr[2];
                uint64_t fsid;
 
-               if (statfs(mountpoint, &buf) < 0)
-                   return -1;
+                if (statfs(mountpoint, &buf) < 0) {
+					hdl->libzfs_error = EZFS_SHARENFSFAILED;
+                   	return -1;
+				}
 
                memcpy((void *)fsid_arr, (void *) &buf.f_fsid, sizeof(int) * 2);
                fsid = fsid_arr[0];
@@ -916,19 +917,25 @@ zfs_share_proto(zfs_handle_t *zhp, zfs_share_proto_t *proto)
                sprintf(export_string, "*:%s", mountpoint);
                sprintf(options, "rw,sync,fsid=%lu", fsid);
                execvp("exportfs", argv);
+				hdl->libzfs_error = EZFS_SHARENFSFAILED;
                return -1;
            }
            /* parent process */
            if (waitpid(pid, &rc, WUNTRACED) != pid) {
                fprintf(stderr, "cannot share '%s'", zfs_get_name(zhp));
+				hdl->libzfs_error = EZFS_SHARENFSFAILED;
                return -1;
            }
 
            if (!WIFEXITED(rc) || WEXITSTATUS(rc) != 0) {
                fprintf(stderr, "cannot share '%s'", zfs_get_name(zhp));
+			   hdl->libzfs_error = EZFS_SHARENFSFAILED;
                return -1;
            }
-       }
+       } else if (*curr_proto == PROTO_SMB) {
+		   	hdl->libzfs_error = EZFS_SHARESMBFAILED;
+			return -ENOTSUP;
+	   }
 #else
 		share = zfs_sa_find_share(hdl->libzfs_sharehdl, mountpoint);
 		if (share == NULL) {
@@ -987,13 +994,8 @@ zfs_share_nfs(zfs_handle_t *zhp)
 int
 zfs_share_smb(zfs_handle_t *zhp)
 {
-#if defined(HAVE_ZPL)
-	return (zfs_share_proto(zhp, smb_only));
-#else
-	/* KQI modified */
 	fprintf(stderr, "Samba sharing is not supported.\n");
-	return -EOPNOTSUPP;
-#endif
+	return (zfs_share_proto(zhp, smb_only));
 }
 
 int
@@ -1136,13 +1138,17 @@ zfs_unshare_nfs(zfs_handle_t *zhp, const char *mountpoint)
 	return (zfs_unshare_proto(zhp, mountpoint, nfs_only));
 }
 
-#if defined(HAVE_ZPL)
 int
 zfs_unshare_smb(zfs_handle_t *zhp, const char *mountpoint)
 {
+#if defined(HAVE_ZPL)
 	return (zfs_unshare_proto(zhp, mountpoint, smb_only));
+#else
+	return -ENOTSUP;
+#endif
 }
 
+#if defined(HAVE_ZPL)
 /*
  * Same as zfs_unmountall(), but for NFS and SMB unshares.
  */
