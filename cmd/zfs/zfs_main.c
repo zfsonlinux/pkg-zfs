@@ -674,9 +674,7 @@ zfs_do_clone(int argc, char **argv)
 		if (clone != NULL) {
 			if (zfs_get_type(clone) != ZFS_TYPE_VOLUME)
 				if ((ret = zfs_mount(clone, NULL, 0)) == 0) {
-#ifdef HAVE_ZPL
 					ret = zfs_share(clone);
-#endif /* HAVE_ZPL */
 				}
 			zfs_close(clone);
 		}
@@ -874,13 +872,11 @@ zfs_do_create(int argc, char **argv)
 						"successfully created, but not mounted\n"));
 			ret = 1;
 		}
-#ifdef HAVE_ZPL
 		if (zfs_share(zhp) != 0) {
 			(void) fprintf(stderr, gettext("filesystem "
 						"successfully created, but not shared\n"));
 			ret = 1;
 		}
-#endif /* HAVE_ZPL */
 	}
 
 error:
@@ -3201,12 +3197,7 @@ share_mount_one(zfs_handle_t *zhp, int op, int flags, char *protocol,
 	switch (op) {
 	case OP_SHARE:
 		shared_nfs = zfs_is_shared_nfs(zhp, NULL);
-#if defined(HAVE_ZPL)
 		shared_smb = zfs_is_shared_smb(zhp, NULL);
-#else
-		/* KQI modified */
-		shared_smb = 1;
-#endif
 
 		if ((shared_nfs && shared_smb) ||
 		    ((shared_nfs && strcmp(shareopts, "on") == 0) &&
@@ -3479,11 +3470,7 @@ zfs_do_mount(int argc, char **argv)
 static int
 zfs_do_share(int argc, char **argv)
 {
-#ifdef HAVE_ZPL
 	return (share_mount(OP_SHARE, argc, argv));
-#else
-	return ENOSYS;
-#endif  /* HAVE_ZPL */
 }
 
 typedef struct unshare_unmount_node {
@@ -3632,9 +3619,7 @@ unshare_unmount(int op, int argc, char **argv)
 	int c;
 	zfs_handle_t *zhp;
 	char nfs_mnt_prop[ZFS_MAXPROPLEN];
-#ifdef HAVE_ZPL
 	char sharesmb[ZFS_MAXPROPLEN];
-#endif  /* HAVE_ZPL */
 
 	/* check options */
 	while ((c = getopt(argc, argv, op == OP_SHARE ? "a" : "af")) != -1) {
@@ -3703,7 +3688,6 @@ unshare_unmount(int op, int argc, char **argv)
 			}
 
 			switch (op) {
-#ifdef HAVE_ZPL
 			case OP_SHARE:
 				verify(zfs_prop_get(zhp, ZFS_PROP_SHARENFS,
 				    nfs_mnt_prop,
@@ -3718,7 +3702,6 @@ unshare_unmount(int op, int argc, char **argv)
 				if (strcmp(nfs_mnt_prop, "off") == 0)
 					continue;
 				break;
-#endif  /* HAVE_ZPL */
 			case OP_MOUNT:
 				/* Ignore legacy mounts */
 
@@ -3769,14 +3752,12 @@ unshare_unmount(int op, int argc, char **argv)
 			uu_avl_remove(tree, node);
 
 			switch (op) {
-#ifdef HAVE_ZPL
 			case OP_SHARE:
 				if (zfs_unshareall_bypath(node->un_zhp,
 				    node->un_mountp) != 0)
 					ret = 1;
 				break;
 
-#endif  /* HAVE_ZPL */
 			case OP_MOUNT:
 				if (zfs_unmount(node->un_zhp,
 				    node->un_mountp, flags) != 0)
@@ -3824,7 +3805,6 @@ unshare_unmount(int op, int argc, char **argv)
 		    NULL, 0, B_FALSE) == 0);
 
 		switch (op) {
-#ifdef HAVE_ZPL
 		case OP_SHARE:
 			verify(zfs_prop_get(zhp, ZFS_PROP_SHARENFS,
 			    nfs_mnt_prop,
@@ -3853,7 +3833,6 @@ unshare_unmount(int op, int argc, char **argv)
 			}
 			break;
 
-#endif  /* HAVE_ZPL */
 		case OP_MOUNT:
 			if (strcmp(nfs_mnt_prop, "legacy") == 0) {
 				(void) fprintf(stderr, gettext("cannot "
@@ -3902,11 +3881,7 @@ zfs_do_unmount(int argc, char **argv)
 static int
 zfs_do_unshare(int argc, char **argv)
 {
-#ifdef HAVE_ZPL
 	return (unshare_unmount(OP_SHARE, argc, argv));
-#else
-	return ENOSYS;
-#endif  /* HAVE_ZPL */
 }
 
 /* ARGSUSED */

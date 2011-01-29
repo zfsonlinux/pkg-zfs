@@ -85,9 +85,7 @@
 #include <sys/systeminfo.h>
 #define	MAXISALEN	257	/* based on sysinfo(2) man page */
 
-#if defined(HAVE_ZPL)
 static int zfs_share_proto(zfs_handle_t *, zfs_share_proto_t *);
-#endif
 zfs_share_type_t zfs_is_shared_proto(zfs_handle_t *, char **,
     zfs_share_proto_t);
 
@@ -183,6 +181,9 @@ is_shared(libzfs_handle_t *hdl, const char *mountpoint, zfs_share_proto_t proto)
    int fds[2];
    int pid;
    int rc;
+
+   if (proto == PROTO_SMB)
+	   return SHARED_NOT_SHARED;
 
    if (pipe(fds) < 0)
        return (SHARED_NOT_SHARED);
@@ -487,21 +488,17 @@ zfs_unmount(zfs_handle_t *zhp, const char *mountpoint, int flags)
 		else
 			mntpt = zfs_strdup(hdl, mountpoint);
 
-#if defined(HAVE_ZPL)
 		/*
 		 * Unshare and unmount the filesystem
 		 */
 		if (zfs_unshare_proto(zhp, mntpt, share_all_proto) != 0)
 			return (-1);
-#else
 		if (unmount_one(hdl, mntpt, flags) != 0) {
 			free(mntpt);
-#if defined(HAVE_ZPL)
 			(void) zfs_shareall(zhp);
-#endif
 			return (-1);
 		}
-#endif
+
 		libzfs_mnttab_remove(hdl, zhp->zfs_name);
 #if defined(LINUX_PORT)
 		/* remove a /etc/mtab entry */
@@ -555,7 +552,6 @@ zfs_is_shared(zfs_handle_t *zhp)
 	return (rc ? B_TRUE : B_FALSE);
 }
 
-#ifdef HAVE_ZPL
 int
 zfs_share(zfs_handle_t *zhp)
 {
@@ -569,7 +565,6 @@ zfs_unshare(zfs_handle_t *zhp)
 	assert(!ZFS_IS_VOLUME(zhp));
 	return (zfs_unshareall(zhp));
 }
-#endif
 
 /*
  * Check to see if the filesystem is currently shared.
@@ -602,7 +597,6 @@ zfs_is_shared_nfs(zfs_handle_t *zhp, char **where)
 	    PROTO_NFS) != SHARED_NOT_SHARED);
 }
 
-#if defined(HAVE_ZPL)
 boolean_t
 zfs_is_shared_smb(zfs_handle_t *zhp, char **where)
 {
@@ -610,6 +604,7 @@ zfs_is_shared_smb(zfs_handle_t *zhp, char **where)
 	    PROTO_SMB) != SHARED_NOT_SHARED);
 }
 
+#if defined(HAVE_ZPL)
 /*
  * Make sure things will work if libshare isn't installed by using
  * wrapper functions that check to see that the pointers to functions
@@ -932,9 +927,6 @@ zfs_share_proto(zfs_handle_t *zhp, zfs_share_proto_t *proto)
 			   hdl->libzfs_error = EZFS_SHARENFSFAILED;
                return -1;
            }
-       } else if (*curr_proto == PROTO_SMB) {
-		   	hdl->libzfs_error = EZFS_SHARESMBFAILED;
-			return -ENOTSUP;
 	   }
 #else
 		share = zfs_sa_find_share(hdl->libzfs_sharehdl, mountpoint);
@@ -994,6 +986,7 @@ zfs_share_nfs(zfs_handle_t *zhp)
 int
 zfs_share_smb(zfs_handle_t *zhp)
 {
+	/* KQI */
 	fprintf(stderr, "Samba sharing is not supported.\n");
 	return (zfs_share_proto(zhp, smb_only));
 }
@@ -1141,14 +1134,9 @@ zfs_unshare_nfs(zfs_handle_t *zhp, const char *mountpoint)
 int
 zfs_unshare_smb(zfs_handle_t *zhp, const char *mountpoint)
 {
-#if defined(HAVE_ZPL)
 	return (zfs_unshare_proto(zhp, mountpoint, smb_only));
-#else
-	return -ENOTSUP;
-#endif
 }
 
-#if defined(HAVE_ZPL)
 /*
  * Same as zfs_unmountall(), but for NFS and SMB unshares.
  */
@@ -1191,8 +1179,6 @@ zfs_unshareall_bypath(zfs_handle_t *zhp, const char *mountpoint)
 {
 	return (zfs_unshare_proto(zhp, mountpoint, share_all_proto));
 }
-
-#endif 
 
 /*
  * Remove the mountpoint associated with the current dataset, if necessary.
@@ -1349,12 +1335,10 @@ zpool_enable_datasets(zpool_handle_t *zhp, const char *mntopts, int flags)
 	 * of the configuration. Good should never be NULL since
 	 * zfs_alloc is supposed to exit if memory isn't available.
 	 */
-#ifdef HAVE_ZPL
 	for (i = 0; i < cb.cb_used; i++) {
 		if (good[i] && zfs_share(cb.cb_handles[i]) != 0)
 			ret = -1;
 	}
-#endif
 	free(good);
 
 out:
@@ -1470,7 +1454,6 @@ zpool_disable_datasets(zpool_handle_t *zhp, boolean_t force)
 	 * mountpoint.
 	 */
 	qsort(mountpoints, used, sizeof (char *), mountpoint_compare);
-	#if defined(HAVE_ZPL)
 	/*
 	 * Walk through and first unshare everything.
 	 */
@@ -1484,7 +1467,6 @@ zpool_disable_datasets(zpool_handle_t *zhp, boolean_t force)
 				goto out;
 		}
 	}
-	#endif
 	/*
 	 * Now unmount everything, removing the underlying directories as
 	 * appropriate.

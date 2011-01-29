@@ -1368,6 +1368,12 @@ zfs_prop_set(zfs_handle_t *zhp, const char *propname, const char *propval)
 
 	prop = zfs_name_to_prop(propname);
 
+	/* KQI: Return error from here if samba share is expected */
+	if (prop == ZFS_PROP_SHARESMB) {
+		fprintf(stderr, "Samba sharing is not supported.\n");
+		return -ENOTSUP;
+	}
+
 	if (prop == ZFS_PROP_VOLSIZE) {
 		if ((added_resv = zfs_add_synthetic_resv(zhp, nvl)) == -1)
 			goto error;
