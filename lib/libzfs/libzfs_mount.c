@@ -597,7 +597,6 @@ zfs_is_shared_proto(zfs_handle_t *zhp, char **where, zfs_share_proto_t proto)
 	}
 }
 
-#if defined(HAVE_ZPL)
 boolean_t
 zfs_is_shared_nfs(zfs_handle_t *zhp, char **where)
 {
@@ -605,6 +604,7 @@ zfs_is_shared_nfs(zfs_handle_t *zhp, char **where)
 	    PROTO_NFS) != SHARED_NOT_SHARED);
 }
 
+#if defined(HAVE_ZPL)
 boolean_t
 zfs_is_shared_smb(zfs_handle_t *zhp, char **where)
 {
@@ -984,19 +984,29 @@ zfs_share_nfs(zfs_handle_t *zhp)
 	return (zfs_share_proto(zhp, nfs_only));
 }
 
-#if defined(HAVE_ZPL)
 int
 zfs_share_smb(zfs_handle_t *zhp)
 {
+#if defined(HAVE_ZPL)
 	return (zfs_share_proto(zhp, smb_only));
+#else
+	/* KQI modified */
+	fprintf(stderr, "Samba sharing is not supported.\n");
+	return -EOPNOTSUPP;
+#endif
 }
 
 int
 zfs_shareall(zfs_handle_t *zhp)
 {
+#if defined(HAVE_ZPL)
 	return (zfs_share_proto(zhp, share_all_proto));
-}
+#else
+	/* KQI modified */
+	(void) zfs_share_smb(zhp);
+	return zfs_share_nfs(zhp);
 #endif
+}
 
 /*
  * Unshare a filesystem by mountpoint.

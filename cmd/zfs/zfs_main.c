@@ -3201,7 +3201,12 @@ share_mount_one(zfs_handle_t *zhp, int op, int flags, char *protocol,
 	switch (op) {
 	case OP_SHARE:
 		shared_nfs = zfs_is_shared_nfs(zhp, NULL);
+#if defined(HAVE_ZPL)
 		shared_smb = zfs_is_shared_smb(zhp, NULL);
+#else
+		/* KQI modified */
+		shared_smb = 1;
+#endif
 
 		if ((shared_nfs && shared_smb) ||
 		    ((shared_nfs && strcmp(shareopts, "on") == 0) &&
