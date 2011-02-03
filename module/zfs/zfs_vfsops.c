@@ -1211,8 +1211,8 @@ zfs_set_fuid_feature(zfsvfs_t *zfsvfs)
 		vfs_set_feature(zfsvfs->z_vfs, VFSFT_ACCESS_FILTER);
 		vfs_set_feature(zfsvfs->z_vfs, VFSFT_REPARSE);
 	}
-	zfsvfs->z_use_sa = USE_SA(zfsvfs->z_version, zfsvfs->z_os);
 #endif /* HAVE_ZPL */
+	zfsvfs->z_use_sa = USE_SA(zfsvfs->z_version, zfsvfs->z_os);
 }
 
 static int
@@ -2325,7 +2325,6 @@ zfs_fini(void)
 	zfs_znode_fini();
 }
 
-#ifdef HAVE_ZPL
 int
 zfs_set_version(zfsvfs_t *zfsvfs, uint64_t newvers)
 {
@@ -2393,7 +2392,6 @@ zfs_set_version(zfsvfs_t *zfsvfs, uint64_t newvers)
 
 	return (0);
 }
-#endif /* HAVE_ZPL */
 
 /*
  * Read a property stored within the master node.

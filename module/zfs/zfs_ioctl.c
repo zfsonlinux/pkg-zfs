@@ -2184,9 +2184,8 @@ zfs_prop_set_special(const char *dsname, zprop_source_t source,
 		if ((err = zfsvfs_hold(dsname, FTAG, &zfsvfs, B_TRUE)) != 0)
 			break;
 
-#ifdef HAVE_ZPL
 		err = zfs_set_version(zfsvfs, intval);
-#endif
+
 		zfsvfs_rele(zfsvfs, FTAG);
 
 		if (err == 0 && intval >= ZPL_VERSION_USERSPACE) {
