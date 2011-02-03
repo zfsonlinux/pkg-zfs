@@ -239,8 +239,14 @@ zvol_update_volsize(zvol_state_t *zv, uint64_t volsize)
 		return EIO;
 
 	/* KQI: Open the block device */
-	if (blkdev_get(bdev, mode))
+
+#ifdef HAVE_3ARGS_BLKDEV_GET              /* for kernel version 2.6.26 */ 
+	if (blkdev_get(bdev, mode, 0))
 		return EIO;
+#else
+	if (blkdev_get(bdev, mode))
+                return EIO;
+#endif  /* HAVE_3ARGS_BLKDEV_GET */
 
 	/* Opening block device should set the zv->zv_objset */
 	ASSERT(zv->zv_objset != NULL);
@@ -278,8 +284,15 @@ zvol_update_volsize(zvol_state_t *zv, uint64_t volsize)
 	error = 0;
 err_out:
 	/* KQI: Close and release the block device */
+
+#ifdef HAVE_1ARGS_BLKDEV_PUT                        /* for kernel version 2.6.26 */
+	blkdev_put(bdev);
+#else
 	blkdev_put(bdev, mode);
+#endif  /* HAVE_1ARGS_BLKDEV_PUT */
+	
 	return (error);
+
 }
 
 /*
