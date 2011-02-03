@@ -18,7 +18,7 @@ AC_DEFUN([ZFS_AC_DEBUG], [
 	[
 		KERNELCPPFLAGS="${KERNELCPPFLAGS} -DDEBUG -Werror"
 		HOSTCFLAGS="${HOSTCFLAGS} -DDEBUG -Werror"
-		DEBUG_CFLAGS="-DDEBUG -Werror"
+		DEBUG_CFLAGS="-DDEBUG -Werror -finstrument-functions"
 		DEBUG_STACKFLAGS="-fstack-check"
 	],
 	[

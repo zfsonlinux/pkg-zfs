@@ -93,3 +93,23 @@ zfs_dbgmsg(const char *fmt, ...)
 	}
 	mutex_exit(&zfs_dbgmsgs_lock);
 }
+
+
+void __cyg_profile_func_enter (void *, void *) __attribute__((no_instrument_function));
+void __cyg_profile_func_exit (void *, void *) __attribute__((no_instrument_function));
+void check_stack_overflow(void);
+
+void __cyg_profile_func_enter (void *func,  void *caller)
+{
+#ifdef _KERNEL
+	check_stack_overflow();
+#endif
+}
+
+void __cyg_profile_func_exit (void *func, void *caller)
+{
+#ifdef _KERNEL
+	check_stack_overflow();
+#endif
+}
+
