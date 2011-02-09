@@ -12109,7 +12109,7 @@ fi
 
 
 
-$as_echo_n "checking whether bio_end_io_t wants 2 args... " >&6; }
+{ $as_echo_n "checking whether bio_end_io_t wants 2 args... " >&6; }
 	tmp_flags="$EXTRA_KCFLAGS"
 	EXTRA_KCFLAGS="-Werror"
 
@@ -12237,7 +12237,7 @@ fi
 
 
 
-$as_echo_n "checking whether BIO_RW_SYNCIO is defined... " >&6; }
+{ $as_echo_n "checking whether BIO_RW_SYNCIO is defined... " >&6; }
 
 
 cat confdefs.h - <<_ACEOF >conftest.c
@@ -12360,7 +12360,7 @@ fi
 
 
 
-$as_echo_n "checking whether blk_end_request() is available... " >&6; }
+{ $as_echo_n "checking whether blk_end_request() is available... " >&6; }
 
 
 cat confdefs.h - <<_ACEOF >conftest.c
@@ -14626,7 +14626,7 @@ fi
 
 
 
-$as_echo_n "checking whether bio_end_io_t wants 2 args... " >&6; }
+{ $as_echo_n "checking whether bio_end_io_t wants 2 args... " >&6; }
 	tmp_flags="$EXTRA_KCFLAGS"
 	EXTRA_KCFLAGS="-Werror"
 
@@ -14754,7 +14754,7 @@ fi
 
 
 
-$as_echo_n "checking whether BIO_RW_SYNCIO is defined... " >&6; }
+{ $as_echo_n "checking whether BIO_RW_SYNCIO is defined... " >&6; }
 
 
 cat confdefs.h - <<_ACEOF >conftest.c
@@ -14877,7 +14877,7 @@ fi
 
 
 
-$as_echo_n "checking whether blk_end_request() is available... " >&6; }
+{ $as_echo_n "checking whether blk_end_request() is available... " >&6; }
 
 
 cat confdefs.h - <<_ACEOF >conftest.c
