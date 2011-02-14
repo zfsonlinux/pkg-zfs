@@ -36,7 +36,7 @@
 #include <sys/txg.h>
 #include <linux/cdev.h>
 #include "zpios-internal.h"
-
+#include <linux/smp_lock.h>
 
 static spl_class *zpios_class;
 static spl_device *zpios_device;
@@ -1104,10 +1104,10 @@ out_cmd:
 	return rc;
 }
 
-static int
-zpios_ioctl(struct inode *inode, struct file *file,
-            unsigned int cmd, unsigned long arg)
+static long 
+zpios_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
+	struct inode *inode = file->f_dentry->d_inode;
         unsigned int minor = iminor(inode);
 	int rc = 0;
 
@@ -1118,6 +1118,7 @@ zpios_ioctl(struct inode *inode, struct file *file,
 	if (minor >= ZPIOS_MINORS)
 		return -ENXIO;
 
+	lock_kernel();
 	switch (cmd) {
 		case ZPIOS_CFG:
 			rc = zpios_ioctl_cfg(file, arg);
@@ -1130,7 +1131,7 @@ zpios_ioctl(struct inode *inode, struct file *file,
 			rc = -EINVAL;
 			break;
 	}
-
+	unlock_kernel();
 	return rc;
 }
 
@@ -1139,7 +1140,7 @@ zpios_ioctl(struct inode *inode, struct file *file,
 static long
 zpios_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	return zpios_ioctl(file->f_dentry->d_inode, file, cmd, arg);
+	return zpios_ioctl(file, cmd, arg);
 }
 #endif /* CONFIG_COMPAT */
 
@@ -1262,7 +1263,7 @@ static struct file_operations zpios_fops = {
 	.owner		= THIS_MODULE,
 	.open		= zpios_open,
 	.release	= zpios_release,
-	.ioctl		= zpios_ioctl,
+	.unlocked_ioctl	= zpios_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl	= zpios_compat_ioctl,
 #endif

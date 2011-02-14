@@ -642,7 +642,7 @@ zvol_request(struct request_queue *q)
 			continue;
 		}
 
-		if (!blk_fs_request(req)) {
+		if (req->cmd_type != REQ_TYPE_FS) {
 			printk(KERN_INFO "%s: non-fs cmd\n",
 			       req->rq_disk->disk_name);
 			__blk_end_request(req, -EIO, size);
