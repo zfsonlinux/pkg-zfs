@@ -61,7 +61,7 @@ extern int vdev_disk_read_rootlabel(char *, char *, nvlist_t **);
 /* 2.6.29 API change */
 #ifdef HAVE_BIO_RW_SYNCIO
 # define DIO_RW_SYNCIO			BIO_RW_SYNCIO
-#elif HAVE_REQ_SYNC
+#elif defined(HAVE_REQ_SYNC)
 # define DIO_RW_SYNCIO			REQ_SYNC
 #else
 # define DIO_RW_SYNCIO			BIO_RW_SYNC
