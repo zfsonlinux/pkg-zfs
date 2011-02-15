@@ -2592,7 +2592,7 @@ zfs_readdir(vnode_t *vp, uio_t *uio, cred_t *cr, int *eofp,
 			dmu_prefetch(os, objnum, 0, 0);
 		}
 
-		if (*pos >= 2) {
+                if (*pos > 2 || (*pos == 2 && !zfs_show_ctldir(zp))) {
 			zap_cursor_advance(&zc);
 			*pos = zap_cursor_serialize(&zc);
 		} else {
