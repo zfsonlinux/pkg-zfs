@@ -12,7 +12,7 @@ License:         CDDL
 URL:             git://eris.llnl.gov/zfs.git
 BuildRoot:       %{_tmppath}/%{name}-%{version}-%{release}-%(%{__id} -un)
 Source:          %{name}-%{version}.tar.gz
-Requires:        zlib e2fsprogs spl spl-modules
+Requires:        zlib e2fsprogs spl spl-modules nfs-utils
 BuildRequires:   zlib-devel e2fsprogs-devel
 
 %description
