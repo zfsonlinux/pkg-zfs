@@ -442,7 +442,7 @@ static int
 unmount_one(libzfs_handle_t *hdl, const char *mountpoint, int flags)
 {
 	char *mntpt = NULL;
-	zfs_handle_t *zhp ;	
+	zfs_handle_t *zhp = NULL;	
 	if (umount2(mountpoint, flags) != 0) {
 		zfs_error_aux(hdl, strerror(errno));
 		return (zfs_error_fmt(hdl, EZFS_UMOUNTFAILED,
