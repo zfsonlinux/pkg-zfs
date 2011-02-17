@@ -910,7 +910,10 @@ zfs_share_proto(zfs_handle_t *zhp, zfs_share_proto_t *proto)
 //               fprintf(stderr, "using fsid=%lu\n", fsid);
 
                sprintf(export_string, "*:%s", mountpoint);
-               sprintf(options, "fsid=%lu,%s", fsid, shareopts);
+			   if (strcmp(shareopts, "on") == 0)
+	               sprintf(options, "fsid=%lu", fsid);
+			   else
+	               sprintf(options, "fsid=%lu,%s", fsid, shareopts);
                execvp("exportfs", argv);
 				hdl->libzfs_error = EZFS_SHARENFSFAILED;
                return -1;
