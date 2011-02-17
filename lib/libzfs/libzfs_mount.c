@@ -885,7 +885,7 @@ zfs_share_proto(zfs_handle_t *zhp, zfs_share_proto_t *proto)
                /* child process */
                /* exec exportfs */
                char export_string[PATH_MAX];
-               char options[100];
+               char options[ZFS_MAXPROPLEN + 10]; /* need to add fsid=<number> */
                char *argv [] = {
                    "exportfs",
                    "-v",
@@ -910,7 +910,7 @@ zfs_share_proto(zfs_handle_t *zhp, zfs_share_proto_t *proto)
 //               fprintf(stderr, "using fsid=%lu\n", fsid);
 
                sprintf(export_string, "*:%s", mountpoint);
-               sprintf(options, "rw,sync,fsid=%lu", fsid);
+               sprintf(options, "fsid=%lu,%s", fsid, shareopts);
                execvp("exportfs", argv);
 				hdl->libzfs_error = EZFS_SHARENFSFAILED;
                return -1;
