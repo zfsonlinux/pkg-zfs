@@ -1587,8 +1587,13 @@ out:
 		zfs_dirent_unlock(dl);
 
 	if (error) {
-		if (zp)
-			VN_RELE(ZTOV(zp));
+		if (zp) {
+			vnode_t *tvp = ZTOV(zp);
+			struct inode *ti = LZFS_VTOI(tvp);
+			unlock_new_inode(ti);
+			/* VN_RELE calls iput on inode ti */
+			VN_RELE(tvp); 
+		}
 	} else {
 		zfs_inode_update(dzp);
 		zfs_inode_update(zp);

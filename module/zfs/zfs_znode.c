@@ -635,8 +635,8 @@ zfs_znode_dmu_fini(znode_t *zp)
 
 void
 zfs_inode_alloc(zfsvfs_t *zfsvfs, znode_t *zp, dmu_buf_t *db, 
-		dmu_object_type_t obj_type, sa_handle_t *hdl, 
-		struct inode *inode)
+		dmu_object_type_t obj_type, sa_handle_t *hdl, struct inode *inode,
+		int unlock)
 {
 	vfs_t		*vfs;
 	vnode_t		*vp;
@@ -658,7 +658,6 @@ zfs_inode_alloc(zfsvfs_t *zfsvfs, znode_t *zp, dmu_buf_t *db,
 	 * will not have this inode locked, so can there be some
 	 * issues because of that.
 	 */ 
-	
 	ASSERT(inode->i_state & I_NEW);
 	vp = LZFS_ITOV(inode);
 	if(!zfsvfs->z_replay)
@@ -728,7 +727,8 @@ zfs_inode_alloc(zfsvfs_t *zfsvfs, znode_t *zp, dmu_buf_t *db,
 	
 	vfs->vfs_set_inode_ops(inode);
 
-	unlock_new_inode(inode);
+	if (unlock)
+		unlock_new_inode(inode);
 }
 
 
@@ -776,7 +776,8 @@ void zfs_inode_update(znode_t *zp)
 #ifdef LINUX_PORT
 static znode_t *
 zfs_znode_alloc(zfsvfs_t *zfsvfs, dmu_buf_t *db, int blksz,
-    dmu_object_type_t obj_type, sa_handle_t *hdl, struct inode *inode)
+    dmu_object_type_t obj_type, sa_handle_t *hdl, struct inode *inode, 
+	int unlock)
 #else 
 static znode_t *
 zfs_znode_alloc(zfsvfs_t *zfsvfs, dmu_buf_t *db, int blksz,
@@ -813,7 +814,7 @@ zfs_znode_alloc(zfsvfs_t *zfsvfs, dmu_buf_t *db, int blksz,
 	zp->z_sync_cnt = 0;
 
 #ifdef LINUX_PORT 
-	zfs_inode_alloc(zfsvfs, zp, db, obj_type, hdl, inode);
+	zfs_inode_alloc(zfsvfs, zp, db, obj_type, hdl, inode, unlock);
 #else 
 	vp = ZTOV(zp);
 	vn_reinit(vp);
@@ -1161,7 +1162,7 @@ zfs_mknode(znode_t *dzp, vattr_t *vap, dmu_tx_t *tx, cred_t *cr,
 #ifdef LINUX_PORT
 		inode = iget_locked(zfsvfs->z_vfs->vfs_super, obj);
 		ASSERT(inode != NULL && atomic_read(&inode->i_count) > 0);
-		*zpp = zfs_znode_alloc(zfsvfs, db, 0, obj_type, sa_hdl, inode);
+		*zpp = zfs_znode_alloc(zfsvfs, db, 0, obj_type, sa_hdl, inode, 0);
 #else
                 *zpp = zfs_znode_alloc(zfsvfs, db, 0, obj_type, sa_hdl);
 		ASSERT(*zpp != NULL);
@@ -1370,7 +1371,7 @@ zfs_zget(zfsvfs_t *zfsvfs, uint64_t obj_num, znode_t **zpp)
 	ASSERT(inode != NULL && atomic_read(&inode->i_count) > 0);
 
 	zp = zfs_znode_alloc(zfsvfs, db, doi.doi_data_block_size, 
-			doi.doi_bonus_type, NULL, inode);
+			doi.doi_bonus_type, NULL, inode, 1);
 #else
         zp = zfs_znode_alloc(zfsvfs, db, doi.doi_data_block_size,
 	    doi.doi_bonus_type, NULL);
