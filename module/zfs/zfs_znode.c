@@ -633,7 +633,7 @@ zfs_znode_dmu_fini(znode_t *zp)
  * Construct a new inode and intialize.
  */
 
-void
+int
 zfs_inode_alloc(zfsvfs_t *zfsvfs, znode_t *zp, dmu_buf_t *db, 
 		dmu_object_type_t obj_type, sa_handle_t *hdl, struct inode *inode,
 		int unlock)
@@ -689,7 +689,7 @@ zfs_inode_alloc(zfsvfs_t *zfsvfs, znode_t *zp, dmu_buf_t *db,
 		if (hdl == NULL)
 			sa_handle_destroy(zp->z_sa_hdl);
 		kmem_cache_free(znode_cache, zp);
-//		return (NULL);
+		return ENOENT;
 	}
 	
 	zp->z_mode = mode;
@@ -729,6 +729,7 @@ zfs_inode_alloc(zfsvfs_t *zfsvfs, znode_t *zp, dmu_buf_t *db,
 
 	if (unlock)
 		unlock_new_inode(inode);
+	return 0;
 }
 
 
@@ -814,7 +815,10 @@ zfs_znode_alloc(zfsvfs_t *zfsvfs, dmu_buf_t *db, int blksz,
 	zp->z_sync_cnt = 0;
 
 #ifdef LINUX_PORT 
-	zfs_inode_alloc(zfsvfs, zp, db, obj_type, hdl, inode, unlock);
+	if (zfs_inode_alloc(zfsvfs, zp, db, obj_type, hdl, inode, unlock)) {
+		kmem_cache_free(znode_cache, zp);
+		return NULL;
+	}
 #else 
 	vp = ZTOV(zp);
 	vn_reinit(vp);
