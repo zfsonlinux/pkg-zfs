@@ -1,0 +1,26 @@
+spl-linux (0.6.0.1rc-1~maverick.2) maverick; urgency=low
+
+  * Add use-linux-flock-struct.patch for 32-bit systems.
+    (Commit: ac35ef7e3c107e972250bcd15143328e7aef5943)
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 21 Feb 2011 08:48:03 -0600
+
+spl-linux (0.6.0.1rc-1~lucid.1) lucid; urgency=low
+
+  * Upstream spl-0.6.0-rc1.tar.gz release.
+  * Kludge the "rc1" version for packaging convenience.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 18 Feb 2011 19:10:09 -0600
+
+spl-linux (0.5.2-1~lucid.7) lucid; urgency=low
+
+  * Add conflict for spl-dev, which is a package in universe
+    that also installs a /usr/lib/libspl.a file.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 18 Feb 2011 17:43:52 -0600
+
+spl-linux (0.5.2-1~lucid.6) lucid; urgency=low
+
+  * Initial DKMS packaging for Debian and Ubuntu.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 17 Feb 2011 18:57:36 -0600

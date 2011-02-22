@@ -1,0 +1,12 @@
+Index: spl-linux-0.6.0.1rc/META
+===================================================================
+--- spl-linux-0.6.0.1rc.orig/META	2011-02-18 19:28:53.352179001 -0600
++++ spl-linux-0.6.0.1rc/META	2011-02-18 19:29:03.202179002 -0600
+@@ -1,6 +1,6 @@
+ Meta:         1
+ Name:         spl
+ Branch:       1.0
+-Version:      0.6.0
++Version:      0.6.0.1rc
+ Release:      rc1
+ Release-Tags: relext
