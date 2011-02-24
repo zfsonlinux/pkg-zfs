@@ -1167,6 +1167,7 @@ zfs_mknode(znode_t *dzp, vattr_t *vap, dmu_tx_t *tx, cred_t *cr,
 		inode = iget_locked(zfsvfs->z_vfs->vfs_super, obj);
 		ASSERT(inode != NULL && atomic_read(&inode->i_count) > 0);
 		*zpp = zfs_znode_alloc(zfsvfs, db, 0, obj_type, sa_hdl, inode, 0);
+		ASSERT(*zpp != NULL);
 #else
                 *zpp = zfs_znode_alloc(zfsvfs, db, 0, obj_type, sa_hdl);
 		ASSERT(*zpp != NULL);
@@ -1381,6 +1382,7 @@ zfs_zget(zfsvfs_t *zfsvfs, uint64_t obj_num, znode_t **zpp)
 	    doi.doi_bonus_type, NULL);
 #endif /*LINUX_PORT*/
 	if (zp == NULL) {
+		iget_failed(inode);
 		err = ENOENT;
 	} else {
 
