@@ -1,4 +1,14 @@
-spl-linux (0.6.0.1rc-1~maverick.2) maverick; urgency=low
+spl-linux (0.6.0.1rc-1ubuntu1~maverick) maverick; urgency=low
+
+  * Add invalidate-inodes.patch for Linux 2.6.37,
+    which superceds the use-linux-flock-struct.patch. 
+    (Commit: 5a52a782a0a04efee3846e1a8f0bb4796930e0e4)
+  * Substitute distro names in the debian/changelog 
+    such that pkg-spl can be more generic.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 23 Feb 2011 20:55:24 -0600
+
+spl-linux (0.6.0.1rc-1~lucid.2) lucid; urgency=low
 
   * Add use-linux-flock-struct.patch for 32-bit systems.
     (Commit: ac35ef7e3c107e972250bcd15143328e7aef5943)
