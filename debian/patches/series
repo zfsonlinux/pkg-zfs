@@ -1,4 +1,3 @@
 kludge-version.patch
 #use-linux-flock-struct.patch
 invalidate-inodes.patch
-debian-changes-0.6.0.1rc-1ubuntu1
