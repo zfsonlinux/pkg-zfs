@@ -365,8 +365,10 @@ vnode_t *
 zfsctl_root(znode_t *zp)
 {
 	ASSERT(zfs_has_ctldir(zp));
-	VN_HOLD(zp->z_zfsvfs->z_ctldir);
-	return (zp->z_zfsvfs->z_ctldir);
+	if (VN_HOLD(zp->z_zfsvfs->z_ctldir) != NULL)
+		return (zp->z_zfsvfs->z_ctldir);
+	else
+		return NULL;
 }
 
 #ifdef HAVE_ZPL
@@ -634,7 +636,8 @@ zfsctl_unmount_snap(zfs_snapentry_t *sep, int fflags, cred_t *cr)
 	if ((error = vn_vfswlock(svp)) != 0)
 		return (error);
 
-	VN_HOLD(svp);
+	if (VN_HOLD(svp) == NULL)
+		return EAGAIN;
 	error = dounmount(vn_mountedvfs(svp), fflags, cr);
 	if (error) {
 		VN_RELE(svp);
@@ -933,24 +936,28 @@ zfsctl_snapdir_lookup(vnode_t *dvp, char *nm, vnode_t **vpp, pathname_t *pnp,
 	search.se_name = (char *)nm;
 	if ((sep = avl_find(&sdp->sd_snaps, &search, &where)) != NULL) {
 		*vpp = sep->se_root;
-		VN_HOLD(*vpp);
-		err = traverse(vpp);
-		if (err) {
-			VN_RELE(*vpp);
+		if (VN_HOLD(*vpp) == NULL) {
 			*vpp = NULL;
-		} else if (*vpp == sep->se_root) {
-			/*
-			 * The snapshot was unmounted behind our backs,
-			 * try to remount it.
-			 */
-			goto domount;
+			err = EAGAIN;
 		} else {
-			/*
-			 * VROOT was set during the traverse call.  We need
-			 * to clear it since we're pretending to be part
-			 * of our parent's vfs.
-			 */
-			(*vpp)->v_flag &= ~VROOT;
+			err = traverse(vpp);
+			if (err) {
+				VN_RELE(*vpp);
+				*vpp = NULL;
+			} else if (*vpp == sep->se_root) {
+				/*
+				 * The snapshot was unmounted behind our backs,
+				 * try to remount it.
+				 */
+				goto domount;
+			} else {
+				/*
+				 * VROOT was set during the traverse call.  We need
+				 * to clear it since we're pretending to be part
+				 * of our parent's vfs.
+				 */
+				(*vpp)->v_flag &= ~VROOT;
+			}
 		}
 		mutex_exit(&sdp->sd_lock);
 		ZFS_EXIT(zfsvfs);
@@ -1377,22 +1384,26 @@ zfsctl_lookup_objset(vfs_t *vfsp, uint64_t objsetid, zfsvfs_t **zfsvfsp)
 	}
 
 	if (sep != NULL) {
-		VN_HOLD(vp);
-		/*
-		 * Return the mounted root rather than the covered mount point.
-		 * Takes the GFS vnode at .zfs/snapshot/<snapshot objsetid>
-		 * and returns the ZFS vnode mounted on top of the GFS node.
-		 * This ZFS vnode is the root of the vfs for objset 'objsetid'.
-		 */
-		error = traverse(&vp);
-		if (error == 0) {
-			if (vp == sep->se_root)
-				error = EINVAL;
-			else
-				*zfsvfsp = VTOZ(vp)->z_zfsvfs;
+		if (VN_HOLD(vp) == NULL) {
+			error = EAGAIN;
+			mutex_exit(&sdp->sd_lock);
+		} else {
+			/*
+			 * Return the mounted root rather than the covered mount point.
+			 * Takes the GFS vnode at .zfs/snapshot/<snapshot objsetid>
+			 * and returns the ZFS vnode mounted on top of the GFS node.
+			 * This ZFS vnode is the root of the vfs for objset 'objsetid'.
+			 */
+			error = traverse(&vp);
+			if (error == 0) {
+				if (vp == sep->se_root)
+					error = EINVAL;
+				else
+					*zfsvfsp = VTOZ(vp)->z_zfsvfs;
+			}
+			mutex_exit(&sdp->sd_lock);
+			VN_RELE(vp);
 		}
-		mutex_exit(&sdp->sd_lock);
-		VN_RELE(vp);
 	} else {
 		error = EINVAL;
 		mutex_exit(&sdp->sd_lock);

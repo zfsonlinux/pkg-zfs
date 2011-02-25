@@ -1188,9 +1188,10 @@ specvp_check(vnode_t **vpp, cred_t *cr)
 		struct vnode *svp;
 
 		svp = specvp(*vpp, (*vpp)->v_rdev, (*vpp)->v_type, cr);
-		VN_RELE(*vpp);
 		if (svp == NULL)
 			error = ENOSYS;
+		else
+			VN_RELE(*vpp);
 		*vpp = svp;
 	}
 	return (error);
@@ -1240,9 +1241,11 @@ zfs_lookup(vnode_t *dvp, char *nm, vnode_t **vpp, struct pathname *pnp,
 		if (nm[0] == 0 || (nm[0] == '.' && nm[1] == '\0')) {
 			error = zfs_fastaccesschk_execute(zdp, cr);
 			if (!error) {
-				*vpp = dvp;
-				VN_HOLD(*vpp);
-				return (0);
+				if (VN_HOLD(dvp))
+					*vpp = dvp;
+				else
+					error = EAGAIN;
+				return (error);
 			}
 			return (error);
 		} else {
@@ -1430,7 +1433,10 @@ top:
 		/*
 		 * Null component name refers to the directory itself.
 		 */
-		VN_HOLD(dvp);
+		if (VN_HOLD(dvp) == NULL) {
+			printk("%s (%d) BUG\n", __func__, __LINE__);
+			BUG();
+		}
 		zp = dzp;
 		dl = NULL;
 		error = 0;

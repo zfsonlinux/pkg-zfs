@@ -390,8 +390,11 @@ zfs_dirlook(znode_t *dzp, char *name, vnode_t **vpp, int flags,
 	uint64_t parent;
 
 	if (name[0] == 0 || (name[0] == '.' && name[1] == 0)) {
-		*vpp = ZTOV(dzp);
-		VN_HOLD(*vpp);
+		vnode_t *vn = ZTOV(dzp);
+		if (VN_HOLD(vn) == NULL)
+			error = EAGAIN;
+		else
+			*vpp = vn;
 	} else if (name[0] == '.' && name[1] == '.' && name[2] == 0) {
 		zfsvfs_t *zfsvfs = dzp->z_zfsvfs;
 
@@ -414,7 +417,11 @@ zfs_dirlook(znode_t *dzp, char *name, vnode_t **vpp, int flags,
 			*vpp = ZTOV(zp);
 		rw_exit(&dzp->z_parent_lock);
 	} else if (zfs_has_ctldir(dzp) && strcmp(name, ZFS_CTLDIR_NAME) == 0) {
-		*vpp = zfsctl_root(dzp);
+		vnode_t *vn = zfsctl_root(dzp);
+		if (vn)
+			*vpp = vn;
+		else
+			error = EAGAIN;
 	} else {
 		int zf;
 

@@ -2104,13 +2104,19 @@ zfs_vget(vfs_t *vfsp, vnode_t **vpp, fid_t *fidp)
 	/* A zero fid_gen means we are in the .zfs control directories */
 	if (fid_gen == 0 &&
 	    (object == ZFSCTL_INO_ROOT || object == ZFSCTL_INO_SNAPDIR)) {
-		*vpp = zfsvfs->z_ctldir;
-		ASSERT(*vpp != NULL);
+
+		ASSERT(zfsvfs->z_ctldir != NULL);
+
 		if (object == ZFSCTL_INO_SNAPDIR) {
+			*vpp = zfsvfs->z_ctldir;
 			VERIFY(zfsctl_root_lookup(*vpp, "snapshot", vpp, NULL,
 			    0, NULL, NULL, NULL, NULL, NULL) == 0);
 		} else {
-			VN_HOLD(*vpp);
+			vnode_t *vn = zfsvfs->z_ctldir;
+			if (VN_HOLD(vn))
+				*vpp = vn;
+			else
+				err = EAGAIN;
 		}
 		ZFS_EXIT(zfsvfs);
 		return (0);

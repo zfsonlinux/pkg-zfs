@@ -1348,9 +1348,11 @@ zfs_zget(zfsvfs_t *zfsvfs, uint64_t obj_num, znode_t **zpp)
 		if (zp->z_unlinked) {
 			err = ENOENT;
 		} else {
-			VN_HOLD(ZTOV(zp));
-			*zpp = zp;
-			err = 0;
+			if (VN_HOLD(ZTOV(zp))) {
+				*zpp = zp;
+				err = 0;
+			} else
+				err = EAGAIN;
 		}
 		sa_buf_rele(db, NULL);
 		mutex_exit(&zp->z_lock);
