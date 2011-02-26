@@ -2,7 +2,7 @@ Source: spl-linux
 Section: kernel
 Priority: extra
 Maintainer: Darik Horn <dajhorn@vanadac.com>
-Build-Depends: autotools-dev, debhelper, dkms, gawk, linux-headers-generic
+Build-Depends: autotools-dev, debhelper (>= 7.4), dkms (>> 2.1.1.2-5ubuntu1), gawk, linux-headers-generic
 Standards-Version: 3.8.4
 Homepage: http://www.zfsonlinux.org/
 Vcs-Git: git://github.com/dajhorn/pkg-spl.git
@@ -10,7 +10,7 @@ Vcs-Browser: https://github.com/dajhorn/pkg-spl/
 
 Package: spl-dkms
 Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}, dkms
+Depends: ${shlibs:Depends}, ${misc:Depends}, dkms (>> 2.1.1.2-5ubuntu1)
 Recommends: spl
 Description: Solaris Porting Layer kernel modules for Linux
 
