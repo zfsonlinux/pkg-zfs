@@ -1,3 +1,10 @@
+spl-linux (0.6.0.1rc-1ubuntu5) unstable; urgency=low
+
+  * Check for a Debian host in PRE_BUILD and configure for split headers.
+    See https://github.com/behlendorf/spl/issues/closed/#issue/10
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 27 Feb 2011 17:28:07 -0600
+
 spl-linux (0.6.0.1rc-1ubuntu4) unstable; urgency=low
 
   * Remove the build dependency on linux-headers because it is unnecessary
