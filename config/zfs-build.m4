@@ -16,9 +16,9 @@ AC_DEFUN([ZFS_AC_DEBUG], [
 
 	AS_IF([test "x$enable_debug" = xyes],
 	[
-		KERNELCPPFLAGS="${KERNELCPPFLAGS} -DDEBUG -Werror"
+		KERNELCPPFLAGS="${KERNELCPPFLAGS} -DDEBUG -Werror -finstrument-functions"
 		HOSTCFLAGS="${HOSTCFLAGS} -DDEBUG -Werror"
-		DEBUG_CFLAGS="-DDEBUG -Werror -finstrument-functions"
+		DEBUG_CFLAGS="-DDEBUG -Werror"
 		DEBUG_STACKFLAGS="-fstack-check"
 	],
 	[

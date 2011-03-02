@@ -11971,6 +11971,7 @@ fi
 
 	EXTRA_KCFLAGS="$tmp_flags"
 
+
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether BIO_RW_SYNCIO is defined" >&5
 $as_echo_n "checking whether BIO_RW_SYNCIO is defined... " >&6; }
 
@@ -12027,6 +12028,8 @@ fi
 	rm -Rf build
 
 
+
+
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether REQ_SYNC is defined" >&5
 $as_echo_n "checking whether REQ_SYNC is defined... " >&6; }
 
@@ -12077,8 +12080,12 @@ sed 's/^/| /' conftest.$ac_ext >&5
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
+
+
 fi
 	rm -Rf build
+
+
 
 
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether blk_end_request() is available" >&5
@@ -14266,6 +14273,9 @@ $as_echo "no" >&6; }
 fi
 	rm -Rf build
 
+
+
+
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether REQ_SYNC is defined" >&5
 $as_echo_n "checking whether REQ_SYNC is defined... " >&6; }
 
@@ -14316,8 +14326,13 @@ sed 's/^/| /' conftest.$ac_ext >&5
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
+
+
 fi
 	rm -Rf build
+
+
+
 
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether blk_end_request() is available" >&5
 $as_echo_n "checking whether blk_end_request() is available... " >&6; }
@@ -15730,9 +15745,9 @@ fi
 
 	if test "x$enable_debug" = xyes; then :
 
-		KERNELCPPFLAGS="${KERNELCPPFLAGS} -DDEBUG -Werror"
+		KERNELCPPFLAGS="${KERNELCPPFLAGS} -DDEBUG -Werror -finstrument-functions"
 		HOSTCFLAGS="${HOSTCFLAGS} -DDEBUG -Werror"
-		DEBUG_CFLAGS="-DDEBUG -Werror -finstrument-functions"
+		DEBUG_CFLAGS="-DDEBUG -Werror"
 		DEBUG_STACKFLAGS="-fstack-check"
 
 else
