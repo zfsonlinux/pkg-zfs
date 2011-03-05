@@ -1,3 +1,9 @@
+spl-linux (0.6.0.2-0ubuntu1) unstable; urgency=low
+
+  * Merge the behlendorf/xvattr branch and tag it as 0.6.0.2 upstream.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 04 Mar 2011 19:12:16 -0600
+
 spl-linux (0.6.0.1rc-1ubuntu5) unstable; urgency=low
 
   * Check for a Debian host in PRE_BUILD and configure for split headers.

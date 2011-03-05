@@ -1,4 +1,1 @@
-kludge-version.patch
-#use-linux-flock-struct.patch
-invalidate-inodes.patch
-fix-zlib.patch
+volatile-version.patch
