@@ -8,6 +8,7 @@
 
 AC_DEFUN([SPL_AC_CONFIG_KERNEL], [
 	SPL_AC_KERNEL
+	SPL_AC_KERNEL_CONFIG
 
 	if test "${LINUX_OBJ}" != "${LINUX}"; then
 		KERNELMAKE_PARAMS="$KERNELMAKE_PARAMS O=$LINUX_OBJ"
@@ -85,6 +86,14 @@ AC_DEFUN([SPL_AC_MODULE_SYMVERS], [
 			LINUX_SYMBOLS=Modules.symvers
 		else
 			LINUX_SYMBOLS=Module.symvers
+		fi
+
+		if ! test -f "$LINUX_OBJ/$LINUX_SYMBOLS"; then
+			AC_MSG_ERROR([
+	*** Please make sure the kernel devel package for your distribution
+	*** is installed.  If your building with a custom kernel make sure the
+	*** kernel is configured, built, and the '--with-linux=PATH' configure
+	*** option refers to the location of the kernel source.])
 		fi
 	else
 		LINUX_SYMBOLS=NONE
@@ -188,6 +197,13 @@ AC_DEFUN([SPL_AC_KERNEL], [
 	AC_SUBST(LINUX_VERSION)
 
 	SPL_AC_MODULE_SYMVERS
+])
+
+AC_DEFUN([SPL_AC_KERNEL_CONFIG], [
+	SPL_LINUX_CONFIG([PREEMPT],
+		AC_MSG_ERROR([
+		*** Kernel built with CONFIG_PREEMPT which is not supported.
+		** You must rebuild your kernel without this option.]), [])
 ])
 
 dnl #
