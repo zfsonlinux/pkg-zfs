@@ -7,6 +7,6 @@ Index: spl-linux-0.6.0.1rc/META
  Name:         spl
  Branch:       1.0
 -Version:      0.6.0
-+Version:      0.6.0.2
++Version:      0.6.0.3+git
  Release:      rc1
  Release-Tags: relext

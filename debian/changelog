@@ -1,3 +1,10 @@
+spl-linux (0.6.0.3+git-0ubuntu1) unstable; urgency=low
+
+  * Begin using the +git upstream naming convention.
+  * Merge the behlendorf/master branch.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 09 Mar 2011 09:56:58 -0600
+
 spl-linux (0.6.0.2-0ubuntu1) unstable; urgency=low
 
   * Merge the behlendorf/xvattr branch and tag it as 0.6.0.2 upstream.
