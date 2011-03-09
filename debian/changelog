@@ -1,3 +1,9 @@
+spl-linux (0.6.0.3.git-0ubuntu1) unstable; urgency=low
+
+  * Revert the '+' in the upstream version because it is not recognized by DKMS.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 09 Mar 2011 12:18:31 -0600
+
 spl-linux (0.6.0.3+git-0ubuntu2) unstable; urgency=low
 
   * No changes. Increment version number for a bad build.
