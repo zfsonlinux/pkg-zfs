@@ -1,6 +1,7 @@
 spl-linux (0.6.0.4.rc2-0ubuntu1) unstable; urgency=low
 
   * Upstream spl-0.6.0-rc2 release.
+  * Remove ${shlibs:Depends} from the spl-dkms dependencies.
 
  -- Darik Horn <dajhorn@vanadac.com>  Thu, 10 Mar 2011 09:14:20 -0600
 
