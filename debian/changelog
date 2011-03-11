@@ -1,3 +1,9 @@
+spl-linux (0.6.0.4.rc2-0ubuntu2) unstable; urgency=low
+
+  * Stabilize the hostid for the zfs-initramfs package.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 11 Mar 2011 14:51:32 -0600
+
 spl-linux (0.6.0.4.rc2-0ubuntu1) unstable; urgency=low
 
   * Upstream spl-0.6.0-rc2 release.

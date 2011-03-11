@@ -1,0 +1,55 @@
+#!/bin/sh
+
+# The hostname and hostid of the last system to access a ZFS pool are stored in
+# the ZFS pool itself.  A pool is foreign if, during `zfs import`, the current
+# hostname and hostid are different than the stored values thereof.
+#
+# The hostname and hostid on Solaris are intrinsic, but they are not on Linux,
+# so the spl kernel module invokes /bin/hostname and /usr/bin/hostid from the
+# userland in its initialization routine.
+#
+# However, these two indentifiers are usually undefined in the Linux initramfs
+# environment, so the /etc/hostname and /etc/hostid files must be added to the
+# initrd.  Things like a DHCP lease change can affect the hostid too.
+#
+# ZFS requires stable values for hostname and hostid, but basic Linux systems
+# do not.  The hostid is therefore stabilized by creating the /etc/hostid file
+# in the regular environment if it does not already exist.  An undefined
+# hostname is usuallly stable.
+#
+# Neither /etc/hostname nor /etc/hostid are controlled configuration files in
+# Debian distributions, but the spl package nevertheless installs a dummy
+# /etc/hostid file that contains the HW_INVALID_HOSTID sentinal value so that
+# the package manager will track it.
+
+# This result is always an eight-character hexadecimal number sans the 0x
+# prefix.  Remember that /usr/bin/hostid generates a value if the /etc/hostid
+# file doesn't exist or is malformed.
+HOSTID=$(hostid)
+
+if [ -f /etc/hostid -a "0x$HOSTID" != "0xffffffff" ]
+then
+	# This system already has a stable hostid.
+	exit 0
+fi
+
+# Truncate the dummy file and generate the actual system hostid.
+: >/etc/hostid
+HOSTID=$(hostid)
+
+# @TODO: Check whether this method is appropriate for gethostid(2) on big
+# endian systems.  The /etc/hostname file on i386 and amd64 systems must be
+# a little endian integer of exacly four bytes.  Regardless, a consistent
+# hostid is more important than a correct byte order here.
+
+# Conveniences like a ${HOSTID:$ii:2} substring range or a `sed` one-liner
+# are prohibited here because this file must be dash-compatible by policy.
+AA=$(echo $HOSTID | cut -b 1,2)
+BB=$(echo $HOSTID | cut -b 3,4)
+CC=$(echo $HOSTID | cut -b 5,6)
+DD=$(echo $HOSTID | cut -b 7,8)
+
+# Invoke the external printf because the dash builtin lacks the byte format.
+/usr/bin/printf "\x$DD\x$CC\x$BB\x$AA" >"/etc/hostid"
+
+# @ASSERT: [ "$HOSTID" = "$(hostid)" ]

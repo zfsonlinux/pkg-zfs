@@ -18,7 +18,13 @@ override_dh_auto_install:
 	# Install the utilities.
 	make install DESTDIR='$(CURDIR)/debian/tmp'
 
-	# Get a bare copy of the source code. This creates the $(CURDIR)/$(NAME)-$(VERSION)/ tree.
+	# Create a dummy hostid file for the zfs-initramfs package.
+	# NB: Commentary in the spl.postinst script.
+	mkdir -p '$(CURDIR)/debian/tmp/etc/'
+	/usr/bin/printf '\xFF\xFF\xFF\xFF' >'$(CURDIR)/debian/tmp/etc/hostid'
+
+	# Get a bare copy of the source code.
+	# This creates the $(CURDIR)/$(NAME)-$(VERSION)/ tree.
 	make distdir
 
 	# This shunt allows DKMS to delete header files that are peculiar to each
