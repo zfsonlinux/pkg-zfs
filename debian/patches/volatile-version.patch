@@ -1,12 +1,12 @@
-Index: pkg-spl/META
+Index: b/META
 ===================================================================
---- pkg-spl.orig/META	2011-03-10 08:56:53.327942733 -0600
-+++ pkg-spl/META	2011-03-10 09:15:58.579622452 -0600
+--- a/META
++++ b/META
 @@ -1,6 +1,6 @@
  Meta:         1
  Name:         spl
  Branch:       1.0
 -Version:      0.6.0
-+Version:      0.6.0.4.rc2
++Version:      0.6.0.5
  Release:      rc2
  Release-Tags: relext
