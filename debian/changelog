@@ -1,3 +1,19 @@
+spl-linux (0.6.0.5-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Remove default GFP_NOFS allocations
+  * Disable vmalloc() direct reclaim
+  * Load zlib_inflate.ko
+  * Add crgetfsuid()/crgetfsgid() helpers
+
+  [ Darik Horn ]
+  * Set extend-diff-ignore='.*' in the debian/source/options file.
+  * Add the debuild-ppa.sh script for Launchpad PPA build convenience.
+  * Add a gawk dependency to the spl-dkms package.
+  * Merge upstream and tag as the unofficial spl-0.6.0.5 release.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 22 Mar 2011 22:49:23 -0500
+
 spl-linux (0.6.0.4.rc2-0ubuntu2) unstable; urgency=low
 
   * Stabilize the hostid for the zfs-initramfs package.
