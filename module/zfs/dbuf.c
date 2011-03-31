@@ -1095,7 +1095,7 @@ dbuf_dirty(dmu_buf_impl_t *db, dmu_tx_t *tx)
 		dn->dn_dirtyctx =
 		    (dmu_tx_is_syncing(tx) ? DN_DIRTY_SYNC : DN_DIRTY_OPEN);
 		ASSERT(dn->dn_dirtyctx_firstset == NULL);
-		dn->dn_dirtyctx_firstset = kmem_alloc(1, KM_PUSHPAGE);
+		dn->dn_dirtyctx_firstset = kmem_alloc(1, KM_SLEEP);
 	}
 	mutex_exit(&dn->dn_mtx);
 
