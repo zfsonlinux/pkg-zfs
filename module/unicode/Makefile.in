@@ -1,9 +1,9 @@
 MODULE := zunicode
 
 EXTRA_CFLAGS  = @KERNELCPPFLAGS@
-EXTRA_CFLAGS += -include @SPL_OBJ@/spl_config.h
-EXTRA_CFLAGS += -include @abs_top_builddir@/zfs_config.h
-EXTRA_CFLAGS += -I@abs_top_srcdir@/include -I@SPL@/include -I@SPL@
+EXTRA_CFLAGS += -include '@SPL_OBJ@/spl_config.h'
+EXTRA_CFLAGS += -include '@abs_top_builddir@/zfs_config.h'
+EXTRA_CFLAGS += -I'@abs_top_srcdir@/include' -I'@SPL@/include' -I'@SPL@'
 
 obj-m := $(MODULE).o
 
