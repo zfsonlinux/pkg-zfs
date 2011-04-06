@@ -1,3 +1,13 @@
+spl-linux (0.6.0.6-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Update CHAOS 5 Packaging
+
+  [ Darik Horn ]
+  * Merge upstream and use 0.6.0.6 as the unofficial version number.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 05 Apr 2011 22:27:50 -0500
+
 spl-linux (0.6.0.5-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
