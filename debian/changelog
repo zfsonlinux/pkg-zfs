@@ -1,3 +1,19 @@
+spl-linux (0.6.0.7-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Add .va_dentry helper
+  * Linux shrinker compat
+  * Update /proc/spl/kmem/slab output
+  * Add slab usage summeries to /proc
+  * Decrease target objects per slab
+  * Add dnlc_reduce_cache() support
+  * Prep spl-0,6,0-rc3 tag
+
+  [ Darik Horn ]
+  * Merge upstream and use 0.6.0.7 as the unofficial version number.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 07 Apr 2011 12:27:00 -0500
+
 spl-linux (0.6.0.6-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
