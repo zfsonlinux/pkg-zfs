@@ -100,7 +100,12 @@ struct proc_dir_entry *proc_spl_kstat = NULL;
 #define CTL_KMEM_KMEMMAX	CTL_UNNUMBERED /* Max alloc'd by kmem bytes */
 #define CTL_KMEM_VMEMUSED	CTL_UNNUMBERED /* Alloc'd vmem bytes */
 #define CTL_KMEM_VMEMMAX	CTL_UNNUMBERED /* Max alloc'd by vmem bytes */
-#define CTL_KMEM_ALLOC_FAILED	CTL_UNNUMBERED /* Cache allocations failed */
+#define CTL_KMEM_SLAB_KMEMTOTAL	CTL_UNNUMBERED /* Total kmem slab size */
+#define CTL_KMEM_SLAB_KMEMALLOC	CTL_UNNUMBERED /* Alloc'd kmem slab size */
+#define CTL_KMEM_SLAB_KMEMMAX	CTL_UNNUMBERED /* Max kmem slab size */
+#define CTL_KMEM_SLAB_VMEMTOTAL	CTL_UNNUMBERED /* Total vmem slab size */
+#define CTL_KMEM_SLAB_VMEMALLOC	CTL_UNNUMBERED /* Alloc'd vmem slab size */
+#define CTL_KMEM_SLAB_VMEMMAX	CTL_UNNUMBERED /* Max vmem slab size */
 #endif
 
 #else /* HAVE_CTL_UNNUMBERED */
@@ -152,6 +157,12 @@ enum {
 	CTL_KMEM_KMEMMAX,		/* Max alloc'd by kmem bytes */
 	CTL_KMEM_VMEMUSED,		/* Alloc'd vmem bytes */
 	CTL_KMEM_VMEMMAX,		/* Max alloc'd by vmem bytes */
+	CTL_KMEM_SLAB_KMEMTOTAL,	/* Total kmem slab size */
+	CTL_KMEM_SLAB_KMEMALLOC,	/* Alloc'd kmem slab size */
+	CTL_KMEM_SLAB_KMEMMAX,		/* Max kmem slab size */
+	CTL_KMEM_SLAB_VMEMTOTAL,	/* Total vmem slab size */
+	CTL_KMEM_SLAB_VMEMALLOC,	/* Alloc'd vmem slab size */
+	CTL_KMEM_SLAB_VMEMMAX,		/* Max vmem slab size */
 #endif
 };
 #endif /* HAVE_CTL_UNNUMBERED */
@@ -424,6 +435,53 @@ SPL_PROC_HANDLER(proc_domemused)
 
         SRETURN(rc);
 }
+
+SPL_PROC_HANDLER(proc_doslab)
+{
+        int rc = 0;
+        unsigned long min = 0, max = ~0, val = 0, mask;
+        struct ctl_table dummy = *table;
+        spl_kmem_cache_t *skc;
+        SENTRY;
+
+        dummy.data = &val;
+        dummy.proc_handler = &proc_dointvec;
+        dummy.extra1 = &min;
+        dummy.extra2 = &max;
+
+        if (write) {
+                *ppos += *lenp;
+        } else {
+                down_read(&spl_kmem_cache_sem);
+                mask = (unsigned long)table->data;
+
+                list_for_each_entry(skc, &spl_kmem_cache_list, skc_list) {
+
+			/* Only use slabs of the correct kmem/vmem type */
+			if (!(skc->skc_flags & mask))
+				continue;
+
+			/* Sum the specified field for selected slabs */
+			switch (mask & (KMC_TOTAL | KMC_ALLOC | KMC_MAX)) {
+			case KMC_TOTAL:
+	                        val += skc->skc_slab_size * skc->skc_slab_total;
+				break;
+			case KMC_ALLOC:
+	                        val += skc->skc_obj_size * skc->skc_obj_alloc;
+				break;
+			case KMC_MAX:
+	                        val += skc->skc_obj_size * skc->skc_obj_max;
+				break;
+			}
+                }
+
+                up_read(&spl_kmem_cache_sem);
+                rc = spl_proc_doulongvec_minmax(&dummy, write, filp,
+                                                buffer, lenp, ppos);
+        }
+
+        SRETURN(rc);
+}
 #endif /* DEBUG_KMEM */
 
 SPL_PROC_HANDLER(proc_dohostid)
@@ -562,12 +620,16 @@ SPL_PROC_HANDLER(proc_dofreemem)
 static void
 slab_seq_show_headers(struct seq_file *f)
 {
-        seq_printf(f, "%-36s      %-6s - %s %s %s - %s %s %s - "
-                   "%s %s %s - %s %s %s\n", "name", "flags",
-                   "obj_size", "slab_objs", "slab_size",
-                   "slab_fail", "slab_create", "slab_destroy",
-                   "slab_total", "slab_alloc", "slab_max",
-                   "obj_total", "obj_alloc", "obj_max");
+        seq_printf(f,
+            "--------------------- cache ----------"
+            "---------------------------------------------  "
+            "----- slab ------  "
+            "---- object -----\n");
+        seq_printf(f,
+            "name                                  "
+            "  flags      size     alloc slabsize  objsize  "
+            "total alloc   max  "
+            "total alloc   max\n");
 }
 
 static int
@@ -578,22 +640,20 @@ slab_seq_show(struct seq_file *f, void *p)
         ASSERT(skc->skc_magic == SKC_MAGIC);
 
         spin_lock(&skc->skc_lock);
-        seq_printf(f, "%-36s      ", skc->skc_name);
-        seq_printf(f, "0x%04lx - %u %u %u - %lu %lu %lu - "
-                   "%lu %lu %lu - %lu %lu %lu\n",
-                   (long unsigned)skc->skc_flags,
-                   (unsigned)skc->skc_obj_size,
-                   (unsigned)skc->skc_slab_objs,
-                   (unsigned)skc->skc_slab_size,
-                   (long unsigned)skc->skc_slab_fail,
-                   (long unsigned)skc->skc_slab_create,
-                   (long unsigned)skc->skc_slab_destroy,
-                   (long unsigned)skc->skc_slab_total,
-                   (long unsigned)skc->skc_slab_alloc,
-                   (long unsigned)skc->skc_slab_max,
-                   (long unsigned)skc->skc_obj_total,
-                   (long unsigned)skc->skc_obj_alloc,
-                   (long unsigned)skc->skc_obj_max);
+        seq_printf(f, "%-36s  ", skc->skc_name);
+        seq_printf(f, "0x%05lx %9lu %9lu %8u %8u  "
+            "%5lu %5lu %5lu  %5lu %5lu %5lu\n",
+            (long unsigned)skc->skc_flags,
+            (long unsigned)(skc->skc_slab_size * skc->skc_slab_total),
+            (long unsigned)(skc->skc_obj_size * skc->skc_obj_alloc),
+            (unsigned)skc->skc_slab_size,
+            (unsigned)skc->skc_obj_size,
+            (long unsigned)skc->skc_slab_total,
+            (long unsigned)skc->skc_slab_alloc,
+            (long unsigned)skc->skc_slab_max,
+            (long unsigned)skc->skc_obj_total,
+            (long unsigned)skc->skc_obj_alloc,
+            (long unsigned)skc->skc_obj_max);
 
         spin_unlock(&skc->skc_lock);
 
@@ -892,6 +952,66 @@ static struct ctl_table spl_kmem_table[] = {
                 .extra2   = &table_max,
                 .mode     = 0444,
                 .proc_handler = &proc_doulongvec_minmax,
+        },
+        {
+                CTL_NAME    (CTL_KMEM_SLAB_KMEMTOTAL)
+                .procname = "slab_kmem_total",
+		.data     = (void *)(KMC_KMEM | KMC_TOTAL),
+                .maxlen   = sizeof(unsigned long),
+                .extra1   = &table_min,
+                .extra2   = &table_max,
+                .mode     = 0444,
+                .proc_handler = &proc_doslab,
+        },
+        {
+                CTL_NAME    (CTL_KMEM_SLAB_KMEMALLOC)
+                .procname = "slab_kmem_alloc",
+		.data     = (void *)(KMC_KMEM | KMC_ALLOC),
+                .maxlen   = sizeof(unsigned long),
+                .extra1   = &table_min,
+                .extra2   = &table_max,
+                .mode     = 0444,
+                .proc_handler = &proc_doslab,
+        },
+        {
+                CTL_NAME    (CTL_KMEM_SLAB_KMEMMAX)
+                .procname = "slab_kmem_max",
+		.data     = (void *)(KMC_KMEM | KMC_MAX),
+                .maxlen   = sizeof(unsigned long),
+                .extra1   = &table_min,
+                .extra2   = &table_max,
+                .mode     = 0444,
+                .proc_handler = &proc_doslab,
+        },
+        {
+                CTL_NAME    (CTL_KMEM_SLAB_VMEMTOTAL)
+                .procname = "slab_vmem_total",
+		.data     = (void *)(KMC_VMEM | KMC_TOTAL),
+                .maxlen   = sizeof(unsigned long),
+                .extra1   = &table_min,
+                .extra2   = &table_max,
+                .mode     = 0444,
+                .proc_handler = &proc_doslab,
+        },
+        {
+                CTL_NAME    (CTL_KMEM_SLAB_VMEMALLOC)
+                .procname = "slab_vmem_alloc",
+		.data     = (void *)(KMC_VMEM | KMC_ALLOC),
+                .maxlen   = sizeof(unsigned long),
+                .extra1   = &table_min,
+                .extra2   = &table_max,
+                .mode     = 0444,
+                .proc_handler = &proc_doslab,
+        },
+        {
+                CTL_NAME    (CTL_KMEM_SLAB_VMEMMAX)
+                .procname = "slab_vmem_max",
+		.data     = (void *)(KMC_VMEM | KMC_MAX),
+                .maxlen   = sizeof(unsigned long),
+                .extra1   = &table_min,
+                .extra2   = &table_max,
+                .mode     = 0444,
+                .proc_handler = &proc_doslab,
         },
 	{0},
 };

@@ -293,6 +293,9 @@ enum {
 	KMC_BIT_OFFSLAB		= 7,	/* Objects not on slab */
 	KMC_BIT_REAPING		= 16,	/* Reaping in progress */
 	KMC_BIT_DESTROY		= 17,	/* Destroy in progress */
+	KMC_BIT_TOTAL		= 18,	/* Proc handler helper bit */
+	KMC_BIT_ALLOC		= 19,	/* Proc handler helper bit */
+	KMC_BIT_MAX		= 20,	/* Proc handler helper bit */
 };
 
 /* kmem move callback return values */
@@ -314,6 +317,9 @@ typedef enum kmem_cbrc {
 #define KMC_OFFSLAB		(1 << KMC_BIT_OFFSLAB)
 #define KMC_REAPING		(1 << KMC_BIT_REAPING)
 #define KMC_DESTROY		(1 << KMC_BIT_DESTROY)
+#define KMC_TOTAL		(1 << KMC_BIT_TOTAL)
+#define KMC_ALLOC		(1 << KMC_BIT_ALLOC)
+#define KMC_MAX			(1 << KMC_BIT_MAX)
 
 #define KMC_REAP_CHUNK			INT_MAX
 #define KMC_DEFAULT_SEEKS		1
@@ -328,7 +334,7 @@ extern struct rw_semaphore spl_kmem_cache_sem;
 
 #define SPL_KMEM_CACHE_DELAY		15	/* Minimum slab release age */
 #define SPL_KMEM_CACHE_REAP		0	/* Default reap everything */
-#define SPL_KMEM_CACHE_OBJ_PER_SLAB	32	/* Target objects per slab */
+#define SPL_KMEM_CACHE_OBJ_PER_SLAB	16	/* Target objects per slab */
 #define SPL_KMEM_CACHE_OBJ_PER_SLAB_MIN	8	/* Minimum objects per slab */
 #define SPL_KMEM_CACHE_ALIGN		8	/* Default object alignment */
 

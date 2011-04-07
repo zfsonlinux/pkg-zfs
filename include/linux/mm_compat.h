@@ -56,4 +56,86 @@ extern invalidate_inodes_t invalidate_inodes_fn;
 #define invalidate_inodes(sb)	invalidate_inodes_fn(sb)
 #endif /* HAVE_INVALIDATE_INODES */
 
+/*
+ * 2.6.xx API compat,
+ * There currently exists no exposed API to partially shrink the dcache.
+ * The expected mechanism to shrink the cache is a registered shrinker
+ * which is called during memory pressure.
+ */
+#ifndef HAVE_SHRINK_DCACHE_MEMORY
+# ifdef HAVE_3ARGS_SHRINKER_CALLBACK
+typedef int (*shrink_dcache_memory_t)(struct shrinker *, int, gfp_t);
+extern shrink_dcache_memory_t shrink_dcache_memory_fn;
+#  define shrink_dcache_memory(nr, gfp)	shrink_dcache_memory_fn(NULL, nr, gfp)
+# else
+typedef int (*shrink_dcache_memory_t)(int, gfp_t);
+extern shrink_dcache_memory_t shrink_dcache_memory_fn;
+#  define shrink_dcache_memory(nr, gfp)	shrink_dcache_memory_fn(nr, gfp)
+# endif /* HAVE_3ARGS_SHRINKER_CALLBACK */
+#endif /* HAVE_SHRINK_DCACHE_MEMORY */
+
+/*
+ * 2.6.xx API compat,
+ * There currently exists no exposed API to partially shrink the icache.
+ * The expected mechanism to shrink the cache is a registered shrinker
+ * which is called during memory pressure.
+ */
+#ifndef HAVE_SHRINK_ICACHE_MEMORY
+# ifdef HAVE_3ARGS_SHRINKER_CALLBACK
+typedef int (*shrink_icache_memory_t)(struct shrinker *, int, gfp_t);
+extern shrink_icache_memory_t shrink_icache_memory_fn;
+#  define shrink_icache_memory(nr, gfp)	shrink_icache_memory_fn(NULL, nr, gfp)
+# else
+typedef int (*shrink_icache_memory_t)(int, gfp_t);
+extern shrink_icache_memory_t shrink_icache_memory_fn;
+#  define shrink_icache_memory(nr, gfp)	shrink_icache_memory_fn(nr, gfp)
+# endif /* HAVE_3ARGS_SHRINKER_CALLBACK */
+#endif /* HAVE_SHRINK_ICACHE_MEMORY */
+
+#ifdef HAVE_SET_SHRINKER
+typedef struct spl_shrinker {
+	struct shrinker *shrinker;
+	shrinker_t fn;
+	int seeks;
+} spl_shrinker_t;
+
+static inline void
+spl_register_shrinker(spl_shrinker_t *ss)
+{
+	ss->shrinker = set_shrinker(ss->seeks, ss->fn);
+}
+
+static inline void
+spl_unregister_shrinker(spl_shrinker_t *ss)
+{
+	remove_shrinker(ss->shrinker);
+}
+
+# define SPL_SHRINKER_DECLARE(s, x, y) \
+	static spl_shrinker_t s = { .shrinker = NULL, .fn = x, .seeks = y }
+# define SPL_SHRINKER_CALLBACK_PROTO(fn, x, y, z) \
+	static int fn(int y, unsigned int z)
+# define spl_exec_shrinker(ss, nr, gfp) \
+	((spl_shrinker_t *)ss)->fn(nr, gfp)
+
+#else /* HAVE_SET_SHRINKER */
+
+# define spl_register_shrinker(x)	register_shrinker(x)
+# define spl_unregister_shrinker(x)	unregister_shrinker(x)
+# define SPL_SHRINKER_DECLARE(s, x, y) \
+	static struct shrinker s = { .shrink = x, .seeks = y }
+
+# ifdef HAVE_3ARGS_SHRINKER_CALLBACK
+#  define SPL_SHRINKER_CALLBACK_PROTO(fn, x, y, z) \
+	static int fn(struct shrinker *x, int y, unsigned int z)
+#  define spl_exec_shrinker(ss, nr, gfp) \
+	((struct shrinker *)ss)->shrink(NULL, nr, gfp)
+# else /* HAVE_3ARGS_SHRINKER_CALLBACK */
+#  define SPL_SHRINKER_CALLBACK_PROTO(fn, x, y, z) \
+	static int fn(int y, unsigned int z)
+#  define spl_exec_shrinker(ss, nr, gfp) \
+	((struct shrinker *)ss)->shrink(nr, gfp)
+# endif /* HAVE_3ARGS_SHRINKER_CALLBACK */
+#endif /* HAVE_SET_SHRINKER */
+
 #endif /* SPL_MM_COMPAT_H */
