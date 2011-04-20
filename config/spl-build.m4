@@ -76,6 +76,7 @@ AC_DEFUN([SPL_AC_CONFIG_KERNEL], [
 	SPL_AC_3ARGS_FILE_FSYNC
 	SPL_AC_EXPORTED_RWSEM_IS_LOCKED
 	SPL_AC_KERNEL_INVALIDATE_INODES
+	SPL_AC_KERNEL_2ARGS_INVALIDATE_INODES
 	SPL_AC_SHRINK_DCACHE_MEMORY
 	SPL_AC_SHRINK_ICACHE_MEMORY
 ])
@@ -637,7 +638,7 @@ AC_DEFUN([SPL_AC_ATOMIC_SPINLOCK], [
 	SPL_LINUX_TRY_COMPILE([
 		#include <asm/atomic.h>
 	],[
-		atomic64_t *ptr;
+		atomic64_t *ptr __attribute__ ((unused));
 	],[
 		have_atomic64_t=yes
 		AC_DEFINE(HAVE_ATOMIC64_T, 1,
@@ -719,7 +720,7 @@ AC_DEFUN([SPL_AC_TYPE_UINTPTR_T],
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/types.h>
 	],[
-		uintptr_t *ptr;
+		uintptr_t *ptr __attribute__ ((unused));
 	],[
 		AC_MSG_RESULT([yes])
 		AC_DEFINE(HAVE_UINTPTR_T, 1,
@@ -738,7 +739,7 @@ AC_DEFUN([SPL_AC_3ARGS_INIT_WORK],
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/workqueue.h>
 	],[
-		struct work_struct work;
+		struct work_struct work __attribute__ ((unused));
 		INIT_WORK(&work, NULL, NULL);
 	],[
 		AC_MSG_RESULT(yes)
@@ -758,7 +759,7 @@ AC_DEFUN([SPL_AC_2ARGS_REGISTER_SYSCTL],
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/sysctl.h>
 	],[
-		return register_sysctl_table(NULL,0);
+		(void) register_sysctl_table(NULL, 0);
 	],[
 		AC_MSG_RESULT(yes)
 		AC_DEFINE(HAVE_2ARGS_REGISTER_SYSCTL, 1,
@@ -824,7 +825,7 @@ AC_DEFUN([SPL_AC_PATH_IN_NAMEIDATA],
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/namei.h>
 	],[
-		struct nameidata nd;
+		struct nameidata nd __attribute__ ((unused));
 
 		nd.path.mnt = NULL;
 		nd.path.dentry = NULL;
@@ -876,7 +877,7 @@ AC_DEFUN([SPL_AC_CTL_NAME], [
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/sysctl.h>
 	],[
-		struct ctl_table ctl;
+		struct ctl_table ctl __attribute__ ((unused));
 		ctl.ctl_name = 0;
 	],[
 		AC_MSG_RESULT(yes)
@@ -996,7 +997,9 @@ AC_DEFUN([SPL_AC_TIMESPEC_SUB], [
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/time.h>
 	],[
-		struct timespec a, b, c = { 0 };
+		struct timespec a = { 0 };
+		struct timespec b = { 0 };
+		struct timespec c __attribute__ ((unused));
 		c = timespec_sub(a, b);
 	],[
 		AC_MSG_RESULT(yes)
@@ -1015,7 +1018,8 @@ AC_DEFUN([SPL_AC_INIT_UTSNAME], [
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/utsname.h>
 	],[
-		struct new_utsname *a = init_utsname();
+		struct new_utsname *a __attribute__ ((unused));
+		a = init_utsname();
 	],[
 		AC_MSG_RESULT(yes)
 		AC_DEFINE(HAVE_INIT_UTSNAME, 1, [init_utsname() is available])
@@ -1046,7 +1050,8 @@ AC_DEFUN([SPL_AC_FILES_FDTABLE], [
 		#endif
 	],[
 		struct files_struct *files = current->files;
-		struct fdtable *fdt = files_fdtable(files);
+		struct fdtable *fdt __attribute__ ((unused));
+		fdt = files_fdtable(files);
 	],[
 		AC_MSG_RESULT(yes)
 		AC_DEFINE(HAVE_FILES_FDTABLE, 1, [files_fdtable() is available])
@@ -1072,7 +1077,8 @@ AC_DEFUN([SPL_AC_KMALLOC_NODE], [
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/slab.h>
 	],[
-		void *a = kmalloc_node(1, GFP_KERNEL, 0);
+		void *a __attribute__ ((unused));
+		a = kmalloc_node(1, GFP_KERNEL, 0);
 	],[
 		AC_MSG_RESULT(yes)
 		AC_DEFINE(HAVE_KMALLOC_NODE, 1, [kmalloc_node() is available])
@@ -1124,7 +1130,7 @@ AC_DEFUN([SPL_AC_MUTEX_OWNER], [
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/mutex.h>
 	],[
-		struct mutex mtx;
+		struct mutex mtx __attribute__ ((unused));
 		mtx.owner = NULL;
 	],[
 		AC_MSG_RESULT(yes)
@@ -1300,7 +1306,7 @@ AC_DEFUN([SPL_AC_GLOBAL_PAGE_STATE], [
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/mm.h>
 	],[
-		unsigned long state;
+		unsigned long state __attribute__ ((unused));
 		state = global_page_state(0);
 	],[
 		AC_MSG_RESULT(yes)
@@ -1326,7 +1332,7 @@ AC_DEFUN([SPL_AC_ZONE_STAT_ITEM_FREE], [
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/mm.h>
 	],[
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_FREE_PAGES;
 	],[
 		AC_MSG_RESULT(yes)
@@ -1353,7 +1359,7 @@ AC_DEFUN([SPL_AC_ZONE_STAT_ITEM_INACTIVE], [
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/mm.h>
 	],[
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_INACTIVE;
 	],[
 		AC_MSG_RESULT(yes)
@@ -1367,7 +1373,7 @@ AC_DEFUN([SPL_AC_ZONE_STAT_ITEM_INACTIVE], [
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/mm.h>
 	],[
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_INACTIVE_ANON;
 	],[
 		AC_MSG_RESULT(yes)
@@ -1381,7 +1387,7 @@ AC_DEFUN([SPL_AC_ZONE_STAT_ITEM_INACTIVE], [
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/mm.h>
 	],[
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_INACTIVE_FILE;
 	],[
 		AC_MSG_RESULT(yes)
@@ -1408,7 +1414,7 @@ AC_DEFUN([SPL_AC_ZONE_STAT_ITEM_ACTIVE], [
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/mm.h>
 	],[
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_ACTIVE;
 	],[
 		AC_MSG_RESULT(yes)
@@ -1422,7 +1428,7 @@ AC_DEFUN([SPL_AC_ZONE_STAT_ITEM_ACTIVE], [
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/mm.h>
 	],[
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_ACTIVE_ANON;
 	],[
 		AC_MSG_RESULT(yes)
@@ -1436,7 +1442,7 @@ AC_DEFUN([SPL_AC_ZONE_STAT_ITEM_ACTIVE], [
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/mm.h>
 	],[
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_ACTIVE_FILE;
 	],[
 		AC_MSG_RESULT(yes)
@@ -1603,7 +1609,7 @@ AC_DEFUN([SPL_AC_CRED_STRUCT], [
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/cred.h>
 	],[
-		struct cred *cr;
+		struct cred *cr __attribute__ ((unused));
 		cr  = NULL;
 	],[
 		AC_MSG_RESULT(yes)
@@ -1718,6 +1724,36 @@ AC_DEFUN([SPL_AC_KERNEL_INVALIDATE_INODES], [
 		[AC_DEFINE(HAVE_INVALIDATE_INODES, 1,
 		[invalidate_inodes() is available])],
 		[])
+])
+
+dnl #
+dnl # 2.6.39 API compat,
+dnl # The function invalidate_inodes() now take 2 arguments.  The second
+dnl # 'kill_dirty' argument describes how invalidate_inodes() should
+dnl # handle dirty inodes.  Only when set will dirty inodes be discarded,
+dnl # otherwise they will be handled as busy.
+dnl #
+dnl # Unfortunately, we don't have access to the invalidate_inodes()
+dnl # prototype so it's not easy to check how many arguments it takes.
+dnl # However, this change was done for the benefit of invalidate_device()
+dnl # which also added an argument.  The invalidate_device() symbol does
+dnl # exist in the development headers so if it takes two arguments we
+dnl # can fairly safely infer that invalidate_inodes() takes two arguments
+dnl # as well.  See commit 93b270f76e7ef3b81001576860c2701931cdc78b.
+dnl #
+AC_DEFUN([SPL_AC_KERNEL_2ARGS_INVALIDATE_INODES],
+	[AC_MSG_CHECKING([whether invalidate_inodes() wants 2 args])
+	SPL_LINUX_TRY_COMPILE([
+		#include <linux/fs.h>
+	],[
+		return __invalidate_device(NULL, 0);
+	],[
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(HAVE_2ARGS_INVALIDATE_INODES, 1,
+		          [invalidate_inodes() wants 2 args])
+	],[
+		AC_MSG_RESULT(no)
+	])
 ])
 
 dnl #

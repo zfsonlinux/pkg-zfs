@@ -11989,7 +11989,7 @@ int
 main (void)
 {
 
-		atomic64_t *ptr;
+		atomic64_t *ptr __attribute__ ((unused));
 
   ;
   return 0;
@@ -12232,7 +12232,7 @@ int
 main (void)
 {
 
-		uintptr_t *ptr;
+		uintptr_t *ptr __attribute__ ((unused));
 
   ;
   return 0;
@@ -12296,7 +12296,7 @@ int
 main (void)
 {
 
-		struct work_struct work;
+		struct work_struct work __attribute__ ((unused));
 		INIT_WORK(&work, NULL, NULL);
 
   ;
@@ -12361,7 +12361,7 @@ int
 main (void)
 {
 
-		return register_sysctl_table(NULL,0);
+		(void) register_sysctl_table(NULL, 0);
 
   ;
   return 0;
@@ -12563,7 +12563,7 @@ int
 main (void)
 {
 
-		struct nameidata nd;
+		struct nameidata nd __attribute__ ((unused));
 
 		nd.path.mnt = NULL;
 		nd.path.dentry = NULL;
@@ -12738,7 +12738,7 @@ int
 main (void)
 {
 
-		struct ctl_table ctl;
+		struct ctl_table ctl __attribute__ ((unused));
 		ctl.ctl_name = 0;
 
   ;
@@ -13124,7 +13124,9 @@ int
 main (void)
 {
 
-		struct timespec a, b, c = { 0 };
+		struct timespec a = { 0 };
+		struct timespec b = { 0 };
+		struct timespec c __attribute__ ((unused));
 		c = timespec_sub(a, b);
 
   ;
@@ -13190,7 +13192,8 @@ int
 main (void)
 {
 
-		struct new_utsname *a = init_utsname();
+		struct new_utsname *a __attribute__ ((unused));
+		a = init_utsname();
 
   ;
   return 0;
@@ -13328,7 +13331,8 @@ main (void)
 {
 
 		struct files_struct *files = current->files;
-		struct fdtable *fdt = files_fdtable(files);
+		struct fdtable *fdt __attribute__ ((unused));
+		fdt = files_fdtable(files);
 
   ;
   return 0;
@@ -13461,7 +13465,8 @@ int
 main (void)
 {
 
-		void *a = kmalloc_node(1, GFP_KERNEL, 0);
+		void *a __attribute__ ((unused));
+		a = kmalloc_node(1, GFP_KERNEL, 0);
 
   ;
   return 0;
@@ -13634,7 +13639,7 @@ int
 main (void)
 {
 
-		struct mutex mtx;
+		struct mutex mtx __attribute__ ((unused));
 		mtx.owner = NULL;
 
   ;
@@ -14096,7 +14101,7 @@ int
 main (void)
 {
 
-		unsigned long state;
+		unsigned long state __attribute__ ((unused));
 		state = global_page_state(0);
 
   ;
@@ -14162,7 +14167,7 @@ int
 main (void)
 {
 
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_FREE_PAGES;
 
   ;
@@ -14228,7 +14233,7 @@ int
 main (void)
 {
 
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_INACTIVE;
 
   ;
@@ -14293,7 +14298,7 @@ int
 main (void)
 {
 
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_INACTIVE_ANON;
 
   ;
@@ -14358,7 +14363,7 @@ int
 main (void)
 {
 
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_INACTIVE_FILE;
 
   ;
@@ -14424,7 +14429,7 @@ int
 main (void)
 {
 
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_ACTIVE;
 
   ;
@@ -14489,7 +14494,7 @@ int
 main (void)
 {
 
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_ACTIVE_ANON;
 
   ;
@@ -14554,7 +14559,7 @@ int
 main (void)
 {
 
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_ACTIVE_FILE;
 
   ;
@@ -15080,7 +15085,7 @@ int
 main (void)
 {
 
-		struct cred *cr;
+		struct cred *cr __attribute__ ((unused));
 		cr  = NULL;
 
   ;
@@ -15460,6 +15465,70 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 	fi
+
+
+	{ $as_echo "$as_me:$LINENO: checking whether invalidate_inodes() wants 2 args" >&5
+$as_echo_n "checking whether invalidate_inodes() wants 2 args... " >&6; }
+
+
+cat confdefs.h - <<_ACEOF >conftest.c
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+
+		#include <linux/fs.h>
+
+int
+main (void)
+{
+
+		return __invalidate_device(NULL, 0);
+
+  ;
+  return 0;
+}
+
+_ACEOF
+
+
+	rm -Rf build && mkdir -p build
+	echo "obj-m := conftest.o" >build/Makefile
+	if { ac_try='cp conftest.c build && make modules -C $LINUX_OBJ EXTRA_CFLAGS="-Werror-implicit-function-declaration $EXTRA_KCFLAGS" $ARCH_UM M=$PWD/build'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } >/dev/null && { ac_try='test -s build/conftest.o'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+
+		{ $as_echo "$as_me:$LINENO: result: yes" >&5
+$as_echo "yes" >&6; }
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_2ARGS_INVALIDATE_INODES 1
+_ACEOF
+
+
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+		{ $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+
+
+
+fi
+
+	rm -Rf build
+
 
 
 
@@ -15893,7 +15962,7 @@ int
 main (void)
 {
 
-		atomic64_t *ptr;
+		atomic64_t *ptr __attribute__ ((unused));
 
   ;
   return 0;
@@ -16136,7 +16205,7 @@ int
 main (void)
 {
 
-		uintptr_t *ptr;
+		uintptr_t *ptr __attribute__ ((unused));
 
   ;
   return 0;
@@ -16200,7 +16269,7 @@ int
 main (void)
 {
 
-		struct work_struct work;
+		struct work_struct work __attribute__ ((unused));
 		INIT_WORK(&work, NULL, NULL);
 
   ;
@@ -16265,7 +16334,7 @@ int
 main (void)
 {
 
-		return register_sysctl_table(NULL,0);
+		(void) register_sysctl_table(NULL, 0);
 
   ;
   return 0;
@@ -16467,7 +16536,7 @@ int
 main (void)
 {
 
-		struct nameidata nd;
+		struct nameidata nd __attribute__ ((unused));
 
 		nd.path.mnt = NULL;
 		nd.path.dentry = NULL;
@@ -16642,7 +16711,7 @@ int
 main (void)
 {
 
-		struct ctl_table ctl;
+		struct ctl_table ctl __attribute__ ((unused));
 		ctl.ctl_name = 0;
 
   ;
@@ -17028,7 +17097,9 @@ int
 main (void)
 {
 
-		struct timespec a, b, c = { 0 };
+		struct timespec a = { 0 };
+		struct timespec b = { 0 };
+		struct timespec c __attribute__ ((unused));
 		c = timespec_sub(a, b);
 
   ;
@@ -17094,7 +17165,8 @@ int
 main (void)
 {
 
-		struct new_utsname *a = init_utsname();
+		struct new_utsname *a __attribute__ ((unused));
+		a = init_utsname();
 
   ;
   return 0;
@@ -17232,7 +17304,8 @@ main (void)
 {
 
 		struct files_struct *files = current->files;
-		struct fdtable *fdt = files_fdtable(files);
+		struct fdtable *fdt __attribute__ ((unused));
+		fdt = files_fdtable(files);
 
   ;
   return 0;
@@ -17365,7 +17438,8 @@ int
 main (void)
 {
 
-		void *a = kmalloc_node(1, GFP_KERNEL, 0);
+		void *a __attribute__ ((unused));
+		a = kmalloc_node(1, GFP_KERNEL, 0);
 
   ;
   return 0;
@@ -17538,7 +17612,7 @@ int
 main (void)
 {
 
-		struct mutex mtx;
+		struct mutex mtx __attribute__ ((unused));
 		mtx.owner = NULL;
 
   ;
@@ -18000,7 +18074,7 @@ int
 main (void)
 {
 
-		unsigned long state;
+		unsigned long state __attribute__ ((unused));
 		state = global_page_state(0);
 
   ;
@@ -18066,7 +18140,7 @@ int
 main (void)
 {
 
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_FREE_PAGES;
 
   ;
@@ -18132,7 +18206,7 @@ int
 main (void)
 {
 
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_INACTIVE;
 
   ;
@@ -18197,7 +18271,7 @@ int
 main (void)
 {
 
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_INACTIVE_ANON;
 
   ;
@@ -18262,7 +18336,7 @@ int
 main (void)
 {
 
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_INACTIVE_FILE;
 
   ;
@@ -18328,7 +18402,7 @@ int
 main (void)
 {
 
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_ACTIVE;
 
   ;
@@ -18393,7 +18467,7 @@ int
 main (void)
 {
 
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_ACTIVE_ANON;
 
   ;
@@ -18458,7 +18532,7 @@ int
 main (void)
 {
 
-		enum zone_stat_item zsi;
+		enum zone_stat_item zsi __attribute__ ((unused));
 		zsi = NR_ACTIVE_FILE;
 
   ;
@@ -18984,7 +19058,7 @@ int
 main (void)
 {
 
-		struct cred *cr;
+		struct cred *cr __attribute__ ((unused));
 		cr  = NULL;
 
   ;
@@ -19364,6 +19438,70 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 	fi
+
+
+	{ $as_echo "$as_me:$LINENO: checking whether invalidate_inodes() wants 2 args" >&5
+$as_echo_n "checking whether invalidate_inodes() wants 2 args... " >&6; }
+
+
+cat confdefs.h - <<_ACEOF >conftest.c
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+
+		#include <linux/fs.h>
+
+int
+main (void)
+{
+
+		return __invalidate_device(NULL, 0);
+
+  ;
+  return 0;
+}
+
+_ACEOF
+
+
+	rm -Rf build && mkdir -p build
+	echo "obj-m := conftest.o" >build/Makefile
+	if { ac_try='cp conftest.c build && make modules -C $LINUX_OBJ EXTRA_CFLAGS="-Werror-implicit-function-declaration $EXTRA_KCFLAGS" $ARCH_UM M=$PWD/build'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } >/dev/null && { ac_try='test -s build/conftest.o'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+
+		{ $as_echo "$as_me:$LINENO: result: yes" >&5
+$as_echo "yes" >&6; }
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_2ARGS_INVALIDATE_INODES 1
+_ACEOF
+
+
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+		{ $as_echo "$as_me:$LINENO: result: no" >&5
+$as_echo "no" >&6; }
+
+
+
+fi
+
+	rm -Rf build
+
 
 
 
