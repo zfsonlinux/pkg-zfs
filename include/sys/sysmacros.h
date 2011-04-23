@@ -65,13 +65,7 @@
 #define MAXMSGLEN			256
 #define MAXNAMELEN			256
 #define MAXPATHLEN			PATH_MAX
-
-#ifdef _LP64
-#define MAXOFFSET_T			0x7fffffffffffffffl
-#else
-#define MAXOFFSET_T			0x7fffffffl
-#endif
-
+#define MAXOFFSET_T			LLONG_MAX
 #define MAXBSIZE			8192
 #define DEV_BSIZE			512
 #define DEV_BSHIFT			9 /* log2(DEV_BSIZE) */
@@ -143,7 +137,7 @@
 
 /* Missing globals */
 extern char spl_version[16];
-extern long spl_hostid;
+extern unsigned long spl_hostid;
 extern char hw_serial[11];
 
 /* Missing misc functions */

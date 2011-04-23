@@ -52,8 +52,10 @@
 char spl_version[16] = "SPL v" SPL_META_VERSION;
 EXPORT_SYMBOL(spl_version);
 
-long spl_hostid = 0;
+unsigned long spl_hostid = 0;
 EXPORT_SYMBOL(spl_hostid);
+module_param(spl_hostid, ulong, 0644);
+MODULE_PARM_DESC(spl_hostid, "The system hostid.");
 
 char hw_serial[HW_HOSTID_LEN] = "<none>";
 EXPORT_SYMBOL(hw_serial);
@@ -362,13 +364,18 @@ struct new_utsname *__utsname(void)
 }
 EXPORT_SYMBOL(__utsname);
 
+#define GET_HOSTID_CMD \
+	"exec 0</dev/null " \
+	"     1>/proc/sys/kernel/spl/hostid " \
+	"     2>/dev/null; " \
+	"hostid"
+
 static int
 set_hostid(void)
 {
-	char sh_path[] = "/bin/sh";
-	char *argv[] = { sh_path,
+	char *argv[] = { "/bin/sh",
 	                 "-c",
-	                 "/usr/bin/hostid >/proc/sys/kernel/spl/hostid",
+	                 GET_HOSTID_CMD,
 	                 NULL };
 	char *envp[] = { "HOME=/",
 	                 "TERM=linux",
@@ -382,7 +389,7 @@ set_hostid(void)
 	 * '/usr/bin/hostid' and redirect the result to /proc/sys/spl/hostid
 	 * for us to use.  It's a horrific solution but it will do for now.
 	 */
-	rc = call_usermodehelper(sh_path, argv, envp, 1);
+	rc = call_usermodehelper(argv[0], argv, envp, 1);
 	if (rc)
 		printk("SPL: Failed user helper '%s %s %s', rc = %d\n",
 		       argv[0], argv[1], argv[2], rc);
@@ -407,21 +414,25 @@ EXPORT_SYMBOL(zone_get_hostid);
 
 #ifndef HAVE_KALLSYMS_LOOKUP_NAME
 /*
- * Because kallsyms_lookup_name() is no longer exported in the
- * mainline kernel we are forced to resort to somewhat drastic
- * measures.  This function replaces the functionality by performing
- * an upcall to user space where /proc/kallsyms is consulted for
- * the requested address.
+ * The kallsyms_lookup_name() kernel function is not an exported symbol in
+ * Linux 2.6.19 through 2.6.32 inclusive.
+ *
+ * This function replaces the functionality by performing an upcall to user
+ * space where /proc/kallsyms is consulted for the requested address.
+ *
  */
-#define GET_KALLSYMS_ADDR_CMD						\
-	"gawk '{ if ( $3 == \"kallsyms_lookup_name\") { print $1 } }' "	\
-	"/proc/kallsyms >/proc/sys/kernel/spl/kallsyms_lookup_name"
+
+#define GET_KALLSYMS_ADDR_CMD \
+	"exec 0</dev/null " \
+	"     1>/proc/sys/kernel/spl/kallsyms_lookup_name " \
+	"     2>/dev/null; " \
+	"awk  '{ if ( $3 == \"kallsyms_lookup_name\" ) { print $1 } }' " \
+	"     /proc/kallsyms "
 
 static int
 set_kallsyms_lookup_name(void)
 {
-	char sh_path[] = "/bin/sh";
-	char *argv[] = { sh_path,
+	char *argv[] = { "/bin/sh",
 	                 "-c",
 			 GET_KALLSYMS_ADDR_CMD,
 	                 NULL };
@@ -431,7 +442,7 @@ set_kallsyms_lookup_name(void)
 	                 NULL };
 	int rc;
 
-	rc = call_usermodehelper(sh_path, argv, envp, 1);
+	rc = call_usermodehelper(argv[0], argv, envp, 1);
 	if (rc)
 		printk("SPL: Failed user helper '%s %s %s', rc = %d\n",
 		       argv[0], argv[1], argv[2], rc);
@@ -475,7 +486,8 @@ __init spl_init(void)
 	if ((rc = zlib_init()))
 		SGOTO(out9, rc);
 
-	if ((rc = set_hostid()))
+	/* Get the hostid if it was not passed as a module parameter. */
+	if (spl_hostid == 0 && (rc = set_hostid()))
 		SGOTO(out10, rc = -EADDRNOTAVAIL);
 
 #ifndef HAVE_KALLSYMS_LOOKUP_NAME
@@ -486,8 +498,8 @@ __init spl_init(void)
 	if ((rc = spl_kmem_init_kallsyms_lookup()))
 		SGOTO(out10, rc);
 
-	printk(KERN_NOTICE "SPL: Loaded Solaris Porting Layer v%s%s\n",
-	       SPL_META_VERSION, SPL_DEBUG_STR);
+	printk(KERN_NOTICE "SPL: Loaded module v%s%s, using hostid 0x%08x\n",
+	       SPL_META_VERSION, SPL_DEBUG_STR, (unsigned int) spl_hostid);
 	SRETURN(rc);
 out10:
 	zlib_fini();
@@ -520,7 +532,7 @@ spl_fini(void)
 {
 	SENTRY;
 
-	printk(KERN_NOTICE "SPL: Unloaded Solaris Porting Layer v%s%s\n",
+	printk(KERN_NOTICE "SPL: Unloaded module v%s%s\n",
 	       SPL_META_VERSION, SPL_DEBUG_STR);
 	zlib_fini();
 	tsd_fini();

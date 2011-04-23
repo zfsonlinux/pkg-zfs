@@ -39,7 +39,7 @@ EXPORT_SYMBOL(rootdir);
 static spl_kmem_cache_t *vn_cache;
 static spl_kmem_cache_t *vn_file_cache;
 
-static spinlock_t vn_file_lock = SPIN_LOCK_UNLOCKED;
+static DEFINE_SPINLOCK(vn_file_lock);
 static LIST_HEAD(vn_file_list);
 
 vtype_t
@@ -316,7 +316,7 @@ vn_remove(const char *path, uio_seg_t seg, int flags)
         ASSERT(seg == UIO_SYSSPACE);
         ASSERT(flags == RMFILE);
 
-        rc = path_lookup(path, LOOKUP_PARENT, &nd);
+	rc = spl_kern_path_parent(path, &nd);
         if (rc)
                 SGOTO(exit, rc);
 
@@ -370,11 +370,11 @@ vn_rename(const char *oldname, const char *newname, int x1)
         int rc = 0;
 	SENTRY;
 
-        rc = path_lookup(oldname, LOOKUP_PARENT, &oldnd);
+        rc = spl_kern_path_parent(oldname, &oldnd);
         if (rc)
                 SGOTO(exit, rc);
 
-        rc = path_lookup(newname, LOOKUP_PARENT, &newnd);
+        rc = spl_kern_path_parent(newname, &newnd);
         if (rc)
                 SGOTO(exit1, rc);
 

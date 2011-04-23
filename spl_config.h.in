@@ -21,6 +21,9 @@
 /* vfs_unlink() wants 2 args */
 #undef HAVE_2ARGS_VFS_UNLINK
 
+/* zlib_deflate_workspacesize() wants 2 args */
+#undef HAVE_2ARGS_ZLIB_DEFLATE_WORKSPACESIZE
+
 /* file_fsync() wants 3 args */
 #undef HAVE_3ARGS_FILE_FSYNC
 
@@ -110,6 +113,9 @@
 
 /* kallsyms_lookup_name() is available */
 #undef HAVE_KALLSYMS_LOOKUP_NAME
+
+/* kern_path_parent() is available */
+#undef HAVE_KERN_PATH_PARENT
 
 /* kmalloc_node() is available */
 #undef HAVE_KMALLOC_NODE

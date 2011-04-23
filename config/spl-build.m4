@@ -79,6 +79,8 @@ AC_DEFUN([SPL_AC_CONFIG_KERNEL], [
 	SPL_AC_KERNEL_2ARGS_INVALIDATE_INODES
 	SPL_AC_SHRINK_DCACHE_MEMORY
 	SPL_AC_SHRINK_ICACHE_MEMORY
+	SPL_AC_KERN_PATH_PARENT
+	SPL_AC_2ARGS_ZLIB_DEFLATE_WORKSPACESIZE
 ])
 
 AC_DEFUN([SPL_AC_MODULE_SYMVERS], [
@@ -210,24 +212,9 @@ AC_DEFUN([SPL_AC_KERNEL_CONFIG], [
 ])
 
 dnl #
-dnl # Explicitly check for gawk, we require it for the the usermode
-dnl # helper.  For some reason the standard awk command does not
-dnl # behave correctly when invoked from the usermode helper.
-dnl #
-AC_DEFUN([SPL_AC_GAWK], [
-	AS_IF([test "x$AWK" != xgawk], [
-                AC_MSG_ERROR([
-	*** Required util gawk missing.  Please install the required
-	*** gawk package for your distribution and try again.])
-	])
-])
-
-dnl #
 dnl # Default SPL user configuration
 dnl #
-AC_DEFUN([SPL_AC_CONFIG_USER], [
-	SPL_AC_GAWK
-])
+AC_DEFUN([SPL_AC_CONFIG_USER], [])
 
 dnl #
 dnl # Check for rpm+rpmbuild to build RPM packages.  If these tools
@@ -1784,4 +1771,42 @@ AC_DEFUN([SPL_AC_SHRINK_ICACHE_MEMORY], [
 		[AC_DEFINE(HAVE_SHRINK_ICACHE_MEMORY, 1,
 		[shrink_icache_memory() is available])],
 		[])
+])
+
+dnl #
+dnl # 2.6.39 API compat,
+dnl # The path_lookup() function has been renamed to kern_path_parent()
+dnl # and the flags argument has been removed.  The only behavior now
+dnl # offered is that of LOOKUP_PARENT.  The spl already always passed
+dnl # this flag so dropping the flag does not impact us.
+dnl #
+AC_DEFUN([SPL_AC_KERN_PATH_PARENT], [
+	SPL_CHECK_SYMBOL_EXPORT(
+		[kern_path_parent],
+		[fs/namei.c],
+		[AC_DEFINE(HAVE_KERN_PATH_PARENT, 1,
+		[kern_path_parent() is available])],
+		[])
+])
+
+dnl #
+dnl # 2.6.39 API compat,
+dnl # The function zlib_deflate_workspacesize() now take 2 arguments.
+dnl # This was done to avoid always having to allocate the maximum size
+dnl # workspace (268K).  The caller can now specific the windowBits and
+dnl # memLevel compression parameters to get a smaller workspace.
+dnl #
+AC_DEFUN([SPL_AC_2ARGS_ZLIB_DEFLATE_WORKSPACESIZE],
+	[AC_MSG_CHECKING([whether zlib_deflate_workspacesize() wants 2 args])
+	SPL_LINUX_TRY_COMPILE([
+		#include <linux/zlib.h>
+	],[
+		return zlib_deflate_workspacesize(MAX_WBITS, MAX_MEM_LEVEL);
+	],[
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(HAVE_2ARGS_ZLIB_DEFLATE_WORKSPACESIZE, 1,
+		          [zlib_deflate_workspacesize() wants 2 args])
+	],[
+		AC_MSG_RESULT(no)
+	])
 ])
