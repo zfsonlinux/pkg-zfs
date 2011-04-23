@@ -1,3 +1,20 @@
+spl-linux (0.6.0.9-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Linux 2.6.39 compat, DEFINE_SPINLOCK()
+  * Linux 2.6.39 compat, kern_path_parent()
+  * Linux 2.6.39 compat, zlib_deflate_workspacesize()
+  * Fix 32-bit MAXOFFSET_T definition
+
+  [ Darik Horn ]
+  * Import spl_hostid as a module parameter.
+  * Remove the gawk dependency.
+  * Make the SPL kernel messages consistent with ZFS.
+  * Use 0.6.0.9 as the unofficial version.
+  * Remove gawk packaging dependency.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 23 Apr 2011 11:04:24 -0500
+
 spl-linux (0.6.0.8-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
