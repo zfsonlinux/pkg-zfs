@@ -1,2 +1,3 @@
 volatile-version.patch
 lintian-ltmain.patch
+lintian-COPYING.patch
