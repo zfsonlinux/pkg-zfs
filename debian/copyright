@@ -1,0 +1,31 @@
+Upstream Authors:
+
+  * Brian Behlendorf <behlendorf1@llnl.gov>
+  * Ricardo M. Correia <Ricardo.M.Correia@Sun.COM>
+  * Chris Dunlap <cdunlap@llnl.gov>
+
+  See the AUTHORS file for additional details.
+
+
+Copyright:
+
+  * Free Software Foundation, Inc.
+  * Lawrence Livermore National Security, LLC.
+  * Regents of the University of California.
+  * Sun Microsystems, Inc.
+  * X Consortium.
+
+  Full attributions are in the source files.
+
+
+License:
+
+  Unless otherwise noted, all files in this distribution are released
+  under the GNU General Public License, version 2.  The full text of the
+  license is installed at: /usr/share/common-licenses/GPL-2
+
+
+The Debian packaging is:
+
+  Copyright 2011 Darik Horn <dajhorn@vanadac.com>
+  Available at http://github.com/dajhorn/pkg-spl/
