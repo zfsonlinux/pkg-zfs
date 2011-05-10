@@ -96,29 +96,13 @@
 
 static inline void release_rl(rl_t *rl)
 {
-	ASSERT(0 == atomic_read(&rl->r_cv_waiters));
-
-	if (rl->r_read_wanted) {
+	if (rl->r_read_wanted)
 		cv_destroy(&rl->r_rd_cv);
-	}
-	if (rl->r_write_wanted) {
+
+	if (rl->r_write_wanted)
 		cv_destroy(&rl->r_wr_cv);
-	}
 
-	/* free the rl_t memory */
-	kmem_free(rl, sizeof (rl_t));
-}
-
-static inline void do_delayed_release(rl_t *rl)
-{
-	uint64_t rc = atomic_dec_return(&rl->r_cv_waiters);
-
-    if (rl->r_delayed_release == B_FALSE)
-        return;
-
-    if (0 == rc)
-        /* destroy the condition variables */
-		release_rl(rl);
+	kmem_free(rl, sizeof(rl_t));
 }
 
 /*
@@ -199,10 +183,7 @@ wait:
 			cv_init(&rl->r_wr_cv, NULL, CV_DEFAULT, NULL);
 			rl->r_write_wanted = B_TRUE;
 		}
-
-		atomic_inc(&rl->r_cv_waiters);
 		cv_wait(&rl->r_wr_cv, &zp->z_range_lock);
-		do_delayed_release(rl);
 
 		/* reset to original */
 		new->r_off = off;
@@ -238,8 +219,7 @@ zfs_range_proxify(avl_tree_t *tree, rl_t *rl)
 	proxy->r_write_wanted = B_FALSE;
 	proxy->r_read_wanted = B_FALSE;
 	/* KQI */
-	atomic_set(&proxy->r_cv_waiters, 0);
-	proxy->r_delayed_release = B_FALSE;
+	//list_link_init(&proxy->r_list_node);
 	avl_add(tree, proxy);
 
 	return (proxy);
@@ -270,8 +250,7 @@ zfs_range_split(avl_tree_t *tree, rl_t *rl, uint64_t off)
 	rear->r_write_wanted = B_FALSE;
 	rear->r_read_wanted = B_FALSE;
 	/* KQI */
-	atomic_set(&rear->r_cv_waiters, 0);
-	rear->r_delayed_release = B_FALSE;
+	//list_link_init(&rear->r_list_node);
 
 	front = zfs_range_proxify(tree, rl);
 	front->r_len = off - rl->r_off;
@@ -298,8 +277,8 @@ zfs_range_new_proxy(avl_tree_t *tree, uint64_t off, uint64_t len)
 	rl->r_write_wanted = B_FALSE;
 	rl->r_read_wanted = B_FALSE;
 	/* KQI */
-	atomic_set(&rl->r_cv_waiters, 0);
-	rl->r_delayed_release = B_FALSE;
+	//list_link_init(&rl->r_list_node);
+
 	avl_add(tree, rl);
 }
 
@@ -414,9 +393,7 @@ retry:
 				cv_init(&prev->r_rd_cv, NULL, CV_DEFAULT, NULL);
 				prev->r_read_wanted = B_TRUE;
 			}
-			atomic_inc(&prev->r_cv_waiters);
 			cv_wait(&prev->r_rd_cv, &zp->z_range_lock);
-			do_delayed_release(prev);
 			goto retry;
 		}
 		if (off + len < prev->r_off + prev->r_len)
@@ -439,9 +416,7 @@ retry:
 				cv_init(&next->r_rd_cv, NULL, CV_DEFAULT, NULL);
 				next->r_read_wanted = B_TRUE;
 			}
-			atomic_inc(&next->r_cv_waiters);
 			cv_wait(&next->r_rd_cv, &zp->z_range_lock);
-			do_delayed_release(next);
 			goto retry;
 		}
 		if (off + len <= next->r_off + next->r_len)
@@ -481,8 +456,7 @@ zfs_range_lock(znode_t *zp, uint64_t off, uint64_t len, rl_type_t type)
 	new->r_write_wanted = B_FALSE;
 	new->r_read_wanted = B_FALSE;
 	/* KQI */
-	atomic_set(&new->r_cv_waiters, 0);
-	new->r_delayed_release = B_FALSE;
+	//list_link_init(&new->r_list_node);
 
 	mutex_enter(&zp->z_range_lock);
 	if (type == RL_READER) {
@@ -503,7 +477,7 @@ zfs_range_lock(znode_t *zp, uint64_t off, uint64_t len, rl_type_t type)
  * Unlock a reader lock
  */
 static void
-zfs_range_unlock_reader(znode_t *zp, rl_t *remove)
+zfs_range_unlock_reader(znode_t *zp, rl_t *remove, list_t *fl)
 {
 	avl_tree_t *tree = &zp->z_range_avl;
 	rl_t *rl, *next = NULL;
@@ -518,26 +492,14 @@ zfs_range_unlock_reader(znode_t *zp, rl_t *remove)
 	 */
 	if (remove->r_cnt == 1) {
 		avl_remove(tree, remove);
-		if (remove->r_write_wanted) {
+
+		if (remove->r_write_wanted)
 			cv_broadcast(&remove->r_wr_cv);
-#if 0
-			/* LINUX does not gaurantee that all waiting threads will be 
-			 * woken up before cv_broadcast returns we cannot destroy 
-			 * the cv at this point. Do delayed release.
-			 * */
-			cv_destroy(&remove->r_wr_cv);
-#endif
-		}
-		if (remove->r_read_wanted) {
+
+		if (remove->r_read_wanted)
 			cv_broadcast(&remove->r_rd_cv);
-#if 0
-			/* LINUX does not gaurantee that all waiting threads will be 
-			 * woken up before cv_broadcast returns we cannot destroy 
-			 * the cv at this point. Do delayed release.
-			 * */
-			cv_destroy(&remove->r_rd_cv);
-#endif
-		}
+
+		list_insert_tail(fl, remove);
 	} else {
 		ASSERT3U(remove->r_cnt, ==, 0);
 		ASSERT3U(remove->r_write_wanted, ==, 0);
@@ -563,36 +525,16 @@ zfs_range_unlock_reader(znode_t *zp, rl_t *remove)
 			rl->r_cnt--;
 			if (rl->r_cnt == 0) {
 				avl_remove(tree, rl);
-				if (rl->r_write_wanted) {
+				if (rl->r_write_wanted)
 					cv_broadcast(&rl->r_wr_cv);
-#if 0
-					/* LINUX does not gaurantee that all waiting threads will be
-					 * woken up before cv_broadcast returns we cannot destroy 
-					 * the cv at this point. Do delayed release.
-					 * */
-					cv_destroy(&rl->r_wr_cv);
-#endif
-				}
-				if (rl->r_read_wanted) {
+
+				if (rl->r_read_wanted)
 					cv_broadcast(&rl->r_rd_cv);
-#if 0
-					/* LINUX does not gaurantee that all waiting threads will be
-					 * woken up before cv_broadcast returns we cannot destroy 
-					 * the cv at this point. Do delayed release.
-					 * */
-					cv_destroy(&rl->r_rd_cv);
-#endif
-				}
-				rl->r_delayed_release = B_TRUE;
-				if (0 == atomic_read(&rl->r_cv_waiters)) {
-					release_rl(rl);
-				}
+
+				list_insert_tail(fl, rl);
 			}
 		}
-	}
-	remove->r_delayed_release = B_TRUE;
-	if (0 == atomic_read(&remove->r_cv_waiters)) {
-		release_rl(remove);
+		kmem_free(remove, sizeof (rl_t));
 	}
 }
 
@@ -603,7 +545,10 @@ void
 zfs_range_unlock(rl_t *rl)
 {
 	znode_t *zp = rl->r_zp;
+	list_t rl_free_list;
+	rl_t *r;
 
+	list_create(&rl_free_list, sizeof(rl_t), offsetof(rl_t, r_list_node));
 	ASSERT(rl->r_type == RL_WRITER || rl->r_type == RL_READER);
 	ASSERT(rl->r_cnt == 1 || rl->r_cnt == 0);
 	ASSERT(!rl->r_proxy);
@@ -613,38 +558,29 @@ zfs_range_unlock(rl_t *rl)
 		/* writer locks can't be shared or split */
 		avl_remove(&zp->z_range_avl, rl);
 		mutex_exit(&zp->z_range_lock);
-		if (rl->r_write_wanted) {
+
+		if (rl->r_write_wanted)
 			cv_broadcast(&rl->r_wr_cv);
-#if 0
-			/* LINUX does not gaurantee that all waiting threads will be
-			 * woken up before cv_broadcast returns we cannot destroy 
-			 * the cv at this point. Do delayed release.
-			 * */
-			cv_destroy(&rl->r_wr_cv);
-#endif
-		}
-		if (rl->r_read_wanted) {
+
+		if (rl->r_read_wanted)
 			cv_broadcast(&rl->r_rd_cv);
-#if 0
-			/* LINUX does not gaurantee that all waiting threads will be
-			 * woken up before cv_broadcast returns we cannot destroy 
-			 * the cv at this point. Do delayed release.
-			 * */
-			cv_destroy(&rl->r_rd_cv);
-#endif
-		}
-		rl->r_delayed_release = B_TRUE;
-		if (0 == atomic_read(&rl->r_cv_waiters)) {
-			release_rl(rl);
-		}
+
+		list_insert_tail(&rl_free_list, rl);
 	} else {
 		/*
 		 * lock may be shared, let zfs_range_unlock_reader()
 		 * release the lock and free the rl_t
 		 */
-		zfs_range_unlock_reader(zp, rl);
+		zfs_range_unlock_reader(zp, rl, &rl_free_list);
 		mutex_exit(&zp->z_range_lock);
 	}
+
+	while ((r = list_head(&rl_free_list))) {
+		list_remove(&rl_free_list, r);
+		release_rl(r);
+	}
+
+	list_destroy(&rl_free_list);
 }
 
 /*
