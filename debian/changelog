@@ -1,3 +1,10 @@
+spl-linux (0.6.0.14-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Add TASKQ_NORECLAIM flag
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 11 May 2011 20:30:33 -0500
+
 spl-linux (0.6.0.13.rc4-0ubuntu1) unstable; urgency=low
 
   * Use pristine-tar to import the upstream spl-0.6.0-rc4.tar.gz release.
