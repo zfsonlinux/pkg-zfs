@@ -13,8 +13,6 @@ AM_CCASFLAGS = \
 
 lib_LTLIBRARIES = libspl.la
 
-libspl_la_LDFLAGS = -lrt
-
 libspl_la_SOURCES = \
 	$(top_srcdir)/lib/libspl/getexecname.c \
 	$(top_srcdir)/lib/libspl/gethrtime.c \
