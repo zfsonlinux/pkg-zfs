@@ -8,5 +8,7 @@ DEFAULT_INCLUDES += \
 
 lib_LTLIBRARIES = libefi.la
 
+libefi_la_LDFLAGS = $(LIBUUID)
+
 libefi_la_SOURCES = \
 	$(top_srcdir)/lib/libefi/rdwr_efi.c
