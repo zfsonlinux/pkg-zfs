@@ -21,4 +21,4 @@ ztest_LDADD = \
 	$(top_builddir)/lib/libzpool/libzpool.la \
 	$(top_builddir)/lib/libzfs/libzfs.la
 
-ztest_LDFLAGS = -pthread -lm $(ZLIB) -lrt -ldl $(LIBUUID) $(LIBBLKID)
+ztest_LDFLAGS = -pthread -lm -lrt -ldl $(LIBUUID) $(LIBBLKID)

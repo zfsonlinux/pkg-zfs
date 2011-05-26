@@ -21,4 +21,4 @@ zinject_LDADD = \
 	$(top_builddir)/lib/libzpool/libzpool.la \
 	$(top_builddir)/lib/libzfs/libzfs.la
 
-zinject_LDFLAGS = -pthread -lm $(ZLIB) -lrt -ldl $(LIBUUID) $(LIBBLKID)
+zinject_LDFLAGS = -pthread -lm -lrt -ldl $(LIBUUID) $(LIBBLKID)
