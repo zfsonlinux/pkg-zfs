@@ -665,12 +665,12 @@ _zfs_init_libshare(void)
 	char path[MAXPATHLEN];
 	char isa[MAXISALEN];
 
-#if defined(_LP64)
+/*#if defined(_LP64)
 	if (sysinfo(SI_ARCHITECTURE_64, isa, MAXISALEN) == -1)
 		isa[0] = '\0';
-#else
+#else*/
 	isa[0] = '\0';
-#endif
+/*#endif*/
 	(void) snprintf(path, MAXPATHLEN,
 	    "/usr/lib/%s/libshare.so.1", isa);
 
@@ -854,14 +854,11 @@ zfs_share_proto(zfs_handle_t *zhp, zfs_share_proto_t *proto)
 		return (0);
 
 	if ((ret = zfs_init_libshare(hdl, SA_INIT_SHARE_API)) != SA_OK) {
-#ifdef HAVE_SHARE
 		(void) zfs_error_fmt(hdl, EZFS_SHARENFSFAILED,
 		    dgettext(TEXT_DOMAIN, "cannot share '%s': %s"),
 		    zfs_get_name(zhp), _sa_errorstr != NULL ?
 		    _sa_errorstr(ret) : "");
 		return (-1);
-#endif /* HAVE_SHARE */
-		return (0);
 	}
 
 	for (curr_proto = proto; *curr_proto != PROTO_END; curr_proto++) {

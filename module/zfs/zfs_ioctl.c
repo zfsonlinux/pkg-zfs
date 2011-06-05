@@ -4152,6 +4152,7 @@ zfs_ioc_userspace_upgrade(zfs_cmd_t *zc)
 	return (error);
 }
 
+#if 0
 /*
  * We don't want to have a hard dependency
  * against some special symbols in sharefs
@@ -4159,7 +4160,6 @@ zfs_ioc_userspace_upgrade(zfs_cmd_t *zc)
  * the first file system is shared.
  * Neither sharefs, nfs or smbsrv are unloadable modules.
  */
-#ifdef HAVE_SHARE
 int (*znfsexport_fs)(void *arg);
 int (*zshare_fs)(enum sharefs_sys_op, share_t *, uint32_t);
 int (*zsmbexport_fs)(void *arg, boolean_t add_share);
@@ -4173,7 +4173,7 @@ ddi_modhandle_t smbsrv_mod;
 kmutex_t zfs_share_lock;
 
 static int
-zfs_init_sharefs()
+zfs_init_sharefs(void)
 {
 	int error;
 
@@ -4191,12 +4191,12 @@ zfs_init_sharefs()
 	}
 	return (0);
 }
-#endif /* HAVE_SHARE */
+#endif /* 0 */
 
 static int
 zfs_ioc_share(zfs_cmd_t *zc)
 {
-#ifdef HAVE_SHARE
+#if 0
 	int error;
 	int opcode;
 
@@ -4258,17 +4258,17 @@ zfs_ioc_share(zfs_cmd_t *zc)
 	switch (zc->zc_share.z_sharetype) {
 	case ZFS_SHARE_NFS:
 	case ZFS_UNSHARE_NFS:
-		if (error =
+		if ((error =
 		    znfsexport_fs((void *)
-		    (uintptr_t)zc->zc_share.z_exportdata))
+		    (uintptr_t)zc->zc_share.z_exportdata)))
 			return (error);
 		break;
 	case ZFS_SHARE_SMB:
 	case ZFS_UNSHARE_SMB:
-		if (error = zsmbexport_fs((void *)
+		if ((error = zsmbexport_fs((void *)
 		    (uintptr_t)zc->zc_share.z_exportdata,
 		    zc->zc_share.z_sharetype == ZFS_SHARE_SMB ?
-		    B_TRUE: B_FALSE)) {
+		    B_TRUE: B_FALSE))) {
 			return (error);
 		}
 		break;
@@ -4286,9 +4286,9 @@ zfs_ioc_share(zfs_cmd_t *zc)
 	    zc->zc_share.z_sharemax);
 
 	return (error);
-#else
-	return (ENOTSUP);
-#endif /* HAVE_SHARE */
+#endif /* 0 */
+
+	return (ENOSYS);
 }
 
 ace_t full_access[] = {
@@ -5175,9 +5175,9 @@ _init(void)
 	tsd_create(&zfs_fsyncer_key, NULL);
 	tsd_create(&rrw_tsd_key, NULL);
 
-#ifdef HAVE_SHARE
+#if 0
 	mutex_init(&zfs_share_lock, NULL, MUTEX_DEFAULT, NULL);
-#endif /* HAVE_SHARE */
+#endif /* 0 */
 
 	printk(KERN_NOTICE "ZFS: Loaded module v%s%s, "
 	       "ZFS pool version %s, ZFS filesystem version %s\n",
@@ -5204,7 +5204,8 @@ _fini(void)
 	zvol_fini();
 	zfs_fini();
 	spa_fini();
-#ifdef HAVE_SHARE
+
+#if 0
 	if (zfs_nfsshare_inited)
 		(void) ddi_modclose(nfs_mod);
 	if (zfs_smbshare_inited)
@@ -5213,7 +5214,8 @@ _fini(void)
 		(void) ddi_modclose(sharefs_mod);
 
 	mutex_destroy(&zfs_share_lock);
-#endif /* HAVE_SHARE */
+#endif /* 0 */
+
 	tsd_destroy(&zfs_fsyncer_key);
 	tsd_destroy(&rrw_tsd_key);
 
