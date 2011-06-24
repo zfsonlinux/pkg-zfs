@@ -1,3 +1,16 @@
+spl-linux (0.6.0.20-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Avoid 'rpm -q' bug for 'make pkg'
+  * Linux 3.0: Shrinker compatibility
+  * Add linux compatibility tests
+
+  [ Darik Horn ]
+  * Read the /etc/hostid file directly.
+  * Stabilize the hostid for RPM installations.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 24 Jun 2011 13:42:39 -0500
+
 spl-linux (0.6.0.19-0ubuntu1) unstable; urgency=low
 
   * Depend on the lsb-release package.
