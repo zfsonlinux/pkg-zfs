@@ -387,6 +387,98 @@ zpl_writepage(struct page *pp, struct writeback_control *wbc)
 	return zpl_putpage(pp, wbc, pp->mapping);
 }
 
+/*
+ * Map zfs file zp_flags (xvattr) to linux file attributes.  Note this
+ * is not a 1-to-1 mapping.  Linux only has equivalent attributes for
+ * ZFS_IMMUTABLE and ZFS_APPENDONLY.  The flags ZFS_DIRSYNC, ZFS_SYNC,
+ * and ZFS_NOATIME were added for Linux compatibility with 'chattr'.
+ * These three new flags do not overlap with any Solaris flags and
+ * should be ignored on other platforms.  Long term a 'zattr' utility
+ * should be written which can be used to manipulate the rest of the
+ * ZFS_* flags in zp_flags.
+ */
+static unsigned int
+zpl_get_ioctl_flags(uint64_t zfs_flags)
+{
+	unsigned int ioctl_flags = 0;
+
+	if (zfs_flags & ZFS_IMMUTABLE)
+		ioctl_flags |= FS_IMMUTABLE_FL;
+
+	if (zfs_flags & ZFS_APPENDONLY)
+		ioctl_flags |= FS_APPEND_FL;
+
+	if (zfs_flags & ZFS_NODUMP)
+		ioctl_flags |= FS_NODUMP_FL;
+
+	if (zfs_flags & ZFS_DIRSYNC)
+		ioctl_flags |= FS_DIRSYNC_FL;
+
+	if (zfs_flags & ZFS_SYNC)
+		ioctl_flags |= FS_SYNC_FL;
+
+	if (zfs_flags & ZFS_NOATIME)
+		ioctl_flags |= FS_NOATIME_FL;
+
+	return (ioctl_flags & FS_FL_USER_VISIBLE);
+}
+
+static int
+zpl_ioctl_getflags(struct file *filp, void __user *arg)
+{
+	struct inode *ip = filp->f_dentry->d_inode;
+	unsigned int ioctl_flags;
+	uint64_t zfs_flags;
+	int error;
+
+	/* Use zfs_getattr() ? */
+	error = -zfs_getflags(ip, &zfs_flags);
+	if (error)
+		return (error);
+
+	ioctl_flags = zpl_get_ioctl_flags(zfs_flags);
+	error = copy_to_user(arg, &ioctl_flags, sizeof(ioctl_flags));
+
+	return (error);
+}
+
+/* SET ATTR_XVATTR FOR REPLAY, lets update setattr to take xvattrs again */
+static int
+zpl_ioctl_setflags(struct file *filp, void __user *arg)
+{
+	struct inode *ip = filp->f_dentry->d_inode;
+	unsigned int flags;
+	int error;
+
+	error = copy_from_user(&flags, arg, sizeof(flags));
+	if (error)
+		return (error);
+
+	if ((flags & ~(FS_FL_USER_MODIFIABLE)) || (!is_owner_or_cap(inode)))
+		return (-EACCES);
+
+	if (flags & ~(FS_IMMUTABLE_FL | FS_APPEND_FL | FS_NODUMP_FL |
+	    FS_DIRSYNC_FL | FS_SYNC_FL | FS_NOATIME_FL))
+		return (-EOPNOTSUPP);
+
+	error = -zfs_setattr();
+
+	return (error);
+}
+
+static long
+zpl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	switch (cmd) {
+	case ZFS_IOC_GETFLAGS:
+		return zpl_ioctl_getflags(filp, arg);
+	case ZFS_IOC_SETFLAGS:
+		return zpl_ioctl_setflags(filp, arg);
+	}
+
+	return (-ENOTTY);
+}
+
 const struct address_space_operations zpl_address_space_operations = {
 	.readpages	= zpl_readpages,
 	.readpage	= zpl_readpage,
@@ -403,6 +495,7 @@ const struct file_operations zpl_file_operations = {
 	.readdir	= zpl_readdir,
 	.mmap		= zpl_mmap,
 	.fsync		= zpl_fsync,
+	.unlocked_ioctl	= zpl_ioctl,
 };
 
 const struct file_operations zpl_dir_file_operations = {
@@ -410,4 +503,5 @@ const struct file_operations zpl_dir_file_operations = {
 	.read		= generic_read_dir,
 	.readdir	= zpl_readdir,
 	.fsync		= zpl_fsync,
+	.unlocked_ioctl	= zpl_ioctl,
 };

@@ -2916,6 +2916,21 @@ out3:
 }
 EXPORT_SYMBOL(zfs_setattr);
 
+int
+zfs_getflags(struct inode *ip, uint64_t *flags)
+{
+	*flags = ITOZ(ip)->z_pflags;
+
+	return (0);
+}
+EXPORT_SYMBOL(zfs_getflags);
+
+void
+zfs_setflags(struct inode *ip, uint64_t *flags)
+{
+}
+EXPORT_SYMBOL(zfs_setflags);
+
 typedef struct zfs_zlock {
 	krwlock_t	*zl_rwlock;	/* lock we acquired */
 	znode_t		*zl_znode;	/* znode we held */

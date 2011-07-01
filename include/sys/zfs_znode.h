@@ -62,6 +62,9 @@ extern "C" {
 #define	ZFS_REPARSE		0x0000080000000000ull
 #define	ZFS_OFFLINE		0x0000100000000000ull
 #define	ZFS_SPARSE		0x0000200000000000ull
+#define	ZFS_NOATIME		0x2000000000000000ull /* Linux-only */
+#define	ZFS_DIRSYNC		0x4000000000000000ull /* Linux-only */
+#define	ZFS_SYNC		0x8000000000000000ull /* Linux-only */
 
 #define	ZFS_ATTR_SET(zp, attr, value, pflags, tx) \
 { \

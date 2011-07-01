@@ -62,4 +62,7 @@ truncate_setsize(struct inode *ip, loff_t new)
 }
 #endif /* HAVE_TRUNCATE_SETSIZE */
 
+#define ZFS_IOC_GETFLAGS		FS_IOC_GETFLAGS
+#define ZFS_IOC_SETFLAGS		FS_IOC_SETFLAGS
+
 #endif /* _ZFS_VFS_H */
