@@ -1,3 +1,10 @@
+spl-linux (0.6.0.21-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Linux 2.6.39 compat, mutex owner
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 01 Jul 2011 11:35:35 -0500
+
 spl-linux (0.6.0.20-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
