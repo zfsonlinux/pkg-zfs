@@ -1,3 +1,10 @@
+spl-linux (0.6.0.22.rc5-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Prep spl-0.6.0-rc5 tag
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 03 Jul 2011 12:59:29 -0500
+
 spl-linux (0.6.0.21-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
