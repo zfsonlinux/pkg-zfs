@@ -1,3 +1,9 @@
+spl-linux (0.6.0.23.rc5-0ubuntu1+oneiric1) oneiric; urgency=low
+
+  * No changes. Topic branch for Ubuntu Oneiric.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 07 Jul 2011 21:13:00 -0500
+
 spl-linux (0.6.0.22.rc5-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
