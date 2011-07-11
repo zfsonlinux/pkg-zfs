@@ -1,0 +1,56 @@
+diff --git a/cmd/mount_zfs/mount_zfs.c b/cmd/mount_zfs/mount_zfs.c
+index 6a2e9ff..4b6600f 100644
+--- a/cmd/mount_zfs/mount_zfs.c
++++ b/cmd/mount_zfs/mount_zfs.c
+@@ -99,6 +99,7 @@ static const option_map_t option_map[] = {
+ 	{ MNTOPT_XATTR,		MS_COMMENT,	ZS_COMMENT	},
+ 	{ MNTOPT_NOXATTR,	MS_COMMENT,	ZS_COMMENT	},
+ 	{ MNTOPT_ZFSUTIL,	MS_COMMENT,	ZS_ZFSUTIL	},
++	{ MNTOPT_MOUNTALL,	MS_COMMENT,	ZS_MOUNTALL	},
+ 	{ NULL,			0,		0		} };
+ 
+ /*
+@@ -425,6 +426,27 @@ main(int argc, char **argv)
+ 	if (zfsflags & ZS_ZFSUTIL)
+ 		zfsutil = 1;
+ 
++	if (zfsflags & ZS_MOUNTALL) {
++		struct stat st;
++		const char zfsprog [] = "/usr/sbin/zfs";
++
++		if (stat(zfsprog, &st) == 0) {
++			if (verbose)
++				(void) fprintf(stderr,
++				  gettext("mount.zfs: executing '%s mount -a'\n"),
++				  zfsprog);
++			return (execl(zfsprog, zfsprog, "mount", "-a", NULL));
++		}
++
++		if (verbose) {
++			perror("stat");
++			(void) fprintf(stderr,
++			  gettext("mount.zfs: '%s' is not executable\n"),
++			  zfsprog);
++		}
++		return (MOUNT_SYSERR);
++	}
++
+ 	if ((g_zfs = libzfs_init()) == NULL)
+ 		return (MOUNT_SYSERR);
+ 
+diff --git a/lib/libspl/include/sys/mntent.h b/lib/libspl/include/sys/mntent.h
+index 8fad65b..89eca04 100644
+--- a/lib/libspl/include/sys/mntent.h
++++ b/lib/libspl/include/sys/mntent.h
+@@ -92,9 +92,11 @@
+ #define	MNTOPT_NOXATTR	"noxattr"	/* disable extended attributes */
+ #define	MNTOPT_COMMENT	"comment"	/* comment */
+ #define	MNTOPT_ZFSUTIL	"zfsutil"	/* called by zfs utility */
++#define	MNTOPT_MOUNTALL	"mountall"	/* called by mountall utility */
+ 
+ #define ZS_COMMENT	0x00000000	/* comment */
+ #define ZS_ZFSUTIL	0x00000001	/* caller is zfs(8) */
+ #define ZS_NOCONTEXT	0x00000002	/* do not add selinux context */
++#define ZS_MOUNTALL	0x00000004	/* caller is mountall(8) */
+ 
+ #endif	/* _SYS_MNTENT_H */
