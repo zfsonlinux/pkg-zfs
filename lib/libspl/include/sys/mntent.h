@@ -92,9 +92,11 @@
 #define	MNTOPT_NOXATTR	"noxattr"	/* disable extended attributes */
 #define	MNTOPT_COMMENT	"comment"	/* comment */
 #define	MNTOPT_ZFSUTIL	"zfsutil"	/* called by zfs utility */
+#define	MNTOPT_MOUNTALL	"mountall"	/* called by mountall utility */
 
 #define ZS_COMMENT	0x00000000	/* comment */
 #define ZS_ZFSUTIL	0x00000001	/* caller is zfs(8) */
 #define ZS_NOCONTEXT	0x00000002	/* do not add selinux context */
+#define ZS_MOUNTALL	0x00000004	/* caller is mountall(8) */
 
 #endif	/* _SYS_MNTENT_H */

@@ -99,6 +99,7 @@ static const option_map_t option_map[] = {
 	{ MNTOPT_XATTR,		MS_COMMENT,	ZS_COMMENT	},
 	{ MNTOPT_NOXATTR,	MS_COMMENT,	ZS_COMMENT	},
 	{ MNTOPT_ZFSUTIL,	MS_COMMENT,	ZS_ZFSUTIL	},
+	{ MNTOPT_MOUNTALL,	MS_COMMENT,	ZS_MOUNTALL	},
 	{ NULL,			0,		0		} };
 
 /*
@@ -424,6 +425,31 @@ main(int argc, char **argv)
 
 	if (zfsflags & ZS_ZFSUTIL)
 		zfsutil = 1;
+
+	if (zfsflags & ZS_MOUNTALL) {
+		/* Use a hard path for security. Note that the Makefile.am
+		 * file overrides the sbindir variable in this scope, which
+		 * also makes it difficult to set this path automatically.
+		 */
+		const char zfsprog [] = "/sbin/zfs";
+		struct stat zfsstat;
+
+		if (stat(zfsprog, &zfsstat) == 0) {
+			if (verbose)
+				(void) fprintf(stderr,
+				  gettext("mount.zfs: executing '%s mount -a'\n"),
+				  zfsprog);
+			return (execl(zfsprog, zfsprog, "mount", "-a", NULL));
+		}
+
+		if (verbose) {
+			perror("stat");
+			(void) fprintf(stderr,
+			  gettext("mount.zfs: '%s' is not executable\n"),
+			  zfsprog);
+		}
+		return (MOUNT_SYSERR);
+	}
 
 	if ((g_zfs = libzfs_init()) == NULL)
 		return (MOUNT_SYSERR);
