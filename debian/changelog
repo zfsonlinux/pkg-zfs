@@ -1,3 +1,9 @@
+zfs-linux (0.6.0.24.rc5-0ubuntu2+oneiric1) oneiric; urgency=low
+
+  * Update the `zfs` path in the mountall patch.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 12 Jul 2011 11:29:28 -0500
+
 zfs-linux (0.6.0.24.rc5-0ubuntu1+oneiric1) oneiric; urgency=low
 
   [ Fajar A. Nugraha ]
