@@ -1,5 +1,5 @@
 diff --git a/cmd/mount_zfs/mount_zfs.c b/cmd/mount_zfs/mount_zfs.c
-index 6a2e9ff..4b6600f 100644
+index 6a2e9ff..409de33 100644
 --- a/cmd/mount_zfs/mount_zfs.c
 +++ b/cmd/mount_zfs/mount_zfs.c
 @@ -99,6 +99,7 @@ static const option_map_t option_map[] = {
@@ -10,15 +10,19 @@ index 6a2e9ff..4b6600f 100644
  	{ NULL,			0,		0		} };
  
  /*
-@@ -425,6 +426,27 @@ main(int argc, char **argv)
+@@ -425,6 +426,31 @@ main(int argc, char **argv)
  	if (zfsflags & ZS_ZFSUTIL)
  		zfsutil = 1;
  
 +	if (zfsflags & ZS_MOUNTALL) {
-+		struct stat st;
-+		const char zfsprog [] = "/usr/sbin/zfs";
++		/* Use a hard path for security. Note that the Makefile.am
++		 * file overrides the sbindir variable in this scope, which
++		 * also makes it difficult to set this path automatically.
++		 */
++		const char zfsprog [] = "/sbin/zfs";
++		struct stat zfsstat;
 +
-+		if (stat(zfsprog, &st) == 0) {
++		if (stat(zfsprog, &zfsstat) == 0) {
 +			if (verbose)
 +				(void) fprintf(stderr,
 +				  gettext("mount.zfs: executing '%s mount -a'\n"),
