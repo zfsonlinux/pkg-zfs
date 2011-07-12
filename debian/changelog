@@ -1,3 +1,24 @@
+zfs-linux (0.6.0.24.rc5-0ubuntu1+oneiric1) oneiric; urgency=low
+
+  [ Fajar A. Nugraha ]
+  * Check for "udevadm settle" vs "udevsettle"
+  * Remove zfs service only on uninstall, not on upgrade
+
+  [ Brian Behlendorf ]
+  * Update 'zfs send' documentation
+  * Add L2ARC tunables
+
+  [ Darik Horn ]
+  * Add nfs-kernel-server suggestion.
+  * Add experimental mountall patch.
+  * Demote spl-dkms to a regular dependency.
+  * lintian: package-name-doesnt-match-sonames
+  * lintian: incorrect-libdir-in-la-file
+  * Remove /usr/share/dracut from the zfsutils package.
+  * Rename libavl1 to libzavl1.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 11 Jul 2011 20:12:09 -0500
+
 zfs-linux (0.6.0.23.rc5-0ubuntu2+oneiric1) oneiric; urgency=low
 
   [ Andrew Tselischev ]
