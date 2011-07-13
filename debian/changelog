@@ -1,8 +1,14 @@
+spl-linux (0.6.0.25.rc5-0ubuntu1) unstable; urgency=low
+
+  * Tagged spl-0.6.0-rc5 upstream.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 12 Jul 2011 19:16:08 -0500
+
 spl-linux (0.6.0.24.rc5-0ubuntu1+oneiric1) oneiric; urgency=low
 
   * No changes.
 
- -- Darik Horn <dajhorn@vanadac.com>  Mon, 11 Jul 2011 20:54:39 -0500
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 12 Jul 2011 19:15:31 -0500
 
 spl-linux (0.6.0.23.rc5-0ubuntu1+oneiric1) oneiric; urgency=low
 
