@@ -1,3 +1,9 @@
+zfs-linux (0.6.0.25.rc5-0ubuntu2+oneiric1) oneiric; urgency=low
+
+  * Add a mountall option to the mount.zfs utility.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 13 Jul 2011 10:27:54 -0500
+
 zfs-linux (0.6.0.25.rc5-0ubuntu1) unstable; urgency=low
 
   [ Andrew Tselischev ]
