@@ -1,9 +1,15 @@
+spl-linux (0.6.0.27-0ubuntu1) unstable; urgency=low
+
+  * No changes.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 22 Jul 2011 14:44:38 -0500
+
 spl-linux (0.6.0.26-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
   * Fix 'make install' overly broad 'rm'
 
- -- Darik Horn <dajhorn@vanadac.com>  Wed, 20 Jul 2011 15:36:44 -0500
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 22 Jul 2011 14:44:14 -0500
 
 spl-linux (0.6.0.25.rc5-0ubuntu1) unstable; urgency=low
 
