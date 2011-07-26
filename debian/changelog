@@ -1,3 +1,10 @@
+spl-linux (0.6.0.28-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Fix the configure CONFIG_* option detection
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 25 Jul 2011 23:00:55 -0500
+
 spl-linux (0.6.0.27-0ubuntu1) unstable; urgency=low
 
   * No changes.
