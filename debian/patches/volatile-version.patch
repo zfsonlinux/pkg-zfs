@@ -7,6 +7,6 @@ Index: b/META
  Name:         spl
  Branch:       1.0
 -Version:      0.6.0
-+Version:      0.6.0.28
++Version:      0.6.0.29
  Release:      rc5
  Release-Tags: relext
