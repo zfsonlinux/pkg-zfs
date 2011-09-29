@@ -1,3 +1,10 @@
+spl-linux (0.6.0.33-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Fix HAVE_FS_STRUCT_SPINLOCK check for gcc-4.1.2
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 28 Sep 2011 22:32:44 -0500
+
 spl-linux (0.6.0.32-0ubuntu1) unstable; urgency=low
 
   * No changes.
