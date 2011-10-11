@@ -1,0 +1,36 @@
+From 0305900cbcd584f341e466927cb5d4c19a6c5b0d Mon Sep 17 00:00:00 2001
+From: Darik Horn <dajhorn@vanadac.com>
+Date: Tue, 11 Oct 2011 18:43:41 -0500
+Subject: [PATCH 2/2] Revert "Revert "Stabilize the hostid for RPM
+ installations.""
+
+This reverts commit 39a87c69211aceef23889ceb4a33291e476237b9.
+---
+ spl-modules.spec.in |   11 +++++++++++
+ 1 files changed, 11 insertions(+), 0 deletions(-)
+
+diff --git a/spl-modules.spec.in b/spl-modules.spec.in
+index e02d6c2..ddeb260 100644
+--- a/spl-modules.spec.in
++++ b/spl-modules.spec.in
+@@ -233,6 +233,17 @@ rm -rf $RPM_BUILD_ROOT
+ %{_prefix}/src/*
+ 
+ %post
++# The /sbin/genhostid utility writes a random value to the /etc/hostid
++# file, which means that using it here will break upgrades on systems
++# that already have spl installed.
++if [ ! -f /etc/hostid ]; then
++	HOSTID=$(hostid)
++	AA=$(echo $HOSTID | cut -b 1,2)
++	BB=$(echo $HOSTID | cut -b 3,4)
++	CC=$(echo $HOSTID | cut -b 5,6)
++	DD=$(echo $HOSTID | cut -b 7,8)
++	"$(which printf)" "\x$DD\x$CC\x$BB\x$AA" >"/etc/hostid"
++fi
+ if [ -f /boot/System.map-%{kver} ]; then
+ 	depmod -ae -F /boot/System.map-%{kver} %{kver} || exit 0
+ else
+-- 
+1.7.5.4
+
