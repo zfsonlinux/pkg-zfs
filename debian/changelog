@@ -1,3 +1,21 @@
+spl-linux (0.6.0.34-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Revert "Stabilize the hostid for RPM installations."
+  * Remove /etc/hostid missing warning
+  * Prep spl-0.6.0-rc6 tag
+  * Fix various typos in comments
+
+  [ Gunnar Beutner ]
+  * Fixed invalid resource re-use in file_find()
+  * Properly destroy work items in spl_kmem_cache_destroy()
+  * Fixed typo in spl_slab_alloc()
+
+  [ Darik Horn ]
+  * Add the hostid-stabilize branch as DEB patches.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 11 Oct 2011 19:08:09 -0500
+
 spl-linux (0.6.0.33-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
@@ -11,7 +29,7 @@ spl-linux (0.6.0.32-0ubuntu1) unstable; urgency=low
 
  -- Darik Horn <dajhorn@vanadac.com>  Fri, 09 Sep 2011 20:35:00 -0500
 
-spl-linux (0.6.0.31-0ubuntu1) unstabe; urgency=low
+spl-linux (0.6.0.31-0ubuntu1) unstable; urgency=low
 
   * No changes.
 
