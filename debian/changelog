@@ -1,4 +1,4 @@
-spl-linux (0.6.0.35-0ubuntu1) unstable; urgency=low
+spl-linux (0.6.0.35-0ubuntu2) unstable; urgency=low
 
   [ Brian Behlendorf ]
   * Fix package URLs to use the github repository
