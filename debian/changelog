@@ -1,3 +1,13 @@
+spl-linux (0.6.0.35-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Fix package URLs to use the github repository
+
+  [ Gunnar Beutner ]
+  * vn_rdwr() didn't properly advance the file position
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 19 Oct 2011 13:27:54 -0500
+
 spl-linux (0.6.0.34-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
