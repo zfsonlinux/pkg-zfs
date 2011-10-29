@@ -1,3 +1,19 @@
+spl-linux (0.6.0.36-0ubuntu1) unstable; urgency=low
+
+  [ Gunnar Beutner ]
+  * Fix race condition in mutex_exit()
+  * Remove the spinlocks for mutex_enter()/mutex_exit()
+  * Cleaned up MUTEX() #define
+
+  [ Brian Behlendorf ]
+  * Include distribution in release
+
+  [ Darik Horn ]
+  * Minor typo correction and comment updates.
+  * Remove redundant postinst and prerm boilerplate.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 28 Oct 2011 19:32:40 -0500
+
 spl-linux (0.6.0.35-0ubuntu2) unstable; urgency=low
 
   [ Brian Behlendorf ]
