@@ -35,7 +35,7 @@ typedef enum {
         MUTEX_ADAPTIVE = 2
 } kmutex_type_t;
 
-#if defined(HAVE_MUTEX_OWNER) && defined(CONFIG_SMP)
+#if defined(HAVE_MUTEX_OWNER) && defined(CONFIG_SMP) && !defined(CONFIG_DEBUG_MUTEXES)
 
 /*
  * We define a 1-field struct rather than a straight typedef to enforce type
@@ -79,17 +79,7 @@ mutex_owner(kmutex_t *mp)
 
 #define mutex_tryenter(mp)              mutex_trylock(&(mp)->m)
 #define mutex_enter(mp)                 mutex_lock(&(mp)->m)
-
-/* mutex->owner is not cleared when CONFIG_DEBUG_MUTEXES is set */
-#ifdef CONFIG_DEBUG_MUTEXES
-# define mutex_exit(mp)                                                 \
-({                                                                      \
-        mutex_unlock(&(mp)->m);                                         \
-        (mp)->m.owner = NULL;                                           \
-})
-#else
-# define mutex_exit(mp)                 mutex_unlock(&(mp)->m)
-#endif /* CONFIG_DEBUG_MUTEXES */
+#define mutex_exit(mp)                 mutex_unlock(&(mp)->m)
 
 #ifdef HAVE_GPL_ONLY_SYMBOLS
 # define mutex_enter_nested(mp, sc)     mutex_lock_nested(&(mp)->m, sc)
@@ -111,47 +101,21 @@ extern int spl_mutex_spin_max(void);
 # define spl_mutex_spin_max()   0
 #endif /* HAVE_TASK_CURR */
 
-#define MUTEX(mp)               ((struct mutex *)(mp))
-
-static inline kthread_t *
-spl_mutex_get_owner(kmutex_t *mp)
-{
-        return mp->m_owner;
-}
+#define MUTEX(mp)               (&((mp)->m_mutex))
 
 static inline void
 spl_mutex_set_owner(kmutex_t *mp)
 {
-        unsigned long flags;
-
-        spin_lock_irqsave(&MUTEX(mp)->wait_lock, flags);
         mp->m_owner = current;
-        spin_unlock_irqrestore(&MUTEX(mp)->wait_lock, flags);
 }
 
 static inline void
 spl_mutex_clear_owner(kmutex_t *mp)
 {
-        unsigned long flags;
-
-        spin_lock_irqsave(&MUTEX(mp)->wait_lock, flags);
         mp->m_owner = NULL;
-        spin_unlock_irqrestore(&MUTEX(mp)->wait_lock, flags);
 }
 
-static inline kthread_t *
-mutex_owner(kmutex_t *mp)
-{
-        unsigned long flags;
-        kthread_t *owner;
-
-        spin_lock_irqsave(&MUTEX(mp)->wait_lock, flags);
-        owner = spl_mutex_get_owner(mp);
-        spin_unlock_irqrestore(&MUTEX(mp)->wait_lock, flags);
-
-        return owner;
-}
-
+#define mutex_owner(mp)         (ACCESS_ONCE((mp)->m_owner))
 #define mutex_owned(mp)         (mutex_owner(mp) == current)
 #define MUTEX_HELD(mp)          mutex_owned(mp)
 #define MUTEX_NOT_HELD(mp)      (!MUTEX_HELD(mp))
