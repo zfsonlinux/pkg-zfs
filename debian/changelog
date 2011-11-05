@@ -1,3 +1,10 @@
+spl-linux (0.6.0.37-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Fix NULL deref in balance_pgdat()
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 05 Nov 2011 10:24:06 -0500
+
 spl-linux (0.6.0.36-0ubuntu1) unstable; urgency=low
 
   [ Gunnar Beutner ]
