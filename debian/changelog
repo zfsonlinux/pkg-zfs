@@ -1,3 +1,16 @@
+spl-linux (0.6.0.38-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Linux 3.1 compat, kern_path_parent()
+  * Linux 3.1 compat, vfs_fsync()
+  * Linux 3.1 compat, shrink_*cache_memory
+  * Fix depmod warning
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 11 Nov 2011 08:57:13 -0600
+
 spl-linux (0.6.0.37-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
