@@ -9,11 +9,11 @@ This reverts commit 39a87c69211aceef23889ceb4a33291e476237b9.
  spl-modules.spec.in |   11 +++++++++++
  1 files changed, 11 insertions(+), 0 deletions(-)
 
-diff --git a/spl-modules.spec.in b/spl-modules.spec.in
-index e02d6c2..ddeb260 100644
+Index: b/spl-modules.spec.in
+===================================================================
 --- a/spl-modules.spec.in
 +++ b/spl-modules.spec.in
-@@ -233,6 +233,17 @@ rm -rf $RPM_BUILD_ROOT
+@@ -233,6 +233,17 @@
  %{_prefix}/src/*
  
  %post
@@ -29,8 +29,5 @@ index e02d6c2..ddeb260 100644
 +	"$(which printf)" "\x$DD\x$CC\x$BB\x$AA" >"/etc/hostid"
 +fi
  if [ -f /boot/System.map-%{kver} ]; then
- 	depmod -ae -F /boot/System.map-%{kver} %{kver} || exit 0
+ 	/sbin/depmod -ae -F /boot/System.map-%{kver} %{kver} || exit 0
  else
--- 
-1.7.5.4
-

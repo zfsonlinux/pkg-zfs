@@ -8,11 +8,11 @@ This reverts commit 6b3b569df30d13ed7bbbff877cffc71290a52f12.
  module/spl/spl-generic.c |    6 +++++-
  1 files changed, 5 insertions(+), 1 deletions(-)
 
-diff --git a/module/spl/spl-generic.c b/module/spl/spl-generic.c
-index 1dedf76..651d45e 100644
+Index: b/module/spl/spl-generic.c
+===================================================================
 --- a/module/spl/spl-generic.c
 +++ b/module/spl/spl-generic.c
-@@ -414,8 +414,12 @@ hostid_read(void)
+@@ -414,8 +414,12 @@
  
  	file = kobj_open_file(spl_hostid_path);
  
@@ -26,6 +26,3 @@ index 1dedf76..651d45e 100644
  
  	result = kobj_get_filesize(file, &size);
  
--- 
-1.7.5.4
-
