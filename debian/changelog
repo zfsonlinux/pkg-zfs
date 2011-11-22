@@ -1,3 +1,13 @@
+spl-linux (0.6.0.39-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Prepend spl_ to all init/fini functions
+
+  [ Prakash Surya ]
+  * Fix a typo referencing an incorrect symbol
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 22 Nov 2011 08:30:13 -0600
+
 spl-linux (0.6.0.38-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
