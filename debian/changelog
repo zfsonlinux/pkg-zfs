@@ -1,3 +1,9 @@
+spl-linux (0.6.0.40-0ubuntu1) unstable; urgency=low
+
+  * No changes.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 05 Dec 2011 20:05:13 -0600
+
 spl-linux (0.6.0.39-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
@@ -6,7 +12,7 @@ spl-linux (0.6.0.39-0ubuntu1) unstable; urgency=low
   [ Prakash Surya ]
   * Fix a typo referencing an incorrect symbol
 
- -- Darik Horn <dajhorn@vanadac.com>  Tue, 22 Nov 2011 08:30:13 -0600
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 05 Dec 2011 20:05:10 -0600
 
 spl-linux (0.6.0.38-0ubuntu1) unstable; urgency=low
 
