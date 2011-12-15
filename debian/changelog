@@ -1,3 +1,19 @@
+spl-linux (0.6.0.41-0ubuntu1) unstable; urgency=low
+
+  [ Chris Dunlop ]
+  * Allow 64-bit timestamps to be set on 64-bit kernels
+
+  [ Prakash Surya ]
+  * Fix usage of MUTEX macro in mutex_enter_nested
+  * Add SPLAT_TEST_FINI call for SPLAT_TASKQ_TEST6_ID
+  * Replace struct spl_task with struct taskq_ent
+  * Replace tq_work_list and tq_threads in taskq_t
+  * Add Test: "Single task queue, recursive dispatch"
+  * Implement taskq_dispatch_prealloc() interface
+  * Exercise new taskq interface in splat-taskq tests
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 15 Dec 2011 10:07:00 -0600
+
 spl-linux (0.6.0.40-0ubuntu1) unstable; urgency=low
 
   * No changes.
