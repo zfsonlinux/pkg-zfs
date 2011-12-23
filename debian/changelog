@@ -1,3 +1,19 @@
+spl-linux (0.6.0.42-0ubuntu1) unstable; urgency=low
+
+  [ Prakash Surya ]
+  * Add make rule for building Arch Linux packages (Closes: #68)
+  * Swap taskq_ent_t with taskqid_t in taskq_thread_t
+  * Store copy of tqent_flags prior to servicing task
+  * Move Arch Linux's VENDOR check above Ubuntu's
+
+  [ Brian Behlendorf ]
+  * Proxmox VE kernel compat, invalidate_inodes()
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 23 Dec 2011 07:20:57 -0600
+
 spl-linux (0.6.0.41-0ubuntu1) unstable; urgency=low
 
   [ Chris Dunlop ]
