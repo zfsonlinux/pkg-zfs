@@ -298,6 +298,48 @@ AC_DEFUN([SPL_AC_DPKG], [
 ])
 
 dnl #
+dnl # Check for pacman+makepkg to build Arch Linux packages.  If these
+dnl # tools are missing it is non-fatal but you will not be able to
+dnl # build Arch Linux packages and will be warned if you try too.
+dnl #
+AC_DEFUN([SPL_AC_PACMAN], [
+	PACMAN=pacman
+	MAKEPKG=makepkg
+
+	AC_MSG_CHECKING([whether $PACMAN is available])
+	tmp=$($PACMAN --version 2>/dev/null)
+	AS_IF([test -n "$tmp"], [
+		PACMAN_VERSION=$(echo $tmp |
+		                 $AWK '/Pacman/ { print $[3] }' |
+		                 $SED 's/^v//')
+		HAVE_PACMAN=yes
+		AC_MSG_RESULT([$HAVE_PACMAN ($PACMAN_VERSION)])
+	],[
+		HAVE_PACMAN=no
+		AC_MSG_RESULT([$HAVE_PACMAN])
+	])
+
+	AC_MSG_CHECKING([whether $MAKEPKG is available])
+	tmp=$($MAKEPKG --version 2>/dev/null)
+	AS_IF([test -n "$tmp"], [
+		MAKEPKG_VERSION=$(echo $tmp | $AWK '/makepkg/ { print $[3] }')
+		HAVE_MAKEPKG=yes
+		AC_MSG_RESULT([$HAVE_MAKEPKG ($MAKEPKG_VERSION)])
+	],[
+		HAVE_MAKEPKG=no
+		AC_MSG_RESULT([$HAVE_MAKEPKG])
+	])
+
+	AC_SUBST(HAVE_PACMAN)
+	AC_SUBST(PACMAN)
+	AC_SUBST(PACMAN_VERSION)
+
+	AC_SUBST(HAVE_MAKEPKG)
+	AC_SUBST(MAKEPKG)
+	AC_SUBST(MAKEPKG_VERSION)
+])
+
+dnl #
 dnl # Until native packaging for various different packing systems
 dnl # can be added the least we can do is attempt to use alien to
 dnl # convert the RPM packages to the needed package type.  This is
@@ -331,6 +373,8 @@ AC_DEFUN([SPL_AC_DEFAULT_PACKAGE], [
 		VENDOR=redhat ;
 	elif test -f /etc/fedora-release ; then
 		VENDOR=fedora ;
+	elif test -f /etc/arch-release ; then
+		VENDOR=arch ;
 	elif test -f /etc/lsb-release ; then
 		VENDOR=ubuntu ;
 	elif test -f /etc/debian_version ; then
@@ -355,6 +399,7 @@ AC_DEFUN([SPL_AC_DEFAULT_PACKAGE], [
 		ubuntu)     DEFAULT_PACKAGE=deb ;;
 		debian)     DEFAULT_PACKAGE=deb ;;
 		slackware)  DEFAULT_PACKAGE=tgz ;;
+		arch)       DEFAULT_PACKAGE=arch;;
 		*)          DEFAULT_PACKAGE=rpm ;;
 	esac
 
@@ -369,6 +414,7 @@ AC_DEFUN([SPL_AC_PACKAGE], [
 	SPL_AC_RPM
 	SPL_AC_DPKG
 	SPL_AC_ALIEN
+	SPL_AC_PACMAN
 	SPL_AC_DEFAULT_PACKAGE
 ])
 
@@ -1770,12 +1816,25 @@ dnl # The function invalidate_inodes() is no longer exported by the kernel.
 dnl # The prototype however is still available which means it is safe
 dnl # to acquire the symbol's address using spl_kallsyms_lookup_name().
 dnl #
+dnl # The Proxmox VE kernel contains a patch which renames the function
+dnl # invalidate_inodes() to invalidate_inodes_check().  In the process
+dnl # it adds a 'check' argument and a '#define invalidate_inodes(x)'
+dnl # compatibility wrapper for legacy callers.  Therefore, if either
+dnl # of these functions are exported invalidate_inodes() can be
+dnl # safely used.
+dnl #
 AC_DEFUN([SPL_AC_KERNEL_INVALIDATE_INODES], [
 	SPL_CHECK_SYMBOL_EXPORT(
 		[invalidate_inodes],
 		[],
 		[AC_DEFINE(HAVE_INVALIDATE_INODES, 1,
 		[invalidate_inodes() is available])],
+		[])
+	SPL_CHECK_SYMBOL_EXPORT(
+		[invalidate_inodes_check],
+		[],
+		[AC_DEFINE(HAVE_INVALIDATE_INODES_CHECK, 1,
+		[invalidate_inodes_check() is available])],
 		[])
 ])
 
