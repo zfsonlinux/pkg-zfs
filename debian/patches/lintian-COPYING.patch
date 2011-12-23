@@ -2,9 +2,9 @@ Index: b/Makefile.in
 ===================================================================
 --- a/Makefile.in
 +++ b/Makefile.in
-@@ -78,7 +78,7 @@
- 	$(top_srcdir)/config/rpm.am $(top_srcdir)/config/tgz.am \
- 	$(top_srcdir)/configure $(top_srcdir)/module/Makefile.in \
+@@ -86,7 +86,7 @@
+ 	$(top_srcdir)/config/tgz.am $(top_srcdir)/configure \
+ 	$(top_srcdir)/module/Makefile.in \
  	$(top_srcdir)/module/spl/Makefile.in \
 -	$(top_srcdir)/module/splat/Makefile.in AUTHORS COPYING \
 +	$(top_srcdir)/module/splat/Makefile.in AUTHORS \
