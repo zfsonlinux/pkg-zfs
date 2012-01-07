@@ -1,3 +1,9 @@
+spl-linux (0.6.0.43-0ubuntu1) unstable; urgency=low
+
+  * Add precise to the PPA build list.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 07 Jan 2012 10:39:55 -0600
+
 spl-linux (0.6.0.42-0ubuntu1) unstable; urgency=low
 
   [ Prakash Surya ]
