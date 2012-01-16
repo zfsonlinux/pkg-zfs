@@ -1,3 +1,14 @@
+spl-linux (0.6.0.45-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Run SPL_AC_PACMAN only if $VENDOR is "arch"
+
+  [ Darik Horn ]
+  * Wrap long lines in the dkms.conf file.
+  * FHS conformance and DKMS multiarch, SPL interface.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 15 Jan 2012 18:35:45 -0600
+
 spl-linux (0.6.0.44-0ubuntu1) unstable; urgency=low
 
   * Linux 3.2 compat: rw_semaphore.wait_lock is raw (Closes: #76)
