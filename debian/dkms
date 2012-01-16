@@ -10,13 +10,16 @@ PRE_BUILD="configure
                  esac)
   --with-linux-obj=${kernel_source_dir}
 "
-POST_REMOVE="rm -r /usr/src/spl-#MODULE_VERSION#/${kernelver}"
+POST_INSTALL="cp
+  ${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}/build/spl_config.h
+  ${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}/build/module/Module.symvers
+  ${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}/${kernelver}/${arch}/
+"
 REMAKE_INITRD="no"
-MAKE[0]="make && make install-data-local && make -C include install"
+MAKE[0]="make"
 BUILT_MODULE_NAME[0]="spl"
 BUILT_MODULE_LOCATION[0]="module/spl/"
 DEST_MODULE_LOCATION[0]="/extra/spl/spl"
-MAKE[1]="true"
 BUILT_MODULE_NAME[1]="splat"
 BUILT_MODULE_LOCATION[1]="module/splat/"
-DEST_MODULE_LOCATION[1]="/extra/spl/splat"
+DEST_MODULE_LOCATION[1]="/extra/splat/splat"
