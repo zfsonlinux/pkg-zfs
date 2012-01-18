@@ -1,3 +1,10 @@
+spl-linux (0.6.0.46-0ubuntu1) unstable; urgency=low
+
+  * Fix `make distclean` for `--with-config=user`
+  * Remove the debian/rules `make distclean` kludge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 18 Jan 2012 11:46:09 -0600
+
 spl-linux (0.6.0.45-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
