@@ -1,3 +1,15 @@
+spl-linux (0.6.0.47-0ubuntu1) unstable; urgency=low
+
+  [ Ned Bass ]
+  * Add taskq contention splat test
+  * Taskq locking optimizations
+
+  [ Brian Behlendorf ]
+  * Add the release component to headers
+  * Fix rpm dependencies
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 18 Jan 2012 18:21:02 -0600
+
 spl-linux (0.6.0.46-0ubuntu1) unstable; urgency=low
 
   * Fix `make distclean` for `--with-config=user`
