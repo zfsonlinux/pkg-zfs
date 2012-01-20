@@ -286,11 +286,10 @@ __taskq_dispatch(taskq_t *tq, task_func_t func, void *arg, uint_t flags)
 	ASSERT(!(t->tqent_flags & TQENT_FLAG_PREALLOC));
 
 	spin_unlock(&t->tqent_lock);
+
+	wake_up(&tq->tq_work_waitq);
 out:
 	spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
-	if (rc > 0)
-		wake_up(&tq->tq_work_waitq);
-
 	SRETURN(rc);
 }
 EXPORT_SYMBOL(__taskq_dispatch);
@@ -310,7 +309,6 @@ __taskq_dispatch_ent(taskq_t *tq, task_func_t func, void *arg, uint_t flags,
 	/* Taskq being destroyed and all tasks drained */
 	if (!(tq->tq_flags & TQ_ACTIVE)) {
 		t->tqent_id = 0;
-		spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
 		goto out;
 	}
 
@@ -334,10 +332,10 @@ __taskq_dispatch_ent(taskq_t *tq, task_func_t func, void *arg, uint_t flags,
 	t->tqent_arg = arg;
 
 	spin_unlock(&t->tqent_lock);
-	spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
 
 	wake_up(&tq->tq_work_waitq);
 out:
+	spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
 	SEXIT;
 }
 EXPORT_SYMBOL(__taskq_dispatch_ent);
@@ -458,11 +456,11 @@ taskq_thread(void *args)
 
 		if (list_empty(&tq->tq_pend_list) &&
 		    list_empty(&tq->tq_prio_list)) {
-			spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
 			add_wait_queue_exclusive(&tq->tq_work_waitq, &wait);
+			spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
 			schedule();
-			remove_wait_queue(&tq->tq_work_waitq, &wait);
 			spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
+			remove_wait_queue(&tq->tq_work_waitq, &wait);
 		} else {
 			__set_current_state(TASK_RUNNING);
 		}
