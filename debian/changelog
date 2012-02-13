@@ -1,3 +1,10 @@
+spl-linux (0.6.0.51-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Add missing spl_debug_* helpers
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 12 Feb 2012 18:58:02 -0600
+
 spl-linux (0.6.0.50-0ubuntu1) unstable; urgency=low
 
   * No changes.
