@@ -10,7 +10,7 @@ PRE_BUILD="configure
                  esac)
   --with-linux-obj=${kernel_source_dir}
 "
-POST_BUILD="cp
+POST_INSTALL="cp
   ${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}/build/spl_config.h
   ${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}/build/module/Module.symvers
   ${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}/${kernelver}/${arch}/
