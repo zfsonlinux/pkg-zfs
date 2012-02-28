@@ -1,3 +1,9 @@
+spl-linux (0.6.0.52-0ubuntu2) unstable; urgency=low
+
+  * Revert "Change POST_INSTALL to POST_BUILD in dkms.conf"
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 27 Feb 2012 20:19:07 -0600
+
 spl-linux (0.6.0.52-0ubuntu1) unstable; urgency=low
 
   [ Fajar A. Nugraha ]
