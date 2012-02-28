@@ -1,5 +1,5 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: Native ZFS for Linux
+Upstream-Name: Solaris Porting Layer for Linux
 Upstream-Contact: Brian Behlendorf <behlendorf1@llnl.gov>
 Source: https://github.com/zfsonlinux/zfs/
 Disclaimer:
