@@ -1,3 +1,16 @@
+spl-linux (0.6.0.52-0ubuntu1) unstable; urgency=low
+
+  [ Fajar A. Nugraha ]
+  * Change POST_INSTALL to POST_BUILD in dkms.conf
+
+  [ Darik Horn ]
+  * Add machine readable debian/copyright file.
+
+  [ Brian Behlendorf ]
+  * Cleanly support debug packages
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 27 Feb 2012 19:19:48 -0600
+
 spl-linux (0.6.0.51-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
