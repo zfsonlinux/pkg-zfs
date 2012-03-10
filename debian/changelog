@@ -1,3 +1,14 @@
+spl-linux (0.6.0.53-0ubuntu1) unstable; urgency=low
+
+  [ Darik Horn ]
+  * Correct the debian/changelog Upstream-Name field.
+  * Improve debian/copyright syntax conformance.
+
+  [ Brian Behlendorf ]
+  * Fix distribution detection
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 09 Mar 2012 20:14:25 -0600
+
 spl-linux (0.6.0.52-0ubuntu2) unstable; urgency=low
 
   * Revert "Change POST_INSTALL to POST_BUILD in dkms.conf"
