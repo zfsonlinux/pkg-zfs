@@ -1,3 +1,10 @@
+spl-linux (0.6.0.54-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * SPL 0.6.0-rc7
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 16 Mar 2012 23:31:01 -0500
+
 spl-linux (0.6.0.53-0ubuntu1) unstable; urgency=low
 
   [ Darik Horn ]
