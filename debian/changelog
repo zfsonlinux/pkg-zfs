@@ -1,3 +1,10 @@
+spl-linux (0.6.0.55-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Add SPL_META_RELEASE to module load/unload messages
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 23 Mar 2012 18:39:58 -0500
+
 spl-linux (0.6.0.54-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
