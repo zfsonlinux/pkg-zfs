@@ -1,3 +1,10 @@
+zfs-linux (0.6.0.57-0ubuntu2) unstable; urgency=low
+
+  [ Darik Horn ]
+  * Reorder zfs-dkms.postinst for dh_dkms glitch.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 02 Apr 2012 23:05:23 -0500
+
 zfs-linux (0.6.0.57-0ubuntu1) unstable; urgency=low
 
   [ Craig Sanders ]
