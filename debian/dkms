@@ -5,8 +5,18 @@ PRE_BUILD="configure
   --prefix=/usr
   --with-config=kernel
   --with-linux=$(case `lsb_release -is` in
-                   (Debian) echo ${kernel_source_dir/%build/source} ;;
-                   (*)      echo ${kernel_source_dir} ;;
+                   (Debian)
+                     if [ -e ${kernel_source_dir/%build/source} ]
+                     then
+                       echo ${kernel_source_dir/%build/source}
+                     else
+                       # This is a kpkg exception for Proxmox 2.0
+		       echo ${kernel_source_dir}
+                     fi
+                     ;;
+                   (*)
+                     echo ${kernel_source_dir}
+                     ;;
                  esac)
   --with-linux-obj=${kernel_source_dir}
 "
