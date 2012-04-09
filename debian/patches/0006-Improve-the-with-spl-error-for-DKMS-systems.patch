@@ -1,4 +1,4 @@
-From 4235903b04b681c0a12e7766695aa26f5dd34c4e Mon Sep 17 00:00:00 2001
+From 4022359f4c13d73bbf418fc1b3e55ce018859bdb Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Fri, 3 Feb 2012 14:49:49 -0600
 Subject: [PATCH 6/7] Improve the --with-spl error for DKMS systems.

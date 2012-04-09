@@ -1,4 +1,4 @@
-From fcba4ff6f74d109128184c9c5a14f3a2bb2cee2c Mon Sep 17 00:00:00 2001
+From b94198977da084cf4138f8c74b0043df428f51dd Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 17 Jan 2012 11:54:21 -0600
 Subject: [PATCH 3/7] Remove all upstream init.d components.
@@ -970,7 +970,7 @@ index 04f2077..0000000
 -exit $RETVAL
 diff --git a/etc/init.d/zfs.gentoo.in b/etc/init.d/zfs.gentoo.in
 deleted file mode 100644
-index 767aba8..0000000
+index 957be99..0000000
 --- a/etc/init.d/zfs.gentoo.in
 +++ /dev/null
 @@ -1,111 +0,0 @@
@@ -995,7 +995,7 @@ index 767aba8..0000000
 -checksystem() {
 -	if [ ! -c /dev/zfs ]; then
 -		einfo "Checking if ZFS modules present"
--		if [ "x$(modprobe -l  $ZFS_MODULE | grep $ZFS_MODULE)" == "x" ]; then
+-		if ! modinfo zfs > /dev/null 2>&1 ; then
 -			eerror "$ZFS_MODULE not found. Is the ZFS package installed?"
 -			return 1
 -		fi
