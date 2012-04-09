@@ -1,3 +1,13 @@
+spl-linux (0.6.0.58-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Remove condition variable names
+
+  [ Darik Horn ]
+  * Add dkms kernel source exception for Proxmox 2.0
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 09 Apr 2012 09:37:49 -0500
+
 spl-linux (0.6.0.57-0ubuntu1) unstable; urgency=low
 
   * No changes.
