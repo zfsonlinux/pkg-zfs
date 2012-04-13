@@ -1,7 +1,7 @@
-From 4022359f4c13d73bbf418fc1b3e55ce018859bdb Mon Sep 17 00:00:00 2001
+From 2b488b8001f94ae166410bba8e3e034260dba108 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Fri, 3 Feb 2012 14:49:49 -0600
-Subject: [PATCH 6/7] Improve the --with-spl error for DKMS systems.
+Subject: [PATCH 6/8] Improve the --with-spl error for DKMS systems.
 
 If the SPL module is unavailable, then the operator gets an error
 message that does not apply to installations that are mananged by
@@ -11,7 +11,7 @@ A better solution would be to implement a dependency model in DKMS,
 or to bundle SPL into the ZFS package.
 ---
  config/kernel.m4 |    7 ++++---
- 1 files changed, 4 insertions(+), 3 deletions(-)
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
 diff --git a/config/kernel.m4 b/config/kernel.m4
 index a6d544b..2cb2e8c 100644
@@ -32,5 +32,5 @@ index a6d544b..2cb2e8c 100644
  	], [
  		AS_IF([test "$splsrc" = "NONE"], [
 -- 
-1.7.9.1
+1.7.9.5
 

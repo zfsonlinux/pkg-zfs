@@ -1,7 +1,7 @@
-From b94198977da084cf4138f8c74b0043df428f51dd Mon Sep 17 00:00:00 2001
+From 9857c7a7157b71b32a279fa34e59f1c051dadc96 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 17 Jan 2012 11:54:21 -0600
-Subject: [PATCH 3/7] Remove all upstream init.d components.
+Subject: [PATCH 3/8] Remove all upstream init.d components.
 
 The etc/init.d/ components are redundant because the debian/ overlay
 bundles init files according to Debian packaging policy.
@@ -17,7 +17,7 @@ bundles init files according to Debian packaging policy.
  etc/init.d/zfs.lsb.in    |  130 -----------
  etc/init.d/zfs.lunar.in  |   95 --------
  etc/init.d/zfs.redhat.in |  176 ---------------
- 11 files changed, 1 insertions(+), 1405 deletions(-)
+ 11 files changed, 1 insertion(+), 1405 deletions(-)
  delete mode 100644 etc/init.d/.gitignore
  delete mode 100644 etc/init.d/Makefile.am
  delete mode 100644 etc/init.d/Makefile.in
@@ -1505,5 +1505,5 @@ index ae797c1..0000000
 -
 -exit $RETVAL
 -- 
-1.7.9.1
+1.7.9.5
 

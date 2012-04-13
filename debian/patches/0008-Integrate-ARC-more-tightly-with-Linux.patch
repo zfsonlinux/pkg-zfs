@@ -1,7 +1,7 @@
-From 7140e4e74c92baf80ea891d66c2e10bb7aefbb15 Mon Sep 17 00:00:00 2001
+From abf3348a44b660b7188e7aabd12ff711c3636e60 Mon Sep 17 00:00:00 2001
 From: Brian Behlendorf <behlendorf1@llnl.gov>
 Date: Tue, 13 Mar 2012 14:29:16 -0700
-Subject: [PATCH 7/7] Integrate ARC more tightly with Linux
+Subject: [PATCH 8/8] Integrate ARC more tightly with Linux
 
 Under Solaris the ARC was designed to stay one step ahead of the
 VM subsystem.  It would attempt to recognize low memory situtions
@@ -67,7 +67,7 @@ Signed-off-by: Prakash Surya <surya1@llnl.gov>
 Signed-off-by: Brian Behlendorf <behlendorf1@llnl.gov>
 ---
  module/zfs/arc.c |  286 +++++++++++++++++++++++++-----------------------------
- 1 files changed, 131 insertions(+), 155 deletions(-)
+ 1 file changed, 131 insertions(+), 155 deletions(-)
 
 diff --git a/module/zfs/arc.c b/module/zfs/arc.c
 index e9f84f5..7d3948d 100644
@@ -505,5 +505,5 @@ index e9f84f5..7d3948d 100644
  			spa_config_exit(spa, SCL_L2ARC, dev);
  			continue;
 -- 
-1.7.9.1
+1.7.9.5
 

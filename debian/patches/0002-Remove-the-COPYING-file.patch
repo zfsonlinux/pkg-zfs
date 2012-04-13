@@ -1,7 +1,7 @@
-From 6f59670ba8e5f370ad1ab8bd2e7d377fed7bcd2d Mon Sep 17 00:00:00 2001
+From 872243637b9df629ac904718fecff2394581a1e5 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 17 Jan 2012 22:18:47 -0600
-Subject: [PATCH 2/7] Remove the COPYING file.
+Subject: [PATCH 2/8] Remove the COPYING file.
 
 Resolve this lintian warning by removing the COPYING file:
 
@@ -22,7 +22,7 @@ contain the software license, and it is optional for autotools
 because the automake template is "foreign".
 ---
  COPYING |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+ 1 file changed, 2 deletions(-)
  delete mode 100644 COPYING
 
 diff --git a/COPYING b/COPYING
@@ -34,5 +34,5 @@ index 90f4490..0000000
 -Please see COPYRIGHT and OPENSOLARIS.LICENSE for the copyright
 -and license details.
 -- 
-1.7.9.1
+1.7.9.5
 

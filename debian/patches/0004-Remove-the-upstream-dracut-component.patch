@@ -1,7 +1,7 @@
-From b4a68572b21d31f33a0f593a9eaa23ced3137498 Mon Sep 17 00:00:00 2001
+From 1416bb785a1b8a83aaad865c6a0871b7caf73e71 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 17 Jan 2012 20:27:32 -0600
-Subject: [PATCH 4/7] Remove the upstream dracut component.
+Subject: [PATCH 4/8] Remove the upstream dracut component.
 
 The dracut/ component broke deb systems when it first added to the
 upstream ZoL repository, had a near-zero download count when it was
@@ -19,7 +19,7 @@ dracut-005 package that is currently published in Debian and Ubuntu.
  dracut/Makefile.am              |    3 -
  dracut/Makefile.in              |  681 ---------------------------------------
  dracut/README.dracut.markdown   |  166 ----------
- 11 files changed, 1 insertions(+), 1622 deletions(-)
+ 11 files changed, 1 insertion(+), 1622 deletions(-)
  delete mode 100644 dracut/90zfs/.gitignore
  delete mode 100644 dracut/90zfs/Makefile.am
  delete mode 100644 dracut/90zfs/Makefile.in
@@ -1730,5 +1730,5 @@ index 909273a..0000000
 -the required zpool was auto-imported by the kernel module, no additional
 -`zpool import` commands are run, so nothing is forced.
 -- 
-1.7.9.1
+1.7.9.5
 

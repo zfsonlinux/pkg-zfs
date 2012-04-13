@@ -1,0 +1,37 @@
+From 6dc9f2efef794572b41b27329c41d342bfc239a4 Mon Sep 17 00:00:00 2001
+From: Darik Horn <dajhorn@vanadac.com>
+Date: Fri, 13 Apr 2012 09:22:29 -0500
+Subject: [PATCH 7/8] Improve the SPL version error for DKMS systems.
+
+During kernel package upgrades, if DKMS tries to build the ZFS
+modules before the SPL module, then the operator gets an error
+message that does not apply to installations that are mananged by
+DKMS. Change the error message to fit apt-get systems.
+
+A better solution would be to implement a dependency model in DKMS,
+or to bundle SPL into the ZFS package.
+
+Closes: dajhorn/pkg-zfs#30
+---
+ config/kernel.m4 |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/config/kernel.m4 b/config/kernel.m4
+index 2cb2e8c..f344a1e 100644
+--- a/config/kernel.m4
++++ b/config/kernel.m4
+@@ -290,7 +290,10 @@ AC_DEFUN([ZFS_AC_SPL], [
+ 		AC_MSG_RESULT([Not found])
+ 		AC_MSG_ERROR([
+ 	*** Cannot determine the version of the spl source.
+-	*** Please prepare the spl source before running this script])
++	*** ZFS depends on the SPL kernel module, which is not yet ready.
++	*** DKMS should retry zfs-dkms momentarily after building spl-dkms.
++	*** If this error message persists, or if you are running DKMS manually,
++	*** then run 'apt-get install --reinstall spl-dkms' and try again.])
+ 	])
+ 
+ 	AC_MSG_RESULT([$splsrcver])
+-- 
+1.7.9.5
+
