@@ -1,3 +1,36 @@
+zfs-linux (0.6.0.59-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Export additional dsl symbols
+
+  [ Richard Laager ]
+  * Document the zle compression algorithm
+  * Improve error message consistency
+
+  [ Andriy Gapon ]
+  * Illumos #1680: zfs vdev_file_io_start: validate vdev before using vdev_tsd
+
+  [ Martin Matuska ]
+  * OS-926: zfs panic in zfs_fill_zplprops_impl()
+
+  [ George Wilson ]
+  * Illumos #1951: leaking a vdev when removing an l2cache device
+
+  [ Albert Lee ]
+  * Illumos #1475: zfs spill block hold can access invalid spill blkptr
+
+  [ Martin Matuska ]
+  * Illumos #1346: zfs incremental receive may leave behind temporary clones
+
+  [ P.SCH ]
+  * ZFS snapshot alias
+  * ZFS list snapshot property alias
+
+  [ Darik Horn ]
+  * Add Improve-the-SPL-version-error-for-DKMS-systems.patch
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 13 Apr 2012 09:34:06 -0500
+
 zfs-linux (0.6.0.58-0ubuntu1) unstable; urgency=low
 
   [ Richard Yao ]
