@@ -1,3 +1,9 @@
+spl-linux (0.6.0.59-0ubuntu1) unstable; urgency=low
+
+  * No changes.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 13 Apr 2012 08:58:16 -0500
+
 spl-linux (0.6.0.58-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
