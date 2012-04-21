@@ -1,4 +1,4 @@
-zfs-linux (0.6.0.59-0ubuntu1) unstable; urgency=low
+zfs-linux (0.6.0.60-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
   * Export additional dsl symbols
@@ -29,7 +29,7 @@ zfs-linux (0.6.0.59-0ubuntu1) unstable; urgency=low
   [ Darik Horn ]
   * Add Improve-the-SPL-version-error-for-DKMS-systems.patch
 
- -- Darik Horn <dajhorn@vanadac.com>  Fri, 13 Apr 2012 09:34:06 -0500
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 21 Apr 2012 10:38:51 -0500
 
 zfs-linux (0.6.0.58-0ubuntu1) unstable; urgency=low
 
