@@ -1,8 +1,14 @@
+spl-linux (0.6.0.61-0ubuntu1) precise; urgency=low
+
+  * No changes.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 22 Apr 2012 08:17:49 -0500
+
 spl-linux (0.6.0.60-0ubuntu1) unstable; urgency=low
 
   * No changes.
 
- -- Darik Horn <dajhorn@vanadac.com>  Sat, 21 Apr 2012 10:32:29 -0500
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 22 Apr 2012 08:17:37 -0500
 
 spl-linux (0.6.0.59-0ubuntu1) unstable; urgency=low
 
