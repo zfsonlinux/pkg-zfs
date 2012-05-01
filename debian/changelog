@@ -1,3 +1,13 @@
+spl-linux (0.6.0.62-0ubuntu1) unstable; urgency=low
+
+  [ Prakash Surya ]
+  * Update a comment to reflect new taskq internals
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 01 May 2012 14:33:03 -0500
+
 spl-linux (0.6.0.61-0ubuntu1) precise; urgency=low
 
   * No changes.
