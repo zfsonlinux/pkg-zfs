@@ -1,7 +1,7 @@
-From 872243637b9df629ac904718fecff2394581a1e5 Mon Sep 17 00:00:00 2001
+From 1d643b656f5ac33b246a05682ef17dcf790b0da7 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 17 Jan 2012 22:18:47 -0600
-Subject: [PATCH 2/8] Remove the COPYING file.
+Subject: [PATCH 2/7] Remove the COPYING file.
 
 Resolve this lintian warning by removing the COPYING file:
 
