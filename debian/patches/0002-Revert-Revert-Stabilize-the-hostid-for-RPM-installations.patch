@@ -13,7 +13,7 @@ Index: b/spl-modules.spec.in
 ===================================================================
 --- a/spl-modules.spec.in
 +++ b/spl-modules.spec.in
-@@ -233,6 +233,17 @@
+@@ -277,6 +277,17 @@
  %{_prefix}/src/*
  
  %post
