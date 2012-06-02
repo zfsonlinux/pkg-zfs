@@ -1,3 +1,28 @@
+spl-linux (0.6.0.63-0ubuntu1) unstable; urgency=low
+
+  [ Jorgen Lundman ]
+  * Define the needed ISA types for ARM
+  * Add missing 64-bit divide for 32-bit ARM
+  * Fix ARM 64-bit division
+
+  [ Prakash Surya ]
+  * Throttle number of freed slabs based on nr_to_scan
+  * Ignore slab cache age and delay in direct reclaim
+  * Add SPLAT test to exercise slab direct reclaim
+
+  [ Brian Behlendorf ]
+  * Ensure direct reclaim forward progress
+  * Ensure a minimum of one slab is reclaimed
+  * Remove Solaris module emulation
+
+  [ Richard Yao ]
+  * Modify KM_PUSHPAGE to use GFP_NOIO instead of GFP_NOFS
+
+  [ Darik Horn ]
+  * Disable Ubuntu 10.10 Maverick Meerkat builds.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 01 Jun 2012 19:41:50 -0500
+
 spl-linux (0.6.0.62-0ubuntu1) unstable; urgency=low
 
   [ Prakash Surya ]
