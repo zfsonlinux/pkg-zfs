@@ -880,6 +880,16 @@ kv_free(spl_kmem_cache_t *skc, void *ptr, int size)
 	ASSERT(IS_P2ALIGNED(ptr, PAGE_SIZE));
 	ASSERT(ISP2(size));
 
+	/*
+	 * The Linux direct reclaim path uses this out of band value to
+	 * determine if forward progress is being made.  Normally this is
+	 * incremented by kmem_freepages() which is part of the various
+	 * Linux slab implementations.  However, since we are using none
+	 * of that infrastructure we are responsible for incrementing it.
+	 */
+	if (current->reclaim_state)
+		current->reclaim_state->reclaimed_slab += size >> PAGE_SHIFT;
+
 	if (skc->skc_flags & KMC_KMEM)
 		free_pages((unsigned long)ptr, get_order(size));
 	else
@@ -1087,7 +1097,7 @@ spl_slab_reclaim(spl_kmem_cache_t *skc, int count, int flag)
 		 * scanning.  Additionally, stop when reaching the target
 		 * reclaim 'count' if a non-zero threshold is given.
 		 */
-		if ((sks->sks_ref > 0) || (count && i > count))
+		if ((sks->sks_ref > 0) || (count && i >= count))
 			break;
 
 		if (time_after(jiffies,sks->sks_age+skc->skc_delay*HZ)||flag) {
@@ -1857,8 +1867,9 @@ EXPORT_SYMBOL(spl_kmem_cache_free);
  * is called.  The shrinker should return the number of free objects
  * in the cache when called with nr_to_scan == 0 but not attempt to
  * free any objects.  When nr_to_scan > 0 it is a request that nr_to_scan
- * objects should be freed, because Solaris semantics are to free
- * all available objects we may free more objects than requested.
+ * objects should be freed, which differs from Solaris semantics.
+ * Solaris semantics are to free all available objects which may (and
+ * probably will) be more objects than the requested nr_to_scan.
  */
 static int
 __spl_kmem_cache_generic_shrinker(struct shrinker *shrink,
@@ -1870,7 +1881,8 @@ __spl_kmem_cache_generic_shrinker(struct shrinker *shrink,
 	down_read(&spl_kmem_cache_sem);
 	list_for_each_entry(skc, &spl_kmem_cache_list, skc_list) {
 		if (sc->nr_to_scan)
-			spl_kmem_cache_reap_now(skc);
+			spl_kmem_cache_reap_now(skc,
+			   MAX(sc->nr_to_scan >> fls64(skc->skc_slab_objs), 1));
 
 		/*
 		 * Presume everything alloc'ed in reclaimable, this ensures
@@ -1896,7 +1908,7 @@ SPL_SHRINKER_CALLBACK_WRAPPER(spl_kmem_cache_generic_shrinker);
  * effort and we do not want to thrash creating and destroying slabs.
  */
 void
-spl_kmem_cache_reap_now(spl_kmem_cache_t *skc)
+spl_kmem_cache_reap_now(spl_kmem_cache_t *skc, int count)
 {
 	SENTRY;
 
@@ -1911,10 +1923,41 @@ spl_kmem_cache_reap_now(spl_kmem_cache_t *skc)
 
 	atomic_inc(&skc->skc_ref);
 
-	if (skc->skc_reclaim)
-		skc->skc_reclaim(skc->skc_private);
+	/*
+	 * When a reclaim function is available it may be invoked repeatedly
+	 * until at least a single slab can be freed.  This ensures that we
+	 * do free memory back to the system.  This helps minimize the chance
+	 * of an OOM event when the bulk of memory is used by the slab.
+	 *
+	 * When free slabs are already available the reclaim callback will be
+	 * skipped.  Additionally, if no forward progress is detected despite
+	 * a reclaim function the cache will be skipped to avoid deadlock.
+	 *
+	 * Longer term this would be the correct place to add the code which
+	 * repacks the slabs in order minimize fragmentation.
+	 */
+	if (skc->skc_reclaim) {
+		uint64_t objects = UINT64_MAX;
+		int do_reclaim;
 
-	spl_slab_reclaim(skc, skc->skc_reap, 0);
+		do {
+			spin_lock(&skc->skc_lock);
+			do_reclaim =
+			    (skc->skc_slab_total > 0) &&
+			    ((skc->skc_slab_total - skc->skc_slab_alloc) == 0) &&
+			    (skc->skc_obj_alloc < objects);
+
+			objects = skc->skc_obj_alloc;
+			spin_unlock(&skc->skc_lock);
+
+			if (do_reclaim)
+				skc->skc_reclaim(skc->skc_private);
+
+		} while (do_reclaim);
+	}
+
+	/* Reclaim from the cache, ignoring it's age and delay. */
+	spl_slab_reclaim(skc, count, 1);
 	clear_bit(KMC_BIT_REAPING, &skc->skc_flags);
 	atomic_dec(&skc->skc_ref);
 

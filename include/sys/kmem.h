@@ -43,7 +43,7 @@
  */
 #define KM_SLEEP	GFP_KERNEL	/* Can sleep, never fails */
 #define KM_NOSLEEP	GFP_ATOMIC	/* Can not sleep, may fail */
-#define KM_PUSHPAGE	(GFP_NOFS | __GFP_HIGH)	/* Use reserved memory */
+#define KM_PUSHPAGE	(GFP_NOIO | __GFP_HIGH)	/* Use reserved memory */
 #define KM_NODEBUG	__GFP_NOWARN	/* Suppress warnings */
 #define KM_FLAGS	__GFP_BITS_MASK
 #define KM_VMFLAGS	GFP_LEVEL_MASK
@@ -418,7 +418,7 @@ extern void spl_kmem_cache_set_move(kmem_cache_t *,
 extern void spl_kmem_cache_destroy(spl_kmem_cache_t *skc);
 extern void *spl_kmem_cache_alloc(spl_kmem_cache_t *skc, int flags);
 extern void spl_kmem_cache_free(spl_kmem_cache_t *skc, void *obj);
-extern void spl_kmem_cache_reap_now(spl_kmem_cache_t *skc);
+extern void spl_kmem_cache_reap_now(spl_kmem_cache_t *skc, int count);
 extern void spl_kmem_reap(void);
 
 int spl_kmem_init_kallsyms_lookup(void);
@@ -431,7 +431,8 @@ void spl_kmem_fini(void);
 #define kmem_cache_destroy(skc)		spl_kmem_cache_destroy(skc)
 #define kmem_cache_alloc(skc, flags)	spl_kmem_cache_alloc(skc, flags)
 #define kmem_cache_free(skc, obj)	spl_kmem_cache_free(skc, obj)
-#define kmem_cache_reap_now(skc)	spl_kmem_cache_reap_now(skc)
+#define kmem_cache_reap_now(skc)	\
+        spl_kmem_cache_reap_now(skc, skc->skc_reap)
 #define kmem_reap()			spl_kmem_reap()
 #define kmem_virt(ptr)			(((ptr) >= (void *)VMALLOC_START) && \
 					 ((ptr) <  (void *)VMALLOC_END))
