@@ -1,7 +1,7 @@
 From 64ecce70d27027e1903ab91cf47f98bb46d37356 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Fri, 13 Apr 2012 09:22:29 -0500
-Subject: [PATCH 7/7] Improve the SPL version error for DKMS systems.
+Subject: [PATCH 7/8] Improve the SPL version error for DKMS systems.
 
 During kernel package upgrades, if DKMS tries to build the ZFS
 modules before the SPL module, then the operator gets an error
