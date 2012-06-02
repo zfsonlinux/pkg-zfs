@@ -1,3 +1,24 @@
+zfs-linux (0.6.0.63-0ubuntu1) unstable; urgency=low
+
+  [ Jorgen Lundman ]
+  * Define the needed ISA types for ARM
+
+  [ Brian Behlendorf ]
+  * Extend CONFIG_DEBUG_LOCK_ALLOC check
+  * Add /dev/mapper/ to search path
+  * Improve 'zpool import' EBUSY error message
+
+  [ Ned A. Bass ]
+  * Add vdev_id for JBOD-friendly udev aliases
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+  * Disable Ubuntu 10.10 Maverick Meerkat builds.
+  * Add Add-zvol_inhibit_dev-module-option.patch
+  * Add /etc/sudoers.d/zfs file.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 01 Jun 2012 22:02:32 -0500
+
 zfs-linux (0.6.0.62-0ubuntu1) unstable; urgency=low
 
   [ Mike Harsch ]
