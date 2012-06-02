@@ -1,4 +1,4 @@
-From 583a0ed6888537b79c89f0a4056786dea5c4cc0e Mon Sep 17 00:00:00 2001
+From 93565d3b10f55fe5f7e7cf97fe99e5999e5d42ad Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 17 Jan 2012 11:54:21 -0600
 Subject: [PATCH 3/7] Remove all upstream init.d components.
@@ -29,7 +29,7 @@ bundles init files according to Debian packaging policy.
  delete mode 100644 etc/init.d/zfs.redhat.in
 
 diff --git a/configure.ac b/configure.ac
-index e0cb5a5..fd443ed 100644
+index d693f67..8c76412 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -61,7 +61,6 @@ AC_CONFIG_FILES([
@@ -39,7 +39,7 @@ index e0cb5a5..fd443ed 100644
 -	etc/init.d/Makefile
  	etc/zfs/Makefile
  	man/Makefile
- 	man/man8/Makefile
+ 	man/man5/Makefile
 diff --git a/etc/Makefile.am b/etc/Makefile.am
 index 65882b5..b5e497f 100644
 --- a/etc/Makefile.am
