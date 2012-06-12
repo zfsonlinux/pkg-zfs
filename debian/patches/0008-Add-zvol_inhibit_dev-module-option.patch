@@ -1,4 +1,4 @@
-From f016c38557e02d98bf08b0fc392db00fd4f65107 Mon Sep 17 00:00:00 2001
+From 93622f77b0136842103f2a7e00e9fc014dca4016 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Fri, 1 Jun 2012 20:49:10 -0500
 Subject: [PATCH 8/8] Add zvol_inhibit_dev module option.
@@ -20,7 +20,7 @@ filesystems can be mounted.
  1 file changed, 10 insertions(+)
 
 diff --git a/module/zfs/zvol.c b/module/zfs/zvol.c
-index 9b13134..5ec8374 100644
+index ba26543..81a561f 100644
 --- a/module/zfs/zvol.c
 +++ b/module/zfs/zvol.c
 @@ -46,6 +46,7 @@
@@ -31,7 +31,7 @@ index 9b13134..5ec8374 100644
  unsigned int zvol_major = ZVOL_MAJOR;
  unsigned int zvol_threads = 32;
  
-@@ -1337,6 +1338,9 @@ zvol_create_minors(const char *pool)
+@@ -1341,6 +1342,9 @@ zvol_create_minors(const char *pool)
  	spa_t *spa = NULL;
  	int error = 0;
  
@@ -41,7 +41,7 @@ index 9b13134..5ec8374 100644
  	mutex_enter(&zvol_state_lock);
  	if (pool) {
  		error = dmu_objset_find_spa(NULL, pool, zvol_create_minors_cb,
-@@ -1366,6 +1370,9 @@ zvol_remove_minors(const char *pool)
+@@ -1370,6 +1374,9 @@ zvol_remove_minors(const char *pool)
  	zvol_state_t *zv, *zv_next;
  	char *str;
  
@@ -51,7 +51,7 @@ index 9b13134..5ec8374 100644
  	str = kmem_zalloc(MAXNAMELEN, KM_SLEEP);
  	if (pool) {
  		(void) strncpy(str, pool, strlen(pool));
-@@ -1427,6 +1434,9 @@ zvol_fini(void)
+@@ -1431,6 +1438,9 @@ zvol_fini(void)
  	list_destroy(&zvol_state_list);
  }
  
