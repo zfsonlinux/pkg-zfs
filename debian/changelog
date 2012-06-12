@@ -1,3 +1,10 @@
+spl-linux (0.6.0.64-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Fix invalid context bug
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 11 Jun 2012 22:53:39 -0500
+
 spl-linux (0.6.0.63-0ubuntu1) unstable; urgency=low
 
   [ Jorgen Lundman ]
