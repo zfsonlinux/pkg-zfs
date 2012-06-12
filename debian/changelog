@@ -1,3 +1,23 @@
+zfs-linux (0.6.0.64-0ubuntu1) unstable; urgency=low
+
+  [ Ned Bass ]
+  * Improve CONFIG_DEBUG_LOCK_ALLOC error message
+
+  [ Etienne Dechamps ]
+  * Honor logbias when writing to ZVOLs.
+
+  [ Richard Yao ]
+  * Linux 3.4 compat, d_make_root() replaces d_alloc_root()
+
+  [ Daniel Verite ]
+  * Include <locale.h> to avoid error: 'LC_ALL' undeclared.
+  * Retry removal of busy minors
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 11 Jun 2012 23:12:08 -0500
+
 zfs-linux (0.6.0.63-0ubuntu1) unstable; urgency=low
 
   [ Jorgen Lundman ]
