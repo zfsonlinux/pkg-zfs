@@ -48,6 +48,7 @@ AC_DEFUN([ZFS_AC_CONFIG_KERNEL], [
 	ZFS_AC_KERNEL_CREATE_UMODE_T
 	ZFS_AC_KERNEL_AUTOMOUNT
 	ZFS_AC_KERNEL_INSERT_INODE_LOCKED
+	ZFS_AC_KERNEL_D_MAKE_ROOT
 	ZFS_AC_KERNEL_D_OBTAIN_ALIAS
 	ZFS_AC_KERNEL_CHECK_DISK_SIZE_CHANGE
 	ZFS_AC_KERNEL_TRUNCATE_SETSIZE
@@ -374,8 +375,9 @@ AC_DEFUN([ZFS_AC_KERNEL_CONFIG_DEBUG_LOCK_ALLOC], [
 			AC_MSG_RESULT(yes)
 			AC_MSG_ERROR([
 	*** Kernel built with CONFIG_DEBUG_LOCK_ALLOC which is incompatible
-	*** with the CDDL license.  You must rebuild your kernel without
-	*** this option enabled.])
+	*** with the CDDL license and will prevent the module linking stage
+	*** from succeeding.  You must rebuild your kernel without this
+	*** option enabled.])
 		])
 		EXTRA_KCFLAGS="$tmp_flags"
 	], [])
