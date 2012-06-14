@@ -5,5 +5,4 @@
 0005-Remove-userland-dist-rules.patch
 0006-Improve-the-with-spl-error-for-DKMS-systems.patch
 0007-Improve-the-SPL-version-error-for-DKMS-systems.patch
-0008-Add-zvol_inhibit_dev-module-option.patch
 volatile-version.patch

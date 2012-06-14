@@ -1,7 +1,7 @@
-From b32c2ff51bae5ac0f5f48d8d3da61def2f7f3d28 Mon Sep 17 00:00:00 2001
+From f9cd7958d8f655ea891658c774aab39df4f70659 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 17 Jan 2012 20:27:32 -0600
-Subject: [PATCH 4/8] Remove the upstream dracut component.
+Subject: [PATCH 4/7] Remove the upstream dracut component.
 
 The dracut/ component broke deb systems when it first added to the
 upstream ZoL repository, had a near-zero download count when it was
