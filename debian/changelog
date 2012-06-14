@@ -1,3 +1,25 @@
+zfs-linux (0.6.0.65-0ubuntu1) unstable; urgency=low
+
+  [ Etienne Dechamps ]
+  * Make zil_slog_limit a tunable module parameter.
+
+  [ Richard Yao ]
+  * Make zvol_remove_link() print a more useful error message
+
+  [ Pawel Jakub Dawidek ]
+  * Speed up 'zfs list -t snapshot -o name -s name'
+
+  [ Darik Horn ]
+  * Add zvol_inhibit_dev module option.
+  * Refresh debian/patches after upstream merge.
+
+  [ Brian Behlendorf ]
+  * Workaround for failing zvol_id
+  * Mark zdev.conf as a config file
+  * ZFS 0.6.0-rc9
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 14 Jun 2012 15:18:54 -0500
+
 zfs-linux (0.6.0.64-0ubuntu1) unstable; urgency=low
 
   [ Ned Bass ]
