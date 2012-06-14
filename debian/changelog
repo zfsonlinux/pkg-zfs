@@ -1,3 +1,14 @@
+spl-linux (0.6.0.65-0ubuntu1) unstable; urgency=low
+
+  [ Richard Yao ]
+  * Linux 3.4 compat, __clear_close_on_exec replaces FD_CLR
+
+  [ Brian Behlendorf ]
+  * Fix uninit variable in slab reclaim test
+  * SPL 0.6.0-rc9
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 14 Jun 2012 15:05:12 -0500
+
 spl-linux (0.6.0.64-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
