@@ -1,3 +1,17 @@
+zfs-linux (0.6.0.66-0ubuntu1) unstable; urgency=low
+
+  [ Etienne Dechamps ]
+  * Add ZIL statistics.
+
+  [ Prakash Surya ]
+  * Support debug and debug-devel sub packages
+
+  [ Brian Behlendorf ]
+  * Remove Chaos 4.x RPM support
+  * Update incorrect ddt_zap_lookup() assertion
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 04 Jul 2012 00:16:38 -0500
+
 zfs-linux (0.6.0.65-0ubuntu2) unstable; urgency=high
 
   * chmod 0440 /etc/sudoers.d/zfs
