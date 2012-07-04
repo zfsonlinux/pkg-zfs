@@ -1,4 +1,4 @@
-From f328ddafb942d8194f5951a1cc2254c2130e6b15 Mon Sep 17 00:00:00 2001
+From 881a8ddeb16c1f20aa3ff1e7a623d6660eb7917f Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 11 Oct 2011 18:32:58 -0500
 Subject: [PATCH 1/2] Revert "Remove /etc/hostid missing warning"
@@ -6,13 +6,13 @@ Subject: [PATCH 1/2] Revert "Remove /etc/hostid missing warning"
 This reverts commit 6b3b569df30d13ed7bbbff877cffc71290a52f12.
 ---
  module/spl/spl-generic.c |    6 +++++-
- 1 files changed, 5 insertions(+), 1 deletions(-)
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-Index: b/module/spl/spl-generic.c
-===================================================================
+diff --git a/module/spl/spl-generic.c b/module/spl/spl-generic.c
+index 785f668..5ef52f0 100644
 --- a/module/spl/spl-generic.c
 +++ b/module/spl/spl-generic.c
-@@ -414,8 +414,12 @@
+@@ -470,8 +470,12 @@ hostid_read(void)
  
  	file = kobj_open_file(spl_hostid_path);
  
@@ -26,3 +26,6 @@ Index: b/module/spl/spl-generic.c
  
  	result = kobj_get_filesize(file, &size);
  
+-- 
+1.7.9.5
+
