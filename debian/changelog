@@ -1,3 +1,17 @@
+spl-linux (0.6.0.66-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * PowerPC Compatibility
+  * Remove Chaos 4.x RPM support
+
+  [ Prakash Surya ]
+  * Support debug and debug-devel sub packages
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 03 Jul 2012 23:57:00 -0500
+
 spl-linux (0.6.0.65-0ubuntu1) unstable; urgency=low
 
   [ Richard Yao ]
