@@ -1,3 +1,20 @@
+spl-linux (0.6.0.67-0ubuntu1) unstable; urgency=low
+
+  [ Richard Yao ]
+  * Constify memory management functions
+  * Detect kernels that honor gfp flags passed to vmalloc()
+
+  [ Prakash Surya ]
+  * Move spl.release generation to configure step
+
+  [ Brian Behlendorf ]
+  * Optimize spl_rwsem_is_locked()
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 15 Jul 2012 22:24:34 -0500
+
 spl-linux (0.6.0.66-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
