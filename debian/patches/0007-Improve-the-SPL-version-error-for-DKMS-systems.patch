@@ -1,4 +1,4 @@
-From fcf3a08fd8ee244591a2ab3cf384252ca1aa08dd Mon Sep 17 00:00:00 2001
+From db2c58ffb5c799a077314f8636b95e8ee0c99717 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Fri, 13 Apr 2012 09:22:29 -0500
 Subject: [PATCH 7/7] Improve the SPL version error for DKMS systems.

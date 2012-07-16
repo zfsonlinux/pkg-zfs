@@ -1,4 +1,4 @@
-From f9cd7958d8f655ea891658c774aab39df4f70659 Mon Sep 17 00:00:00 2001
+From 4fb6d6e15f8d90736eb415c6579fcdc24255de38 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 17 Jan 2012 20:27:32 -0600
 Subject: [PATCH 4/7] Remove the upstream dracut component.
@@ -31,7 +31,7 @@ dracut-005 package that is currently published in Debian and Ubuntu.
  delete mode 100644 dracut/README.dracut.markdown
 
 diff --git a/Makefile.am b/Makefile.am
-index 17a6a26..aa5c01a 100644
+index 1a9171d..c1975cd 100644
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -4,7 +4,7 @@ include $(top_srcdir)/config/tgz.am
@@ -44,7 +44,7 @@ index 17a6a26..aa5c01a 100644
  if CONFIG_KERNEL
  KERNEL_DIR = module
 diff --git a/configure.ac b/configure.ac
-index 8c76412..4c577de 100644
+index 9fc1ef4..cd1be03 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -56,8 +56,6 @@ ZFS_AC_DEBUG_DMU_TX

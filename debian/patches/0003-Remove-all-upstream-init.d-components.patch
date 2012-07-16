@@ -1,4 +1,4 @@
-From c023cf36d0bdc1e52bd277bf797a01b91d2c352a Mon Sep 17 00:00:00 2001
+From 3b809be6159405443aad6312dda65834ee01d473 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 17 Jan 2012 11:54:21 -0600
 Subject: [PATCH 3/7] Remove all upstream init.d components.
@@ -29,7 +29,7 @@ bundles init files according to Debian packaging policy.
  delete mode 100644 etc/init.d/zfs.redhat.in
 
 diff --git a/configure.ac b/configure.ac
-index d693f67..8c76412 100644
+index 749f378..9fc1ef4 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -61,7 +61,6 @@ AC_CONFIG_FILES([
@@ -972,13 +972,13 @@ index 04f2077..0000000
 -exit $RETVAL
 diff --git a/etc/init.d/zfs.gentoo.in b/etc/init.d/zfs.gentoo.in
 deleted file mode 100644
-index 957be99..0000000
+index df883cf..0000000
 --- a/etc/init.d/zfs.gentoo.in
 +++ /dev/null
 @@ -1,111 +0,0 @@
 -#!/sbin/runscript
 -# Copyright 1999-2011 Gentoo Foundation
--# Distributed under the terms of the GNU General Public License v2
+-# Released under the 2-clause BSD license.
 -# $Header: /var/cvsroot/gentoo-x86/sys-fs/zfs/files/zfs,v 0.9 2011/04/30 10:13:43 devsk Exp $
 -
 -depend()
