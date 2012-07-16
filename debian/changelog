@@ -1,3 +1,29 @@
+zfs-linux (0.6.0.67-0ubuntu1) unstable; urgency=low
+
+  [ Richard Yao ]
+  * Use ULL suffix in constants
+  * Relicense zfs.gentoo.in from GPLv2 to 2-clause BSD
+
+  [ Garrett D'Amore ]
+  * Illumos #1748: desire support for reguid in zfs
+
+  [ George Wilson ]
+  * Illumos #1949, #1953
+
+  [ Etienne Dechamps ]
+  * Fix error handling for "zpool online -e".
+  * Use the right device path when relabeling.
+  * Fix efi_use_whole_disk() when efi_nparts == 128.
+
+  [ Brian Behlendorf ]
+  * Add PowerPC to supported VTOCs
+  * Move zfs.release generation to configure step
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 15 Jul 2012 23:11:46 -0500
+
 zfs-linux (0.6.0.66-0ubuntu1) unstable; urgency=low
 
   [ Etienne Dechamps ]
