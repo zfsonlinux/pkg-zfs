@@ -1,3 +1,20 @@
+spl-linux (0.6.0.68-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * 32-bit compat, hostid_read()
+
+  [ Etienne Dechamps ]
+  * Use MODULE variable in module Makefile like zfs.
+  * Don't build packages that haven't been selected.
+  * Fix undefined reference on spl_mutex_spin_max().
+  * Make configure builtin-aware.
+  * Fake modpost stage for LINUX_COMPILE.
+  * When checking for symbol exports, try compiling.
+  * Add script for builtin module building.
+  * Determine the hostid on demand.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 27 Jul 2012 14:23:37 -0500
+
 spl-linux (0.6.0.67-0ubuntu1) unstable; urgency=low
 
   [ Richard Yao ]
