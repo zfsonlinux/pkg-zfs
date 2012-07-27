@@ -1,4 +1,4 @@
-From db2c58ffb5c799a077314f8636b95e8ee0c99717 Mon Sep 17 00:00:00 2001
+From 778c690d8a803db713682868441713ec38815a13 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Fri, 13 Apr 2012 09:22:29 -0500
 Subject: [PATCH 7/7] Improve the SPL version error for DKMS systems.
@@ -17,10 +17,10 @@ Closes: dajhorn/pkg-zfs#30
  1 file changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/config/kernel.m4 b/config/kernel.m4
-index 4ff3fc4..58c060a 100644
+index ff60c34..160b821 100644
 --- a/config/kernel.m4
 +++ b/config/kernel.m4
-@@ -292,7 +292,10 @@ AC_DEFUN([ZFS_AC_SPL], [
+@@ -304,7 +304,10 @@ AC_DEFUN([ZFS_AC_SPL], [
  		AC_MSG_RESULT([Not found])
  		AC_MSG_ERROR([
  	*** Cannot determine the version of the spl source.

@@ -1,4 +1,4 @@
-From d838091446b9d0cc8e8bf25fe1b687170260178d Mon Sep 17 00:00:00 2001
+From 0bfd40ed95d5ee8ec96793c1c60ff9729b95da9a Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 17 Jan 2012 22:18:47 -0600
 Subject: [PATCH 2/7] Remove the COPYING file.
