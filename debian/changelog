@@ -1,3 +1,31 @@
+zfs-linux (0.6.0.68-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Add 'inline' keyword
+  * Add ddt_object_load() error handling
+  * Disable .zfs directory on 32-bit systems
+
+  [ Richard Yao ]
+  * Fix build failures on PaX/GRSecurity patched kernels
+  * Fix NULL pointer dereference on PaX/GRSecurity patched Linux 3.3 and later kernels
+  * Linux 3.5 compat, eops->encode_fh() takes inodes
+  * Linux 3.5 compat, iops->truncate_range() removed
+  * Linux 3.5 compat, end_writeback() changed to clear_inode()
+
+  [ Etienne Dechamps ]
+  * Move partition scanning from userspace to module.
+  * Don't build packages that haven't been selected.
+  * Make configure builtin-aware.
+  * Fake modpost stage for LINUX_COMPILE.
+  * When checking for symbol exports, try compiling.
+  * Add script for builtin module building.
+  * Use /sys/module instead of /proc/modules.
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 27 Jul 2012 14:37:39 -0500
+
 zfs-linux (0.6.0.67-0ubuntu1) unstable; urgency=low
 
   [ Richard Yao ]
