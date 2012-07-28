@@ -115,7 +115,7 @@ Description: Native ZFS pool library for Linux
 Package: libzpool1-dbg
 Section: debug
 Architecture: linux-any
-Depends: libzpool1 (= ${binary:Version), ${misc:Depends}
+Depends: libzpool1 (= ${binary:Version}), ${misc:Depends}
 Replaces: libzpool0-dbg
 Description: Debugging symbols for libzpool1
  The zpool management library.
