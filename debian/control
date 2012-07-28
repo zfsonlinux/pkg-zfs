@@ -26,6 +26,18 @@ Description: Solaris name-value library for Linux
  transporting data across process boundaries, transporting between
  kernel and userland, and possibly saving onto disk files.
 
+Package: libnvpair1-dbg
+Section: debug
+Architecture: linux-any
+Depends: libnvpair1 (= ${binary:Version})
+Replaces: libnvpair0-dbg
+Description: Debugging symbols for libnvpair1
+ This library provides routines for packing and unpacking nv pairs for
+ transporting data across process boundaries, transporting between
+ kernel and userland, and possibly saving onto disk files.
+ .
+ This package contains the debugging symbols for libnvpair1.
+
 Package: libuutil1
 Section: libs
 Architecture: linux-any
@@ -39,6 +51,22 @@ Description: Solaris userland utility library for Linux
  * libavl: The Adelson-Velskii Landis balanced binary tree manipulation library.
  * libefi: The Extensible Firmware Interface library for GUID disk partitioning.
  * libshare: NFS and SMB service integration for ZFS.
+
+Package: libuutil1-dbg
+Section: debug
+Architecture: linux-any
+Depends: libuutil1 (= ${binary:Version})
+Replaces: libuutil0-dbg
+Description: Debugging symbols for libuutil1
+ This library provides a variety of glue functions for ZFS on Linux:
+ * libspl: The Solaris Porting Layer library, which provides APIs that make it
+   possible to run Solaris user code in a Linux environment with relatively
+   minimal modification.
+ * libavl: The Adelson-Velskii Landis balanced binary tree manipulation library.
+ * libefi: The Extensible Firmware Interface library for GUID disk partitioning.
+ * libshare: NFS and SMB service integration for ZFS.
+ .
+ This package contains the debugging symbols for libuutil1.
 
 Package: libzfs-dev
 Section: libdevel
@@ -66,6 +94,16 @@ Replaces: libzfs0
 Description: Native ZFS filesystem library for Linux
  The zfs management library.
 
+Package: libzfs1-dbg
+Section: debug
+Architecture: linux-any
+Depends: libzfs1 (= ${binary:Version})
+Replaces: libzfs0-dbg
+Description: Debugging symbols for libzfs1
+ The zfs management library.
+ .
+ This package contains the debugging symbols for libzfs1.
+
 Package: libzpool1
 Section: libs
 Architecture: linux-any
@@ -73,6 +111,16 @@ Depends: ${misc:Depends}, ${shlibs:Depends}
 Replaces: libzpool0
 Description: Native ZFS pool library for Linux
  The zpool management library.
+
+Package: libzpool1-dbg
+Section: debug
+Architecture: linux-any
+Depends: libzpool1 (= ${binary:Version})
+Replaces: libzpool0-dbg
+Description: Debugging symbols for libzpool1
+ The zpool management library.
+ .
+ This package contains the debugging symbols for libzpool1.
 
 Package: zfs-dkms
 Section: kernel
@@ -115,3 +163,14 @@ Replaces: zfs
 Description: Native ZFS management utilities for Linux
  This package provides the zpool and zfs commands that are used to
  manage ZFS filesystems.
+
+Package: zfsutils-dbg
+Section: debug
+Architecture: linux-any
+Depends: zfsutils (= ${binary:Version})
+Replaces: zfs-dbg
+Description: Debugging symbols for zfsutils
+ This package provides the zpool and zfs commands that are used to
+ manage ZFS filesystems.
+ .
+ This package contains the debugging symbols for zfsutils.
