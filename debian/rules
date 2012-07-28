@@ -83,3 +83,10 @@ override_dh_shlibdeps:
 	@# inter-library dependencies.  (eg: zfs -> libzfs -> libuuid)
 	@# @TODO: Add pkgconfig support instead.
 	dh_shlibdeps -- --warnings=0
+
+override_dh_strip:
+	dh_strip -plibnvpair1 --dbg-package=libnvpair1-dbg
+	dh_strip -plibuutil1 --dbg-package=libuutil1-dbg
+	dh_strip -plibzfs1 --dbg-package=libzfs1-dbg
+	dh_strip -plibzpool1 --dbg-package=libzpool1-dbg
+	dh_strip -pzfsutils --dbg-package=zfsutils-dbg
