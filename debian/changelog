@@ -1,3 +1,22 @@
+zfs-linux (0.6.0.69-0ubuntu3) unstable; urgency=low
+
+  [ Darik Horn ]
+  * Update the README file for deb packages.
+
+  [ Brian Behlendorf ]
+  * Allow '-o remount' for non-legacy datasets
+
+  [ Manuel Amador (Rudd-O) ]
+  * Adding grub2 mkconfig support patch
+
+  [ Matthew Ahrens ]
+  * Illumos #1644, #1645, #1646, #1647, #1708
+
+  [ Etienne Dechamps ]
+  * Limit the number of blocks to discard at once.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 06 Aug 2012 11:39:15 -0500
+
 zfs-linux (0.6.0.68-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
