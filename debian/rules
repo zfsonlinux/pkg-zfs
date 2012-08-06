@@ -27,6 +27,9 @@ override_dh_auto_install:
 	# This creates the $(CURDIR)/$(NAME)-$(VERSION)/ tree.
 	make distdir
 
+	# Delete boilerplate to satisfy the lintian extra-license-file check.
+	rm '$(CURDIR)/$(NAME)-$(VERSION)/COPYING'
+
 	# This shunt allows DKMS to install the Module.symvers and spl_config.h
 	# files to the ${dkms_tree} area through the POST_INSTALL directive.
 	echo '#!/bin/sh'  >'$(CURDIR)/$(NAME)-$(VERSION)/cp'
