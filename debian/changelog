@@ -1,3 +1,12 @@
+spl-linux (0.6.0.69-0ubuntu3) unstable; urgency=low
+
+  * Update the README file for deb packages.
+  * Convert lintian-COPYING.patch to a build rule.
+  * Remove lintian-ltmain.patch
+  * Run autogen for packaged builds.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 06 Aug 2012 09:33:50 -0500
+
 spl-linux (0.6.0.68-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
