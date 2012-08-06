@@ -7,6 +7,8 @@ VERSION := $(shell awk '/^Version:/{print $$2}' META)
 	dh $@
 
 override_dh_auto_configure:
+	./autogen.sh
+
 	# Build the userland, but don't build the kernel modules.
 	./configure --prefix=/usr --with-config=user
 	

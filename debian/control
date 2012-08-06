@@ -2,7 +2,13 @@ Source: spl-linux
 Section: kernel
 Priority: extra
 Maintainer: Darik Horn <dajhorn@vanadac.com>
-Build-Depends: autotools-dev, debhelper (>= 7.4), dkms (>> 2.1.1.2-5ubuntu1)
+Build-Depends: autotools-dev,
+ autoconf,
+ autogen,
+ automake,
+ debhelper (>= 7.4),
+ dkms (>> 2.1.1.2-5ubuntu1),
+ libtool,
 Standards-Version: 3.8.4
 Homepage: http://www.zfsonlinux.org/
 Vcs-Git: git://github.com/dajhorn/pkg-spl.git
