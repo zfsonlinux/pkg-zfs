@@ -1,4 +1,3 @@
 volatile-version.patch
-lintian-ltmain.patch
 0001-Revert-Remove-etc-hostid-missing-warning.patch
 0002-Revert-Revert-Stabilize-the-hostid-for-RPM-installations.patch
