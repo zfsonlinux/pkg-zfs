@@ -1,3 +1,34 @@
+zfs-linux (0.6.0.70-0ubuntu1) unstable; urgency=low
+
+  [ Richard Yao ]
+  * Add missing dependencies to ./copy-builtin
+
+  [ Etienne Dechamps ]
+  * Set zvol discard_granularity to the volblocksize.
+
+  [ Dan McDonald ]
+  * Illumos #1693: persistent 'comment' field for a zpool
+
+  [ Prakash Surya ]
+  * Add '--with-spl-timeout' option
+  * Support building a zfs-modules-dkms sub package
+
+  [ Brian Behlendorf ]
+  * Export dbuf_* symbols
+  * Illumos #1888:  zfs(8) should mention zfs recv -e
+  * Suppress 'zfs_sb_create' memory warning
+
+  [ Ned Bass ]
+  * Fix man page installation path
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+  [ Peter Fern ]
+  * Add debug packages for libs and tools
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 10 Aug 2012 20:35:15 -0500
+
 zfs-linux (0.6.0.69-0ubuntu3) unstable; urgency=low
 
   [ Darik Horn ]
