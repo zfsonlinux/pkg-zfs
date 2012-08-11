@@ -1,3 +1,16 @@
+spl-linux (0.6.0.70-0ubuntu1) unstable; urgency=low
+
+  [ Richard Yao ]
+  * Fix incorrect type in spl_kmem_cache_set_move() parameter
+
+  [ Etienne Dechamps ]
+  * Handle any invalidate_inodes_check prototype.
+
+  [ Prakash Surya ]
+  * Support building a spl-modules-dkms sub package
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 10 Aug 2012 19:40:20 -0500
+
 spl-linux (0.6.0.69-0ubuntu3) unstable; urgency=low
 
   * Update the README file for deb packages.
