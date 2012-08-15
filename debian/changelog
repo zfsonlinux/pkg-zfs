@@ -1,3 +1,12 @@
+zfs-linux (0.6.0.71-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Cleanly remove zfs-modules-devel headers
+  * Export dmu_buf_rele() symbol
+  * ZFS 0.6.0-rc10
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 14 Aug 2012 21:41:22 -0500
+
 zfs-linux (0.6.0.70-0ubuntu1) unstable; urgency=low
 
   [ Richard Yao ]
