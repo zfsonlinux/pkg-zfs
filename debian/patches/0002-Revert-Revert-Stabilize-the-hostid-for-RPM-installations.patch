@@ -1,4 +1,4 @@
-From d21f7a4bc3ef0f2719a20b77047c58d91a7064ac Mon Sep 17 00:00:00 2001
+From 7d05ce4fa9d49ffa3a1d0e581a431fcd25cc28f7 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 11 Oct 2011 18:43:41 -0500
 Subject: [PATCH 2/2] Revert "Revert "Stabilize the hostid for RPM
@@ -10,11 +10,11 @@ This reverts commit 39a87c69211aceef23889ceb4a33291e476237b9.
  1 file changed, 11 insertions(+)
 
 diff --git a/spl-modules.spec.in b/spl-modules.spec.in
-index c27d0a5..c78b466 100644
+index d1315a2..eef2dcb 100644
 --- a/spl-modules.spec.in
 +++ b/spl-modules.spec.in
-@@ -437,6 +437,17 @@ rm -rf $RPM_BUILD_ROOT
- %{_prefix}/src/*/%{kver_kern}/*
+@@ -500,6 +500,17 @@ rm -rf $RPM_BUILD_ROOT
+ %{_prefix}/src/*/%{kver_kern}
  
  %post
 +# The /sbin/genhostid utility writes a random value to the /etc/hostid

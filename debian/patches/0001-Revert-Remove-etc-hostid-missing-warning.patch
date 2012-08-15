@@ -1,4 +1,4 @@
-From 881a8ddeb16c1f20aa3ff1e7a623d6660eb7917f Mon Sep 17 00:00:00 2001
+From 7559daf38acc293474d3d2a13ecf746bc7507a11 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 11 Oct 2011 18:32:58 -0500
 Subject: [PATCH 1/2] Revert "Remove /etc/hostid missing warning"
@@ -9,7 +9,7 @@ This reverts commit 6b3b569df30d13ed7bbbff877cffc71290a52f12.
  1 file changed, 5 insertions(+), 1 deletion(-)
 
 diff --git a/module/spl/spl-generic.c b/module/spl/spl-generic.c
-index 785f668..5ef52f0 100644
+index cc27664..c4f4f6c 100644
 --- a/module/spl/spl-generic.c
 +++ b/module/spl/spl-generic.c
 @@ -470,8 +470,12 @@ hostid_read(void)
