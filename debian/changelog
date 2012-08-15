@@ -1,3 +1,14 @@
+spl-linux (0.6.0.71-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Cleanly remove spl-modules-devel headers
+  * SPL 0.6.0-rc10
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 14 Aug 2012 21:32:20 -0500
+
 spl-linux (0.6.0.70-0ubuntu1) unstable; urgency=low
 
   [ Richard Yao ]
