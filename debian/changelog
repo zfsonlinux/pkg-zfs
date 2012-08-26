@@ -1,3 +1,18 @@
+spl-linux (0.6.0.72-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Add copy-builtin to EXTRA_DIST
+
+  [ Prakash Surya ]
+  * Wrap trace_set_debug_header in trace_[get|put]_tcd
+  * Avoid calling smp_processor_id in spl_magazine_age
+  * Add kpreempt_[dis|en]able macros in <sys/disp.h>
+
+  [ Richard Yao ]
+  * Remove Makefile from non-toplevel .gitignore files
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 26 Aug 2012 16:56:19 -0500
+
 spl-linux (0.6.0.71-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
