@@ -1,3 +1,46 @@
+zfs-linux (0.6.0.72-0ubuntu1) unstable; urgency=low
+
+  [ Martin Matuska ]
+  * Properly initialize and free destroydata
+
+  [ Brian Behlendorf ]
+  * Add copy-builtin to EXTRA_DIST
+  * Revert "Use SA_HDL_PRIVATE for SA xattrs"
+
+  [ Alexander Eremin ]
+  * Illumos #1977: zfs allow arguments not parsed correctly after pyzfs removal
+  * Illumos #1726: Removal of pyzfs broke delegation for volumes
+
+  [ Andrew Stormont ]
+  * Illumos #1936: add support for "-t <datatype>" argument to zfs get
+
+  [ Eric Schrock ]
+  * Illumos #2635: 'zfs rename -f' to perform force unmount
+
+  [ Christopher Siden ]
+  * Illumos #1796, #2871, #2903, #2957
+  * Illumos #3085: zfs diff panics, then panics in a loop on booting
+
+  [ Garrett D'Amore ]
+  * Illumos #2803: zfs get guid pretty-prints the output
+
+  [ Massimo Maggi ]
+  * Fix snapshot automounting with GrSecurity constify plugin.
+
+  [ Prakash Surya ]
+  * Wrap smp_processor_id in kpreempt_[dis|en]able
+
+  [ Javen Wu ]
+  * Drop spill buffer reference
+
+  [ Simon Klinkert ]
+  * Illumos #2901: zfs receive fails for exabyte sparse files
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 26 Aug 2012 18:09:15 -0500
+
 zfs-linux (0.6.0.71-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
