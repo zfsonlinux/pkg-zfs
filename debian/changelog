@@ -1,3 +1,24 @@
+spl-linux (0.6.0.73-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Remove autotools products
+  * Emergency slab objects
+  * Revert "Add TASKQ_NORECLAIM flag"
+  * Revert "Detect kernels that honor gfp flags passed to vmalloc()"
+  * Revert "Fix NULL deref in balance_pgdat()"
+  * Revert "Disable vmalloc() direct reclaim"
+  * Add PF_NOFS debugging flag
+  * Mutex ASSERT on self deadlock
+  * Switch KM_SLEEP to KM_PUSHPAGE
+  * Enhance SPLAT kmem:slab_overcommit test
+  * Suppress task_hash_table_init() large allocation warning
+
+  [ Prakash Surya ]
+  * Revert "Make CONFIG_PREEMPT Fatal"
+  * Remove SPL_LINUX_CONFIG autoconf macro
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 31 Aug 2012 14:36:33 -0500
+
 spl-linux (0.6.0.72-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
