@@ -40,7 +40,6 @@
 #define TASKQ_DYNAMIC           0x00000004
 #define TASKQ_THREADS_CPU_PCT   0x00000008
 #define TASKQ_DC_BATCH          0x00000010
-#define TASKQ_NORECLAIM         0x00000020
 
 typedef unsigned long taskqid_t;
 typedef void (task_func_t)(void *);
@@ -63,6 +62,7 @@ typedef struct taskq_ent {
  */
 #define TQ_SLEEP                KM_SLEEP
 #define TQ_NOSLEEP              KM_NOSLEEP
+#define TQ_PUSHPAGE             KM_PUSHPAGE
 #define TQ_NOQUEUE              0x01000000
 #define TQ_NOALLOC              0x02000000
 #define TQ_NEW                  0x04000000

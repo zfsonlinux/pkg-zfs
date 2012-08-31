@@ -56,6 +56,47 @@
 #endif
 
 /*
+ * PF_NOFS is a per-process debug flag which is set in current->flags to
+ * detect when a process is performing an unsafe allocation.  All tasks
+ * with PF_NOFS set must strictly use KM_PUSHPAGE for allocations because
+ * if they enter direct reclaim and initiate I/O the may deadlock.
+ *
+ * When debugging is disabled, any incorrect usage will be detected and
+ * a call stack with warning will be printed to the console.  The flags
+ * will then be automatically corrected to allow for safe execution.  If
+ * debugging is enabled this will be treated as a fatal condition.
+ *
+ * To avoid any risk of conflicting with the existing PF_ flags.  The
+ * PF_NOFS bit shadows the rarely used PF_MUTEX_TESTER bit.  Only when
+ * CONFIG_RT_MUTEX_TESTER is not set, and we know this bit is unused,
+ * will the PF_NOFS bit be valid.  Happily, most existing distributions
+ * ship a kernel with CONFIG_RT_MUTEX_TESTER disabled.
+ */
+#if !defined(CONFIG_RT_MUTEX_TESTER) && defined(PF_MUTEX_TESTER)
+# define PF_NOFS			PF_MUTEX_TESTER
+
+static inline void
+sanitize_flags(struct task_struct *p, gfp_t *flags)
+{
+	if (unlikely((p->flags & PF_NOFS) && (*flags & (__GFP_IO|__GFP_FS)))) {
+# ifdef NDEBUG
+		SDEBUG_LIMIT(SD_CONSOLE | SD_WARNING, "Fixing allocation for "
+		   "task %s (%d) which used GFP flags 0x%x with PF_NOFS set\n",
+		    p->comm, p->pid, flags);
+		spl_debug_dumpstack(p);
+		*flags &= ~(__GFP_IO|__GFP_FS);
+# else
+		PANIC("FATAL allocation for task %s (%d) which used GFP "
+		    "flags 0x%x with PF_NOFS set\n", p->comm, p->pid, flags);
+# endif /* NDEBUG */
+	}
+}
+#else
+# define PF_NOFS			0x00000000
+# define sanitize_flags(p, fl)		((void)0)
+#endif /* !defined(CONFIG_RT_MUTEX_TESTER) && defined(PF_MUTEX_TESTER) */
+
+/*
  * __GFP_NOFAIL looks like it will be removed from the kernel perhaps as
  * early as 2.6.32.  To avoid this issue when it occurs in upstream kernels
  * we retry the allocation here as long as it is not __GFP_WAIT (GFP_ATOMIC).
@@ -66,6 +107,8 @@ static inline void *
 kmalloc_nofail(size_t size, gfp_t flags)
 {
 	void *ptr;
+
+	sanitize_flags(current, &flags);
 
 	do {
 		ptr = kmalloc(size, flags);
@@ -79,6 +122,8 @@ kzalloc_nofail(size_t size, gfp_t flags)
 {
 	void *ptr;
 
+	sanitize_flags(current, &flags);
+
 	do {
 		ptr = kzalloc(size, flags);
 	} while (ptr == NULL && (flags & __GFP_WAIT));
@@ -91,6 +136,8 @@ kmalloc_node_nofail(size_t size, gfp_t flags, int node)
 {
 #ifdef HAVE_KMALLOC_NODE
 	void *ptr;
+
+	sanitize_flags(current, &flags);
 
 	do {
 		ptr = kmalloc_node(size, flags, node);
@@ -106,6 +153,8 @@ static inline void *
 vmalloc_nofail(size_t size, gfp_t flags)
 {
 	void *ptr;
+
+	sanitize_flags(current, &flags);
 
 	/*
 	 * Retry failed __vmalloc() allocations once every second.  The
@@ -291,6 +340,7 @@ enum {
 	KMC_BIT_KMEM		= 5,	/* Use kmem cache */
 	KMC_BIT_VMEM		= 6,	/* Use vmem cache */
 	KMC_BIT_OFFSLAB		= 7,	/* Objects not on slab */
+	KMC_BIT_GROWING         = 15,   /* Growing in progress */
 	KMC_BIT_REAPING		= 16,	/* Reaping in progress */
 	KMC_BIT_DESTROY		= 17,	/* Destroy in progress */
 	KMC_BIT_TOTAL		= 18,	/* Proc handler helper bit */
@@ -315,6 +365,7 @@ typedef enum kmem_cbrc {
 #define KMC_KMEM		(1 << KMC_BIT_KMEM)
 #define KMC_VMEM		(1 << KMC_BIT_VMEM)
 #define KMC_OFFSLAB		(1 << KMC_BIT_OFFSLAB)
+#define KMC_GROWING		(1 << KMC_BIT_GROWING)
 #define KMC_REAPING		(1 << KMC_BIT_REAPING)
 #define KMC_DESTROY		(1 << KMC_BIT_DESTROY)
 #define KMC_TOTAL		(1 << KMC_BIT_TOTAL)
@@ -374,6 +425,17 @@ typedef struct spl_kmem_slab {
 	uint32_t		sks_ref;	/* Ref count used objects */
 } spl_kmem_slab_t;
 
+typedef struct spl_kmem_alloc {
+	struct spl_kmem_cache	*ska_cache;	/* Owned by cache */
+	int			ska_flags;	/* Allocation flags */
+	struct delayed_work	ska_work;	/* Allocation work */
+} spl_kmem_alloc_t;
+
+typedef struct spl_kmem_emergency {
+	void			*ske_obj;	/* Buffer address */
+	struct list_head	ske_list;	/* Emergency list linkage */
+} spl_kmem_emergency_t;
+
 typedef struct spl_kmem_cache {
 	uint32_t		skc_magic;	/* Sanity magic */
 	uint32_t		skc_name_size;	/* Name length */
@@ -398,7 +460,9 @@ typedef struct spl_kmem_cache {
 	struct list_head	skc_list;	/* List of caches linkage */
 	struct list_head	skc_complete_list;/* Completely alloc'ed */
 	struct list_head	skc_partial_list; /* Partially alloc'ed */
+	struct list_head	skc_emergency_list; /* Min sized objects */
 	spinlock_t		skc_lock;	/* Cache lock */
+	wait_queue_head_t	skc_waitq;	/* Allocation waiters */
 	uint64_t		skc_slab_fail;	/* Slab alloc failures */
 	uint64_t		skc_slab_create;/* Slab creates */
 	uint64_t		skc_slab_destroy;/* Slab destroys */
@@ -408,6 +472,8 @@ typedef struct spl_kmem_cache {
 	uint64_t		skc_obj_total;	/* Obj total current */
 	uint64_t		skc_obj_alloc;	/* Obj alloc current */
 	uint64_t		skc_obj_max;	/* Obj max historic */
+	uint64_t		skc_obj_emergency; /* Obj emergency current */
+	uint64_t		skc_obj_emergency_max; /* Obj emergency max */
 } spl_kmem_cache_t;
 #define kmem_cache_t		spl_kmem_cache_t
 

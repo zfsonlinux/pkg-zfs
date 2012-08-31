@@ -8,7 +8,6 @@
 
 AC_DEFUN([SPL_AC_CONFIG_KERNEL], [
 	SPL_AC_KERNEL
-	SPL_AC_KERNEL_CONFIG
 
 	if test "${LINUX_OBJ}" != "${LINUX}"; then
 		KERNELMAKE_PARAMS="$KERNELMAKE_PARAMS O=$LINUX_OBJ"
@@ -89,7 +88,6 @@ AC_DEFUN([SPL_AC_CONFIG_KERNEL], [
 	SPL_AC_2ARGS_ZLIB_DEFLATE_WORKSPACESIZE
 	SPL_AC_SHRINK_CONTROL_STRUCT
 	SPL_AC_RWSEM_SPINLOCK_IS_RAW
-	SPL_AC_PMD_ALLOC_WITH_MASK
 ])
 
 AC_DEFUN([SPL_AC_MODULE_SYMVERS], [
@@ -217,13 +215,6 @@ AC_DEFUN([SPL_AC_KERNEL], [
 	AC_SUBST(LINUX_VERSION)
 
 	SPL_AC_MODULE_SYMVERS
-])
-
-AC_DEFUN([SPL_AC_KERNEL_CONFIG], [
-	SPL_LINUX_CONFIG([PREEMPT],
-		AC_MSG_ERROR([
-		*** Kernel built with CONFIG_PREEMPT which is not supported.
-		** You must rebuild your kernel without this option.]), [])
 ])
 
 dnl #
@@ -652,26 +643,6 @@ AC_DEFUN([SPL_LINUX_TRY_COMPILE],
 	[modules],
 	[test -s build/conftest.o],
 	[$3], [$4])
-])
-
-dnl #
-dnl # SPL_LINUX_CONFIG
-dnl #
-AC_DEFUN([SPL_LINUX_CONFIG],
-	[AC_MSG_CHECKING([whether Linux was built with CONFIG_$1])
-	SPL_LINUX_TRY_COMPILE([
-		#include <linux/module.h>
-	],[
-		#ifndef CONFIG_$1
-		#error CONFIG_$1 not #defined
-		#endif
-	],[
-		AC_MSG_RESULT([yes])
-		$2
-	],[
-		AC_MSG_RESULT([no])
-		$3
-	])
 ])
 
 dnl #
@@ -2262,39 +2233,4 @@ AC_DEFUN([SPL_AC_RWSEM_SPINLOCK_IS_RAW], [
 		AC_MSG_RESULT(no)
 	])
 	EXTRA_KCFLAGS="$tmp_flags"
-])
-
-dnl #
-dnl # Proposed VM Subsystem Bug Fix
-dnl # https://bugs.gentoo.org/show_bug.cgi?id=416685
-dnl #
-dnl # Make __pte_alloc_kernel() honor gfp flags passed to vmalloc()
-dnl # This is detected by checking a macro that is changed to support this.
-dnl #
-AC_DEFUN([SPL_AC_PMD_ALLOC_WITH_MASK], [
-	AC_MSG_CHECKING([whether pmd_alloc_with_mask exists])
-	SPL_LINUX_TRY_COMPILE([
-		#if !defined(CONFIG_MMU)
-		#define CONFIG_MMU
-		#endif
-
-		#if defined(RCH_HAS_4LEVEL_HACK)
-		#undef RCH_HAS_4LEVEL_HACK
-		#endif
-
-		#include <linux/mm.h>
-	],[
-		struct mm_struct init_mm;
-		pud_t *pud = NULL;
-		unsigned long addr = 0;
-		gfp_t gfp_mask = GFP_KERNEL;
-
-		pmd_alloc_with_mask(&init_mm, pud, addr, gfp_mask);
-	],[
-		AC_MSG_RESULT(yes)
-		AC_DEFINE(HAVE_PMD_ALLOC_WITH_MASK, 1,
-		          [pmd_alloc_with_mask exists])
-	],[
-		AC_MSG_RESULT(no)
-	])
 ])
