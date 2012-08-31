@@ -1,3 +1,34 @@
+zfs-linux (0.6.0.73-0ubuntu1) unstable; urgency=low
+
+  [ Richard Yao ]
+  * Check kernel source directory for SPL
+  * Consistent menuconfig name
+  * Switch KM_SLEEP to KM_PUSHPAGE
+
+  [ Brian Behlendorf ]
+  * rmdir(2) should return ENOTEMPTY
+  * Remove autotools products
+  * Pre-allocate vdev I/O buffers
+  * Annotate KM_PUSHPAGE call paths with PF_NOFS
+  * mzap_upgrade() must use kmem_alloc()
+  * Clear PG_writeback after zil_commit() for sync I/O
+
+  [ Prakash Surya ]
+  * Remove autoconf check for CONFIG_PREEMPT
+
+  [ Richard Yao ]
+  * Revert Fix ASSERTION(!dsl_pool_sync_context(tx->tx_pool))
+  * Revert Fix zpl_writepage() deadlock
+  * Revert Disable direct reclaim for z_wr_* threads
+
+  [ Etienne Dechamps ]
+  * Fix mount_zfs dependency on libzpool.
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 31 Aug 2012 15:39:03 -0500
+
 zfs-linux (0.6.0.72-0ubuntu1) unstable; urgency=low
 
   [ Martin Matuska ]
