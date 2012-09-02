@@ -1,3 +1,13 @@
+zfs-linux (0.6.0.74-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Switch KM_SLEEP to KM_PUSHPAGE
+
+  [ Chris Dunlop ]
+  * Switch KM_SLEEP to KM_PUSHPAGE
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 02 Sep 2012 14:42:48 -0500
+
 zfs-linux (0.6.0.73-0ubuntu1) unstable; urgency=low
 
   [ Richard Yao ]
