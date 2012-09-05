@@ -1,4 +1,4 @@
-From 328ee0ffb52f90397cfbdc9c717772eb6305ab57 Mon Sep 17 00:00:00 2001
+From 4389d621ff37c4a50326711180f6a89f013a2b9a Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 17 Jan 2012 20:27:32 -0600
 Subject: [PATCH 4/7] Remove the upstream dracut component.
@@ -40,7 +40,7 @@ index 9ffd6be..9618b03 100644
  if CONFIG_KERNEL
  KERNEL_DIR = module
 diff --git a/configure.ac b/configure.ac
-index 3b741df..cd801b7 100644
+index a1f207f..a418b51 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -56,8 +56,6 @@ ZFS_AC_DEBUG_DMU_TX

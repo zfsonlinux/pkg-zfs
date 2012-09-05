@@ -1,4 +1,4 @@
-From d296e2bbf353ccee61d3223344ff3c77f4366cf7 Mon Sep 17 00:00:00 2001
+From f695f2998f187fd4804a26db3b7d4c373cffd433 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Fri, 3 Feb 2012 14:49:49 -0600
 Subject: [PATCH 6/7] Improve the --with-spl error for DKMS systems.
@@ -14,10 +14,10 @@ or to bundle SPL into the ZFS package.
  1 file changed, 4 insertions(+), 3 deletions(-)
 
 diff --git a/config/kernel.m4 b/config/kernel.m4
-index d10c6e6..1666094 100644
+index 71b0161..2516a92 100644
 --- a/config/kernel.m4
 +++ b/config/kernel.m4
-@@ -314,9 +314,10 @@ AC_DEFUN([ZFS_AC_SPL], [
+@@ -315,9 +315,10 @@ AC_DEFUN([ZFS_AC_SPL], [
  		], [
  			AC_MSG_RESULT([Not found])
  			AC_MSG_ERROR([

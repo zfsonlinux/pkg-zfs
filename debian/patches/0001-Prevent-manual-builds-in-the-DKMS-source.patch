@@ -1,4 +1,4 @@
-From af7184b57556f8af1730d0148749e1025e0879b5 Mon Sep 17 00:00:00 2001
+From 0b477f1a454a645749a7b3066f416746c5ddfbda Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 17 Jan 2012 19:45:07 -0600
 Subject: [PATCH 1/7] Prevent manual builds in the DKMS source.
