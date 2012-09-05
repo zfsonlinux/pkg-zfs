@@ -1,3 +1,21 @@
+zfs-linux (0.6.0.75-0ubuntu1) unstable; urgency=low
+
+  [ Martin Matuska ]
+  * Add zstreamdump(8) command to examine ZFS send streams.
+
+  [ Etienne Dechamps ]
+  * Add libnvpair to mount_zfs dependencies
+
+  [ Brian Behlendorf ]
+  * Switch KM_SLEEP to KM_PUSHPAGE
+  * Improve AF hard disk detection
+  * Switch KM_SLEEP to KM_PUSHPAGE
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 05 Sep 2012 10:05:40 -0500
+
 zfs-linux (0.6.0.74-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
