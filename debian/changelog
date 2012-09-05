@@ -1,3 +1,10 @@
+spl-linux (0.6.0.75-0ubuntu1) unstable; urgency=low
+
+  [ Etienne Dechamps ]
+  * Add DKIOCTRIM for TRIM support.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 05 Sep 2012 09:37:42 -0500
+
 spl-linux (0.6.0.74-0ubuntu1) unstable; urgency=low
 
   * No changes.
