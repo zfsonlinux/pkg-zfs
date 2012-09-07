@@ -1,3 +1,21 @@
+zfs-linux (0.6.0.76-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Switch KM_SLEEP to KM_PUSHPAGE
+  * Disable page allocation warnings for ARC buffers
+  * Add zstreamdump .gitignore
+
+  [ Michael Martin ]
+  * Fix missing vdev names in zpool status output
+
+  [ Etienne Dechamps ]
+  * Increase the stack space in userspace.
+
+  [ Cyril Plisko ]
+  * Make ZFS filesystem id persistent across different machines
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 06 Sep 2012 20:14:04 -0500
+
 zfs-linux (0.6.0.75-0ubuntu1) unstable; urgency=low
 
   [ Martin Matuska ]
