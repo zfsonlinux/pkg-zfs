@@ -1,3 +1,10 @@
+zfs-linux (0.6.0.76-1ubuntu1) unstable; urgency=low
+
+  [ Peter Fern ]
+  * Move udev initrd hooks into zfsutils to mount zdev-based pools at boot
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 09 Sep 2012 19:59:43 -0500
+
 zfs-linux (0.6.0.76-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
