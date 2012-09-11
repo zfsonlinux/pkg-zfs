@@ -1,3 +1,20 @@
+zfs-linux (0.6.0.77-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Remove zvol device node
+
+  [ Etienne Dechamps ]
+  * Silence "setting dataset to sync always" message in ztest.
+
+  [ Chris Dunlop ]
+  * Remove autotools products
+
+  [ Cyril Plisko ]
+  * Illumos #3064: usr/src/cmd/zpool/zpool_main.c misspells "successful"
+  * Avoid running exportfs on each zfs/zpool command invocation
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 11 Sep 2012 17:11:53 -0500
+
 zfs-linux (0.6.0.76-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
