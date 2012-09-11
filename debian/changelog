@@ -1,3 +1,15 @@
+spl-linux (0.6.0.77-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Add KMC_NOEMERGENCY slab flag
+  * Set KMC_NOEMERGENCY for zlib workspaces
+  * Debug cv_destroy() with mutex held
+
+  [ Chris Dunlop ]
+  * Remove autotools products
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 11 Sep 2012 16:12:37 -0500
+
 spl-linux (0.6.0.76-0ubuntu1) unstable; urgency=low
 
   * No changes.
