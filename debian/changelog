@@ -1,3 +1,12 @@
+spl-linux (0.6.0.78-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Revert "Switch KM_SLEEP to KM_PUSHPAGE"
+  * Remove TQ_SLEEP -> KM_SLEEP mapping
+  * Switch KM_SLEEP to KM_PUSHPAGE
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 14 Sep 2012 12:40:12 -0500
+
 spl-linux (0.6.0.77-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
