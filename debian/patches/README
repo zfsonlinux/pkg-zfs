@@ -23,9 +23,9 @@ To refresh the series for release:
 	: Notice how commits accepted upstream will disappear.
 	$ git checkout master
 	$ cd debian/patches
-	$ rm 0*.patch
+	$ rm *.patch
 	$ git format-patch upstream..debian-patches
-	$ ls -1 0*.patch volatile-version.patch >series
+	$ ls -1 *.patch >series
 
 The reasons for keeping debian/patches in a separate branch are:
 

@@ -5,4 +5,3 @@
 0005-Remove-userland-dist-rules.patch
 0006-Improve-the-with-spl-error-for-DKMS-systems.patch
 0007-Improve-the-SPL-version-error-for-DKMS-systems.patch
-volatile-version.patch

@@ -1,13 +1,15 @@
 #!/usr/bin/make -f
 
-NAME := $(shell awk '/^Name:/{print $$2}' META)
-VERSION := $(shell awk '/^Version:/{print $$2}' META)
 LSB_DISTRIBUTOR := $(shell lsb_release -is)
-
-%:
-	dh $@
+NAME := $(shell awk '$$1 == "Name:" { print $$2; }' META)
+VERSION := $(shell dpkg-parsechangelog \
+  | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f1)
 
 override_dh_auto_configure:
+	@# Embed the downstream version in the module.
+	@sed -e 's/^Version:.*/Version:      $(VERSION)/' -i.orig META
+
+	@# Create the makefiles and configure script.
 	./autogen.sh
 
 	@# Build the userland, but don't build the kernel modules.
@@ -73,8 +75,8 @@ else
 endif
 
 override_dh_fixperms:
-	# Ubuntu 12.04 LTS Lucid Lynx compatibility.
-	# (>= debhelper-8.0.0) does this automatically.
+	@# Ubuntu 12.04 LTS Lucid Lynx compatibility.
+	@# (>= debhelper-8.0.0) does this automatically.
 	dh_fixperms
 	chmod 0440 debian/zfsutils/etc/sudoers.d/zfs
 
@@ -90,3 +92,10 @@ override_dh_strip:
 	dh_strip -plibzfs1 --dbg-package=libzfs1-dbg
 	dh_strip -plibzpool1 --dbg-package=libzpool1-dbg
 	dh_strip -pzfsutils --dbg-package=zfsutils-dbg
+
+override_dh_auto_clean:
+	dh_auto_clean
+	@if test -e META.orig; then mv META.orig META; fi
+
+%:
+	dh $@
