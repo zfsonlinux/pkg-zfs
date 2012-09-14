@@ -1,4 +1,4 @@
-From 4389d621ff37c4a50326711180f6a89f013a2b9a Mon Sep 17 00:00:00 2001
+From 37f528ec4c17cac0e6dde732319db960a141e9a6 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 17 Jan 2012 20:27:32 -0600
 Subject: [PATCH 4/7] Remove the upstream dracut component.

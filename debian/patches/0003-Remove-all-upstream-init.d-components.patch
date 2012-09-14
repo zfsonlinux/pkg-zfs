@@ -1,4 +1,4 @@
-From 15c55d32e9588e5d0bb9fd26b370051558427079 Mon Sep 17 00:00:00 2001
+From dd90b885cfdd8b27da7e002d291ceff5a43c5fe5 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 17 Jan 2012 11:54:21 -0600
 Subject: [PATCH 3/7] Remove all upstream init.d components.
