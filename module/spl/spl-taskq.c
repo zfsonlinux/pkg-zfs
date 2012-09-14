@@ -38,6 +38,18 @@
 taskq_t *system_taskq;
 EXPORT_SYMBOL(system_taskq);
 
+static int
+task_km_flags(uint_t flags)
+{
+	if (flags & TQ_NOSLEEP)
+		return KM_NOSLEEP;
+
+	if (flags & TQ_PUSHPAGE)
+		return KM_PUSHPAGE;
+
+	return KM_SLEEP;
+}
+
 /*
  * NOTE: Must be called with tq->tq_lock held, returns a list_t which
  * is not attached to the free, work, or pending taskq lists.
@@ -90,7 +102,7 @@ retry:
         }
 
         spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
-        t = kmem_alloc(sizeof(taskq_ent_t), flags & (TQ_SLEEP | TQ_NOSLEEP));
+        t = kmem_alloc(sizeof(taskq_ent_t), task_km_flags(flags));
         spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
 
         if (t) {
@@ -248,14 +260,6 @@ __taskq_dispatch(taskq_t *tq, task_func_t func, void *arg, uint_t flags)
 
         ASSERT(tq);
         ASSERT(func);
-
-	/* Solaris assumes TQ_SLEEP if not passed explicitly */
-	if (!(flags & (TQ_SLEEP | TQ_NOSLEEP)))
-		flags |= TQ_SLEEP;
-
-	if (unlikely(in_atomic() && (flags & TQ_SLEEP)))
-		PANIC("May schedule while atomic: %s/0x%08x/%d\n",
-		    current->comm, preempt_count(), current->pid);
 
         spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
 
