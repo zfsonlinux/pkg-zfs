@@ -1,15 +1,17 @@
 #!/usr/bin/make -f
 
-NAME := $(shell awk '/^Name:/{print $$2}' META)
-VERSION := $(shell awk '/^Version:/{print $$2}' META)
-
-%:
-	dh $@
+NAME := $(shell awk '$$1 == "Name:" { print $$2; }' META)
+VERSION := $(shell dpkg-parsechangelog \
+  | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f1)
 
 override_dh_auto_configure:
+	@# Embed the downstream version in the module.
+	@sed -e 's/^Version:.*/Version:      $(VERSION)/' -i.orig META
+
+	@# Create the makefiles and configure script.
 	./autogen.sh
 
-	# Build the userland, but don't build the kernel modules.
+	@# Build the userland, but don't build the kernel modules.
 	./configure --prefix=/usr --with-config=user
 	
 override_dh_auto_test:
@@ -17,23 +19,23 @@ override_dh_auto_test:
 	# run in an unprivileged build environment.
 
 override_dh_auto_install:
-	# Install the utilities.
+	@# Install the utilities.
 	make install DESTDIR='$(CURDIR)/debian/tmp'
 
-	# Create a dummy hostid file for the zfs-initramfs package.
-	# NB: Commentary in the spl.postinst script.
+	@# Create a dummy hostid file for the zfs-initramfs package.
+	@# NB: Commentary in the spl.postinst script.
 	mkdir -p '$(CURDIR)/debian/tmp/etc/'
 	/usr/bin/printf '\xFF\xFF\xFF\xFF' >'$(CURDIR)/debian/tmp/etc/hostid'
 
-	# Get a bare copy of the source code.
-	# This creates the $(CURDIR)/$(NAME)-$(VERSION)/ tree.
+	@# Get a bare copy of the source code.
+	@# This creates the $(CURDIR)/$(NAME)-$(VERSION)/ tree.
 	make distdir
 
-	# Delete boilerplate to satisfy the lintian extra-license-file check.
+	@# Delete boilerplate to satisfy the lintian extra-license-file check.
 	rm '$(CURDIR)/$(NAME)-$(VERSION)/COPYING'
 
-	# This shunt allows DKMS to install the Module.symvers and spl_config.h
-	# files to the ${dkms_tree} area through the POST_INSTALL directive.
+	@# This shunt allows DKMS to install the Module.symvers and spl_config.h
+	@# files to the ${dkms_tree} area through the POST_INSTALL directive.
 	echo '#!/bin/sh'  >'$(CURDIR)/$(NAME)-$(VERSION)/cp'
 	echo 'cp "$$@"'  >>'$(CURDIR)/$(NAME)-$(VERSION)/cp'
 	chmod 755 '$(CURDIR)/$(NAME)-$(VERSION)/cp'
@@ -44,3 +46,10 @@ override_dh_auto_install:
 
 	# Install the dkms.conf file.
 	dh_dkms -V $(VERSION)
+
+override_dh_auto_clean:
+	dh_auto_clean
+	@if test -e META.orig; then mv META.orig META; fi
+
+%:
+	dh $@
