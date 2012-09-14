@@ -1,3 +1,17 @@
+zfs-linux (0.6.0.78-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Revert "Improve AF hard disk detection"
+  * Move iput() after zfs_inode_update()
+
+  [ Cyril Plisko ]
+  * Fix zdb printf format string for ZIL data blocks
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 14 Sep 2012 13:07:59 -0500
+
 zfs-linux (0.6.0.77-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
