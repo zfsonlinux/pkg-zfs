@@ -40,12 +40,27 @@ Copyright: Oracle
  Sun Microssystems, Inc.
 License: CDDL-1.0
 
-Files: cmd/zfs/zfs_iter.?
-Copyright: Oracle
- Sun Microssystems, Inc.
+Files: cmd/zdb/zdb_il.c
+Copyright: Sun Microsystems, Inc.
+ Cyril Plisko
 License: CDDL-1.0
 
-Files: cmd/zfs/zfs_main.?
+Files: cmd/zfs/zfs_iter.c
+Copyright: Oracle
+ Pawel Jakub Dawidek
+License: CDDL-1.0
+
+Files: cmd/zfs/zfs_iter.h
+Copyright: Sun Microssystems, Inc.
+License: CDDL-1.0
+
+Files: cmd/zfs/zfs_main.c
+Copyright: Oracle
+ Nexenta Systems, Inc.
+ Delphix
+License: CDDL-1.0
+
+Files: cmd/zfs/zfs_main.h
 Copyright: Oracle
  Nexenta Systems, Inc.
 License: CDDL-1.0
@@ -69,6 +84,9 @@ License: CDDL-1.0
 
 Files: cmd/zpool/zpool_main.c
 Copyright: Oracle
+ Nexenta Systems, Inc.
+ Delphix
+ Frederik Wessels
 License: CDDL-1.0
 
 Files: cmd/zpool/zpool_util.c
@@ -83,9 +101,15 @@ Files: cmd/zpool/zpool_vdev.c
 Copyright: Oracle
 License: CDDL-1.0
 
-Files: cmd/ztest/*
+Files: cmd/zstreamdump/zstreamdump.c
+Copyright: Sun Microsystems, Inc.
+ Martin Matuska
+License: CDDL-1.0
+
+Files: cmd/ztest/ztest.c
 Copyright: Oracle
  Delphix
+ Nexenta Systems, Inc.
 License: CDDL-1.0
 
 Files: cmd/zvol_id/*
@@ -104,31 +128,6 @@ Files: config/depcomp
 Copyright: Free Software Foundation, Inc.
 License: GPL-2+
 
-Files: config/install-sh
-Copyright: 1994 X Consortium
-License:
- Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to
- deal in the Software without restriction, including without limitation the
- rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
- sell copies of the Software, and to permit persons to whom the Software is
- furnished to do so, subject to the following conditions:
- .
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
- .
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
- X CONSORTIUM BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
- AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNEC-
- TION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- .
- Except as contained in this notice, the name of the X Consortium shall not
- be used in advertising or otherwise to promote the sale, use or other deal-
- ings in this Software without prior written authorization from the X Consor-
- tium.
-
 Files: config/ltmain.sh
 Copyright: Free Software Foundation, Inc.
 License: GPL-2+
@@ -144,7 +143,30 @@ License: GPL-2+
 
 Files: etc/init.d/zfs.gentoo.in
 Copyright: Gentoo Foundation
-License: GPL-2
+License: BSD-2-clause
+ Copyright (c) 2011, Gentoo Foundation
+ All rights reserved.
+ .
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+ .
+ Redistributions of source code must retain the above copyright notice, this
+ list of conditions and the following disclaimer.
+ .
+ Redistributions in binary form must reproduce the above copyright notice, this
+ list of conditions and the following disclaimer in the documentation and/or
+ other materials provided with the distribution.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Files: include/libnvpair.h
 Copyright: Oracle
@@ -165,14 +187,12 @@ License: CDDL-1.0
 Files: include/libzfs.h
 Copyright: Oracle
  Nexenta Systems, Inc.
+ Delphix
 License: CDDL-1.0
 
 Files: include/libzfs_impl.h
 Copyright: Oracle
-License: CDDL-1.0
-
-Files: include/libzfs_impl.h
-Copyright: Oracle
+ Delphix
 License: CDDL-1.0
 
 Files: include/sys/arc.h
@@ -205,6 +225,7 @@ License: CDDL-1.0
 
 Files: include/sys/dmu.h
 Copyright: Oracle
+ Delphix
  Robert Milkowski
 License: CDDL-1.0
 
@@ -237,6 +258,16 @@ Files: include/sys/dsl_*
 Copyright: Oracle
 License: CDDL-1.0
 
+Files: include/sys/dsl_dataset.h
+Copyright: Oracle
+ Delphix
+License: CDDL-1.0
+
+Files: include/sys/dsl_deleg.h
+Copyright: Oracle
+ Delphix
+License: CDDL-1.0
+
 Files: include/sys/efi_partition.h
 Copyright: Sun Microsystems, Inc.
 License: CDDL-1.0
@@ -256,6 +287,7 @@ License: CDDL-1.0
 Files: include/sys/fs/zfs.h
 Copyright: Oracle
  Delphix
+ Nexenta Systems, Inc.
  Robert Milkowski
 License: CDDL-1.0
 
@@ -308,11 +340,13 @@ License: CDDL-1.0
 Files: include/sys/spa.h
 Copyright: Oracle
  Delphix
+ Nexenta Systems, Inc.
 License: CDDL-1.0
 
 Files: include/sys/spa_impl.h
 Copyright: Oracle
  Delphix
+ Nexenta Systems, Inc.
 License: CDDL-1.0
 
 Files: include/sys/txg.h
@@ -396,6 +430,7 @@ License: CDDL-1.0
 
 Files: include/sys/vdev.h
 Copyright: Oracle
+ Delphix
 License: CDDL-1.0
 
 Files: include/sys/vdev_impl.h
@@ -431,6 +466,11 @@ License: CDDL-1.0
 Files: include/sys/zfs_context.h
 Copyright: Sun Microsystems, Inc.
  Nexenta Systems, Inc.
+License: CDDL-1.0
+
+Files: include/sys/zfs_ctldir.h
+Copyright: Oracle
+ Lawrence Livermore National Security, LLC.
 License: CDDL-1.0
 
 Files: include/sys/zfs_debug.h
@@ -565,7 +605,13 @@ Copyright: Oracle
  Gunnar Beutner
 License: CDDL-1.0
 
-Files: lib/libshare/nfs.?
+Files: lib/libshare/nfs.c
+Copyright: Oracle
+ Gunnar Beutner
+ Cyril Plisko
+License: CDDL-1.0
+
+Files: lib/libshare/nfs.h
 Copyright: Oracle
  Gunnar Beutner
 License: CDDL-1.0
@@ -624,6 +670,11 @@ License: CDDL-1.0
 
 Files: lib/libspl/include/sys/stat.h
 Copyright: Oracle
+License: CDDL-1.0
+
+Files: lib/libspl/include/sys/sysevent/eventdefs.h
+Copyright: Sun Microsystems, Inc.
+ Nexenta Systems, Inc.
 License: CDDL-1.0
 
 Files: lib/libspl/include/sys/uio.h
@@ -724,6 +775,8 @@ Files: lib/libzfs/libzfs_dataset.c
 Copyright: Oracle
  Nexenta Systems, Inc.
  Delphix
+ DEY Storage Systems, Inc.
+ Pawel Jakub Dawidek
 License: CDDL-1.0
 
 Files: lib/libzfs/libzfs_diff.c
@@ -740,6 +793,14 @@ License: CDDL-1.0
 
 Files: lib/libzfs/libzfs_import.c
 Copyright: Oracle
+ Nexenta Systems, Inc.
+ Delphix
+License: CDDL-1.0
+
+Files: lib/libzfs/libzfs_iter.c
+Copyright: Oracle
+ Nexenta Systems, Inc.
+ Delphix
 License: CDDL-1.0
 
 Files: lib/libzfs/libzfs_mount.c
@@ -748,10 +809,14 @@ License: CDDL-1.0
 
 Files: lib/libzfs/libzfs_pool.c
 Copyright: Oracle
+ Nexenta Systems, Inc.
+ Delphix
 License: CDDL-1.0
 
 Files: lib/libzfs/libzfs_sendrecv.c
 Copyright: Oracle
+ Delphix
+ Pawel Jakub Dawidek
 License: CDDL-1.0
 
 Files: lib/libzfs/libzfs_status.c
@@ -760,6 +825,7 @@ License: CDDL-1.0
 
 Files: lib/libzfs/libzfs_util.c
 Copyright: Oracle
+ Delphix
 License: CDDL-1.0
 
 Files: lib/libzpool/kernel.c
@@ -781,9 +847,17 @@ License: CDDL-1.0
 
 Files: man/man8/zfs.8
 Copyright: Sun Microsystems, Inc.
+ Delphix
+ Nexenta Systems, Inc.
+ Joshua M. Clulow
 License: CDDL-1.0
 
 Files: man/man8/zpool.8
+Copyright: Sun Microsystems, Inc.
+ Nexenta Systems, Inc.
+License: CDDL-1.0
+
+Files: man/man8/zstreamdump.8
 Copyright: Sun Microsystems, Inc.
 License: CDDL-1.0
 
@@ -842,6 +916,8 @@ License: CDDL-1.0
 
 Files: module/zcommon/zpool_prop.c
 Copyright: Oracle
+ Nexenta Systems, Inc.
+ Delphix
 License: CDDL-1.0
 
 Files: module/zcommon/zprop_common.c
@@ -850,6 +926,8 @@ License: CDDL-1.0
 
 Files: module/zfs/arc.c
 Copyright: Oracle
+ Nexenta Systems, Inc.
+ Delphix
 License: CDDL-1.0
 
 Files: module/zfs/bplist.c
@@ -858,6 +936,7 @@ License: CDDL-1.0
 
 Files: module/zfs/bpobj.c
 Copyright: Oracle
+ Delphix
 License: CDDL-1.0
 
 Files: module/zfs/dbuf.c
@@ -889,6 +968,7 @@ License: CDDL-1.0
 Files: module/zfs/dmu_send.c
 Copyright: Oracle
  Nexenta Systems, Inc.
+ Delphix
 License: CDDL-1.0
 
 Files: module/zfs/dmu_traverse.c
@@ -897,6 +977,7 @@ License: CDDL-1.0
 
 Files: module/zfs/dmu_tx.c
 Copyright: Oracle
+ Nexenta Systems, Inc.
 License: CDDL-1.0
 
 Files: module/zfs/dmu_zfetch.c
@@ -918,10 +999,12 @@ License: CDDL-1.0
 
 Files: module/zfs/dsl_deadlist.c
 Copyright: Oracle
+ Delphix
 License: CDDL-1.0
 
 Files: module/zfs/dsl_deleg.c
 Copyright: Oracle
+ Delphix
 License: CDDL-1.0
 
 Files: module/zfs/dsl_dir.c
@@ -930,6 +1013,7 @@ License: CDDL-1.0
 
 Files: module/zfs/dsl_pool.c
 Copyright: Oracle
+ Delphix
 License: CDDL-1.0
 
 Files: module/zfs/dsl_prop.c
@@ -984,6 +1068,7 @@ License: CDDL-1.0
 Files: module/zfs/spa.c
 Copyright: Oracle
  Nexenta Systems, Inc.
+ Delphix
 License: CDDL-1.0
 
 Files: module/zfs/space_map.c
@@ -992,6 +1077,8 @@ License: CDDL-1.0
 
 Files: module/zfs/spa_config.c
 Copyright: Oracle
+ Nexenta Systems, Inc.
+ Delphix
 License: CDDL-1.0
 
 Files: module/zfs/spa_errlog.c
@@ -1000,11 +1087,13 @@ License: CDDL-1.0
 
 Files: module/zfs/spa_history.c
 Copyright: Oracle
+ Delphix
 License: CDDL-1.0
 
 Files: module/zfs/spa_misc.c
 Copyright: Oracle
  Delphix
+ Nexenta Systems, Inc.
 License: CDDL-1.0
 
 Files: module/zfs/txg.c
@@ -1025,6 +1114,8 @@ License: CDDL-1.0
 
 Files: module/zfs/vdev.c
 Copyright: Oracle
+ Nexenta Systems, Inc.
+ Delphix
 License: CDDL-1.0
 
 Files: module/zfs/vdev_file.c
@@ -1065,6 +1156,7 @@ License: CDDL-1.0
 
 Files: module/zfs/zap_micro.c
 Copyright: Oracle
+ Delphix
 License: CDDL-1.0
 
 Files: module/zfs/zfs_acl.c
@@ -1073,6 +1165,11 @@ License: CDDL-1.0
 
 Files: module/zfs/zfs_byteswap.c
 Copyright: Sun Microsystems, Inc.
+License: CDDL-1.0
+
+Files: module/zfs/zfs_ctldir.c
+Copyright: Oracle
+ Lawrence Livermore National Security, LLC.
 License: CDDL-1.0
 
 Files: module/zfs/zfs_debug.c
@@ -1093,6 +1190,11 @@ License: CDDL-1.0
 
 Files: module/zfs/zfs_ioctl.c
 Copyright: Oracle
+ Martin Matuska
+ Pawel Jakub Dawidek
+ Joyent, Inc.
+ Nexenta Systems, Inc.
+ Delphix
 License: CDDL-1.0
 
 Files: module/zfs/zfs_log.c
