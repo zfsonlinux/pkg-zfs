@@ -5,16 +5,11 @@
 
 
 # This module depends on these initramfs-tools modules.
-PREREQ="udev"
- 
-# ZFS on Linux uses udev for device node creation.
-PREREQ_UDEV_RULES="60-zpool.rules 60-zvol.rules"
+PREREQ="zfs"
 
 # These prerequisites are provided by the zfs package. The zdb utility is not
 # strictly required, but it can be useful at the initramfs recovery prompt.
 COPY_EXEC_LIST=" \
-  /lib/udev/zvol_id \
-  /lib/udev/zpool_id \
   /sbin/zdb \
   /sbin/zpool \
   /sbin/zfs \
@@ -57,29 +52,12 @@ fi
 . /usr/share/initramfs-tools/hook-functions
 
 mkdir -p "$DESTDIR/etc/"
-mkdir -p "$DESTDIR/lib/udev/rules.d/"
 
 # ZDB uses pthreads for some functions, but the library dependency is not
 # automatically detected. The `find` utility and extended `cp` options are
 # used here because libgcc_s.so could be in a subdirectory of /lib for
 # multi-arch installations.
 cp --target-directory="$DESTDIR" --parents $(find /lib -type f -name libgcc_s.so.1)
-
-
-for ii in $PREREQ_UDEV_RULES
-do
-	if [ -e "/etc/udev/rules.d/$ii" ]
-	then
-		cp -p "/etc/udev/rules.d/$ii" "$DESTDIR/lib/udev/rules.d/"
-	elif [ -e "/lib/udev/rules.d/$ii" ]
-	then
-		cp -p "/lib/udev/rules.d/$ii" "$DESTDIR/lib/udev/rules.d/"
-	else
-		echo "Error: Missing udev rule: $ii"
-		echo "       This file must be in the /etc/udev/rules.d or /lib/udev/rules.d directory."
-		exit 1
-	fi
-done
 
 for ii in $COPY_EXEC_LIST
 do
@@ -101,8 +79,3 @@ fi
 # The spl package ensures that the /etc/hostid file exists.
 # NB: Commentary in the spl.postinst script.
 cp -p "/etc/hostid" "$DESTDIR/etc/hostid"
-
-if [ -e "/etc/zfs/" ]
-then
-	cp -a "/etc/zfs/" "$DESTDIR/etc/"
-fi
