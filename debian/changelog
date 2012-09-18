@@ -1,4 +1,4 @@
-zfs-linux (0.6.0.79-0ubuntu1) unstable; urgency=low
+zfs-linux (0.6.0.79-1ubuntu1) unstable; urgency=low
 
   [ Darik Horn ]
   * Generate META from debian/changelog.
