@@ -1,4 +1,15 @@
-zfs-linux (0.6.0.79-1ubuntu1) unstable; urgency=low
+zfs-linux (0.6.0.80-1ubuntu1) unstable; urgency=low
+
+  [ Richard Lowe ]
+  * Illumos #2088 zdb could use a reasonable manual page
+
+  [ Brian Behlendorf ]
+  * zfs-0.6.0-rc11
+  * Seg fault 'zpool import -d /dev/disk/by-id -a'
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 18 Sep 2012 17:03:41 -0500
+
+zfs-linux (0.6.0.79-0ubuntu1) unstable; urgency=low
 
   [ Darik Horn ]
   * Generate META from debian/changelog.
@@ -46,13 +57,6 @@ zfs-linux (0.6.0.77-0ubuntu1) unstable; urgency=low
   * Avoid running exportfs on each zfs/zpool command invocation
 
  -- Darik Horn <dajhorn@vanadac.com>  Tue, 11 Sep 2012 17:11:53 -0500
-
-zfs-linux (0.6.0.76-1ubuntu1) unstable; urgency=low
-
-  [ Peter Fern ]
-  * Move udev initrd hooks into zfsutils to mount zdev-based pools at boot
-
- -- Darik Horn <dajhorn@vanadac.com>  Sun, 09 Sep 2012 19:59:43 -0500
 
 zfs-linux (0.6.0.76-0ubuntu1) unstable; urgency=low
 
