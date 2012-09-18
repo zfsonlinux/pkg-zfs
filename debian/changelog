@@ -1,3 +1,13 @@
+spl-linux (0.6.0.80-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * SPL 0.6.0-rc11
+
+  [ Darik Horn ]
+  * Add quantal to the PPA build list.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 18 Sep 2012 16:57:40 -0500
+
 spl-linux (0.6.0.79-0ubuntu1) unstable; urgency=low
 
   * Generate META from debian/changelog.
