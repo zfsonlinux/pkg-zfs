@@ -1,3 +1,9 @@
+spl-linux (0.6.0.79-0ubuntu1) unstable; urgency=low
+
+  * Generate META from debian/changelog.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 17 Sep 2012 23:35:56 -0500
+
 spl-linux (0.6.0.78-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
