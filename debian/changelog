@@ -1,3 +1,14 @@
+zfs-linux (0.6.0.80-0ubuntu1) unstable; urgency=low
+
+  [ Richard Lowe ]
+  * Illumos #2088 zdb could use a reasonable manual page
+
+  [ Brian Behlendorf ]
+  * zfs-0.6.0-rc11
+  * Seg fault 'zpool import -d /dev/disk/by-id -a'
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 18 Sep 2012 17:03:41 -0500
+
 zfs-linux (0.6.0.79-0ubuntu1) unstable; urgency=low
 
   [ Darik Horn ]
