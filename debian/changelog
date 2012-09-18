@@ -1,3 +1,21 @@
+zfs-linux (0.6.0.79-0ubuntu1) unstable; urgency=low
+
+  [ Darik Horn ]
+  * Generate META from debian/changelog.
+  * Update packaging to standards version 3.9.3.1
+  * Improve DEP5 conformance for Lintian.
+  * Update debian/copyright attributions.
+
+  [ Brian Behlendorf ]
+  * Clear PG_writeback for sync I/O error case
+  * Switch KM_SLEEP to KM_PUSHPAGE
+  * Improve `zpool import` search behavior
+
+  [ Cyril Plisko ]
+  * ZFS replay transaction error 5
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 17 Sep 2012 23:43:52 -0500
+
 zfs-linux (0.6.0.78-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
