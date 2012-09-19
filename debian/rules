@@ -74,6 +74,12 @@ else
 		  --no-restart-on-upgrade --no-start
 endif
 
+override_dh_fixperms:
+	@# Ubuntu 10.04 LTS Lucid Lynx, et al, compatibility.
+	@# (>= debhelper-8.0.0) does this automatically.
+	chmod 0440 debian/zfsutils/etc/sudoers.d/zfs
+	dh_fixperms
+
 override_dh_shlibdeps:
 	@# Suppress libtool dependency_libs warnings that are caused by
 	@# inter-library dependencies.  (eg: zfs -> libzfs -> libuuid)
