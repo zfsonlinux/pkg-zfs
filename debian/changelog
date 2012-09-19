@@ -1,3 +1,9 @@
+zfs-linux (0.6.0.80-0ubuntu2) unstable; urgency=low
+
+  * Revert dh_fixperms rule for old debhelper systems.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 19 Sep 2012 13:24:46 -0500
+
 zfs-linux (0.6.0.80-0ubuntu1) unstable; urgency=low
 
   [ Richard Lowe ]
