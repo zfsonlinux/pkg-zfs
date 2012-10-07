@@ -1,3 +1,10 @@
+spl-linux (0.6.0.81-0ubuntu1) unstable; urgency=low
+
+  [ Etienne Dechamps ]
+  * Add interface for file hole punching.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 06 Oct 2012 21:48:40 -0500
+
 spl-linux (0.6.0.80-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
