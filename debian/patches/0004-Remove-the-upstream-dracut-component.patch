@@ -1,7 +1,6 @@
-From 37f528ec4c17cac0e6dde732319db960a141e9a6 Mon Sep 17 00:00:00 2001
 From: Darik Horn <dajhorn@vanadac.com>
 Date: Tue, 17 Jan 2012 20:27:32 -0600
-Subject: [PATCH 4/7] Remove the upstream dracut component.
+Subject: Remove the upstream dracut component.
 
 The dracut/ component broke deb systems when it first added to the
 upstream ZoL repository, had a near-zero download count when it was
@@ -472,5 +471,3 @@ index 909273a..0000000
 -the required zpool was auto-imported by the kernel module, no additional
 -`zpool import` commands are run, so nothing is forced.
 -- 
-1.7.9.5
-
