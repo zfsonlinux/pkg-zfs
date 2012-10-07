@@ -1,3 +1,55 @@
+zfs-linux (0.6.0.81-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Switch KM_SLEEP to KM_PUSHPAGE
+  * Modify vdev_elevator_switch() to use elevator_change()
+  * Minimize ztest stack frame size
+  * Replace tempnam() with mkstemp()
+  * Verify the return value for warn_unused_result functions
+  * Realpath arg 2 must be a minimum of PATH_MAX
+  * Set default zvol elevator to noop
+
+  [ Chris Siden ]
+  * Illumos #1948: zpool list should show more detailed pool info
+  * Illumos #1950: ztest backwards compatibility testing option.
+  * Fix mmap() usage in ztest.
+
+  [ Bill Pijewski ]
+  * Illumos #2703: add mechanism to report ZFS send progress
+
+  [ Chris Wedgwood ]
+  * zvol_probe should return NULL when the device isn't found.
+
+  [ Cyril Plisko ]
+  * Implement .commit_metadata hook for NFS export
+
+  [ Etienne Dechamps ]
+  * Force 4K blocksize when testing ext2 on zvol.
+  * Create threads in detached state in userspace.
+  * Fix VOP_CLOSE() in userspace.
+  * Fix ztest vdev file paths.
+  * Temporarily disable the reguid test.
+  * Use dynamic file descriptor numbers in ztest.
+  * Align DISCARD requests on zvols.
+
+  [ George Wilson ]
+  * Illumos #3129, #3130
+
+  [ Richard Lowe ]
+  * Illumos #2399: zfs manual page does not document use of "zfs diff".
+
+  [ Matthew Ahrens ]
+  * Illumos #3100: zvol rename fails with EBUSY when dirty.
+
+  [ Chris Dunlop ]
+  * Switch KM_SLEEP to KM_PUSHPAGE
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+  * Use gbp-pq to manage debian/patches.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 06 Oct 2012 22:05:16 -0500
+
 zfs-linux (0.6.0.80-0ubuntu2) unstable; urgency=low
 
   * Revert dh_fixperms rule for old debhelper systems.
