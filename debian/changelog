@@ -1,3 +1,13 @@
+spl-linux (0.6.0.82-0ubuntu1) unstable; urgency=low
+
+  [ Massimo Maggi ]
+  * Switch KM_SLEEP to KM_PUSHPAGE
+
+  [ Yuxuan Shui ]
+  * Linux 3.6 compat, kern_path_locked() added
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 21 Oct 2012 23:17:09 -0500
+
 spl-linux (0.6.0.81-0ubuntu1) unstable; urgency=low
 
   [ Etienne Dechamps ]
