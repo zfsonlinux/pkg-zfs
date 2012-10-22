@@ -1,3 +1,53 @@
+zfs-linux (0.6.0.82-0ubuntu1) unstable; urgency=low
+
+  [ Massimo Maggi ]
+  * Switch KM_SLEEP to KM_PUSHPAGE
+  * Switch KM_SLEEP to KM_PUSHPAGE
+
+  [ KORN Andras ]
+  * zfs.8: add missing info about dedup, mlslabel
+
+  [ Cyril Plisko ]
+  * txg is spelled as tgx in places
+  * Make zfs_immediate_write_sz a module paramater
+
+  [ Richard Yao ]
+  * Fix zfs_write_limit_max integer size mismatch on 32-bit systems
+  * Linux 3.6 compat, iops->mkdir()
+
+  [ Brian Behlendorf ]
+  * Fix zfs_txg_timeout module parameter
+  * Disable ztest deadman timer
+  * Limit zfs_vdev_aggregation_limit to SPA_MAXBLOCKSIZE
+  * Condition variable usage, zevent_cv
+  * Condition variable usage, zilog->zl_cv_batch
+  * Condition variable usage, zp->r_{rd,wr}_cv
+  * Quote snapshot and mountpoint for .zfs automount
+
+  [ Richard Yao ]
+  * Remove vmem_size() consumers
+
+  [ Etienne Dechamps ]
+  * Don't ashift-align vdev read requests.
+  * Add atomic_sub_* functions to libspl.
+  * Add FASTWRITE algorithm for synchronous writes.
+  * Use the slog even with logbias=throughput.
+
+  [ Yuxuan Shui ]
+  * Linux 3.6 compat, sops->write_super() removed
+  * Linux 3.6 compat, sget()
+  * Linux 3.6 compat, iops->lookup()
+  * Linux 3.6 compat, iops->create()
+  * Return positive error number in zfsctl_shares_lookup.
+
+  [ Andrew Reid ]
+  * Do not return /dev/loop-control in unused_loop_device
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 21 Oct 2012 23:29:26 -0500
+
 zfs-linux (0.6.0.81-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
