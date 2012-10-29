@@ -5,7 +5,7 @@
 
 PPA_USER=${PPA_USER:-$(whoami)}
 PPA_NAME='spl'
-PPA_DISTRIBUTION_LIST='lucid natty oneiric precise quantal'
+PPA_DISTRIBUTION_LIST='lucid oneiric precise quantal'
 PPA_GENCHANGES='-sa'
 
 if [ ! -d debian/ ]
