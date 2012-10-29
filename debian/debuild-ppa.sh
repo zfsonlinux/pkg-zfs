@@ -5,7 +5,7 @@
 
 PPA_USER=${PPA_USER:-$(whoami)}
 PPA_NAME='zfs'
-PPA_DISTRIBUTION_LIST='lucid oneiric precise'
+PPA_DISTRIBUTION_LIST='lucid oneiric precise quantal'
 PPA_GENCHANGES='-sa'
 
 if [ ! -d debian/ ]
