@@ -1,3 +1,22 @@
+zfs-linux (0.6.0.83-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Allow 'zpool replace' to use short device names
+  * Update spare and cache device names on import
+  * Remove 'Resized bio's/dio' warning
+  * Revert "Don't ashift-align vdev read requests."
+
+  [ Peter Fern ]
+  * Add zdev rules to the initrd for all installations.
+
+  [ Darik Horn ]
+  * Disable Ubuntu 11.04 Natty Narwhal builds.
+  * Enable Ubuntu 12.10 Quantal Quetzal builds.
+  * Add dkms build dependency on spl.
+  * Fix a typo in the root mountpoint seatbelt.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 28 Oct 2012 23:19:48 -0500
+
 zfs-linux (0.6.0.82-0ubuntu1) unstable; urgency=low
 
   [ Massimo Maggi ]
