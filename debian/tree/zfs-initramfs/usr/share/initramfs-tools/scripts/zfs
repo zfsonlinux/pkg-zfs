@@ -106,7 +106,7 @@ mountroot()
 
 	# Force the mountpoint to the only correct value for a root filesystem.
 	[ "$quiet" != "y" ] && log_begin_msg "Setting mountpoint=/ on ZFS filesystem $ZFS_BOOTFS"
-	ZFS_STDERR=$(zfs set -o mountpoint=/ "$ZFS_BOOTFS" 2>&1)
+	ZFS_STDERR=$(zfs set mountpoint=/ "$ZFS_BOOTFS" 2>&1)
 	[ "$quiet" != "y" ] && log_end_msg
 
 	# Ideally, the root filesystem would be mounted like this:
