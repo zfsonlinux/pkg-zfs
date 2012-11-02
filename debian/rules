@@ -77,8 +77,8 @@ endif
 override_dh_fixperms:
 	@# Ubuntu 10.04 LTS Lucid Lynx, et al, compatibility.
 	@# (>= debhelper-8.0.0) does this automatically.
-	chmod 0440 debian/zfsutils/etc/sudoers.d/zfs
 	dh_fixperms
+	chmod 0440 debian/zfsutils/etc/sudoers.d/zfs
 
 override_dh_shlibdeps:
 	@# Suppress libtool dependency_libs warnings that are caused by
