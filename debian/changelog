@@ -1,3 +1,13 @@
+zfs-linux (0.6.0.84-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Add ddt_object_count() error handling
+
+  [ Darik Horn ]
+  * Fix /etc/sudoers.d/zfs mode regression.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 02 Nov 2012 17:24:36 -0500
+
 zfs-linux (0.6.0.83-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
