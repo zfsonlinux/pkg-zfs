@@ -13,7 +13,7 @@
 #              package for Debian or the zfs-mountall package for Ubuntu
 ### END INIT INFO
 
-PATH=/sbin:/bin:/usr/sbin:/usr/bin
+PATH=/sbin:/bin
 
 . /lib/lsb/init-functions
 . /lib/init/vars.sh
