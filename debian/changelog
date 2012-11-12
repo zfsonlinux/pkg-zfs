@@ -1,3 +1,20 @@
+spl-linux (0.6.0.85-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Make kstat.ks_update() callback atomic
+  * Add KSTAT_TYPE_TXG type
+  * Condition variable reference counts
+  * splat: Cleanup headers
+  * splat: Fix log buffer locking
+  * splat atomic:64-bit: Create thread outside spin lock
+  * splat kmem:slab_overcommit: Disabled
+  * Improved vmem cached deadlock detection
+  * Track emergency object in rbtree
+  * Optimize spl_kmem_cache_free()
+  * Never spin in kmem_cache_alloc()
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 11 Nov 2012 22:32:25 -0600
+
 spl-linux (0.6.0.84-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
