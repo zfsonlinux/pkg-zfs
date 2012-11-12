@@ -29,7 +29,7 @@ Description: Solaris name-value library for Linux
 Package: libnvpair1-dbg
 Section: debug
 Architecture: linux-any
-Depends: libnvpair1 (= ${binary:Version})
+Depends: ${misc:Depends}, libnvpair1 (= ${binary:Version})
 Replaces: libnvpair0-dbg
 Description: Debugging symbols for libnvpair1
  This library provides routines for packing and unpacking nv pairs for
@@ -55,7 +55,7 @@ Description: Solaris userland utility library for Linux
 Package: libuutil1-dbg
 Section: debug
 Architecture: linux-any
-Depends: libuutil1 (= ${binary:Version})
+Depends: ${misc:Depends}, libuutil1 (= ${binary:Version})
 Replaces: libuutil0-dbg
 Description: Debugging symbols for libuutil1
  This library provides a variety of glue functions for ZFS on Linux:
@@ -97,7 +97,7 @@ Description: Native ZFS filesystem library for Linux
 Package: libzfs1-dbg
 Section: debug
 Architecture: linux-any
-Depends: libzfs1 (= ${binary:Version})
+Depends: ${misc:Depends}, libzfs1 (= ${binary:Version})
 Replaces: libzfs0-dbg
 Description: Debugging symbols for libzfs1
  The zfs management library.
@@ -115,7 +115,7 @@ Description: Native ZFS pool library for Linux
 Package: libzpool1-dbg
 Section: debug
 Architecture: linux-any
-Depends: libzpool1 (= ${binary:Version})
+Depends: ${misc:Depends}, libzpool1 (= ${binary:Version})
 Replaces: libzpool0-dbg
 Description: Debugging symbols for libzpool1
  The zpool management library.
@@ -167,7 +167,7 @@ Description: Native ZFS management utilities for Linux
 Package: zfsutils-dbg
 Section: debug
 Architecture: linux-any
-Depends: zfsutils (= ${binary:Version})
+Depends: ${misc:Depends}, zfsutils (= ${binary:Version})
 Replaces: zfs-dbg
 Description: Debugging symbols for zfsutils
  This package provides the zpool and zfs commands that are used to
