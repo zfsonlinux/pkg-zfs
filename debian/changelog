@@ -1,3 +1,19 @@
+zfs-linux (0.6.0.85-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Add txgs-<pool> kstat file
+  * Log I/Os longer than zio_delay_max (30s default)
+  * Fix zvol+btrfs hang
+  * Fix "allocating allocated segment" panic
+
+  [ Darik Horn ]
+  * Resolve lintian maintainer-script-empty.
+  * Resolve init.d-script-missing-dependency-on-remote_fs.
+  * Resolve syntax-error-in-dep5-copyright.
+  * Resolve debhelper-but-no-misc-depends.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 11 Nov 2012 23:33:24 -0600
+
 zfs-linux (0.6.0.84-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
