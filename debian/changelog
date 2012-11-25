@@ -1,3 +1,23 @@
+zfs-linux (0.6.0.87-0ubuntu1) unstable; urgency=low
+
+  [ George Wilson ]
+  * Illumos #2671: zpool import should not fail if vdev ashift has increased
+
+  [ Brian Behlendorf ]
+  * Improve AF hard disk detection
+  * Recreate minors when renaming zvols
+
+  [ Cyril Plisko ]
+  * Add "-o ashift" to zpool add and zpool attach
+
+  [ nordaux ]
+  * mount.zfs: canonicalize mount point for mtab
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 24 Nov 2012 22:58:21 -0600
+
 zfs-linux (0.6.0.86-0ubuntu1) unstable; urgency=low
 
   [ Richard Yao ]
