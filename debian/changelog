@@ -1,3 +1,11 @@
+spl-linux (0.6.0.88-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Disable FS reclaim when allocating new slabs
+  * Verify --with-linux source directory exists
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 30 Nov 2012 22:59:37 -0600
+
 spl-linux (0.6.0.87-0ubuntu1) unstable; urgency=low
 
   * No changes.
