@@ -1,3 +1,26 @@
+zfs-linux (0.6.0.88-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Increase ZFS_OBJ_MTX_SZ to 256
+  * Fix NULL deref when zvol_alloc() fails
+  * Verify --with-linux source directory exists
+  * Disable page allocation warnings for super block
+  * Allow GPT+EFI vdevs for root pools
+  * Add load_nvlist() error handling
+
+  [ Ned Bass ]
+  * Make vdev_id POSIX sh compatible
+
+  [ Cyril Plisko ]
+  * vdev_id fails to handle complex device topologies
+  * Make zpool attach -o ashift=... actually work
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+  * Update /etc/sudoers.d/zfs file.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 30 Nov 2012 23:28:40 -0600
+
 zfs-linux (0.6.0.87-0ubuntu1) unstable; urgency=low
 
   [ George Wilson ]
