@@ -125,14 +125,15 @@ Description: Debugging symbols for libzpool1
 Package: zfs-dkms
 Section: kernel
 Architecture: linux-any
-Depends: ${misc:Depends}, dkms (>> 2.1.1.2-5ubuntu1), spl-dkms (>= ${source:Upstream-Version})
+Pre-Depends: spl-dkms (>= ${source:Upstream-Version})
+Depends: ${misc:Depends}, dkms (>> 2.1.1.2-5ubuntu1)
 Replaces: lzfs, lzfs-dkms
 Provides: lustre-backend-fs, lzfs, lzfs-dkms
 Conflicts: lzfs, lzfs-dkms
 Description: Native ZFS filesystem kernel modules for Linux
  An advanced integrated volume manager and filesystem that is designed for
  performance and data integrity. Snapshots, clones, checksums, deduplication,
- compression, and RAID redundancy are built-in features..
+ compression, and RAID redundancy are built-in features.
  .
  Includes the SPA, DMU, ZVOL, and ZPL components of ZFS.
 
