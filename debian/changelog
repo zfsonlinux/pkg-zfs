@@ -1,3 +1,26 @@
+zfs-linux (0.6.0.89-0ubuntu1) unstable; urgency=low
+
+  [ Turbo Fredriksson ]
+  * Implemented sharing datasets via SMB using libshare
+
+  [ Brian Behlendorf ]
+  * Directory xattr znodes hold a reference on their parent
+  * Preserve inode mtime/ctime in .writepage()
+  * Revert "Fix unlink/xattr deadlock"
+
+  [ Ned Bass ]
+  * vdev_id support for device link aliases
+
+  [ Jorgen Lundman ]
+  * Fix 'zpool create' segfault due to bad syntax
+
+  [ Darik Horn ]
+  * Promote spl-dkms to Pre-Depends.
+  * Refresh debian/patches after upstream merge.
+  * Suggest samba-common-bin for zfsutils.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 05 Dec 2012 22:14:03 -0600
+
 zfs-linux (0.6.0.88-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
