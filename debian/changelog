@@ -1,3 +1,14 @@
+spl-linux (0.6.0.89-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Linux compat 3.7, kernel_thread()
+  * Handle errors from spl_kern_path_locked()
+
+  [ Steven Johnson ]
+  * splat taskq:front: Fix race
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 05 Dec 2012 21:40:45 -0600
+
 spl-linux (0.6.0.88-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
