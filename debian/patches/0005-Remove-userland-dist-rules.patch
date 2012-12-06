@@ -58,10 +58,10 @@ index b17e6a3..f8c61fd 100644
 -dist_bin_SCRIPTS = zpool_layout
 +nodist_bin_SCRIPTS = zpool_layout
 diff --git a/etc/zfs/Makefile.am b/etc/zfs/Makefile.am
-index b1a1cf4..d81526a 100644
+index dd864f4..09d3e2b 100644
 --- a/etc/zfs/Makefile.am
 +++ b/etc/zfs/Makefile.am
-@@ -8,5 +8,3 @@ pkgsysconf_DATA = \
+@@ -9,5 +9,3 @@ pkgsysconf_DATA = \
  	zdev.conf.supermicro.example \
  	zdev.conf.dragon.example \
  	zdev.conf.x4550.example
@@ -78,7 +78,7 @@ index 05ca1ce..951a54c 100644
  install-data-local:
  	$(INSTALL) -d -m 0755 "$(DESTDIR)$(mandir)/man8"
 diff --git a/scripts/Makefile.am b/scripts/Makefile.am
-index 3dc1e67..aad0cd4 100644
+index d8cb007..10ac61b 100644
 --- a/scripts/Makefile.am
 +++ b/scripts/Makefile.am
 @@ -1,7 +1,7 @@
@@ -135,7 +135,7 @@ index 3eef241..ede02d0 100644
  	$(top_srcdir)/scripts/zpool-layout/dragon.llnl.conf
  
 diff --git a/udev/rules.d/Makefile.am b/udev/rules.d/Makefile.am
-index 586d76a..373be6c 100644
+index 1ec83ac..fb1aa22 100644
 --- a/udev/rules.d/Makefile.am
 +++ b/udev/rules.d/Makefile.am
 @@ -4,12 +4,6 @@ udevrule_DATA = \
@@ -143,7 +143,7 @@ index 586d76a..373be6c 100644
  	$(top_srcdir)/udev/rules.d/90-zfs.rules
  
 -EXTRA_DIST = \
--	$(top_srcdir)/udev/rules.d/60-vdev.rules.in \
+-	$(top_srcdir)/udev/rules.d/69-vdev.rules.in \
 -	$(top_srcdir)/udev/rules.d/60-zpool.rules.in \
 -	$(top_srcdir)/udev/rules.d/60-zvol.rules.in \
 -	$(top_srcdir)/udev/rules.d/90-zfs.rules.in
