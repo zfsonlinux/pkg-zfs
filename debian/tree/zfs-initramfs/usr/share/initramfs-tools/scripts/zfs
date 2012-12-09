@@ -77,6 +77,7 @@ mountroot()
 
 	if [ "$ZFS_ERROR" -ne 0 ]
 	then
+	    [ -x /bin/plymouth ] && /bin/plymouth hide-splash
 		echo "Command: zpool import -f -N $ZFS_RPOOL"
 		echo "Message: $ZFS_STDERR"
 		echo "Error: $ZFS_ERROR"
@@ -96,6 +97,7 @@ mountroot()
 
 	if [ -z "$ZFS_BOOTFS" ]
 	then
+		[ -x /bin/plymouth ] && /bin/plymouth hide-splash
 		echo "Command: zpool list -H -o bootfs $ZFS_RPOOL"
 		echo "Error: $ZFS_ERROR, unable to get the bootfs property."
 		echo ""
