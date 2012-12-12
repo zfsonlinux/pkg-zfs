@@ -127,6 +127,7 @@ mountroot()
 
 	if [ "$ZFS_ERROR" -ne 0 ]
 	then
+		[ -x /bin/plymouth ] && /bin/plymouth hide-splash
 		echo ""
 		echo "Command: mount -t zfs -o zfsutil $ZFS_BOOTFS $rootmnt"
 		echo "Message: $ZFS_STDERR"
