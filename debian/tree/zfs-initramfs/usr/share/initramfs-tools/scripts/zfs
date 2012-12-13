@@ -14,6 +14,14 @@ pre_mountroot()
 	[ "$quiet" != "y" ] && log_end_msg
 }
 
+# Duplicates the functionality found under try_failure_hooks in functions
+# but invoking that would be inappropriate here.
+disable_plymouth()
+{
+    if [ -x /bin/plymouth ] && plymouth --ping; then
+		/bin/plymouth hide-splash > /dev/null 2>&1
+	fi
+}
 
 mountroot()
 {
@@ -77,7 +85,7 @@ mountroot()
 
 	if [ "$ZFS_ERROR" -ne 0 ]
 	then
-	    [ -x /bin/plymouth ] && /bin/plymouth hide-splash
+		disable_plymouth
 		echo "Command: zpool import -f -N $ZFS_RPOOL"
 		echo "Message: $ZFS_STDERR"
 		echo "Error: $ZFS_ERROR"
@@ -97,7 +105,7 @@ mountroot()
 
 	if [ -z "$ZFS_BOOTFS" ]
 	then
-		[ -x /bin/plymouth ] && /bin/plymouth hide-splash
+		disable_plymouth
 		echo "Command: zpool list -H -o bootfs $ZFS_RPOOL"
 		echo "Error: $ZFS_ERROR, unable to get the bootfs property."
 		echo ""
@@ -127,7 +135,7 @@ mountroot()
 
 	if [ "$ZFS_ERROR" -ne 0 ]
 	then
-		[ -x /bin/plymouth ] && /bin/plymouth hide-splash
+		disable_plymouth
 		echo ""
 		echo "Command: mount -t zfs -o zfsutil $ZFS_BOOTFS $rootmnt"
 		echo "Message: $ZFS_STDERR"
