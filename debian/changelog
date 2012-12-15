@@ -1,3 +1,27 @@
+zfs-linux (0.6.0.90-0ubuntu1) unstable; urgency=low
+
+  [ Peter Fern ]
+  * Add os-prober test for zvols.
+
+  [ Richard Yao ]
+  * Switch KM_SLEEP to KM_PUSHPAGE
+
+  [ Ned Bass ]
+  * Avoid ELOOP on auto-mounted snapshots
+
+  [ Brian Behlendorf ]
+  * Linux 3.7 compat, schedule_delayed_work()
+  * Update 69-vdev.rules .gitignore
+  * Update SAs when an inode is dirtied
+
+  [ Will Rouesnel ]
+  * Added call to hide Plymouth when error shell is launched.
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 15 Dec 2012 15:45:15 -0600
+
 zfs-linux (0.6.0.89-0ubuntu1) unstable; urgency=low
 
   [ Turbo Fredriksson ]
