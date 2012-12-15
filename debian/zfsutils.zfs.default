@@ -1,18 +1,16 @@
-# /etc/default/zfs
-#
-# Instead of changing these default ZFS options, Debian systems should install
-# the zfs-mount package, and Ubuntu systems should install the zfs-mountall
-# package. The debian-zfs and ubuntu-zfs metapackages ensure a correct system
-# configuration.
-#
-# If the system runs parallel init jobs, like upstart or systemd, then the
-# `zfs mount -a` command races in a way that causes sporadic mount failures.
+# ZoL userland configuration.
 
-# Automatically run `zfs mount -a` at system start. Disabled by default.
+# Run `zfs mount -a` during system start?
+# This should be 'no' if zfs-mountall or a systemd generator is available.
 ZFS_MOUNT='no'
+
+# Run `zfs unmount -a` during system stop?
+# This should be 'no' on most systems.
 ZFS_UNMOUNT='no'
 
-# Automatically run `zfs share -a` at system start. Disabled by default.
-# Requires nfsd and/or smbd. Incompletely implemented for Linux.
+# Run `zfs share -a` during system start?
+# nb: The shareiscsi, sharenfs, and sharesmb dataset properties.
 ZFS_SHARE='no'
+
+# Run `zfs unshare -a` during system stop?
 ZFS_UNSHARE='no'
