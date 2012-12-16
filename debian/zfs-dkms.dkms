@@ -6,20 +6,20 @@ PRE_BUILD="configure
   --prefix=/usr
   --with-config=kernel
   --with-linux=$(
-      case `lsb_release -is` in
-        (Debian)
-          if [ -e ${kernel_source_dir/%build/source} ]
-          then
-            echo ${kernel_source_dir/%build/source}
-          else
-            # A kpkg exception for Proxmox 2.0
-            echo ${kernel_source_dir}
-          fi
-          ;;
-        (*)
+    case `lsb_release -is` in
+      (Debian)
+        if [[ -e ${kernel_source_dir/%build/source} ]]
+        then
+          echo ${kernel_source_dir/%build/source}
+        else
+          # A kpkg exception for Proxmox 2.0
           echo ${kernel_source_dir}
-          ;;
-      esac
+        fi
+      ;;
+      (*)
+        echo ${kernel_source_dir}
+      ;;
+    esac
   )
   --with-linux-obj=${kernel_source_dir}
   --with-spl=${source_tree}/spl-${PACKAGE_VERSION}
@@ -47,13 +47,13 @@ POST_BUILD="cp
   ${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}/${kernelver}/${arch}/
 "
 REMAKE_INITRD="$(
-    if test -e /usr/share/initramfs-tools/hooks/zfs \
-            -o -e /usr/share/dracut/modules.d/90zfs
-    then
-      echo yes
-    else
-      echo no
-    fi
+  if [ -e /usr/share/initramfs-tools/hooks/zfs \
+       -o -e /usr/share/dracut/modules.d/90zfs ]
+  then
+    echo -n yes
+  else
+    echo -n no
+  fi
 )"
 MAKE[0]="make"
 STRIP[0]="$(
