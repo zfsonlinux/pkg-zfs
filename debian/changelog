@@ -1,3 +1,19 @@
+spl-linux (0.6.0.91-0ubuntu1) unstable; urgency=low
+
+  [ Richard Yao ]
+  * Do not use KERNEL_DIR env var in Makefile.am
+
+  [ Brian Behlendorf ]
+  * Fix spl_kmem_init_kallsyms_lookup() panic
+  * Remove the ChangeLog
+  * Refresh AUTHORS
+  * SPL 0.6.0-rc13
+
+  [ Darik Horn ]
+  * Delete patch 0002 for RPM builds.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 20 Dec 2012 21:10:43 -0600
+
 spl-linux (0.6.0.90-0ubuntu1) unstable; urgency=low
 
   [ Steven Johnson ]
