@@ -23,11 +23,11 @@ instances of EXTRA_DIST and change dist_ to nodist_.
  12 files changed, 9 insertions(+), 19 deletions(-)
 
 diff --git a/Makefile.am b/Makefile.am
-index 9618b03..a1c66d0 100644
+index fac18fd..7e58b83 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -12,8 +12,7 @@ endif
- SUBDIRS = $(USER_DIR) $(KERNEL_DIR) include
+@@ -12,8 +12,7 @@ SUBDIRS += module
+ endif
  
  AUTOMAKE_OPTIONS = foreign
 -EXTRA_DIST  = autogen.sh zfs.spec.in zfs-modules.spec.in

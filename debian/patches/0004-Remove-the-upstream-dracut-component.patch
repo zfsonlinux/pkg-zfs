@@ -26,18 +26,18 @@ dracut-005 package that is currently published in Debian and Ubuntu.
  delete mode 100644 dracut/README.dracut.markdown
 
 diff --git a/Makefile.am b/Makefile.am
-index 9ffd6be..9618b03 100644
+index 833bee6..fac18fd 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -4,7 +4,7 @@ include $(top_srcdir)/config/tgz.am
- include $(top_srcdir)/config/arch.am
+@@ -5,7 +5,7 @@ include $(top_srcdir)/config/arch.am
  
+ SUBDIRS = include
  if CONFIG_USER
--USER_DIR = dracut udev etc man scripts lib cmd
-+USER_DIR = udev etc man scripts lib cmd
+-SUBDIRS += dracut udev etc man scripts lib cmd
++SUBDIRS += udev etc man scripts lib cmd
  endif
  if CONFIG_KERNEL
- KERNEL_DIR = module
+ SUBDIRS += module
 diff --git a/configure.ac b/configure.ac
 index a1f207f..a418b51 100644
 --- a/configure.ac
