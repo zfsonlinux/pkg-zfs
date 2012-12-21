@@ -1,3 +1,34 @@
+zfs-linux (0.6.0.91-0ubuntu1) unstable; urgency=low
+
+  [ Richard Yao ]
+  * Do not use KERNEL_DIR env var in Makefile.am
+
+  [ Massimo Maggi ]
+  * Fix get/set users/groups in quota props via numeric id
+
+  [ Jorgen Lundman ]
+  * Fix using zvol as slog device
+
+  [ Prakash Surya ]
+  * Set elevator for DM devices despite vdev_wholedisk
+
+  [ Brian Behlendorf ]
+  * Remove TSD zfs_fsyncer_key
+  * Remove the ChangeLog
+  * Refresh AUTHORS
+  * Revert "Remove TSD zfs_fsyncer_key"
+  * Fix zpool on zvol lock inversion deadlock
+  * ZFS 0.6.0-rc13
+
+  [ Darik Horn ]
+  * Simplify the /etc/default/zfs documentation.
+  * Support unstripped DKMS modules.
+  * Normalize dkms.conf bash syntax.
+  * Refresh debian/patches after upstream merge.
+  * Set the execute bit on 10zvol-test for os-prober.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 20 Dec 2012 21:27:46 -0600
+
 zfs-linux (0.6.0.90-0ubuntu1) unstable; urgency=low
 
   [ Peter Fern ]
