@@ -12,6 +12,17 @@ pre_mountroot()
 	[ "$quiet" != "y" ] && log_begin_msg "Running /scripts/local-top"
 	run_scripts /scripts/local-top
 	[ "$quiet" != "y" ] && log_end_msg
+
+	if [ -r '/etc/default/zfs' ]
+	then
+		. '/etc/default/zfs'
+		if [ "$ZFS_INITRD_PRE_MOUNTROOT_SLEEP" -gt '0' ]
+		then
+			[ "$quiet" != "y" ] && log_begin_msg "Sleeping for $ZFS_INITRD_PRE_MOUNTROOT_SLEEP seconds..."
+			sleep "$ZFS_INITRD_PRE_MOUNTROOT_SLEEP"
+			[ "$quiet" != "y" ] && log_end_msg
+		fi
+	fi
 }
 
 # Duplicates the functionality found under try_failure_hooks in functions
