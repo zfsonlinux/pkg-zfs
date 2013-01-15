@@ -1,3 +1,19 @@
+spl-linux (0.6.0.92-0ubuntu1) unstable; urgency=low
+
+  [ Matt Johnston ]
+  * Add cv_wait_io() to account I/O time
+
+  [ Brian Behlendorf ]
+  * RHEL 6.4 compat, fallocate()
+  * Linux compat 3.7.1, on_each_cpu()
+  * Check for ZLIB_INFLATE and ZLIB_DEFLATE
+  * kmem-cache: Fix slab ageing soft lockup
+
+  [ Ned Bass ]
+  * call_usermodehelper() should wait for process
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 14 Jan 2013 19:00:28 -0600
+
 spl-linux (0.6.0.91-0ubuntu1) unstable; urgency=low
 
   [ Richard Yao ]
