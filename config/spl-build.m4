@@ -78,11 +78,14 @@ AC_DEFUN([SPL_AC_CONFIG_KERNEL], [
 	SPL_AC_EXPORTED_RWSEM_IS_LOCKED
 	SPL_AC_KERNEL_INVALIDATE_INODES
 	SPL_AC_KERNEL_2ARGS_INVALIDATE_INODES
+	SPL_AC_KERNEL_FALLOCATE
 	SPL_AC_SHRINK_DCACHE_MEMORY
 	SPL_AC_SHRINK_ICACHE_MEMORY
 	SPL_AC_KERN_PATH_PARENT_HEADER
 	SPL_AC_KERN_PATH_PARENT_SYMBOL
 	SPL_AC_KERN_PATH_LOCKED
+	SPL_AC_CONFIG_ZLIB_INFLATE
+	SPL_AC_CONFIG_ZLIB_DEFLATE
 	SPL_AC_2ARGS_ZLIB_DEFLATE_WORKSPACESIZE
 	SPL_AC_SHRINK_CONTROL_STRUCT
 	SPL_AC_RWSEM_SPINLOCK_IS_RAW
@@ -1311,9 +1314,12 @@ dnl #
 AC_DEFUN([SPL_AC_3ARGS_ON_EACH_CPU], [
 	AC_MSG_CHECKING([whether on_each_cpu() wants 3 args])
 	SPL_LINUX_TRY_COMPILE([
+		#include <linux/interrupt.h>
 		#include <linux/smp.h>
+
+		void on_each_cpu_func(void *data) { return; }
 	],[
-		on_each_cpu(NULL, NULL, 0);
+		on_each_cpu(on_each_cpu_func, NULL, 0);
 	],[
 		AC_MSG_RESULT(yes)
 		AC_DEFINE(HAVE_3ARGS_ON_EACH_CPU, 1,
@@ -1922,7 +1928,6 @@ AC_DEFUN([SPL_AC_2ARGS_VFS_FSYNC], [
 dnl #
 dnl # 3.5 API change,
 dnl # inode_operations.truncate_range removed
-dnl # (deprecated in favor of FALLOC_FL_PUNCH_HOLE)
 dnl #
 AC_DEFUN([SPL_AC_INODE_TRUNCATE_RANGE], [
 	AC_MSG_CHECKING([whether truncate_range() inode operation is available])
@@ -1938,7 +1943,77 @@ AC_DEFUN([SPL_AC_INODE_TRUNCATE_RANGE], [
 	],[
 		AC_MSG_RESULT(no)
 	])
-]))
+])
+
+dnl #
+dnl # Linux 2.6.38 - 3.x API
+dnl #
+AC_DEFUN([SPL_AC_KERNEL_FILE_FALLOCATE], [
+	AC_MSG_CHECKING([whether fops->fallocate() exists])
+	SPL_LINUX_TRY_COMPILE([
+		#include <linux/fs.h>
+	],[
+		long (*fallocate) (struct file *, int, loff_t, loff_t) = NULL;
+		struct file_operations fops __attribute__ ((unused)) = {
+			.fallocate = fallocate,
+		};
+	],[
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(HAVE_FILE_FALLOCATE, 1, [fops->fallocate() exists])
+	],[
+		AC_MSG_RESULT(no)
+	])
+])
+
+dnl #
+dnl # Linux 2.6.x - 2.6.37 API
+dnl #
+AC_DEFUN([SPL_AC_KERNEL_INODE_FALLOCATE], [
+	AC_MSG_CHECKING([whether iops->fallocate() exists])
+	SPL_LINUX_TRY_COMPILE([
+		#include <linux/fs.h>
+	],[
+		long (*fallocate) (struct inode *, int, loff_t, loff_t) = NULL;
+		struct inode_operations fops __attribute__ ((unused)) = {
+			.fallocate = fallocate,
+		};
+	],[
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(HAVE_INODE_FALLOCATE, 1, [fops->fallocate() exists])
+	],[
+		AC_MSG_RESULT(no)
+	])
+])
+
+dnl #
+dnl # PaX Linux 2.6.38 - 3.x API
+dnl #
+AC_DEFUN([SPL_AC_PAX_KERNEL_FILE_FALLOCATE], [
+	AC_MSG_CHECKING([whether fops->fallocate() exists])
+	SPL_LINUX_TRY_COMPILE([
+		#include <linux/fs.h>
+	],[
+		long (*fallocate) (struct file *, int, loff_t, loff_t) = NULL;
+		struct file_operations_no_const fops __attribute__ ((unused)) = {
+			.fallocate = fallocate,
+		};
+	],[
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(HAVE_FILE_FALLOCATE, 1, [fops->fallocate() exists])
+	],[
+		AC_MSG_RESULT(no)
+	])
+])
+
+dnl #
+dnl # The fallocate callback was moved from the inode_operations
+dnl # structure to the file_operations structure.
+dnl #
+AC_DEFUN([SPL_AC_KERNEL_FALLOCATE], [
+	SPL_AC_KERNEL_FILE_FALLOCATE
+	SPL_AC_KERNEL_INODE_FALLOCATE
+	SPL_AC_PAX_KERNEL_FILE_FALLOCATE
+])
 
 dnl #
 dnl # 2.6.33 API change. Also backported in RHEL5 as of 2.6.18-190.el5.
@@ -2126,6 +2201,48 @@ AC_DEFUN([SPL_AC_KERN_PATH_LOCKED], [
 		[AC_DEFINE(HAVE_KERN_PATH_LOCKED, 1,
 		[kern_path_locked() is available])],
 		[])
+])
+
+dnl #
+dnl # zlib inflate compat,
+dnl # Verify the kernel has CONFIG_ZLIB_INFLATE support enabled.
+dnl #
+AC_DEFUN([SPL_AC_CONFIG_ZLIB_INFLATE], [
+	AC_MSG_CHECKING([whether CONFIG_ZLIB_INFLATE is defined])
+	SPL_LINUX_TRY_COMPILE([
+		#if !defined(CONFIG_ZLIB_INFLATE) && \
+		    !defined(CONFIG_ZLIB_INFLATE_MODULE)
+		#error CONFIG_ZLIB_INFLATE not defined
+		#endif
+	],[ ],[
+		AC_MSG_RESULT([yes])
+	],[
+		AC_MSG_RESULT([no])
+		AC_MSG_ERROR([
+	*** This kernel does not include the required zlib inflate support.
+	*** Rebuild the kernel with CONFIG_ZLIB_INFLATE=y|m set.])
+	])
+])
+
+dnl #
+dnl # zlib deflate compat,
+dnl # Verify the kernel has CONFIG_ZLIB_DEFLATE support enabled.
+dnl #
+AC_DEFUN([SPL_AC_CONFIG_ZLIB_DEFLATE], [
+	AC_MSG_CHECKING([whether CONFIG_ZLIB_DEFLATE is defined])
+	SPL_LINUX_TRY_COMPILE([
+		#if !defined(CONFIG_ZLIB_DEFLATE) && \
+		    !defined(CONFIG_ZLIB_DEFLATE_MODULE)
+		#error CONFIG_ZLIB_DEFLATE not defined
+		#endif
+	],[ ],[
+		AC_MSG_RESULT([yes])
+	],[
+		AC_MSG_RESULT([no])
+		AC_MSG_ERROR([
+	*** This kernel does not include the required zlib deflate support.
+	*** Rebuild the kernel with CONFIG_ZLIB_DEFLATE=y|m set.])
+	])
 ])
 
 dnl #
