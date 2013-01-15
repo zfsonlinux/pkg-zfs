@@ -372,7 +372,8 @@ main(int argc, char **argv)
 	/* canonicalize the mount point */
 	if (realpath(argv[1], mntpoint) == NULL) {
 		(void) fprintf(stderr, gettext("filesystem '%s' cannot be "
-		    "mounted due to a canonicalization failure.\n"), dataset);
+		    "mounted at '%s' due to canonicalization error %d.\n"),
+		    dataset, argv[1], errno);
 		return (MOUNT_SYSERR);
 	}
 
@@ -474,7 +475,8 @@ main(int argc, char **argv)
 		return (MOUNT_USAGE);
 	}
 
-	if (!zfsutil && strcmp(legacy, ZFS_MOUNTPOINT_LEGACY) && !remount) {
+	if (!zfsutil && !(remount || fake) &&
+	    strcmp(legacy, ZFS_MOUNTPOINT_LEGACY)) {
 		(void) fprintf(stderr, gettext(
 		    "filesystem '%s' cannot be mounted using 'mount'.\n"
 		    "Use 'zfs set mountpoint=%s' or 'zfs mount %s'.\n"

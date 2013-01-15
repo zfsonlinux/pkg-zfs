@@ -1,13 +1,32 @@
-'\" te
+'\" t
+.\"
+.\" CDDL HEADER START
+.\"
+.\" The contents of this file are subject to the terms of the
+.\" Common Development and Distribution License (the "License").
+.\" You may not use this file except in compliance with the License.
+.\"
+.\" You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
+.\" or http://www.opensolaris.org/os/licensing.
+.\" See the License for the specific language governing permissions
+.\" and limitations under the License.
+.\"
+.\" When distributing Covered Code, include this CDDL HEADER in each
+.\" file and include the License file at usr/src/OPENSOLARIS.LICENSE.
+.\" If applicable, add the following below this CDDL HEADER, with the
+.\" fields enclosed by brackets "[]" replaced with your own identifying
+.\" information: Portions Copyright [yyyy] [name of copyright owner]
+.\"
+.\" CDDL HEADER END
+.\"
+.\"
 .\" Copyright (c) 2009 Sun Microsystems, Inc. All Rights Reserved.
-.\" Copyright (c) 2012 by Delphix. All rights reserved.
-.\" Copyright (c) 2012 Nexenta Systems, Inc. All Rights Reserved.
-.\" Copyright (c) 2012, Joyent, Inc. All rights reserved.
 .\" Copyright 2011 Joshua M. Clulow <josh@sysmgr.org>
-.\" The contents of this file are subject to the terms of the Common Development and Distribution License (the "License").  You may not use this file except in compliance with the License. You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE or http://www.opensolaris.org/os/licensing.
-.\"  See the License for the specific language governing permissions and limitations under the License. When distributing Covered Code, include this CDDL HEADER in each file and include the License file at usr/src/OPENSOLARIS.LICENSE.  If applicable, add the following below this CDDL HEADER, with
-.\" the fields enclosed by brackets "[]" replaced with your own identifying information: Portions Copyright [yyyy] [name of copyright owner]
-.TH zfs 8 "Aug 16, 2012" "ZFS pool 28, filesystem 5" "System Administration Commands"
+.\" Copyright (c) 2012 by Delphix. All rights reserved.
+.\" Copyright (c) 2012, Joyent, Inc. All rights reserved.
+.\" Copyright 2012 Nexenta Systems, Inc. All Rights Reserved.
+.\"
+.TH zfs 8 "Jan 10, 2013" "ZFS pool 28, filesystem 5" "System Administration Commands"
 .SH NAME
 zfs \- configures ZFS file systems
 .SH SYNOPSIS
@@ -107,14 +126,14 @@ zfs \- configures ZFS file systems
 
 .LP
 .nf
-\fBzfs\fR \fBuserspace\fR [\fB-niHp\fR] [\fB-o\fR \fIfield\fR[,...]] [\fB-sS\fR \fIfield\fR] ...
-     [\fB-t\fR \fItype\fR[,...]] \fIfilesystem\fR|\fIsnapshot\fR
+\fBzfs\fR \fBuserspace\fR [\fB-Hinp\fR] [\fB-o\fR \fIfield\fR[,...]] [\fB-s\fR \fIfield\fR] ...
+    [\fB-S\fR \fIfield\fR] ... [\fB-t\fR \fItype\fR[,...]] \fIfilesystem\fR|\fIsnapshot\fR
 .fi
 
 .LP
 .nf
-\fBzfs\fR \fBgroupspace\fR [\fB-niHp\fR] [\fB-o\fR \fIfield\fR[,...]] [\fB-sS\fR \fIfield\fR] ...
-     [\fB-t\fR \fItype\fR[,...]] \fIfilesystem\fR|\fIsnapshot\fR
+\fBzfs\fR \fBgroupspace\fR [\fB-Hinp\fR] [\fB-o\fR \fIfield\fR[,...]] [\fB-s\fR \fIfield\fR] ...
+    [\fB-S\fR \fIfield\fR] ... [\fB-t\fR \fItype\fR[,...]] \fIfilesystem\fR|\fIsnapshot\fR
 .fi
 
 .LP
@@ -144,7 +163,7 @@ zfs \- configures ZFS file systems
 
 .LP
 .nf
-\fBzfs\fR \fBsend\fR [\fB-DnPpRrv\fR] [\fB-\fR[\fBiI\fR] \fIsnapshot\fR] \fIsnapshot\fR
+\fBzfs\fR \fBsend\fR [\fB-DnPpRv\fR] [\fB-\fR[\fBiI\fR] \fIsnapshot\fR] \fIsnapshot\fR
 .fi
 
 .LP
@@ -2013,11 +2032,16 @@ Upgrade to the specified \fIversion\fR. If the \fB-V\fR flag is not specified, t
 .ne 2
 .mk
 .na
-\fB\fBzfs userspace\fR [\fB-niHp\fR] [\fB-o\fR \fIfield\fR[,...]] [\fB-sS\fR \fIfield\fR]... [\fB-t\fR \fItype\fR [,...]] \fIfilesystem\fR | \fIsnapshot\fR\fR
+\fBzfs\fR \fBuserspace\fR [\fB-Hinp\fR] [\fB-o\fR \fIfield\fR[,...]]
+[\fB-s\fR \fIfield\fR] ...
+[\fB-S\fR \fIfield\fR] ...
+[\fB-t\fR \fItype\fR[,...]] \fIfilesystem\fR|\fIsnapshot\fR
 .ad
 .sp .6
 .RS 4n
-Displays space consumed by, and quotas on, each user in the specified filesystem or snapshot. This corresponds to the \fBuserused@\fR\fIuser\fR and \fBuserquota@\fR\fIuser\fR properties.
+Displays space consumed by, and quotas on, each user in the specified
+filesystem or snapshot. This corresponds to the \fBuserused@\fR\fIuser\fR and
+\fBuserquota@\fR\fIuser\fR properties.
 .sp
 .ne 2
 .mk
@@ -2048,7 +2072,7 @@ Do not print headers, use tab-delimited output.
 .ad
 .sp .6
 .RS 4n
-Use exact (parseable) numeric output.
+Use exact (parsable) numeric output.
 .RE
 
 .sp
@@ -2059,7 +2083,8 @@ Use exact (parseable) numeric output.
 .ad
 .sp .6
 .RS 4n
-Display only the specified fields from the following set, \fBtype,name,used,quota\fR.The default is to display all fields.
+Display only the specified fields from the following
+set: \fBtype, name, used, quota\fR. The default is to display all fields.
 .RE
 
 .sp
@@ -2070,7 +2095,9 @@ Display only the specified fields from the following set, \fBtype,name,used,quot
 .ad
 .sp .6
 .RS 4n
-Sort output by this field. The \fIs\fR and \fIS\fR flags may be specified multiple times to sort first by one field, then by another. The default is \fB-s type\fR \fB-s name\fR.
+Sort output by this field. The \fIs\fR and \fIS\fR flags may be specified
+multiple times to sort first by one field, then by another. The default is
+\fB-s type\fR \fB-s name\fR.
 .RE
 
 .sp
@@ -2092,11 +2119,10 @@ Sort by this field in reverse order. See \fB-s\fR.
 .ad
 .sp .6
 .RS 4n
-Print only the specified types from the following set, \fBall,posixuser,smbuser,posixgroup,smbgroup\fR.
-.sp
-The default is \fB-t posixuser,smbuser\fR
-.sp
-The default can be changed to include group types.
+Print only the specified types from the following
+set: \fBall, posixuser, smbuser, posixgroup, smbgroup\fR. The default
+is \fB-t posixuser,smbuser\fR. The default can be changed to include group
+types.
 .RE
 
 .sp
@@ -2107,7 +2133,14 @@ The default can be changed to include group types.
 .ad
 .sp .6
 .RS 4n
-Translate SID to POSIX ID. The POSIX ID may be ephemeral if no mapping exists. Normal POSIX interfaces (for example, \fBstat\fR(2), \fBls\fR \fB-l\fR) perform this translation, so the \fB-i\fR option allows the output from \fBzfs userspace\fR to be compared directly with those utilities. However, \fB-i\fR may lead to confusion if some files were created by an SMB user before a SMB-to-POSIX name mapping was established. In such a case, some files are owned by the SMB entity and some by the POSIX entity. However, the \fB-i\fR option will report that the POSIX entity has the total usage and quota for both.
+Translate SID to POSIX ID. The POSIX ID may be ephemeral if no mapping exists.
+Normal POSIX interfaces (for example, \fBstat\fR(2), \fBls\fR \fB-l\fR) perform
+this translation, so the \fB-i\fR option allows the output from \fBzfs
+userspace\fR to be compared directly with those utilities. However, \fB-i\fR
+may lead to confusion if some files were created by an SMB user before a
+SMB-to-POSIX name mapping was established. In such a case, some files will be owned
+by the SMB entity and some by the POSIX entity. However, the \fB-i\fR option
+will report that the POSIX entity has the total usage and quota for both.
 .RE
 
 .RE
@@ -2116,19 +2149,16 @@ Translate SID to POSIX ID. The POSIX ID may be ephemeral if no mapping exists. N
 .ne 2
 .mk
 .na
-\fB\fBzfs groupspace\fR [\fB-niHp\fR] [\fB-o\fR \fIfield\fR[,...]] [\fB-sS\fR \fIfield\fR]... [\fB-t\fR \fItype\fR [,...]] \fIfilesystem\fR | \fIsnapshot\fR\fR
+\fBzfs\fR \fBgroupspace\fR [\fB-Hinp\fR] [\fB-o\fR \fIfield\fR[,...]]
+[\fB-s\fR \fIfield\fR] ...
+[\fB-S\fR \fIfield\fR] ...
+[\fB-t\fR \fItype\fR[,...]] \fIfilesystem\fR|\fIsnapshot\fR
 .ad
 .sp .6
 .RS 4n
-Displays space consumed by, and quotas on, each group in the specified filesystem or snapshot. This subcommand is identical to \fBzfs userspace\fR, except that the default types to display are \fB-t posixgroup,smbgroup\fR.
-.sp
-.in +2
-.nf
--
-.fi
-.in -2
-.sp
-
+Displays space consumed by, and quotas on, each group in the specified
+filesystem or snapshot. This subcommand is identical to \fBzfs userspace\fR,
+except that the default types to display are \fB-t posixgroup,smbgroup\fR.
 .RE
 
 .sp
@@ -2159,7 +2189,9 @@ Mounts \fBZFS\fR file systems. Invoked automatically as part of the boot process
 .ad
 .sp .6
 .RS 4n
-An optional, comma-separated list of mount options to use temporarily for the duration of the mount. See the "Temporary Mount Point Properties" section for details.
+An optional, comma-separated list of mount options to use temporarily for the
+duration of the mount. See the "Temporary Mount Point Properties" section for
+details.
 .RE
 
 .sp
@@ -2192,7 +2224,8 @@ Report mount progress.
 .ad
 .sp .6
 .RS 4n
-Mount all available \fBZFS\fR file systems. Invoked automatically as part of the boot process. 
+Mount all available \fBZFS\fR file systems. Invoked automatically as part of
+the boot process.
 .RE
 
 .sp
@@ -2322,7 +2355,7 @@ Unshare the specified filesystem. The command can also be given a path to a \fBZ
 .ne 2
 .mk
 .na
-\fBzfs send\fR [\fB-DnPpRrv\fR] [\fB-\fR[\fBiI\fR] \fIsnapshot\fR] \fIsnapshot\fR
+\fBzfs send\fR [\fB-DnPpRv\fR] [\fB-\fR[\fBiI\fR] \fIsnapshot\fR] \fIsnapshot\fR
 .ad
 .sp .6
 .RS 4n
@@ -2355,18 +2388,6 @@ Generate a stream package that sends all intermediary snapshots from the first s
 .ne 2
 .mk
 .na
-\fB\fB-v\fR\fR
-.ad
-.sp .6
-.RS 4n
-Print verbose information about the stream package generated.  This information
-includes a per-second report of how much data has been sent.
-.RE
-
-.sp
-.ne 2
-.mk
-.na
 \fB\fB-R\fR\fR
 .ad
 .sp .6
@@ -2384,9 +2405,7 @@ If the \fB-i\fR or \fB-I\fR flags are used in conjunction with the \fB-R\fR flag
 .ad
 .sp .6
 .RS 4n
-This option will cause dedup processing to be performed on the data being written to a send stream.  Dedup processing is optional because it isn't always appropriate (some kinds of data have very little duplication) and it has significant costs:  the checksumming required to detect duplicate blocks is CPU-intensive and the data that must be maintained while the stream is being processed can occupy a very large amount of memory.
-.sp
-Duplicate blocks are detected by calculating a cryptographically strong checksum on each data block.  Blocks that have the same checksum are presumed to be identical.  The checksum type used at this time is SHA256.  However, the stream format contains a field which identifies the checksum type, permitting other checksums to be used in the future.
+Generate a deduplicated stream. Blocks which would have been sent multiple times in the send stream will only be sent once. The receiving system must also support this feature to recieve a deduplicated stream.  This flag can be used regardless of the dataset's dedup  property, but performance will be much better if the filesystem uses a dedup-capable checksum (eg.  sha256).
 .RE
 
 .sp
@@ -2397,7 +2416,41 @@ Duplicate blocks are detected by calculating a cryptographically strong checksum
 .ad
 .sp .6
 .RS 4n
-Include properties in the send stream without the -R option.
+Include the dataset's properties in the stream.  This flag is implicit when -R is specified.  The receiving system must also support this feature.
+.RE
+
+.sp
+.ne 2
+.na
+\fB\fB-n\fR\fR
+.ad
+.sp .6
+.RS 4n
+Do a dry-run ("No-op") send.  Do not generate any actual send data.  This is
+useful in conjunction with the \fB-v\fR or \fB-P\fR flags to determine what
+data will be sent.
+.RE
+
+.sp
+.ne 2
+.na
+\fB\fB-P\fR\fR
+.ad
+.sp .6
+.RS 4n
+Print machine-parsable verbose information about the stream package generated.
+.RE
+
+.sp
+.ne 2
+.mk
+.na
+\fB\fB-v\fR\fR
+.ad
+.sp .6
+.RS 4n
+Print verbose information about the stream package generated.  This information
+includes a per-second report of how much data has been sent.
 .RE
 
 The format of the stream is committed. You will be able to receive your streams on future versions of \fBZFS\fR.
@@ -2456,67 +2509,6 @@ Discard all but the last element of the sent snapshot's file system name, using 
 .sp .6
 .RS 4n
 File system that is associated with the received stream is not mounted.
-.RE
-
-.sp
-.ne 2
-.mk
-.na
-\fB\fB-D\fR\fR
-.ad
-.sp .6
-.RS 4n
-Generate a deduplicated stream.  Blocks which would have been sent multiple
-times in the send stream will only be sent once.  The receiving system must
-also support this feature to recieve a deduplicated stream.  This flag can
-be used regardless of the dataset's \fBdedup\fR property, but performance
-will be much better if the filesystem uses a dedup-capable checksum (eg.
-\fBsha256\fR).
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB-r\fR\fR
-.ad
-.sp .6
-.RS 4n
-Recursively send all descendant snapshots.  This is similar to the \fB-R\fR
-flag, but information about deleted and renamed datasets is not included, and
-property information is only included if the \fB-p\fR flag is specified.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB-p\fR\fR
-.ad
-.sp .6
-.RS 4n
-Include the dataset's properties in the stream.  This flag is implicit when
-\fB-R\fR is specified.  The receiving system must also support this feature.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB-n\fR\fR
-.ad
-.sp .6
-.RS 4n
-Do a dry-run ("No-op") send.  Do not generate any actual send data.  This is
-useful in conjunction with the \fB-v\fR or \fB-P\fR flags to determine what
-data will be sent.
-.RE
-
-.sp
-.ne 2
-.na
-\fB\fB-P\fR\fR
-.ad
-.sp .6
-.RS 4n
-Print machine-parsable verbose information about the stream package generated.
 .RE
 
 .sp

@@ -89,6 +89,7 @@ AC_CONFIG_FILES([
 	lib/libshare/Makefile
 	cmd/Makefile
 	cmd/zdb/Makefile
+	cmd/zhack/Makefile
 	cmd/zfs/Makefile
 	cmd/zinject/Makefile
 	cmd/zpool/Makefile
@@ -96,6 +97,7 @@ AC_CONFIG_FILES([
 	cmd/ztest/Makefile
 	cmd/zpios/Makefile
 	cmd/mount_zfs/Makefile
+	cmd/fsck_zfs/Makefile
 	cmd/zpool_layout/Makefile
 	cmd/zvol_id/Makefile
 	cmd/zpool_id/Makefile
