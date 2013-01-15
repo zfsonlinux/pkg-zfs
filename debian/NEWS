@@ -1,24 +1,14 @@
-zfs-linux (0.6.0.34-0ubuntu1) oneiric; urgency=low
+zfs-linux (0.6.0.92-0ubuntu1) unstable; urgency=high
 
-  * The PPA for ZFS is moving.
- 
-  The ppa:dajhorn/zfs archive is deprecated because the ZFS project
-  now has a team account at Launchpad. Use the ppa:zfs-native/stable
-  archive instead.
+  * Feature flags are enabled by default.
 
-  Please visit: https://launchpad.net/~zfs-native/
+  This means that ZoL will now create pools in a way that is
+  incompatible with Solaris. If you need Solaris compatibility,
+  then create pools like this:
 
- -- Darik Horn <dajhorn@vanadac.com>  Tue, 11 Oct 2011 19:23:58 -0500
+    # zpool create -o version=28 tank ...
 
-zfs-linux (0.6.0.7-0ubuntu2) unstable; urgency=medium
+  ZoL remains compatible with all other ZFS implementations derived
+  from Illumos.
 
-  NOTE:  The removal of the zfs or zfs-lib package by this
-         upgrade, either now or later, is expected and safe.
-
-  Please ensure that the ubuntu-zfs package is installed so
-  that the upgrade happens automatically.
-
-  This is happening so that the ZFS packages for Linux are
-  more like the packages already in Debian kFreeBSD.
-
- -- Darik Horn <dajhorn@vanadac.com>  Thu, 07 Apr 2011 13:51:23 -0500
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 14 Jan 2013 20:57:30 -0600

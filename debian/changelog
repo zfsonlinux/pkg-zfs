@@ -1,3 +1,68 @@
+zfs-linux (0.6.0.92-0ubuntu1) unstable; urgency=low
+
+  [ Matt Johnston ]
+  * Revert part of "Log I/Os longer than zio_delay_max (30s default)"
+  * Use cv_wait_io() which will will account for iowait
+
+  [ Ned Bass ]
+  * Fix gcc array subscript above bounds warning
+  * call_usermodehelper() should wait for process
+
+  [ Will Rouesnel ]
+  * Allow fake mounts to succeed on non-legacy filesystems.
+
+  [ Dominik Honnef ]
+  * Fix duplicate words in zpool.8
+
+  [ Christopher Siden ]
+  * Illumos #2619 and #2747
+  * Illumos #2762: zpool command should have better support for feature flags
+  * Illumos #3397, #3398
+  * Illumos #3189 kernel panic in test hotspare_onoffline_004_neg
+
+  [ Brian Behlendorf ]
+  * Revert "Temporarily disable the reguid test."
+  * Fix __zio_execute() asynchronous dispatch
+  * Only reduce __zio_execute() stack usage in kernel space
+  * Revert "Avoid ELOOP on auto-mounted snapshots"
+  * Report realpath() canonicalization error
+  * Add /sbin/fsck.zfs helper
+  * Only use gcc -Wunused-but-set-variable when available
+
+  [ George Wilson ]
+  * Illumos #3090 and #3102
+  * Illumos #3349: zpool upgrade -V bumps the on disk version number
+  * Illumos #3145, #3212
+
+  [ Matthew Ahrens ]
+  * Illumos #3086: unnecessarily setting DS_FLAG_INCONSISTENT on async
+  * Illumos #3104: eliminate empty bpobjs
+  * Illumos #3208 cross-endian incorrect user/group accounting
+
+  [ Steven Burgess ]
+  * 'zfs receive' man page sync'ed with Illumos
+  * 'zfs send' man page sync'ed with Illumos
+
+  [ Bart Coddens ]
+  * Illumos #2618 arc.c mistypes in the comments
+
+  [ Garrett D'Amore ]
+  * Illumos #1557 assertion failed in userland taskq_destroy()
+
+  [ Yuri Pankov ]
+  * Illumos #1377 `zpool status -D' should tell if there are no DDT entries
+  * Illumos #1884, #3028, #3048, #3049, #3060, #3061, #3093
+
+  [ Arne Jansen ]
+  * Illumos #1862 incremental zfs receive fails for sparse file > 8PB
+
+  [ Darik Horn ]
+  * Add /etc/default/zfs to the initrd.
+  * Strengthen the /etc/zfs test in the zdev hook.
+  * Add a configurable sleep timer to pre_mountroot.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 14 Jan 2013 20:34:43 -0600
+
 zfs-linux (0.6.0.91-0ubuntu1) unstable; urgency=low
 
   [ Richard Yao ]
