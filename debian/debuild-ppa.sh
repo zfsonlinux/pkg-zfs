@@ -22,8 +22,13 @@ do
 	debchange --local="~$ii" --distribution="$ii" dummy
 	sed -i -e '2,8d' debian/changelog
 
+	# Ditto for the debian/NEWS file.
+	debchange --news --local="~$ii" --distribution="$ii" dummy
+	sed -i -e '2,8d' debian/NEWS
+
 	debuild -S "$PPA_GENCHANGES"
 	git checkout debian/changelog
+	git checkout debian/NEWS
 
 	# Only do a full upload on the first build.
 	PPA_GENCHANGES='-sd'
