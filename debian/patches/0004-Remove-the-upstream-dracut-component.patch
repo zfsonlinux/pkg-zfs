@@ -39,7 +39,7 @@ index 833bee6..fac18fd 100644
  if CONFIG_KERNEL
  SUBDIRS += module
 diff --git a/configure.ac b/configure.ac
-index a1f207f..a418b51 100644
+index da40356..2e136d3 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -56,8 +56,6 @@ ZFS_AC_DEBUG_DMU_TX

@@ -16,10 +16,10 @@ Closes: dajhorn/pkg-zfs#30
  1 file changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/config/kernel.m4 b/config/kernel.m4
-index 6b2b9dc..b124a80 100644
+index 53b3077..f0a4609 100644
 --- a/config/kernel.m4
 +++ b/config/kernel.m4
-@@ -357,7 +357,10 @@ AC_DEFUN([ZFS_AC_SPL], [
+@@ -361,7 +361,10 @@ AC_DEFUN([ZFS_AC_SPL], [
  		AC_MSG_RESULT([Not found])
  		AC_MSG_ERROR([
  	*** Cannot determine the version of the spl source.

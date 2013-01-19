@@ -26,7 +26,7 @@ bundles init files according to Debian packaging policy.
  delete mode 100644 etc/init.d/zfs.redhat.in
 
 diff --git a/configure.ac b/configure.ac
-index 2b79f5f..a1f207f 100644
+index 2abd05d..da40356 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -61,7 +61,6 @@ AC_CONFIG_FILES([
