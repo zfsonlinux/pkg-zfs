@@ -1,3 +1,10 @@
+spl-linux (0.6.0.93-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Remove spl_invalidate_inodes()
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 18 Jan 2013 21:53:23 -0600
+
 spl-linux (0.6.0.92-0ubuntu1) unstable; urgency=low
 
   [ Matt Johnston ]
