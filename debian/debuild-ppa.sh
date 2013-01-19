@@ -23,8 +23,11 @@ do
 	sed -i -e '2,8d' debian/changelog
 
 	# Ditto for the debian/NEWS file.
-	debchange --news --local="~$ii" --distribution="$ii" dummy
-	sed -i -e '2,8d' debian/NEWS
+	if [ -n "$PPA_NEWS" ]
+	then
+		debchange --news --local="~$ii" --distribution="$ii" dummy
+		sed -i -e '2,8d' debian/NEWS
+	fi
 
 	debuild -S "$PPA_GENCHANGES"
 	git checkout debian/changelog
