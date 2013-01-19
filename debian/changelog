@@ -1,3 +1,25 @@
+zfs-linux (0.6.0.93-0ubuntu1) unstable; urgency=low
+
+  [ Ned Bass ]
+  * Fix quoting error in unmount command
+  * Fix false ENOENT on snapshot control dentries
+
+  [ Brian Behlendorf ]
+  * Fix 'zfs rollback' on mounted file systems
+  * Revert "Revert "Fix unlink/xattr deadlock""
+  * Use sb->s_d_op default dentry operations
+
+  [ Massimo Maggi ]
+  * Fix zpool on zvol deadlock
+
+  [ Darik Horn ]
+  * Do debian/NEWS updates in the debuild helper.
+  * Ensure that zfs diff prints unicode safely.
+  * Refresh debian/patches after upstream merge.
+  * Add PPA_NEWS test to the debuild helper.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 18 Jan 2013 22:17:35 -0600
+
 zfs-linux (0.6.0.92-0ubuntu1) unstable; urgency=low
 
   [ Matt Johnston ]
