@@ -4,8 +4,8 @@
 #
 
 PREREQ="udev"
-PREREQ_UDEV_RULES="60-zpool.rules 60-zvol.rules"
-COPY_EXEC_LIST="/lib/udev/zvol_id /lib/udev/zpool_id"
+PREREQ_UDEV_RULES="60-zpool.rules 60-zvol.rules 69-vdev.rules"
+COPY_EXEC_LIST="/lib/udev/vdev_id /lib/udev/zvol_id /lib/udev/zpool_id"
 
 # Generic result code.
 RC=0
