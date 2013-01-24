@@ -1,3 +1,17 @@
+zfs-linux (0.6.0.94-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Fix zpl_revalidate() NULL deref
+  * Add d_clear_d_op() compatibility
+
+  [ Ned Bass ]
+  * fzap_cursor_move_to_key() should drop l_rwlock
+
+  [ Darik Horn ]
+  * Add the vdev_id udev helper to the initramfs hook.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 23 Jan 2013 22:49:20 -0600
+
 zfs-linux (0.6.0.93-0ubuntu1) unstable; urgency=low
 
   [ Ned Bass ]
