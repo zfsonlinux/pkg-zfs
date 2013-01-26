@@ -1,3 +1,18 @@
+zfs-linux (0.6.0.95-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Fix zpl_revalidate() NULL deref
+  * Use dsl_dataset_snap_lookup()
+  * Add d_clear_d_op() compatibility
+  * Fix test script error codes
+  * Fix zconfig.sh partitioning error
+
+  [ Ned Bass ]
+  * vdev_id: improve keyword parsing flexibility
+  * fzap_cursor_move_to_key() should drop l_rwlock
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 26 Jan 2013 14:55:15 -0600
+
 zfs-linux (0.6.0.94-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
