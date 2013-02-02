@@ -1,3 +1,38 @@
+zfs-linux (0.6.0.96-0ubuntu1) unstable; urgency=low
+
+  [ Chris Wedgwood ]
+  * Avoid gcc -Werror=maybe-uninitialized warnings
+
+  [ Brian Behlendorf ]
+  * Use strerror() not strerror_r()
+  * Stop using /bin/ as a source in zconfig.sh
+  * Linux 2.6.26 compat, lookup_bdev()
+  * Quiet mkfs.ext2 output
+  * Remove NPTL_GUARD_WITHIN_STACK
+  * Retire zpool_id infrastructure
+  * Honor 80 character limit in 'zpool status'
+  * Add zfs_disable_dup_eviction module option
+  * Add zfs_arc_memory_throttle_disable module option
+  * ZFS 0.6.0-rc14
+
+  [ Eric Dillmann ]
+  * Illumos #3035 LZ4 compression support in ZFS and GRUB
+
+  [ Adam H. Leventhal ]
+  * Illumos #3447 improve the comment in txg.c
+
+  [ Ned Bass ]
+  * Fix rounding discrepancy in sa_find_sizes()
+  * Fix mismatch between SA header size and layout
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+  * Drop patches for DKMS error messages.
+  * Revert "Retire zpool_id infrastructure"
+  * Add vdev_id.conf files to the examples manifest.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 02 Feb 2013 17:26:57 -0600
+
 zfs-linux (0.6.0.95-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
