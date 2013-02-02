@@ -25,11 +25,11 @@ dracut-005 package that is currently published in Debian and Ubuntu.
  delete mode 100644 dracut/Makefile.am
  delete mode 100644 dracut/README.dracut.markdown
 
-diff --git a/Makefile.am b/Makefile.am
-index 833bee6..fac18fd 100644
+Index: b/Makefile.am
+===================================================================
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -5,7 +5,7 @@ include $(top_srcdir)/config/arch.am
+@@ -5,7 +5,7 @@
  
  SUBDIRS = include
  if CONFIG_USER
@@ -38,11 +38,11 @@ index 833bee6..fac18fd 100644
  endif
  if CONFIG_KERNEL
  SUBDIRS += module
-diff --git a/configure.ac b/configure.ac
-index 0fd8c4b..12cc1d0 100644
+Index: b/configure.ac
+===================================================================
 --- a/configure.ac
 +++ b/configure.ac
-@@ -56,8 +56,6 @@ ZFS_AC_DEBUG_DMU_TX
+@@ -56,8 +56,6 @@
  
  AC_CONFIG_FILES([ 
  	Makefile
@@ -51,18 +51,16 @@ index 0fd8c4b..12cc1d0 100644
  	udev/Makefile
  	udev/rules.d/Makefile
  	etc/Makefile
-diff --git a/dracut/90zfs/.gitignore b/dracut/90zfs/.gitignore
-deleted file mode 100644
-index 6f4a5ae..0000000
+Index: b/dracut/90zfs/.gitignore
+===================================================================
 --- a/dracut/90zfs/.gitignore
 +++ /dev/null
 @@ -1,3 +0,0 @@
 -module-setup.sh
 -mount-zfs.sh
 -parse-zfs.sh
-diff --git a/dracut/90zfs/Makefile.am b/dracut/90zfs/Makefile.am
-deleted file mode 100644
-index 4112061..0000000
+Index: b/dracut/90zfs/Makefile.am
+===================================================================
 --- a/dracut/90zfs/Makefile.am
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -87,68 +85,8 @@ index 4112061..0000000
 -
 -distclean-local::
 -	-$(RM) $(pkgdracut_SCRIPTS)
-diff --git a/dracut/90zfs/module-setup.sh.in b/dracut/90zfs/module-setup.sh.in
-deleted file mode 100755
-index 23ebc36..0000000
---- a/dracut/90zfs/module-setup.sh.in
-+++ /dev/null
-@@ -1,53 +0,0 @@
--#!/bin/sh
--
--check() {
--	# We depend on udev-rules being loaded
--	[ "$1" = "-d" ] && return 0
--
--	# Verify the zfs tool chain
--	which zpool >/dev/null 2>&1 || return 1
--	which zfs >/dev/null 2>&1 || return 1
--
--	return 0
--}
--
--depends() {
--	echo udev-rules
--	return 0
--}
--
--installkernel() {
--	instmods zfs
--	instmods zcommon
--	instmods znvpair
--	instmods zavl
--	instmods zunicode
--	instmods spl
--	instmods zlib_deflate
--	instmods zlib_inflate
--}
--
--install() {
--	inst_rules @udevruledir@/90-zfs.rules
--	inst_rules @udevruledir@/60-zpool.rules
--	inst_rules @udevruledir@/60-zvol.rules
--	inst @sysconfdir@/zfs/zpool.cache
--	dracut_install @sbindir@/zfs
--	dracut_install @sbindir@/zpool
--	dracut_install @udevdir@/vdev_id
--	dracut_install @udevdir@/zvol_id
--	dracut_install mount.zfs
--	dracut_install hostid
--	inst_hook cmdline 95 "$moddir/parse-zfs.sh"
--	inst_hook mount 98 "$moddir/mount-zfs.sh"
--
--	# Synchronize initramfs and system hostid
--	TMP=`mktemp`
--	AA=`hostid | cut -b 1,2`
--	BB=`hostid | cut -b 3,4`
--	CC=`hostid | cut -b 5,6`
--	DD=`hostid | cut -b 7,8`
--	printf "\x$DD\x$CC\x$BB\x$AA" >$TMP
--	inst_simple "$TMP" /etc/hostid
--	rm "$TMP"
--}
-diff --git a/dracut/90zfs/mount-zfs.sh.in b/dracut/90zfs/mount-zfs.sh.in
-deleted file mode 100755
-index 2d2afd8..0000000
+Index: b/dracut/90zfs/mount-zfs.sh.in
+===================================================================
 --- a/dracut/90zfs/mount-zfs.sh.in
 +++ /dev/null
 @@ -1,71 +0,0 @@
@@ -223,9 +161,8 @@ index 2d2afd8..0000000
 -		fi
 -		;;
 -esac
-diff --git a/dracut/90zfs/parse-zfs.sh.in b/dracut/90zfs/parse-zfs.sh.in
-deleted file mode 100755
-index 571d263..0000000
+Index: b/dracut/90zfs/parse-zfs.sh.in
+===================================================================
 --- a/dracut/90zfs/parse-zfs.sh.in
 +++ /dev/null
 @@ -1,58 +0,0 @@
@@ -287,18 +224,16 @@ index 571d263..0000000
 -	ln -s /dev/null /dev/root 2>/dev/null
 -	echo '[ -e /dev/zfs ]' > $hookdir/initqueue/finished/zfs.sh
 -fi
-diff --git a/dracut/Makefile.am b/dracut/Makefile.am
-deleted file mode 100644
-index 35b88c3..0000000
+Index: b/dracut/Makefile.am
+===================================================================
 --- a/dracut/Makefile.am
 +++ /dev/null
 @@ -1,3 +0,0 @@
 -SUBDIRS = 90zfs
 -
 -EXTRA_DIST = README.dracut.markdown
-diff --git a/dracut/README.dracut.markdown b/dracut/README.dracut.markdown
-deleted file mode 100644
-index 909273a..0000000
+Index: b/dracut/README.dracut.markdown
+===================================================================
 --- a/dracut/README.dracut.markdown
 +++ /dev/null
 @@ -1,166 +0,0 @@
@@ -468,4 +403,63 @@ index 909273a..0000000
 -should be used with extreme caution.  Note that even with this flag set, if
 -the required zpool was auto-imported by the kernel module, no additional
 -`zpool import` commands are run, so nothing is forced.
--- 
+Index: b/dracut/90zfs/module-setup.sh.in
+===================================================================
+--- a/dracut/90zfs/module-setup.sh.in
++++ /dev/null
+@@ -1,55 +0,0 @@
+-#!/bin/sh
+-
+-check() {
+-	# We depend on udev-rules being loaded
+-	[ "$1" = "-d" ] && return 0
+-
+-	# Verify the zfs tool chain
+-	which zpool >/dev/null 2>&1 || return 1
+-	which zfs >/dev/null 2>&1 || return 1
+-
+-	return 0
+-}
+-
+-depends() {
+-	echo udev-rules
+-	return 0
+-}
+-
+-installkernel() {
+-	instmods zfs
+-	instmods zcommon
+-	instmods znvpair
+-	instmods zavl
+-	instmods zunicode
+-	instmods spl
+-	instmods zlib_deflate
+-	instmods zlib_inflate
+-}
+-
+-install() {
+-	inst_rules @udevruledir@/90-zfs.rules
+-	inst_rules @udevruledir@/60-zpool.rules
+-	inst_rules @udevruledir@/60-zvol.rules
+-	inst @sysconfdir@/zfs/zdev.conf
+-	inst @sysconfdir@/zfs/zpool.cache
+-	dracut_install @sbindir@/zfs
+-	dracut_install @sbindir@/zpool
+-	dracut_install @bindir@/zpool_layout
+-	dracut_install @udevdir@/zpool_id
+-	dracut_install @udevdir@/zvol_id
+-	dracut_install mount.zfs
+-	dracut_install hostid
+-	inst_hook cmdline 95 "$moddir/parse-zfs.sh"
+-	inst_hook mount 98 "$moddir/mount-zfs.sh"
+-
+-	# Synchronize initramfs and system hostid
+-	TMP=`mktemp`
+-	AA=`hostid | cut -b 1,2`
+-	BB=`hostid | cut -b 3,4`
+-	CC=`hostid | cut -b 5,6`
+-	DD=`hostid | cut -b 7,8`
+-	printf "\x$DD\x$CC\x$BB\x$AA" >$TMP
+-	inst_simple "$TMP" /etc/hostid
+-	rm "$TMP"
+-}

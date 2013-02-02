@@ -19,11 +19,11 @@ instances of EXTRA_DIST and change dist_ to nodist_.
  udev/rules.d/Makefile.am          |    5 -----
  9 files changed, 6 insertions(+), 15 deletions(-)
 
-diff --git a/Makefile.am b/Makefile.am
-index fac18fd..7e58b83 100644
+Index: b/Makefile.am
+===================================================================
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -12,8 +12,7 @@ SUBDIRS += module
+@@ -12,8 +12,7 @@
  endif
  
  AUTOMAKE_OPTIONS = foreign
@@ -33,25 +33,25 @@ index fac18fd..7e58b83 100644
  EXTRA_DIST += META DISCLAIMER COPYRIGHT README.markdown
  EXTRA_DIST += OPENSOLARIS.LICENSE ZFS.RELEASE
  EXTRA_DIST += dkms.postinst copy-builtin
-diff --git a/cmd/vdev_id/Makefile.am b/cmd/vdev_id/Makefile.am
-index fb815fa..86d91d3 100644
+Index: b/cmd/vdev_id/Makefile.am
+===================================================================
 --- a/cmd/vdev_id/Makefile.am
 +++ b/cmd/vdev_id/Makefile.am
 @@ -1 +1 @@
 -dist_udev_SCRIPTS = vdev_id
 +nodist_udev_SCRIPTS = vdev_id
-diff --git a/etc/zfs/Makefile.am b/etc/zfs/Makefile.am
-index ff35469..6fd0d99 100644
+Index: b/etc/zfs/Makefile.am
+===================================================================
 --- a/etc/zfs/Makefile.am
 +++ b/etc/zfs/Makefile.am
-@@ -5,5 +5,3 @@ pkgsysconf_DATA = \
- 	vdev_id.conf.sas_direct.example \
- 	vdev_id.conf.sas_switch.example \
- 	vdev_id.conf.multipath.example
+@@ -9,5 +9,3 @@
+ 	zdev.conf.supermicro.example \
+ 	zdev.conf.dragon.example \
+ 	zdev.conf.x4550.example
 -
 -EXTRA_DIST = $(pkgsysconf_DATA)
-diff --git a/man/man8/Makefile.am b/man/man8/Makefile.am
-index 05ca1ce..951a54c 100644
+Index: b/man/man8/Makefile.am
+===================================================================
 --- a/man/man8/Makefile.am
 +++ b/man/man8/Makefile.am
 @@ -1,5 +1,4 @@
@@ -60,12 +60,12 @@ index 05ca1ce..951a54c 100644
  
  install-data-local:
  	$(INSTALL) -d -m 0755 "$(DESTDIR)$(mandir)/man8"
-diff --git a/scripts/Makefile.am b/scripts/Makefile.am
-index a969159..c08ca9d 100644
+Index: b/scripts/Makefile.am
+===================================================================
 --- a/scripts/Makefile.am
 +++ b/scripts/Makefile.am
 @@ -1,7 +1,7 @@
- SUBDIRS = zpool-config zpios-test zpios-profile
+ SUBDIRS = zpool-config zpool-layout zpios-test zpios-profile
  
  pkglibexecdir = $(libexecdir)/@PACKAGE@
 -dist_pkglibexec_SCRIPTS = \
@@ -73,8 +73,8 @@ index a969159..c08ca9d 100644
  	$(top_builddir)/scripts/common.sh \
  	$(top_srcdir)/scripts/zconfig.sh \
  	$(top_srcdir)/scripts/zfault.sh \
-diff --git a/scripts/zpios-profile/Makefile.am b/scripts/zpios-profile/Makefile.am
-index 403c020..4cfb343 100644
+Index: b/scripts/zpios-profile/Makefile.am
+===================================================================
 --- a/scripts/zpios-profile/Makefile.am
 +++ b/scripts/zpios-profile/Makefile.am
 @@ -1,5 +1,5 @@
@@ -84,8 +84,8 @@ index 403c020..4cfb343 100644
  	$(top_srcdir)/scripts/zpios-profile/zpios-profile-disk.sh \
  	$(top_srcdir)/scripts/zpios-profile/zpios-profile-pids.sh \
  	$(top_srcdir)/scripts/zpios-profile/zpios-profile-post.sh \
-diff --git a/scripts/zpios-test/Makefile.am b/scripts/zpios-test/Makefile.am
-index 54935b4..54336d5 100644
+Index: b/scripts/zpios-test/Makefile.am
+===================================================================
 --- a/scripts/zpios-test/Makefile.am
 +++ b/scripts/zpios-test/Makefile.am
 @@ -1,5 +1,5 @@
@@ -95,8 +95,8 @@ index 54935b4..54336d5 100644
  	$(top_srcdir)/scripts/zpios-test/16th-8192rc-4rs-1cs-4off.sh \
  	$(top_srcdir)/scripts/zpios-test/1th-16rc-4rs-1cs-4off.sh \
  	$(top_srcdir)/scripts/zpios-test/1x256th-65536rc-4rs-1cs-4off.sh \
-diff --git a/scripts/zpool-config/Makefile.am b/scripts/zpool-config/Makefile.am
-index 87f58bb..7973114 100644
+Index: b/scripts/zpool-config/Makefile.am
+===================================================================
 --- a/scripts/zpool-config/Makefile.am
 +++ b/scripts/zpool-config/Makefile.am
 @@ -1,5 +1,5 @@
@@ -106,20 +106,3 @@ index 87f58bb..7973114 100644
  	$(top_srcdir)/scripts/zpool-config/dm0-raid0.sh \
  	$(top_srcdir)/scripts/zpool-config/file-raid0.sh \
  	$(top_srcdir)/scripts/zpool-config/file-raid10.sh \
-diff --git a/udev/rules.d/Makefile.am b/udev/rules.d/Makefile.am
-index 6816add..23dd46c 100644
---- a/udev/rules.d/Makefile.am
-+++ b/udev/rules.d/Makefile.am
-@@ -3,11 +3,6 @@ udevrule_DATA = \
- 	$(top_srcdir)/udev/rules.d/60-zvol.rules \
- 	$(top_srcdir)/udev/rules.d/90-zfs.rules
- 
--EXTRA_DIST = \
--	$(top_srcdir)/udev/rules.d/69-vdev.rules.in \
--	$(top_srcdir)/udev/rules.d/60-zvol.rules.in \
--	$(top_srcdir)/udev/rules.d/90-zfs.rules.in
--
- $(udevrule_DATA):
- 	-$(SED) -e 's,@bindir\@,$(bindir),g' \
- 		-e 's,@sbindir\@,$(sbindir),g' \
--- 
