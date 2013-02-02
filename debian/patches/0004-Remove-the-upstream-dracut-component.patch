@@ -11,12 +11,12 @@ dracut-005 package that is currently published in Debian and Ubuntu.
  configure.ac                    |    2 -
  dracut/90zfs/.gitignore         |    3 -
  dracut/90zfs/Makefile.am        |   21 -----
- dracut/90zfs/module-setup.sh.in |   55 -------------
+ dracut/90zfs/module-setup.sh.in |   53 -------------
  dracut/90zfs/mount-zfs.sh.in    |   71 -----------------
  dracut/90zfs/parse-zfs.sh.in    |   58 --------------
  dracut/Makefile.am              |    3 -
  dracut/README.dracut.markdown   |  166 ---------------------------------------
- 9 files changed, 1 insertion(+), 380 deletions(-)
+ 9 files changed, 1 insertion(+), 378 deletions(-)
  delete mode 100644 dracut/90zfs/.gitignore
  delete mode 100644 dracut/90zfs/Makefile.am
  delete mode 100755 dracut/90zfs/module-setup.sh.in
@@ -39,7 +39,7 @@ index 833bee6..fac18fd 100644
  if CONFIG_KERNEL
  SUBDIRS += module
 diff --git a/configure.ac b/configure.ac
-index da40356..2e136d3 100644
+index 0fd8c4b..12cc1d0 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -56,8 +56,6 @@ ZFS_AC_DEBUG_DMU_TX
@@ -89,10 +89,10 @@ index 4112061..0000000
 -	-$(RM) $(pkgdracut_SCRIPTS)
 diff --git a/dracut/90zfs/module-setup.sh.in b/dracut/90zfs/module-setup.sh.in
 deleted file mode 100755
-index c01915e..0000000
+index 23ebc36..0000000
 --- a/dracut/90zfs/module-setup.sh.in
 +++ /dev/null
-@@ -1,55 +0,0 @@
+@@ -1,53 +0,0 @@
 -#!/bin/sh
 -
 -check() {
@@ -126,12 +126,10 @@ index c01915e..0000000
 -	inst_rules @udevruledir@/90-zfs.rules
 -	inst_rules @udevruledir@/60-zpool.rules
 -	inst_rules @udevruledir@/60-zvol.rules
--	inst @sysconfdir@/zfs/zdev.conf
 -	inst @sysconfdir@/zfs/zpool.cache
 -	dracut_install @sbindir@/zfs
 -	dracut_install @sbindir@/zpool
--	dracut_install @bindir@/zpool_layout
--	dracut_install @udevdir@/zpool_id
+-	dracut_install @udevdir@/vdev_id
 -	dracut_install @udevdir@/zvol_id
 -	dracut_install mount.zfs
 -	dracut_install hostid

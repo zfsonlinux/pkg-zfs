@@ -40,7 +40,7 @@ index 0000000..cfa1152
 +        ])
 +])
 diff --git a/config/user.m4 b/config/user.m4
-index 4fcef3d..16b8a76 100644
+index 109ebd5..6409a72 100644
 --- a/config/user.m4
 +++ b/config/user.m4
 @@ -2,6 +2,7 @@ dnl #
