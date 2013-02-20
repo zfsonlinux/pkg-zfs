@@ -12,6 +12,7 @@ Build-Depends: autotools-dev,
  libtool,
  uuid-dev,
  zlib1g-dev,
+ lsb-release
 Standards-Version: 3.9.3.1
 Vcs-Git: git://github.com/dajhorn/pkg-zfs.git
 Vcs-Browser: http://github.com/dajhorn/pkg-zfs
@@ -126,7 +127,7 @@ Package: zfs-dkms
 Section: kernel
 Architecture: linux-any
 Pre-Depends: spl-dkms (>= ${source:Upstream-Version})
-Depends: ${misc:Depends}, dkms (>> 2.1.1.2-5ubuntu1)
+Depends: ${misc:Depends}, dkms (>> 2.1.1.2-5ubuntu1), lsb-release
 Replaces: lzfs, lzfs-dkms
 Provides: lustre-backend-fs, lzfs, lzfs-dkms
 Conflicts: lzfs, lzfs-dkms
