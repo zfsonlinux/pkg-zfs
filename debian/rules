@@ -9,7 +9,7 @@ override_dh_auto_configure:
 	@# Embed the downstream version in the module.
 	@sed -e 's/^Version:.*/Version:      $(VERSION)/' -i.orig META
 
-	@# Create the makefiles and configure script.
+	@# Create the $(MAKE)files and configure script.
 	./autogen.sh
 
 	@# Build the userland, but don't build the kernel modules.
@@ -27,12 +27,12 @@ override_dh_auto_test:
 
 override_dh_auto_install:
 	@# Install the utilities.
-	make install DESTDIR='$(CURDIR)/debian/tmp'
+	$(MAKE) install DESTDIR='$(CURDIR)/debian/tmp'
 
 	@# Get a bare copy of the source code for DKMS.
 	@# This creates the $(CURDIR)/$(NAME)-$(VERSION)/ tree, which does not
 	@# contain the userland sources. NB: Remove-userland-dist-rules.patch
-	make distdir
+	$(MAKE) distdir
 
 	@# This shunt allows DKMS to install the Module.symvers and zfs_config.h
 	@# files to the ${dkms_tree} area through the POST_INSTALL directive.
