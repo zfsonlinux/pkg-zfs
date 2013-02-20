@@ -1,6 +1,1 @@
 0001-Revert-Retire-zpool_id-infrastructure.patch
-0002-Prevent-manual-builds-in-the-DKMS-source.patch
-0003-Remove-the-COPYING-file.patch
-0004-Remove-all-upstream-init.d-components.patch
-0005-Remove-the-upstream-dracut-component.patch
-0006-Remove-userland-dist-rules.patch
