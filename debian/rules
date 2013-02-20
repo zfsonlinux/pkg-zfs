@@ -5,6 +5,10 @@ NAME := $(shell awk '$$1 == "Name:" { print $$2; }' META)
 VERSION := $(shell dpkg-parsechangelog \
   | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f1)
 
+DKMSFILES := module include config Makefile.in autogen.sh dkms.conf.in \
+		zfs.release.in META zfs_config.h AUTHORS COPYRIGHT DISCLAIMER \
+		OPENSOLARIS.LICENSE
+
 %:
 	dh $@ --with dkms
 
@@ -37,15 +41,26 @@ override_dh_auto_install:
 	@# contain the userland sources. NB: Remove-userland-dist-rules.patch
 	$(MAKE) distdir
 
+	@# Install the DKMS source.
+	@# We only want the files needed to build the modules
+	mkdir -p '$(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)'
+	$(foreach file,$(DKMSFILES),mv '$(CURDIR)/$(NAME)-$(VERSION)/$(file)' '$(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)';)
+	@# Hellish awk line:
+	@#  * Deletes from configure.ac the parts not needed for building the kernel module
+	@#     * It deletes from inside AC_CONFIG_FILES([]) everything except:
+	@#        (Makefile$|include/|module/|*.release$|dkms.conf$)
+	@#  * Takes care of spaces and tabs
+	awk '/^AC_CONFIG_FILES\(\[/,/^\]\)/ { if ($$0 !~ /^(AC_CONFIG_FILES\(\[([ \t]+)?$$|\]\)([ \t]+)?$$|([ \t]+)?(include\/|module\/|Makefile([ \t]+)?$$|zfs\.release([ \t]+)?$$|dkms\.conf([ \t]+)?$$))/){next} } {print}' \
+		'$(CURDIR)/$(NAME)-$(VERSION)/configure.ac' > '$(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)/configure.ac'
+	cp '$(CURDIR)/autogen.sh' '$(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)'
+	cd '$(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)'; ./autogen.sh
+	rm -fr '$(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)/autom4te.cache'
+
 	@# This shunt allows DKMS to install the Module.symvers and zfs_config.h
 	@# files to the ${dkms_tree} area through the POST_INSTALL directive.
-	echo '#!/bin/sh'  >'$(CURDIR)/$(NAME)-$(VERSION)/cp'
-	echo 'cp "$$@"'  >>'$(CURDIR)/$(NAME)-$(VERSION)/cp'
-	chmod 755 '$(CURDIR)/$(NAME)-$(VERSION)/cp'
-
-	@# Install the DKMS source.
-	mkdir -p '$(CURDIR)/debian/tmp/usr/src/'
-	mv '$(CURDIR)/$(NAME)-$(VERSION)' '$(CURDIR)/debian/tmp/usr/src/'
+	echo '#!/bin/sh'  >'$(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)/cp'
+	echo 'cp "$$@"'  >>'$(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)/cp'
+	chmod 755 '$(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)/cp'
 
 override_dh_installinit:
 	@# Install the /etc/default/zfs options file.
