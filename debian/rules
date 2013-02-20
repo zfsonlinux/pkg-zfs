@@ -5,6 +5,9 @@ NAME := $(shell awk '$$1 == "Name:" { print $$2; }' META)
 VERSION := $(shell dpkg-parsechangelog \
   | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f1)
 
+%:
+	dh $@ --with dkms
+
 override_dh_auto_configure:
 	@# Embed the downstream version in the module.
 	@sed -e 's/^Version:.*/Version:      $(VERSION)/' -i.orig META
@@ -44,9 +47,6 @@ override_dh_auto_install:
 	mkdir -p '$(CURDIR)/debian/tmp/usr/src/'
 	mv '$(CURDIR)/$(NAME)-$(VERSION)' '$(CURDIR)/debian/tmp/usr/src/'
 
-	@# Process templates and install the dkms.conf file.
-	dh_dkms -V $(VERSION)
-
 	@# Install the /etc/default/zfs options file.
 	dh_installinit --name=zfs
 
@@ -74,6 +74,9 @@ else
 		  --no-restart-on-upgrade --no-start
 endif
 
+override_dh_dkms:
+	dh_dkms -V $(VERSION)
+
 override_dh_fixperms:
 	@# Ubuntu 10.04 LTS Lucid Lynx, et al, compatibility.
 	@# (>= debhelper-8.0.0) does this automatically.
@@ -97,5 +100,3 @@ override_dh_auto_clean:
 	dh_auto_clean
 	@if test -e META.orig; then mv META.orig META; fi
 
-%:
-	dh $@
