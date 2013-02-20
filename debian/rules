@@ -47,6 +47,7 @@ override_dh_auto_install:
 	mkdir -p '$(CURDIR)/debian/tmp/usr/src/'
 	mv '$(CURDIR)/$(NAME)-$(VERSION)' '$(CURDIR)/debian/tmp/usr/src/'
 
+override_dh_installinit:
 	@# Install the /etc/default/zfs options file.
 	dh_installinit --name=zfs
 
