@@ -62,13 +62,15 @@ endif
 
 	@# Install the /etc/init.d/zfs-share script.
 ifeq ($(LSB_DISTRIBUTOR),Debian)
-	@# Debian runs nfs-kernel-server at sysv sequence 17 01.
+	@# Debian runs nfs-kernel-server at sysv sequence 17 01,
+	@# iscsitarget at 02 01, and samba at 01 02.
 	dh_installinit --name=zfs-share \
 	  --no-restart-on-upgrade --no-start -- defaults 18 00
 else ifeq ($(LSB_DISTRIBUTOR),Ubuntu)
-	@# Ubuntu runs nfs-kernel-server at sysv sequence 20 80.
+	@# Ubuntu runs nfs-kernel-server at sysv sequence 20 80,
+	@# iscsitarget at 20 20, and samba through upstart.
 	dh_installinit --name=zfs-share \
-	  --no-restart-on-upgrade --no-start -- defaults 21 79
+	  --no-restart-on-upgrade --no-start -- defaults 21 19
 else
 		dh_installinit --name=zfs-share \
 		  --no-restart-on-upgrade --no-start
