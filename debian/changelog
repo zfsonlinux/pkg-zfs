@@ -1,3 +1,9 @@
+zfs-linux (0.6.0.98-0ubuntu2) unstable; urgency=low
+
+  * Add LSB headers for iSCSI in /etc/init.d/zfs-share
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 26 Feb 2013 13:21:57 -0600
+
 zfs-linux (0.6.0.98-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
