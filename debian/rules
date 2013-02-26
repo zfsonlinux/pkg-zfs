@@ -70,7 +70,7 @@ else ifeq ($(LSB_DISTRIBUTOR),Ubuntu)
 	@# Ubuntu runs nfs-kernel-server at sysv sequence 20 80,
 	@# iscsitarget at 20 20, and samba through upstart.
 	dh_installinit --name=zfs-share \
-	  --no-restart-on-upgrade --no-start -- defaults 21 19
+	  --no-restart-on-upgrade --no-start -- defaults 25 15
 else
 		dh_installinit --name=zfs-share \
 		  --no-restart-on-upgrade --no-start
