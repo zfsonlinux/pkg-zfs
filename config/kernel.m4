@@ -16,7 +16,6 @@ AC_DEFUN([ZFS_AC_CONFIG_KERNEL], [
 	ZFS_AC_KERNEL_INVALIDATE_BDEV_ARGS
 	ZFS_AC_KERNEL_BDEV_LOGICAL_BLOCK_SIZE
 	ZFS_AC_KERNEL_BDEV_PHYSICAL_BLOCK_SIZE
-	ZFS_AC_KERNEL_BIO_EMPTY_BARRIER
 	ZFS_AC_KERNEL_BIO_FAILFAST
 	ZFS_AC_KERNEL_BIO_FAILFAST_DTD
 	ZFS_AC_KERNEL_REQ_FAILFAST_MASK
@@ -488,7 +487,7 @@ AC_DEFUN([ZFS_LINUX_COMPILE_IFELSE], [
 	modpost_flag=''
 	test "x$enable_linux_builtin" = xyes && modpost_flag='modpost=true' # fake modpost stage
 	AS_IF(
-		[AC_TRY_COMMAND(cp conftest.c build && make [$2] -C $LINUX_OBJ EXTRA_CFLAGS="-Werror-implicit-function-declaration $EXTRA_KCFLAGS" $ARCH_UM M=$PWD/build $modpost_flag) >/dev/null && AC_TRY_COMMAND([$3])],
+		[AC_TRY_COMMAND(cp conftest.c build && make [$2] -C $LINUX_OBJ EXTRA_CFLAGS="-Werror $EXTRA_KCFLAGS" $ARCH_UM M=$PWD/build $modpost_flag) >/dev/null && AC_TRY_COMMAND([$3])],
 		[$4],
 		[_AC_MSG_LOG_CONFTEST m4_ifvaln([$5],[$5])]
 	)
