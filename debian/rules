@@ -76,6 +76,10 @@ else
 		  --no-restart-on-upgrade --no-start
 endif
 
+	@# Ensure that /etc/zfs is in the zfsutils package.
+	@# This is required until the zdev.conf conversion is complete.
+	mkdir -p '$(CURDIR)/debian/tree/zfsutils/etc/zfs/'
+
 override_dh_fixperms:
 	@# Ubuntu 10.04 LTS Lucid Lynx, et al, compatibility.
 	@# (>= debhelper-8.0.0) does this automatically.
