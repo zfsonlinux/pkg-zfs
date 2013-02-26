@@ -1,3 +1,17 @@
+spl-linux (0.6.0.98-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Fix atomic64_* autoconf checks
+  * Disable automatic log dumping
+
+  [ Richard Yao ]
+  * Fix HAVE_MUTEX_OWNER_TASK_STRUCT autotools check on PPC64
+
+  [ Darik Horn ]
+  * Delete stale debian/watch file.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 25 Feb 2013 23:06:34 -0600
+
 spl-linux (0.6.0.97-0ubuntu1) unstable; urgency=high
 
   * No changes.
