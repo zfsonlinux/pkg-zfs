@@ -1,3 +1,33 @@
+zfs-linux (0.6.0.98-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Add zpool-features(5) man page
+  * Fix 1M references in zpool-features.5
+  * Cast 'zfs bad bloc' to ULL for x86
+  * Remove unused machelf.h header
+  * Update the zfs.8 "ZFS Volumes as Swap" section
+  * Add explicit MAXNAMELEN check
+  * Fix broken RPATH in spec file
+  * Enable zfs_arc_memory_throttle_disable by default
+
+  [ Richard Yao ]
+  * Fix function relocations in libzpool
+  * Make spa.c assertions catch unsupported pre-feature flag pool versions
+
+  [ Ned Bass ]
+  * Switch KM_SLEEP to KM_PUSHPAGE
+
+  [ Etienne Dechamps ]
+  * Use -Werror for all kernel configure tests.
+  * Remove the bio_empty_barrier() check.
+
+  [ Darik Horn ]
+  * Delete stale debian/watch file.
+  * Run `zfs ushare -a` before iscsi during shutdown.
+  * Remove /etc/zfs/zdev.conf from the install list.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 26 Feb 2013 00:15:11 -0600
+
 zfs-linux (0.6.0.97-0ubuntu1) unstable; urgency=high
 
   * No changes.
