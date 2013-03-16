@@ -1,2 +1,2 @@
 version=3
-http://githubredir.debian.net/github/zfs-linux/zfs/([\d\.].*).tar.gz
+https://github.com/zfsonlinux/zfs/downloads/ .*zfs-([\d\.]+)\.tar\.gz$
