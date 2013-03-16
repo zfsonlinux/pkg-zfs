@@ -57,3 +57,4 @@ scripts/zpool-config/zpool-raid0.sh
 scripts/zpool-config/zpool-raid10.sh
 scripts/zpool-config/zpool-raidz.sh
 scripts/zpool-create.sh
+debian/examples/zfsutils/*
