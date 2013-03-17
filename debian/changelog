@@ -1,3 +1,43 @@
+zfs-linux (0.6.0.99-0ubuntu1) unstable; urgency=low
+
+  [ Tim Connors ]
+  * -x shouldn't warn about old on-disk format or unavailable features
+
+  [ Brian Behlendorf ]
+  * Leaf vdevs should not be reopened
+  * Remove wholedisk check from vdev_disk_open()
+  * Fix hot spares
+  * Replace libexecdir with datadir
+  * Fix zfs_config.h install permissions
+  * Add KMODDIR to install target
+  * Add --with-dracutdir configure option
+  * Remove ARCH packaging
+  * Retire ZFS.RELEASE file
+  * Fix zdb.8 macro warning
+
+  [ Richard Yao ]
+  * Eliminate runtime function pointer mods in autotools checks
+  * Constify structures containing function pointers
+
+  [ George Wilson ]
+  * Merge zvol.c changes from PSARC 2010/306 Read-only ZFS pools
+  * Linux 3.9 compat: Undefine GCC_VERSION
+
+  [ Eric Dillmann ]
+  * Add snapdev=[hidden|visible] dataset property
+
+  [ Ned Bass ]
+  * Refresh links to web site
+
+  [ Michael Gebetsroither ]
+  * Import ztest.1 man page.
+
+  [ Darik Horn ]
+  * Create mount.zfs, zinject, and zpios man pages.
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 16 Mar 2013 20:36:47 -0500
+
 zfs-linux (0.6.0.98-0ubuntu2) unstable; urgency=low
 
   * Add LSB headers for iSCSI in /etc/init.d/zfs-share
