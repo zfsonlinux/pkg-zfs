@@ -23,16 +23,16 @@ Index: b/Makefile.am
 ===================================================================
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -12,8 +12,7 @@
+@@ -11,8 +11,7 @@
  endif
  
  AUTOMAKE_OPTIONS = foreign
 -EXTRA_DIST  = autogen.sh zfs.spec.in zfs-modules.spec.in
 -EXTRA_DIST += config/config.awk config/rpm.am config/deb.am config/tgz.am
 +EXTRA_DIST  = config/config.awk config/rpm.am config/deb.am config/tgz.am
- EXTRA_DIST += META DISCLAIMER COPYRIGHT README.markdown
- EXTRA_DIST += OPENSOLARIS.LICENSE ZFS.RELEASE
+ EXTRA_DIST += META DISCLAIMER COPYRIGHT README.markdown OPENSOLARIS.LICENSE
  EXTRA_DIST += dkms.postinst copy-builtin
+ noinst_HEADERS = zfs_config.h zfs.release
 Index: b/cmd/vdev_id/Makefile.am
 ===================================================================
 --- a/cmd/vdev_id/Makefile.am
@@ -55,7 +55,7 @@ Index: b/man/man8/Makefile.am
 --- a/man/man8/Makefile.am
 +++ b/man/man8/Makefile.am
 @@ -1,5 +1,4 @@
- man_MANS = vdev_id.8 zdb.8 zfs.8 zpool.8 zstreamdump.8
+ man_MANS = mount.zfs.8 vdev_id.8 zdb.8 zfs.8 zinject.8 zpool.8 zstreamdump.8
 -EXTRA_DIST = $(man_MANS)
  
  install-data-local:
@@ -64,12 +64,11 @@ Index: b/scripts/Makefile.am
 ===================================================================
 --- a/scripts/Makefile.am
 +++ b/scripts/Makefile.am
-@@ -1,7 +1,7 @@
+@@ -1,6 +1,6 @@
  SUBDIRS = zpool-config zpool-layout zpios-test zpios-profile
  
- pkglibexecdir = $(libexecdir)/@PACKAGE@
--dist_pkglibexec_SCRIPTS = \
-+nodist_pkglibexec_SCRIPTS = \
+-dist_pkgdata_SCRIPTS = \
++nodist_pkgdata_SCRIPTS = \
  	$(top_builddir)/scripts/common.sh \
  	$(top_srcdir)/scripts/zconfig.sh \
  	$(top_srcdir)/scripts/zfault.sh \
@@ -78,9 +77,9 @@ Index: b/scripts/zpios-profile/Makefile.am
 --- a/scripts/zpios-profile/Makefile.am
 +++ b/scripts/zpios-profile/Makefile.am
 @@ -1,5 +1,5 @@
- pkglibexecdir = $(libexecdir)/@PACKAGE@/zpios-profile
--dist_pkglibexec_SCRIPTS = \
-+nodist_pkglibexec_SCRIPTS = \
+ pkgdataprofiledir = $(pkgdatadir)/zpios-profile
+-dist_pkgdataprofile_SCRIPTS = \
++nodist_pkgdataprofile_SCRIPTS = \
  	$(top_srcdir)/scripts/zpios-profile/zpios-profile-disk.sh \
  	$(top_srcdir)/scripts/zpios-profile/zpios-profile-pids.sh \
  	$(top_srcdir)/scripts/zpios-profile/zpios-profile-post.sh \
@@ -89,9 +88,9 @@ Index: b/scripts/zpios-test/Makefile.am
 --- a/scripts/zpios-test/Makefile.am
 +++ b/scripts/zpios-test/Makefile.am
 @@ -1,5 +1,5 @@
- pkglibexecdir = $(libexecdir)/@PACKAGE@/zpios-test
--dist_pkglibexec_SCRIPTS = \
-+nodist_pkglibexec_SCRIPTS = \
+ pkgdatatestdir = $(pkgdatadir)/zpios-test
+-dist_pkgdatatest_SCRIPTS = \
++nodist_pkgdatatest_SCRIPTS = \
  	$(top_srcdir)/scripts/zpios-test/16th-8192rc-4rs-1cs-4off.sh \
  	$(top_srcdir)/scripts/zpios-test/1th-16rc-4rs-1cs-4off.sh \
  	$(top_srcdir)/scripts/zpios-test/1x256th-65536rc-4rs-1cs-4off.sh \
@@ -100,9 +99,9 @@ Index: b/scripts/zpool-config/Makefile.am
 --- a/scripts/zpool-config/Makefile.am
 +++ b/scripts/zpool-config/Makefile.am
 @@ -1,5 +1,5 @@
- pkglibexecdir = $(libexecdir)/@PACKAGE@/zpool-config
--dist_pkglibexec_SCRIPTS = \
-+nodist_pkglibexec_SCRIPTS = \
+ pkgdataconfigdir = $(pkgdatadir)/zpool-config
+-dist_pkgdataconfig_SCRIPTS = \
++nodist_pkgdataconfig_SCRIPTS = \
  	$(top_srcdir)/scripts/zpool-config/dm0-raid0.sh \
  	$(top_srcdir)/scripts/zpool-config/file-raid0.sh \
  	$(top_srcdir)/scripts/zpool-config/file-raid10.sh \

@@ -29,7 +29,7 @@ Index: b/Makefile.am
 ===================================================================
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -5,7 +5,7 @@
+@@ -4,7 +4,7 @@
  
  SUBDIRS = include
  if CONFIG_USER
@@ -59,32 +59,6 @@ Index: b/dracut/90zfs/.gitignore
 -module-setup.sh
 -mount-zfs.sh
 -parse-zfs.sh
-Index: b/dracut/90zfs/Makefile.am
-===================================================================
---- a/dracut/90zfs/Makefile.am
-+++ /dev/null
-@@ -1,21 +0,0 @@
--pkgdracutdir = $(datadir)/dracut/modules.d/90zfs
--pkgdracut_SCRIPTS = \
--	$(top_srcdir)/dracut/90zfs/module-setup.sh \
--	$(top_srcdir)/dracut/90zfs/mount-zfs.sh \
--	$(top_srcdir)/dracut/90zfs/parse-zfs.sh
--
--EXTRA_DIST = \
--	$(top_srcdir)/dracut/90zfs/module-setup.sh.in \
--	$(top_srcdir)/dracut/90zfs/mount-zfs.sh.in \
--	$(top_srcdir)/dracut/90zfs/parse-zfs.sh.in
--
--$(pkgdracut_SCRIPTS):
--	-$(SED) -e 's,@bindir\@,$(bindir),g' \
--		-e 's,@sbindir\@,$(sbindir),g' \
--		-e 's,@udevdir\@,$(udevdir),g' \
--		-e 's,@udevruledir\@,$(udevruledir),g' \
--		-e 's,@sysconfdir\@,$(sysconfdir),g' \
--		'$@.in' >'$@'
--
--distclean-local::
--	-$(RM) $(pkgdracut_SCRIPTS)
 Index: b/dracut/90zfs/mount-zfs.sh.in
 ===================================================================
 --- a/dracut/90zfs/mount-zfs.sh.in
@@ -463,3 +437,29 @@ Index: b/dracut/90zfs/module-setup.sh.in
 -	inst_simple "$TMP" /etc/hostid
 -	rm "$TMP"
 -}
+Index: b/dracut/90zfs/Makefile.am
+===================================================================
+--- a/dracut/90zfs/Makefile.am
++++ /dev/null
+@@ -1,21 +0,0 @@
+-pkgdracutdir = $(dracutdir)/modules.d/90zfs
+-pkgdracut_SCRIPTS = \
+-	$(top_srcdir)/dracut/90zfs/module-setup.sh \
+-	$(top_srcdir)/dracut/90zfs/mount-zfs.sh \
+-	$(top_srcdir)/dracut/90zfs/parse-zfs.sh
+-
+-EXTRA_DIST = \
+-	$(top_srcdir)/dracut/90zfs/module-setup.sh.in \
+-	$(top_srcdir)/dracut/90zfs/mount-zfs.sh.in \
+-	$(top_srcdir)/dracut/90zfs/parse-zfs.sh.in
+-
+-$(pkgdracut_SCRIPTS):
+-	-$(SED) -e 's,@bindir\@,$(bindir),g' \
+-		-e 's,@sbindir\@,$(sbindir),g' \
+-		-e 's,@udevdir\@,$(udevdir),g' \
+-		-e 's,@udevruledir\@,$(udevruledir),g' \
+-		-e 's,@sysconfdir\@,$(sysconfdir),g' \
+-		'$@.in' >'$@'
+-
+-distclean-local::
+-	-$(RM) $(pkgdracut_SCRIPTS)
