@@ -1,3 +1,25 @@
+spl-linux (0.6.0.99-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Remove INSTALL
+  * Fix spl_config.h install permissions
+  * Add KMODDIR to install target
+  * Remove custom install-data-local for headers
+  * Remove ARCH packaging
+
+  [ Ned Bass ]
+  * Refresh links to web site
+
+  [ Richard Yao ]
+  * Linux 3.9 compat: Include linux/sched/rt.h
+  * Linux 3.9 compat: Do not depend on f_vfsmnt
+  * Linux 3.9 compat: vfs_getattr takes two arguments
+  * Linux 3.9 compat: set_fs_root takes const struct path *
+  * Drop support for 3 argument version of set_fs_pwd
+  * Linux 3.9 compat: Switch to hlist_for_each{,_rcu}
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 16 Mar 2013 20:14:07 -0500
+
 spl-linux (0.6.0.98-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
