@@ -1,3 +1,17 @@
+zfs-linux (0.6.0.100-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Remove COPYING
+  * Change zfs-kmod-devel install path
+  * Configure --with-spl{-obj} auto-detect cleanup
+  * Refresh RPM packaging
+  * Add metaslab_debug option
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 18 Mar 2013 19:40:36 -0500
+
 zfs-linux (0.6.0.99-0ubuntu1) unstable; urgency=low
 
   [ Tim Connors ]
