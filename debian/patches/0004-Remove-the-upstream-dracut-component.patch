@@ -31,7 +31,7 @@ Index: b/Makefile.am
 +++ b/Makefile.am
 @@ -4,7 +4,7 @@
  
- SUBDIRS = include
+ SUBDIRS = include rpm
  if CONFIG_USER
 -SUBDIRS += dracut udev etc man scripts lib cmd
 +SUBDIRS += udev etc man scripts lib cmd

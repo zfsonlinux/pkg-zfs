@@ -467,8 +467,8 @@ Index: b/configure.ac
  	scripts/zpool-config/Makefile
 +	scripts/zpool-layout/Makefile
  	scripts/common.sh
- 	zfs.spec
- 	zfs-modules.spec
+ 	rpm/Makefile
+ 	rpm/fedora/Makefile
 Index: b/dracut/90zfs/module-setup.sh.in
 ===================================================================
 --- a/dracut/90zfs/module-setup.sh.in
@@ -837,8 +837,8 @@ Index: b/scripts/Makefile.am
 -SUBDIRS = zpool-config zpios-test zpios-profile
 +SUBDIRS = zpool-config zpool-layout zpios-test zpios-profile
  
- dist_pkgdata_SCRIPTS = \
- 	$(top_builddir)/scripts/common.sh \
+ EXTRA_DIST = dkms.mkconf dkms.postinst kmodtool
+ 
 Index: b/scripts/common.sh.in
 ===================================================================
 --- a/scripts/common.sh.in
@@ -1137,23 +1137,3 @@ Index: b/zfs-script-config.sh.in
  ZTEST=${CMDDIR}/ztest/ztest
  ZPIOS=${CMDDIR}/zpios/zpios
  
-Index: b/zfs.spec.in
-===================================================================
---- a/zfs.spec.in
-+++ b/zfs.spec.in
-@@ -77,6 +77,7 @@
- %files
- %defattr(-, root, root)
- %{_sbindir}/*
-+%{_bindir}/*
- %{_libdir}/*
- %{_mandir}/man1/*
- %{_mandir}/man5/*
-@@ -85,6 +86,7 @@
- 
- %config %{_sysconfdir}/init.d/*
- %config %{_sysconfdir}/zfs/*
-+%config(noreplace) %{_sysconfdir}/zfs/zdev.conf
- 
- %doc AUTHORS COPYING COPYRIGHT DISCLAIMER
- %doc OPENSOLARIS.LICENSE README.markdown

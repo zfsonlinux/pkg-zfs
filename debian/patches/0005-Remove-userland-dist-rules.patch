@@ -23,16 +23,15 @@ Index: b/Makefile.am
 ===================================================================
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -11,8 +11,7 @@
+@@ -17,7 +17,7 @@
  endif
  
  AUTOMAKE_OPTIONS = foreign
--EXTRA_DIST  = autogen.sh zfs.spec.in zfs-modules.spec.in
--EXTRA_DIST += config/config.awk config/rpm.am config/deb.am config/tgz.am
-+EXTRA_DIST  = config/config.awk config/rpm.am config/deb.am config/tgz.am
+-EXTRA_DIST  = autogen.sh copy-builtin
++EXTRA_DIST  = 
+ EXTRA_DIST += config/config.awk config/rpm.am config/deb.am config/tgz.am
  EXTRA_DIST += META DISCLAIMER COPYRIGHT README.markdown OPENSOLARIS.LICENSE
- EXTRA_DIST += dkms.postinst copy-builtin
- noinst_HEADERS = zfs_config.h zfs.release
+ 
 Index: b/cmd/vdev_id/Makefile.am
 ===================================================================
 --- a/cmd/vdev_id/Makefile.am
@@ -64,9 +63,12 @@ Index: b/scripts/Makefile.am
 ===================================================================
 --- a/scripts/Makefile.am
 +++ b/scripts/Makefile.am
-@@ -1,6 +1,6 @@
+@@ -1,9 +1,7 @@
  SUBDIRS = zpool-config zpool-layout zpios-test zpios-profile
  
+-EXTRA_DIST = dkms.mkconf dkms.postinst kmodtool
+-
+ pkgdatadir = $(datadir)/@PACKAGE@
 -dist_pkgdata_SCRIPTS = \
 +nodist_pkgdata_SCRIPTS = \
  	$(top_builddir)/scripts/common.sh \
