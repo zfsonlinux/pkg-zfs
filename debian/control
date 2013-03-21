@@ -6,13 +6,13 @@ Build-Depends: autotools-dev,
  autoconf,
  autogen,
  automake,
- debhelper (>= 7.4),
- dkms (>> 2.1.1.2-5ubuntu1),
+ debhelper (>= 8),
+ dkms (>= 2.2.0.2),
  libselinux1-dev,
  libtool,
  uuid-dev,
  zlib1g-dev,
-Standards-Version: 3.9.3.1
+Standards-Version: 3.9.3
 Vcs-Git: git://github.com/dajhorn/pkg-zfs.git
 Vcs-Browser: http://github.com/dajhorn/pkg-zfs
 
@@ -126,7 +126,7 @@ Package: zfs-dkms
 Section: kernel
 Architecture: linux-any
 Pre-Depends: spl-dkms (>= ${source:Upstream-Version})
-Depends: ${misc:Depends}, dkms (>> 2.1.1.2-5ubuntu1)
+Depends: ${misc:Depends}, dkms (>= 2.2.0.2)
 Replaces: lzfs, lzfs-dkms
 Provides: lustre-backend-fs, lzfs, lzfs-dkms
 Conflicts: lzfs, lzfs-dkms
@@ -148,7 +148,7 @@ Description: Native ZFS filesystem kernel modules for Linux
 Package: zfs-initramfs
 Section: kernel
 Architecture: linux-any
-Depends: ${misc:Depends}, zfsutils, zfs-grub
+Depends: ${misc:Depends}, zfsutils
 Description: Native ZFS root filesystem capabilities for Linux
  This package adds ZFS to the system initramfs with a hook
  for the initramfs-tools infrastructure.
