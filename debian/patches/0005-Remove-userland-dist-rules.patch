@@ -53,10 +53,12 @@ Index: b/man/man8/Makefile.am
 ===================================================================
 --- a/man/man8/Makefile.am
 +++ b/man/man8/Makefile.am
-@@ -1,5 +1,4 @@
- man_MANS = mount.zfs.8 vdev_id.8 zdb.8 zfs.8 zinject.8 zpool.8 zstreamdump.8
--EXTRA_DIST = $(man_MANS)
+@@ -8,7 +8,5 @@
+ 	zpool.8 \
+ 	zstreamdump.8
  
+-EXTRA_DIST = $(man_MANS)
+-
  install-data-local:
  	$(INSTALL) -d -m 0755 "$(DESTDIR)$(mandir)/man8"
 Index: b/scripts/Makefile.am
