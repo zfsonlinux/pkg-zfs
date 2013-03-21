@@ -1,3 +1,10 @@
+spl-linux (0.6.0.101-0ubuntu1) unstable; urgency=low
+
+  * Create splat man page
+  * Add /usr/share/man to the installation manifest.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 20 Mar 2013 20:11:17 -0500
+
 spl-linux (0.6.0.100-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
