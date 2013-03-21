@@ -1,3 +1,15 @@
+zfs-linux (0.6.0.101-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Add zio_ddt_free()+ddt_phys_decref() error handling
+  * Add spl-dkms dependency to zfs-dkms
+
+  [ Darik Horn ]
+  * Create fsck.zfs and zhack man pages.
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 20 Mar 2013 20:22:00 -0500
+
 zfs-linux (0.6.0.100-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
