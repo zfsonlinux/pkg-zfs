@@ -1,3 +1,19 @@
+zfs-linux (0.6.0.102-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Add missing dependencies
+  * Refresh dracut module setup
+  * Remove zfs-dkms conflict with zfs-kmod
+  * Use BUILD_DEPENDS option for dkms builds
+  * Use requested kernel for dkms builds
+  * Use 'git describe' for working builds
+
+  [ Darik Horn ]
+  * Fix minor typos and update marketing copy.
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 24 Mar 2013 11:59:03 -0500
+
 zfs-linux (0.6.0.101-0ubuntu1) unstable; urgency=low
 
   [ Brian Behlendorf ]
