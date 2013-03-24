@@ -1,3 +1,15 @@
+spl-linux (0.6.0.102-0ubuntu1) unstable; urgency=low
+
+  [ Brian Behlendorf ]
+  * Remove spl-dkms conflict with spl-kmod
+  * Use requested kernel for dkms builds
+  * Use 'git describe' for working builds
+
+  [ Richard Yao ]
+  * Do not call cond_resched() in spl_slab_reclaim()
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 24 Mar 2013 11:39:01 -0500
+
 spl-linux (0.6.0.101-0ubuntu1) unstable; urgency=low
 
   * Create splat man page
