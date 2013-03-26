@@ -6,17 +6,17 @@ Build-Depends: autotools-dev,
  autoconf,
  autogen,
  automake,
- debhelper (>= 7.4),
- dkms (>> 2.1.1.2-5ubuntu1),
+ debhelper (>= 8),
+ dkms (>= 2.2.0.2),
  libtool,
-Standards-Version: 3.8.4
+Standards-Version: 3.9.3
 Homepage: http://www.zfsonlinux.org/
 Vcs-Git: git://github.com/dajhorn/pkg-spl.git
 Vcs-Browser: https://github.com/dajhorn/pkg-spl/
 
 Package: spl-dkms
 Architecture: all
-Depends: ${misc:Depends}, dkms (>> 2.1.1.2-5ubuntu1), lsb-release
+Depends: ${misc:Depends}, dkms (>= 2.2.0.2), lsb-release
 Recommends: spl
 Description: Solaris Porting Layer kernel modules for Linux
  The Solaris Porting Layer (SPL) is a Linux kernel module which provides many of
