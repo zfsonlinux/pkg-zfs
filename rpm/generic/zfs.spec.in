@@ -28,6 +28,9 @@ ExclusiveArch:  i386 i686 x86_64
 # May build but untested on ppc/ppc64
 ExcludeArch:    ppc ppc64
 
+Requires:       spl = %{version}
+Requires:       zfs-dracut = %{version}
+Requires:       zfs-test = %{version}
 Requires:       %{name}-kmod >= %{version}
 Provides:       %{name}-kmod-common = %{version}
 
@@ -128,8 +131,7 @@ find %{?buildroot}%{_libdir} -name '*.la' -exec rm -f {} \;
 %{_udevdir}/zvol_id
 %{_udevdir}/rules.d/*
 %config(noreplace) %{_sysconfdir}/%{name}
-# Systemd integration is still required.
-%exclude %{_sysconfdir}/init.d/*
+%{_sysconfdir}/init.d/*
 
 %files devel
 %{_libdir}/*.so
