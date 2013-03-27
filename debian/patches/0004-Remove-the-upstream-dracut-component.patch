@@ -377,11 +377,37 @@ Index: b/dracut/README.dracut.markdown
 -should be used with extreme caution.  Note that even with this flag set, if
 -the required zpool was auto-imported by the kernel module, no additional
 -`zpool import` commands are run, so nothing is forced.
+Index: b/dracut/90zfs/Makefile.am
+===================================================================
+--- a/dracut/90zfs/Makefile.am
++++ /dev/null
+@@ -1,21 +0,0 @@
+-pkgdracutdir = $(dracutdir)/modules.d/90zfs
+-pkgdracut_SCRIPTS = \
+-	$(top_srcdir)/dracut/90zfs/module-setup.sh \
+-	$(top_srcdir)/dracut/90zfs/mount-zfs.sh \
+-	$(top_srcdir)/dracut/90zfs/parse-zfs.sh
+-
+-EXTRA_DIST = \
+-	$(top_srcdir)/dracut/90zfs/module-setup.sh.in \
+-	$(top_srcdir)/dracut/90zfs/mount-zfs.sh.in \
+-	$(top_srcdir)/dracut/90zfs/parse-zfs.sh.in
+-
+-$(pkgdracut_SCRIPTS):
+-	-$(SED) -e 's,@bindir\@,$(bindir),g' \
+-		-e 's,@sbindir\@,$(sbindir),g' \
+-		-e 's,@udevdir\@,$(udevdir),g' \
+-		-e 's,@udevruledir\@,$(udevruledir),g' \
+-		-e 's,@sysconfdir\@,$(sysconfdir),g' \
+-		'$@.in' >'$@'
+-
+-distclean-local::
+-	-$(RM) $(pkgdracut_SCRIPTS)
 Index: b/dracut/90zfs/module-setup.sh.in
 ===================================================================
 --- a/dracut/90zfs/module-setup.sh.in
 +++ /dev/null
-@@ -1,55 +0,0 @@
+@@ -1,56 +0,0 @@
 -#!/bin/sh
 -
 -check() {
@@ -413,19 +439,20 @@ Index: b/dracut/90zfs/module-setup.sh.in
 -
 -install() {
 -	inst_rules @udevruledir@/90-zfs.rules
--	inst_rules @udevruledir@/60-zpool.rules
+-	inst_rules @udevruledir@/69-vdev.rules
 -	inst_rules @udevruledir@/60-zvol.rules
--	inst @sysconfdir@/zfs/zdev.conf
--	inst @sysconfdir@/zfs/zpool.cache
 -	dracut_install @sbindir@/zfs
 -	dracut_install @sbindir@/zpool
--	dracut_install @bindir@/zpool_layout
--	dracut_install @udevdir@/zpool_id
+-	dracut_install @udevdir@/vdev_id
 -	dracut_install @udevdir@/zvol_id
 -	dracut_install mount.zfs
 -	dracut_install hostid
 -	inst_hook cmdline 95 "$moddir/parse-zfs.sh"
 -	inst_hook mount 98 "$moddir/mount-zfs.sh"
+-
+-	if [ -e @sysconfdir@/zfs/zpool.cache ]; then
+-		inst @sysconfdir@/zfs/zpool.cache
+-	fi
 -
 -	# Synchronize initramfs and system hostid
 -	TMP=`mktemp`
@@ -437,29 +464,3 @@ Index: b/dracut/90zfs/module-setup.sh.in
 -	inst_simple "$TMP" /etc/hostid
 -	rm "$TMP"
 -}
-Index: b/dracut/90zfs/Makefile.am
-===================================================================
---- a/dracut/90zfs/Makefile.am
-+++ /dev/null
-@@ -1,21 +0,0 @@
--pkgdracutdir = $(dracutdir)/modules.d/90zfs
--pkgdracut_SCRIPTS = \
--	$(top_srcdir)/dracut/90zfs/module-setup.sh \
--	$(top_srcdir)/dracut/90zfs/mount-zfs.sh \
--	$(top_srcdir)/dracut/90zfs/parse-zfs.sh
--
--EXTRA_DIST = \
--	$(top_srcdir)/dracut/90zfs/module-setup.sh.in \
--	$(top_srcdir)/dracut/90zfs/mount-zfs.sh.in \
--	$(top_srcdir)/dracut/90zfs/parse-zfs.sh.in
--
--$(pkgdracut_SCRIPTS):
--	-$(SED) -e 's,@bindir\@,$(bindir),g' \
--		-e 's,@sbindir\@,$(sbindir),g' \
--		-e 's,@udevdir\@,$(udevdir),g' \
--		-e 's,@udevruledir\@,$(udevruledir),g' \
--		-e 's,@sysconfdir\@,$(sysconfdir),g' \
--		'$@.in' >'$@'
--
--distclean-local::
--	-$(RM) $(pkgdracut_SCRIPTS)
