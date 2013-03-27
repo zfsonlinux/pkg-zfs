@@ -1,0 +1,5 @@
+zfs-linux (0.6.1-1~quantal) quantal; urgency=low
+
+  * Initial release.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 26 Mar 2013 21:22:46 -0500
