@@ -1,7 +1,10 @@
-Native ZFS for Debian and Ubuntu. Install the pkg-spl packages first,
-and then build packages from this source repository by running:
+Native ZFS for Linux!
 
-  $ dpkg-buildpackage -us -uc
+ZFS is an advanced file system and volume manager which was originally
+developed for Solaris and is now maintained by the Illumos community.
 
-Full documentation for building, configuring, and using ZFS can be
-found at: <http://zfsonlinux.org>
+ZFS on Linux, which is also known as ZoL, is currently feature complete.  It
+includes fully functional and stable SPA, DMU, ZVOL, and ZPL layers.
+
+Full documentation for installing ZoL on your favorite Linux distribution can
+be found at: <http://zfsonlinux.org>
