@@ -1,0 +1,5 @@
+spl-linux (0.6.1-1~wheezy) wheezy; urgency=low
+
+  * Initial release.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 26 Mar 2013 21:43:49 -0500
