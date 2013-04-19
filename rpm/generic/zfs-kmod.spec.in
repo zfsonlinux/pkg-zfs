@@ -26,7 +26,7 @@ Conflicts:      %{module}-dkms
 %{?suse_version:BuildRequires: kernel-source}
 
 %if 0%{?rhel}%{?fedora}%{?suse_version}
-BuildRequires:             spl-devel-kmod = %{version}-%{release}
+BuildRequires:             spl-devel-kmod = %{version}
 %global KmodsBuildRequires spl-devel-kmod
 %global KmodsRequires      kmod-spl
 %endif
@@ -127,5 +127,5 @@ chmod u+x ${RPM_BUILD_ROOT}%{kmodinstdir_prefix}/*/extra/*/*/*
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
-* Tue Mar 12 2013 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.0-1
-- Initial kmods2 packaging.
+* Fri Mar 22 2013 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.1-1
+- First official stable release.
