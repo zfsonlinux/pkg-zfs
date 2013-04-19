@@ -451,7 +451,7 @@ Index: b/configure.ac
 ===================================================================
 --- a/configure.ac
 +++ b/configure.ac
-@@ -99,7 +99,9 @@
+@@ -100,7 +100,9 @@
  	cmd/zpios/Makefile
  	cmd/mount_zfs/Makefile
  	cmd/fsck_zfs/Makefile
@@ -461,7 +461,7 @@ Index: b/configure.ac
  	cmd/vdev_id/Makefile
  	module/Makefile
  	module/avl/Makefile
-@@ -118,6 +120,7 @@
+@@ -119,6 +121,7 @@
  	scripts/zpios-profile/Makefile
  	scripts/zpios-test/Makefile
  	scripts/zpool-config/Makefile
@@ -803,7 +803,7 @@ Index: b/lib/libzfs/libzfs_import.c
 ===================================================================
 --- a/lib/libzfs/libzfs_import.c
 +++ b/lib/libzfs/libzfs_import.c
-@@ -980,6 +980,7 @@
+@@ -974,6 +974,7 @@
  char *
  zpool_default_import_path[DEFAULT_IMPORT_PATH_SIZE] = {
  	"/dev/disk/by-vdev",	/* Custom rules, use first if they exist */
