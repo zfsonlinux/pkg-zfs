@@ -1,3 +1,41 @@
+zfs-linux (0.6.1-1~1.gbpb43e68) precise; urgency=low
+
+  ** SNAPSHOT build @b43e681d71228c7405e491daf0f9cad866211e86 **
+
+  [ Brian Behlendorf ]
+  * Tag zfs-0.6.1
+
+  [ Nick Garvey ]
+  * Correct typos in renaming example
+
+  [ Turbo Fredriksson ]
+  * Add smb_available() sanity checks
+  * Man page updates for SMB
+
+  [ Jan Engelhardt ]
+  * build: resolve orthographic and other grammatical errors
+  * build: use CPPFLAGS
+  * gitignore: anchor entries at their respective directory
+  * build: do not call boilerplate ourself
+
+  [ Brian Behlendorf ]
+  * Automake 1.10.1 compat: AM_SILENT_RULES
+  * Only require spl-devel-kmod = %{version}
+  * Replace the ZFS_AC_META perl dependency with awk
+  * Add additional dependencies for DKMS package
+
+  [ George Wilson ]
+  * Illumos #3422, #3425
+
+  [ Martin Matuska ]
+  * Allow setting a lower ashift with -o ashift
+
+  [ Darik Horn ]
+  * Update gbp.conf for Precise snapshot builds.
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 18 Apr 2013 19:20:12 -0500
+
 zfs-linux (0.6.1-1~precise) precise; urgency=low
 
   * Initial release.
