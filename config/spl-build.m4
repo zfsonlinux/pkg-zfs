@@ -33,6 +33,8 @@ AC_DEFUN([SPL_AC_CONFIG_KERNEL], [
 	SPL_AC_TASK_CURR
 	SPL_AC_CTL_UNNUMBERED
 	SPL_AC_CTL_NAME
+	SPL_AC_VMALLOC_INFO
+	SPL_AC_PDE_DATA
 	SPL_AC_FLS64
 	SPL_AC_DEVICE_CREATE
 	SPL_AC_5ARGS_DEVICE_CREATE
@@ -105,7 +107,7 @@ AC_DEFUN([SPL_AC_MODULE_SYMVERS], [
 		if ! test -f "$LINUX_OBJ/$LINUX_SYMBOLS"; then
 			AC_MSG_ERROR([
 	*** Please make sure the kernel devel package for your distribution
-	*** is installed.  If your building with a custom kernel make sure the
+	*** is installed.  If you are building with a custom kernel, make sure the
 	*** kernel is configured, built, and the '--with-linux=PATH' configure
 	*** option refers to the location of the kernel source.])
 		fi
@@ -156,7 +158,7 @@ AC_DEFUN([SPL_AC_KERNEL], [
 	if test ! -d "$kernelsrc"; then
 		AC_MSG_ERROR([
 	*** Please make sure the kernel devel package for your distribution
-	*** is installed then try again.  If that fails you can specify the
+	*** is installed and then try again.  If that fails, you can specify the
 	*** location of the kernel source with the '--with-linux=PATH' option.])
 	fi
 
@@ -229,10 +231,10 @@ AC_DEFUN([SPL_AC_CONFIG_USER], [])
 
 dnl #
 dnl # Check for rpm+rpmbuild to build RPM packages.  If these tools
-dnl # are missing it is non-fatal but you will not be able to build
+dnl # are missing, it is non-fatal, but you will not be able to build
 dnl # RPM packages and will be warned if you try too.
 dnl #
-dnl # By default the generic spec file will be used because it requires
+dnl # By default, the generic spec file will be used because it requires
 dnl # minimal dependencies.  Distribution specific spec files can be
 dnl # placed under the 'rpm/<distribution>' directory and enabled using
 dnl # the --with-spec=<distribution> configure option.
@@ -1353,6 +1355,43 @@ AC_DEFUN([SPL_AC_GET_VMALLOC_INFO],
 		AC_DEFINE(HAVE_GET_VMALLOC_INFO, 1,
 		          [get_vmalloc_info() is available])
 	], [
+		AC_MSG_RESULT(no)
+	])
+])
+
+dnl #
+dnl # 3.10 API change,
+dnl # struct vmalloc_info is now declared in linux/vmalloc.h
+dnl #
+AC_DEFUN([SPL_AC_VMALLOC_INFO], [
+	AC_MSG_CHECKING([whether struct vmalloc_info is declared])
+	SPL_LINUX_TRY_COMPILE([
+		#include <linux/vmalloc.h>
+		struct vmalloc_info { void *a; };
+	],[
+		return 0;
+	],[
+		AC_MSG_RESULT(no)
+	],[
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(HAVE_VMALLOC_INFO, 1, [yes])
+	])
+])
+
+dnl #
+dnl # 3.10 API change,
+dnl # PDE is replaced by PDE_DATA
+dnl #
+AC_DEFUN([SPL_AC_PDE_DATA], [
+	AC_MSG_CHECKING([whether PDE_DATA() is available])
+	SPL_LINUX_TRY_COMPILE_SYMBOL([
+		#include <linux/proc_fs.h>
+	], [
+		PDE_DATA(NULL);
+	], [PDE_DATA], [], [
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(HAVE_PDE_DATA, 1, [yes])
+	],[
 		AC_MSG_RESULT(no)
 	])
 ])
