@@ -56,8 +56,8 @@ Index: b/cmd/Makefile.am
 +++ b/cmd/Makefile.am
 @@ -1,2 +1,2 @@
  SUBDIRS  = zfs zpool zdb zhack zinject zstreamdump ztest zpios
--SUBDIRS += mount_zfs fsck_zfs zvol_id vdev_id
-+SUBDIRS += mount_zfs fsck_zfs zpool_layout zvol_id zpool_id vdev_id
+-SUBDIRS += mount_zfs fsck_zfs zvol_id vdev_id arcstat
++SUBDIRS += mount_zfs fsck_zfs zpool_layout zvol_id zpool_id vdev_id arcstat
 Index: b/cmd/zpool_id/Makefile.am
 ===================================================================
 --- /dev/null
@@ -451,7 +451,7 @@ Index: b/configure.ac
 ===================================================================
 --- a/configure.ac
 +++ b/configure.ac
-@@ -99,7 +99,9 @@
+@@ -100,7 +100,9 @@
  	cmd/zpios/Makefile
  	cmd/mount_zfs/Makefile
  	cmd/fsck_zfs/Makefile
@@ -459,9 +459,9 @@ Index: b/configure.ac
  	cmd/zvol_id/Makefile
 +	cmd/zpool_id/Makefile
  	cmd/vdev_id/Makefile
+ 	cmd/arcstat/Makefile
  	module/Makefile
- 	module/avl/Makefile
-@@ -118,6 +120,7 @@
+@@ -120,6 +122,7 @@
  	scripts/zpios-profile/Makefile
  	scripts/zpios-test/Makefile
  	scripts/zpool-config/Makefile
@@ -803,7 +803,7 @@ Index: b/lib/libzfs/libzfs_import.c
 ===================================================================
 --- a/lib/libzfs/libzfs_import.c
 +++ b/lib/libzfs/libzfs_import.c
-@@ -980,6 +980,7 @@
+@@ -1004,6 +1004,7 @@
  char *
  zpool_default_import_path[DEFAULT_IMPORT_PATH_SIZE] = {
  	"/dev/disk/by-vdev",	/* Custom rules, use first if they exist */

@@ -23,7 +23,7 @@ Index: b/Makefile.am
 ===================================================================
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -17,7 +17,7 @@
+@@ -20,7 +20,7 @@
  endif
  
  AUTOMAKE_OPTIONS = foreign
