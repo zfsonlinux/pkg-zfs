@@ -884,7 +884,6 @@ buf_cons(void *vbuf, void *unused, int kmflag)
 
 	bzero(buf, sizeof (arc_buf_t));
 	mutex_init(&buf->b_evict_lock, NULL, MUTEX_DEFAULT, NULL);
-	rw_init(&buf->b_data_lock, NULL, RW_DEFAULT, NULL);
 	arc_space_consume(sizeof (arc_buf_t), ARC_SPACE_HDRS);
 
 	return (0);
@@ -914,7 +913,6 @@ buf_dest(void *vbuf, void *unused)
 	arc_buf_t *buf = vbuf;
 
 	mutex_destroy(&buf->b_evict_lock);
-	rw_destroy(&buf->b_data_lock);
 	arc_space_return(sizeof (arc_buf_t), ARC_SPACE_HDRS);
 }
 
@@ -1077,7 +1075,7 @@ add_reference(arc_buf_hdr_t *ab, kmutex_t *hash_lock, void *tag)
 		ASSERT(list_link_active(&ab->b_arc_node));
 		list_remove(list, ab);
 		if (GHOST_STATE(ab->b_state)) {
-			ASSERT3U(ab->b_datacnt, ==, 0);
+			ASSERT0(ab->b_datacnt);
 			ASSERT3P(ab->b_buf, ==, NULL);
 			delta = ab->b_size;
 		}
@@ -1644,7 +1642,7 @@ int
 arc_buf_remove_ref(arc_buf_t *buf, void* tag)
 {
 	arc_buf_hdr_t *hdr = buf->b_hdr;
-	kmutex_t *hash_lock = HDR_LOCK(hdr);
+	kmutex_t *hash_lock = NULL;
 	int no_callback = (buf->b_efunc == NULL);
 
 	if (hdr->b_state == arc_anon) {
@@ -1653,6 +1651,7 @@ arc_buf_remove_ref(arc_buf_t *buf, void* tag)
 		return (no_callback);
 	}
 
+	hash_lock = HDR_LOCK(hdr);
 	mutex_enter(hash_lock);
 	hdr = buf->b_hdr;
 	ASSERT3P(hash_lock, ==, HDR_LOCK(hdr));
@@ -1772,7 +1771,7 @@ arc_evict(arc_state_t *state, uint64_t spa, int64_t bytes, boolean_t recycle,
 		hash_lock = HDR_LOCK(ab);
 		have_lock = MUTEX_HELD(hash_lock);
 		if (have_lock || mutex_tryenter(hash_lock)) {
-			ASSERT3U(refcount_count(&ab->b_refcnt), ==, 0);
+			ASSERT0(refcount_count(&ab->b_refcnt));
 			ASSERT(ab->b_datacnt > 0);
 			while (ab->b_buf) {
 				arc_buf_t *buf = ab->b_buf;
@@ -2718,7 +2717,7 @@ arc_access(arc_buf_hdr_t *buf, kmutex_t *hash_lock)
 			 * This is a prefetch access...
 			 * move this block back to the MRU state.
 			 */
-			ASSERT3U(refcount_count(&buf->b_refcnt), ==, 0);
+			ASSERT0(refcount_count(&buf->b_refcnt));
 			new_state = arc_mru;
 		}
 
@@ -2907,42 +2906,11 @@ arc_read_done(zio_t *zio)
  *
  * arc_read_done() will invoke all the requested "done" functions
  * for readers of this block.
- *
- * Normal callers should use arc_read and pass the arc buffer and offset
- * for the bp.  But if you know you don't need locking, you can use
- * arc_read_bp.
  */
 int
-arc_read(zio_t *pio, spa_t *spa, const blkptr_t *bp, arc_buf_t *pbuf,
-    arc_done_func_t *done, void *private, int priority, int zio_flags,
-    uint32_t *arc_flags, const zbookmark_t *zb)
-{
-	int err;
-
-	if (pbuf == NULL) {
-		/*
-		 * XXX This happens from traverse callback funcs, for
-		 * the objset_phys_t block.
-		 */
-		return (arc_read_nolock(pio, spa, bp, done, private, priority,
-		    zio_flags, arc_flags, zb));
-	}
-
-	ASSERT(!refcount_is_zero(&pbuf->b_hdr->b_refcnt));
-	ASSERT3U((char *)bp - (char *)pbuf->b_data, <, pbuf->b_hdr->b_size);
-	rw_enter(&pbuf->b_data_lock, RW_READER);
-
-	err = arc_read_nolock(pio, spa, bp, done, private, priority,
-	    zio_flags, arc_flags, zb);
-	rw_exit(&pbuf->b_data_lock);
-
-	return (err);
-}
-
-int
-arc_read_nolock(zio_t *pio, spa_t *spa, const blkptr_t *bp,
-    arc_done_func_t *done, void *private, int priority, int zio_flags,
-    uint32_t *arc_flags, const zbookmark_t *zb)
+arc_read(zio_t *pio, spa_t *spa, const blkptr_t *bp, arc_done_func_t *done,
+    void *private, int priority, int zio_flags, uint32_t *arc_flags,
+    const zbookmark_t *zb)
 {
 	arc_buf_hdr_t *hdr;
 	arc_buf_t *buf = NULL;
@@ -3061,7 +3029,7 @@ top:
 			/* this block is in the ghost cache */
 			ASSERT(GHOST_STATE(hdr->b_state));
 			ASSERT(!HDR_IO_IN_PROGRESS(hdr));
-			ASSERT3U(refcount_count(&hdr->b_refcnt), ==, 0);
+			ASSERT0(refcount_count(&hdr->b_refcnt));
 			ASSERT(hdr->b_buf == NULL);
 
 			/* if this is a prefetch, we don't have a reference */
@@ -3238,6 +3206,34 @@ arc_set_callback(arc_buf_t *buf, arc_evict_func_t *func, void *private)
 
 	buf->b_efunc = func;
 	buf->b_private = private;
+}
+
+/*
+ * Notify the arc that a block was freed, and thus will never be used again.
+ */
+void
+arc_freed(spa_t *spa, const blkptr_t *bp)
+{
+	arc_buf_hdr_t *hdr;
+	kmutex_t *hash_lock;
+	uint64_t guid = spa_load_guid(spa);
+
+	hdr = buf_hash_find(guid, BP_IDENTITY(bp), BP_PHYSICAL_BIRTH(bp),
+	    &hash_lock);
+	if (hdr == NULL)
+		return;
+	if (HDR_BUF_AVAILABLE(hdr)) {
+		arc_buf_t *buf = hdr->b_buf;
+		add_reference(hdr, hash_lock, FTAG);
+		hdr->b_flags &= ~ARC_BUF_AVAILABLE;
+		mutex_exit(hash_lock);
+
+		arc_release(buf, FTAG);
+		(void) arc_buf_remove_ref(buf, FTAG);
+	} else {
+		mutex_exit(hash_lock);
+	}
+
 }
 
 /*
@@ -3450,19 +3446,6 @@ arc_release(arc_buf_t *buf, void *tag)
 		ARCSTAT_INCR(arcstat_l2_size, -buf_size);
 		mutex_exit(&l2arc_buflist_mtx);
 	}
-}
-
-/*
- * Release this buffer.  If it does not match the provided BP, fill it
- * with that block's contents.
- */
-/* ARGSUSED */
-int
-arc_release_bp(arc_buf_t *buf, void *tag, blkptr_t *bp, spa_t *spa,
-    zbookmark_t *zb)
-{
-	arc_release(buf, tag);
-	return (0);
 }
 
 int
@@ -4723,7 +4706,7 @@ l2arc_write_buffers(spa_t *spa, l2arc_dev_t *dev, uint64_t target_sz)
 	mutex_exit(&l2arc_buflist_mtx);
 
 	if (pio == NULL) {
-		ASSERT3U(write_sz, ==, 0);
+		ASSERT0(write_sz);
 		kmem_cache_free(hdr_cache, head);
 		return (0);
 	}

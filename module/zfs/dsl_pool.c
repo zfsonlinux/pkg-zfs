@@ -143,7 +143,7 @@ dsl_pool_txg_history_add(dsl_pool_t *dp, uint64_t txg)
 {
 	txg_history_t *th, *rm;
 
-	th = kmem_zalloc(sizeof(txg_history_t), KM_SLEEP);
+	th = kmem_zalloc(sizeof(txg_history_t), KM_PUSHPAGE);
 	mutex_init(&th->th_lock, NULL, MUTEX_DEFAULT, NULL);
 	th->th_kstat.txg = txg;
 	th->th_kstat.state = TXG_STATE_OPEN;
@@ -405,7 +405,7 @@ dsl_pool_create(spa_t *spa, nvlist_t *zplprops, uint64_t txg)
 	/* create the pool directory */
 	err = zap_create_claim(dp->dp_meta_objset, DMU_POOL_DIRECTORY_OBJECT,
 	    DMU_OT_OBJECT_DIRECTORY, DMU_OT_NONE, 0, tx);
-	ASSERT3U(err, ==, 0);
+	ASSERT0(err);
 
 	/* Initialize scan structures */
 	VERIFY3U(0, ==, dsl_scan_init(dp, txg));

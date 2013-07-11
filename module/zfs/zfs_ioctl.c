@@ -1268,9 +1268,6 @@ zfs_ioc_pool_import(zfs_cmd_t *zc)
 			error = err;
 	}
 
-	if (error == 0)
-		zvol_create_minors(zc->zc_name);
-
 	nvlist_free(config);
 
 	if (props)
@@ -1779,7 +1776,7 @@ zfs_ioc_objset_stats_impl(zfs_cmd_t *zc, objset_t *os)
 			error = zvol_get_stats(os, nv);
 			if (error == EIO)
 				return (error);
-			VERIFY3S(error, ==, 0);
+			VERIFY0(error);
 		}
 		if (error == 0)
 			error = put_nvlist(zc, nv);
@@ -5136,8 +5133,6 @@ zfsdev_state_init(struct file *filp)
                 return (ENXIO);
 
 	zs = kmem_zalloc( sizeof(zfsdev_state_t), KM_SLEEP);
-	if (zs == NULL)
-		return (ENOMEM);
 
 	zs->zs_file = filp;
 	zs->zs_minor = minor;

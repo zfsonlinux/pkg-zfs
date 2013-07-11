@@ -34,9 +34,10 @@ AC_INIT
 AC_LANG(C)
 ZFS_AC_META
 AC_CONFIG_AUX_DIR([config])
+AC_CONFIG_MACRO_DIR([config])
 AC_CANONICAL_SYSTEM
 AM_MAINTAINER_MODE
-AM_SILENT_RULES
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AM_INIT_AUTOMAKE([$ZFS_META_NAME], [$ZFS_META_VERSION])
 AC_CONFIG_HEADERS([zfs_config.h], [
 	(mv zfs_config.h zfs_config.h.tmp &&
@@ -101,6 +102,7 @@ AC_CONFIG_FILES([
 	cmd/fsck_zfs/Makefile
 	cmd/zvol_id/Makefile
 	cmd/vdev_id/Makefile
+	cmd/arcstat/Makefile
 	module/Makefile
 	module/avl/Makefile
 	module/nvpair/Makefile
