@@ -13,12 +13,11 @@ override_dh_auto_configure:
 	@sed -e 's/^Version:.*/Version:      $(VERSION)/' -i.orig META
 
 	@# Build the userland, but don't build the kernel modules.
-	./configure \
-	  --prefix='' \
-	  --libexecdir=/usr/libexec \
+	dh_auto_configure -- \
+	  --bindir=/bin \
+	  --sbindir=/sbin \
 	  --libdir=/lib \
-	  --includedir=/usr/include \
-	  --datarootdir=/usr/share \
+	  --with-udevdir=/lib/udev \
 	  --with-config=user
 
 override_dh_auto_test:
