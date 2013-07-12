@@ -4,12 +4,12 @@ NAME := $(shell awk '$$1 == "Name:" { print $$2; }' META)
 VERSION := $(shell dpkg-parsechangelog \
   | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f1)
 
+%:
+	dh $@ --with autoreconf
+
 override_dh_auto_configure:
 	@# Embed the downstream version in the module.
 	@sed -e 's/^Version:.*/Version:      $(VERSION)/' -i.orig META
-
-	@# Create the makefiles and configure script.
-	./autogen.sh
 
 	@# Build the userland, but don't build the kernel modules.
 	./configure --prefix=/usr --with-config=user
@@ -50,6 +50,3 @@ override_dh_auto_install:
 override_dh_auto_clean:
 	dh_auto_clean
 	@if test -e META.orig; then mv META.orig META; fi
-
-%:
-	dh $@
