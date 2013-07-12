@@ -23,12 +23,12 @@ Index: b/Makefile.am
 ===================================================================
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -17,7 +17,7 @@
+@@ -20,7 +20,7 @@
  endif
  
  AUTOMAKE_OPTIONS = foreign
 -EXTRA_DIST  = autogen.sh copy-builtin
-+EXTRA_DIST  = 
++EXTRA_DIST  =
  EXTRA_DIST += config/config.awk config/rpm.am config/deb.am config/tgz.am
  EXTRA_DIST += META DISCLAIMER COPYRIGHT README.markdown OPENSOLARIS.LICENSE
  
@@ -43,11 +43,10 @@ Index: b/etc/zfs/Makefile.am
 ===================================================================
 --- a/etc/zfs/Makefile.am
 +++ b/etc/zfs/Makefile.am
-@@ -9,5 +9,3 @@
- 	zdev.conf.supermicro.example \
- 	zdev.conf.dragon.example \
- 	zdev.conf.x4550.example
--
+@@ -6,4 +6,3 @@
+ 	vdev_id.conf.sas_switch.example \
+ 	vdev_id.conf.multipath.example
+ 
 -EXTRA_DIST = $(pkgsysconf_DATA)
 Index: b/man/man8/Makefile.am
 ===================================================================
@@ -66,7 +65,7 @@ Index: b/scripts/Makefile.am
 --- a/scripts/Makefile.am
 +++ b/scripts/Makefile.am
 @@ -1,9 +1,7 @@
- SUBDIRS = zpool-config zpool-layout zpios-test zpios-profile
+ SUBDIRS = zpool-config zpios-test zpios-profile
  
 -EXTRA_DIST = dkms.mkconf dkms.postinst kmodtool
 -
