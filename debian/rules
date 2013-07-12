@@ -12,7 +12,7 @@ override_dh_auto_configure:
 	@sed -e 's/^Version:.*/Version:      $(VERSION)/' -i.orig META
 
 	@# Build the userland, but don't build the kernel modules.
-	./configure --prefix=/usr --with-config=user
+	dh_auto_configure -- --with-config=user
 	
 override_dh_auto_test:
 	# scripts/check.sh tries insmod and rmmod, so it cannot
