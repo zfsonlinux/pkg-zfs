@@ -1,3 +1,17 @@
+spl-linux (0.6.1-2~saucy~2.gbpd297e0) saucy; urgency=low
+
+  ** SNAPSHOT build @d297e06609431bb73e6259a38b281b0ff5d9c058 **
+
+  [ Brian Behlendorf ]
+  * Improve build instructions
+
+  [ Darik Horn ]
+  * Use dh_autoreconf.
+  * Use dh_auto_configure.
+  * Revert "Set extend-diff-ignore='.*' in the debian/source/options file"
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 11 Jul 2013 23:38:45 -0500
+
 spl-linux (0.6.1-2~saucy~1.gbp2c8a81) saucy; urgency=low
 
   ** SNAPSHOT build @2c8a81627017bc5a8ac1742cf45a06a0e3943b88 **
