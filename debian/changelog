@@ -1,3 +1,18 @@
+spl-linux (0.6.1-2~saucy~3.gbpb960c9) saucy; urgency=low
+
+  ** SNAPSHOT build @b960c9117a90c4feec12c597c72c5432c1083b03 **
+
+  [ Darik Horn ]
+  * Update changelog for 0.6.1-2~saucy~2.gbpd297e0 release
+
+  [ James H ]
+  * Modify gethrestime to use current_kernel_time()
+
+  [ Darik Horn ]
+  * Use the deb revision instead of the META release.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 15 Jul 2013 15:43:10 -0500
+
 spl-linux (0.6.1-2~saucy~2.gbpd297e0) saucy; urgency=low
 
   ** SNAPSHOT build @d297e06609431bb73e6259a38b281b0ff5d9c058 **
