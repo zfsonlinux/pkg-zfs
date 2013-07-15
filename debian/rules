@@ -3,13 +3,18 @@
 NAME := $(shell awk '$$1 == "Name:" { print $$2; }' META)
 VERSION := $(shell dpkg-parsechangelog \
   | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f1)
+REVISION := $(shell dpkg-parsechangelog \
+  | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f2-)
 
 %:
 	dh $@ --with autoreconf
 
 override_dh_auto_configure:
 	@# Embed the downstream version in the module.
-	@sed -e 's/^Version:.*/Version:      $(VERSION)/' -i.orig META
+	@sed \
+	  -e 's/^Version:.*/Version:      $(VERSION)/' \
+	  -e 's/^Release:.*/Release:      $(REVISION)/' \
+	  -i.orig META
 
 	@# Build the userland, but don't build the kernel modules.
 	dh_auto_configure -- --with-config=user
