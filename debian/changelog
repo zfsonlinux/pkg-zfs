@@ -1,3 +1,19 @@
+zfs-linux (0.6.1-2~saucy~2.gbp5075b3) saucy; urgency=low
+
+  ** SNAPSHOT build @5075b37c16fb3ebe58ed8167c5f6eabc958ccb15 **
+
+  [ Prakash Surya ]
+  * Add new kstat for monitoring time in dmu_tx_assign
+
+  [ Brian Behlendorf ]
+  * Improve N-way mirror performance
+  * Add dkms_version conditional
+  * Fix zfsctl_expire_snapshot() deadlock
+  * Fix read-only pool hang on unmount
+  * Fix arc_adapt() spinning in iterate_supers_type()
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 18 Jul 2013 22:24:25 -0500
+
 zfs-linux (0.6.1-2~saucy~1.gbpc6a1fd) saucy; urgency=low
 
   ** SNAPSHOT build @c6a1fdfcb4b76b68239b1224a3730a681ae65ae7 **
