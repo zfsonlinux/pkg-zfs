@@ -57,9 +57,12 @@ ZFS_AC_DEBUG_DMU_TX
 
 AC_CONFIG_FILES([ 
 	Makefile
+	dracut/Makefile
+	dracut/90zfs/Makefile
 	udev/Makefile
 	udev/rules.d/Makefile
 	etc/Makefile
+	etc/init.d/Makefile
 	etc/zfs/Makefile
 	man/Makefile
 	man/man1/Makefile
@@ -118,6 +121,15 @@ AC_CONFIG_FILES([
 	scripts/zpios-test/Makefile
 	scripts/zpool-config/Makefile
 	scripts/common.sh
+	rpm/Makefile
+	rpm/fedora/Makefile
+	rpm/fedora/zfs.spec
+	rpm/fedora/zfs-kmod.spec
+	rpm/fedora/zfs-dkms.spec
+	rpm/generic/Makefile
+	rpm/generic/zfs.spec
+	rpm/generic/zfs-kmod.spec
+	rpm/generic/zfs-dkms.spec
 	zfs-script-config.sh
 	zfs.release
 ])

@@ -6,3 +6,4 @@ pkgsysconf_DATA = \
 	vdev_id.conf.sas_switch.example \
 	vdev_id.conf.multipath.example
 
+EXTRA_DIST = $(pkgsysconf_DATA)

@@ -8,5 +8,7 @@ man_MANS = \
 	zpool.8 \
 	zstreamdump.8
 
+EXTRA_DIST = $(man_MANS)
+
 install-data-local:
 	$(INSTALL) -d -m 0755 "$(DESTDIR)$(mandir)/man8"
