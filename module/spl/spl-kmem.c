@@ -1368,7 +1368,8 @@ spl_slab_size(spl_kmem_cache_t *skc, uint32_t *objs, uint32_t *size)
 
 	if (skc->skc_flags & KMC_OFFSLAB) {
 		*objs = SPL_KMEM_CACHE_OBJ_PER_SLAB;
-		*size = sizeof(spl_kmem_slab_t);
+		*size = P2ROUNDUP(sizeof(spl_kmem_slab_t), PAGE_SIZE);
+		SRETURN(0);
 	} else {
 		sks_size = spl_sks_size(skc);
 		obj_size = spl_obj_size(skc);
@@ -2122,7 +2123,15 @@ __spl_kmem_cache_generic_shrinker(struct shrinker *shrink,
 	}
 	up_read(&spl_kmem_cache_sem);
 
-	return (unused * sysctl_vfs_cache_pressure) / 100;
+	/*
+	 * After performing reclaim always return -1 to indicate we cannot
+	 * perform additional reclaim.  This prevents shrink_slabs() from
+	 * repeatedly invoking this generic shrinker and potentially spinning.
+	 */
+	if (sc->nr_to_scan)
+		return -1;
+
+	return unused;
 }
 
 SPL_SHRINKER_CALLBACK_WRAPPER(spl_kmem_cache_generic_shrinker);
@@ -2187,12 +2196,12 @@ spl_kmem_cache_reap_now(spl_kmem_cache_t *skc, int count)
 	/* Reclaim from the magazine then the slabs ignoring age and delay. */
 	if (spl_kmem_cache_expire & KMC_EXPIRE_MEM) {
 		spl_kmem_magazine_t *skm;
-		int i;
+		unsigned long irq_flags;
 
-		for_each_online_cpu(i) {
-			skm = skc->skc_mag[i];
-			spl_cache_flush(skc, skm, skm->skm_avail);
-		}
+		local_irq_save(irq_flags);
+		skm = skc->skc_mag[smp_processor_id()];
+		spl_cache_flush(skc, skm, skm->skm_avail);
+		local_irq_restore(irq_flags);
 	}
 
 	spl_slab_reclaim(skc, count, 1);
