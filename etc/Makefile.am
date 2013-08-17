@@ -1,1 +1,1 @@
-SUBDIRS = init.d zfs
+SUBDIRS = zfs

@@ -1,1 +1,1 @@
-dist_udev_SCRIPTS = vdev_id
+nodist_udev_SCRIPTS = vdev_id
