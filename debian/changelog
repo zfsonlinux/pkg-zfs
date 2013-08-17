@@ -1,3 +1,23 @@
+spl-linux (0.6.1-2~saucy~4.gbpf9ef63) saucy; urgency=low
+
+  ** SNAPSHOT build @f9ef63f4cc0ae08261bc97d75c2c28220f51e834 **
+
+  [ Brian Behlendorf ]
+  * Return -1 for generic kmem cache shrinker
+  * Fix KMC_OFFSLAB type caches
+  * Add kmod repo integration
+
+  [ Richard Yao ]
+  * Linux 3.11 compat: Replace num_physpages with totalram_pages
+  * Fix race in spl_kmem_cache_reap_now()
+  * PaX/GrSecurity Linux 3.8.y compat: Use __no_const on struct ctl_table
+  * Linux 3.8 compat: Use kuid_t/kgid_t when required
+
+  [ Darik Horn ]
+  * Demote the source format and delete the rpm tree.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 16 Aug 2013 20:46:53 -0500
+
 spl-linux (0.6.1-2~saucy~3.gbpb960c9) saucy; urgency=low
 
   ** SNAPSHOT build @b960c9117a90c4feec12c597c72c5432c1083b03 **
