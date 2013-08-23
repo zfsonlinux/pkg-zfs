@@ -403,9 +403,9 @@ kmem_del_init(spinlock_t *lock, struct hlist_head *table, int bits, const void *
 
 	spin_lock_irqsave(lock, flags);
 
-	head = &table[hash_ptr(addr, bits)];
-	hlist_for_each_rcu(node, head) {
-		p = list_entry_rcu(node, struct kmem_debug, kd_hlist);
+	head = &table[hash_ptr((void *)addr, bits)];
+	hlist_for_each(node, head) {
+		p = list_entry(node, struct kmem_debug, kd_hlist);
 		if (p->kd_addr == addr) {
 			hlist_del_init(&p->kd_hlist);
 			list_del_init(&p->kd_list);
@@ -497,7 +497,7 @@ kmem_alloc_track(size_t size, int flags, const char *func, int line,
 		dptr->kd_line = line;
 
 		spin_lock_irqsave(&kmem_lock, irq_flags);
-		hlist_add_head_rcu(&dptr->kd_hlist,
+		hlist_add_head(&dptr->kd_hlist,
 		    &kmem_table[hash_ptr(ptr, KMEM_HASH_BITS)]);
 		list_add_tail(&dptr->kd_list, &kmem_list);
 		spin_unlock_irqrestore(&kmem_lock, irq_flags);
@@ -538,10 +538,10 @@ kmem_free_track(const void *ptr, size_t size)
 
 	kfree(dptr->kd_func);
 
-	memset(dptr, 0x5a, sizeof(kmem_debug_t));
+	memset((void *)dptr, 0x5a, sizeof(kmem_debug_t));
 	kfree(dptr);
 
-	memset(ptr, 0x5a, size);
+	memset((void *)ptr, 0x5a, size);
 	kfree(ptr);
 
 	SEXIT;
@@ -612,7 +612,7 @@ vmem_alloc_track(size_t size, int flags, const char *func, int line)
 		dptr->kd_line = line;
 
 		spin_lock_irqsave(&vmem_lock, irq_flags);
-		hlist_add_head_rcu(&dptr->kd_hlist,
+		hlist_add_head(&dptr->kd_hlist,
 		    &vmem_table[hash_ptr(ptr, VMEM_HASH_BITS)]);
 		list_add_tail(&dptr->kd_list, &vmem_list);
 		spin_unlock_irqrestore(&vmem_lock, irq_flags);
@@ -653,10 +653,10 @@ vmem_free_track(const void *ptr, size_t size)
 
 	kfree(dptr->kd_func);
 
-	memset(dptr, 0x5a, sizeof(kmem_debug_t));
+	memset((void *)dptr, 0x5a, sizeof(kmem_debug_t));
 	kfree(dptr);
 
-	memset(ptr, 0x5a, size);
+	memset((void *)ptr, 0x5a, size);
 	vfree(ptr);
 
 	SEXIT;
@@ -1368,7 +1368,8 @@ spl_slab_size(spl_kmem_cache_t *skc, uint32_t *objs, uint32_t *size)
 
 	if (skc->skc_flags & KMC_OFFSLAB) {
 		*objs = SPL_KMEM_CACHE_OBJ_PER_SLAB;
-		*size = sizeof(spl_kmem_slab_t);
+		*size = P2ROUNDUP(sizeof(spl_kmem_slab_t), PAGE_SIZE);
+		SRETURN(0);
 	} else {
 		sks_size = spl_sks_size(skc);
 		obj_size = spl_obj_size(skc);
@@ -2122,7 +2123,15 @@ __spl_kmem_cache_generic_shrinker(struct shrinker *shrink,
 	}
 	up_read(&spl_kmem_cache_sem);
 
-	return (unused * sysctl_vfs_cache_pressure) / 100;
+	/*
+	 * After performing reclaim always return -1 to indicate we cannot
+	 * perform additional reclaim.  This prevents shrink_slabs() from
+	 * repeatedly invoking this generic shrinker and potentially spinning.
+	 */
+	if (sc->nr_to_scan)
+		return -1;
+
+	return unused;
 }
 
 SPL_SHRINKER_CALLBACK_WRAPPER(spl_kmem_cache_generic_shrinker);
@@ -2187,12 +2196,12 @@ spl_kmem_cache_reap_now(spl_kmem_cache_t *skc, int count)
 	/* Reclaim from the magazine then the slabs ignoring age and delay. */
 	if (spl_kmem_cache_expire & KMC_EXPIRE_MEM) {
 		spl_kmem_magazine_t *skm;
-		int i;
+		unsigned long irq_flags;
 
-		for_each_online_cpu(i) {
-			skm = skc->skc_mag[i];
-			spl_cache_flush(skc, skm, skm->skm_avail);
-		}
+		local_irq_save(irq_flags);
+		skm = skc->skc_mag[smp_processor_id()];
+		spl_cache_flush(skc, skm, skm->skm_avail);
+		local_irq_restore(irq_flags);
 	}
 
 	spl_slab_reclaim(skc, count, 1);
@@ -2418,13 +2427,6 @@ spl_kmem_init(void)
 	int rc = 0;
 	SENTRY;
 
-	init_rwsem(&spl_kmem_cache_sem);
-	INIT_LIST_HEAD(&spl_kmem_cache_list);
-	spl_kmem_cache_taskq = taskq_create("spl_kmem_cache",
-	    1, maxclsyspri, 1, 32, TASKQ_PREPOPULATE);
-
-	spl_register_shrinker(&spl_kmem_cache_shrinker);
-
 #ifdef DEBUG_KMEM
 	kmem_alloc_used_set(0);
 	vmem_alloc_used_set(0);
@@ -2432,12 +2434,25 @@ spl_kmem_init(void)
 	spl_kmem_init_tracking(&kmem_list, &kmem_lock, KMEM_TABLE_SIZE);
 	spl_kmem_init_tracking(&vmem_list, &vmem_lock, VMEM_TABLE_SIZE);
 #endif
+
+	init_rwsem(&spl_kmem_cache_sem);
+	INIT_LIST_HEAD(&spl_kmem_cache_list);
+	spl_kmem_cache_taskq = taskq_create("spl_kmem_cache",
+	    1, maxclsyspri, 1, 32, TASKQ_PREPOPULATE);
+
+	spl_register_shrinker(&spl_kmem_cache_shrinker);
+
 	SRETURN(rc);
 }
 
 void
 spl_kmem_fini(void)
 {
+	SENTRY;
+
+	spl_unregister_shrinker(&spl_kmem_cache_shrinker);
+	taskq_destroy(spl_kmem_cache_taskq);
+
 #ifdef DEBUG_KMEM
 	/* Display all unreclaimed memory addresses, including the
 	 * allocation size and the first few bytes of what's located
@@ -2457,10 +2472,6 @@ spl_kmem_fini(void)
 	spl_kmem_fini_tracking(&kmem_list, &kmem_lock);
 	spl_kmem_fini_tracking(&vmem_list, &vmem_lock);
 #endif /* DEBUG_KMEM */
-	SENTRY;
-
-	spl_unregister_shrinker(&spl_kmem_cache_shrinker);
-	taskq_destroy(spl_kmem_cache_taskq);
 
 	SEXIT;
 }
