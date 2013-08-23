@@ -65,6 +65,7 @@ static uint64_t spa_config_generation = 1;
  * userland pools when doing testing.
  */
 char *spa_config_path = ZPOOL_CACHE;
+int zfs_autoimport_disable = 0;
 
 /*
  * Called when the module is first loaded, this routine loads the configuration
@@ -80,6 +81,9 @@ spa_config_load(void)
 	char *pathname;
 	struct _buf *file;
 	uint64_t fsize;
+
+	if (zfs_autoimport_disable)
+		return;
 
 	/*
 	 * Open the configuration file.
@@ -221,7 +225,15 @@ spa_config_sync(spa_t *target, boolean_t removing, boolean_t postsysevent)
 		 */
 		nvl = NULL;
 		while ((spa = spa_next(spa)) != NULL) {
-			if (spa == target && removing)
+			/*
+			 * Skip over our own pool if we're about to remove
+			 * ourselves from the spa namespace or any pool that
+			 * is readonly. Since we cannot guarantee that a
+			 * readonly pool would successfully import upon reboot,
+			 * we don't allow them to be written to the cache file.
+			 */
+			if ((spa == target && removing) ||
+			    !spa_writeable(spa))
 				continue;
 
 			mutex_enter(&spa->spa_props_lock);
@@ -508,4 +520,8 @@ EXPORT_SYMBOL(spa_config_update);
 
 module_param(spa_config_path, charp, 0444);
 MODULE_PARM_DESC(spa_config_path, "SPA config file (/etc/zfs/zpool.cache)");
+
+module_param(zfs_autoimport_disable, int, 0644);
+MODULE_PARM_DESC(zfs_autoimport_disable, "Disable pool import at module load");
+
 #endif

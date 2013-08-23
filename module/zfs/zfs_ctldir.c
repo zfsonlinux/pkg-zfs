@@ -200,8 +200,8 @@ zfsctl_inode_alloc(zfs_sb_t *zsb, uint64_t id,
 	zp->z_is_stale = B_FALSE;
 	ip->i_ino = id;
 	ip->i_mode = (S_IFDIR | S_IRUGO | S_IXUGO);
-	ip->i_uid = 0;
-	ip->i_gid = 0;
+	ip->i_uid = SUID_TO_KUID(0);
+	ip->i_gid = SGID_TO_KGID(0);
 	ip->i_blkbits = SPA_MINBLOCKSHIFT;
 	ip->i_atime = now;
 	ip->i_mtime = now;
@@ -732,7 +732,11 @@ zfsctl_unmount_snapshot(zfs_sb_t *zsb, char *name, int flags)
 	sep = avl_find(&zsb->z_ctldir_snaps, &search, NULL);
 	if (sep) {
 		avl_remove(&zsb->z_ctldir_snaps, sep);
+		mutex_exit(&zsb->z_ctldir_lock);
+
 		error = __zfsctl_unmount_snapshot(sep, flags);
+
+		mutex_enter(&zsb->z_ctldir_lock);
 		if (error == EBUSY)
 			avl_add(&zsb->z_ctldir_snaps, sep);
 		else
@@ -767,7 +771,11 @@ zfsctl_unmount_snapshots(zfs_sb_t *zsb, int flags, int *count)
 	while (sep != NULL) {
 		next = AVL_NEXT(&zsb->z_ctldir_snaps, sep);
 		avl_remove(&zsb->z_ctldir_snaps, sep);
+		mutex_exit(&zsb->z_ctldir_lock);
+
 		error = __zfsctl_unmount_snapshot(sep, flags);
+
+		mutex_enter(&zsb->z_ctldir_lock);
 		if (error == EBUSY) {
 			avl_add(&zsb->z_ctldir_snaps, sep);
 			(*count)++;

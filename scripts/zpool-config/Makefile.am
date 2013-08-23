@@ -1,5 +1,5 @@
 pkgdataconfigdir = $(pkgdatadir)/zpool-config
-dist_pkgdataconfig_SCRIPTS = \
+nodist_pkgdataconfig_SCRIPTS = \
 	$(top_srcdir)/scripts/zpool-config/dm0-raid0.sh \
 	$(top_srcdir)/scripts/zpool-config/file-raid0.sh \
 	$(top_srcdir)/scripts/zpool-config/file-raid10.sh \

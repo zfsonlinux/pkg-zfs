@@ -79,10 +79,23 @@ kmem_cache_t *zio_data_buf_cache[SPA_MAXBLOCKSIZE >> SPA_MINBLOCKSHIFT];
 int zio_bulk_flags = 0;
 int zio_delay_max = ZIO_DELAY_MAX;
 
-#ifdef _KERNEL
-extern vmem_t *zio_alloc_arena;
-#endif
 extern int zfs_mg_alloc_failures;
+
+/*
+ * The following actions directly effect the spa's sync-to-convergence logic.
+ * The values below define the sync pass when we start performing the action.
+ * Care should be taken when changing these values as they directly impact
+ * spa_sync() performance. Tuning these values may introduce subtle performance
+ * pathologies and should only be done in the context of performance analysis.
+ * These tunables will eventually be removed and replaced with #defines once
+ * enough analysis has been done to determine optimal values.
+ *
+ * The 'zfs_sync_pass_deferred_free' pass must be greater than 1 to ensure that
+ * regular blocks are not deferred.
+ */
+int zfs_sync_pass_deferred_free = 2; /* defer frees starting in this pass */
+int zfs_sync_pass_dont_compress = 5; /* don't compress starting in this pass */
+int zfs_sync_pass_rewrite = 2; /* rewrite new bps starting in this pass */
 
 /*
  * An allocating zio is one that either currently has the DVA allocate
@@ -135,9 +148,6 @@ zio_init(void)
 	size_t c;
 	vmem_t *data_alloc_arena = NULL;
 
-#ifdef _KERNEL
-	data_alloc_arena = zio_alloc_arena;
-#endif
 	zio_cache = kmem_cache_create("zio_cache", sizeof (zio_t), 0,
 	    zio_cons, zio_dest, NULL, NULL, NULL, KMC_KMEM);
 	zio_link_cache = kmem_cache_create("zio_link_cache",
@@ -609,6 +619,9 @@ zio_create(zio_t *pio, spa_t *spa, uint64_t txg, const blkptr_t *bp,
 	zio->io_vsd_ops = NULL;
 	zio->io_offset = offset;
 	zio->io_deadline = 0;
+	zio->io_timestamp = 0;
+	zio->io_delta = 0;
+	zio->io_delay = 0;
 	zio->io_orig_data = zio->io_data = data;
 	zio->io_orig_size = zio->io_size = size;
 	zio->io_orig_flags = zio->io_flags = flags;
@@ -620,7 +633,6 @@ zio_create(zio_t *pio, spa_t *spa, uint64_t txg, const blkptr_t *bp,
 	zio->io_bp_override = NULL;
 	zio->io_walk_link = NULL;
 	zio->io_transform_stack = NULL;
-	zio->io_delay = 0;
 	zio->io_error = 0;
 	zio->io_child_count = 0;
 	zio->io_parent_count = 0;
@@ -769,7 +781,9 @@ zio_free_sync(zio_t *pio, spa_t *spa, uint64_t txg, const blkptr_t *bp,
 
 	ASSERT(!BP_IS_HOLE(bp));
 	ASSERT(spa_syncing_txg(spa) == txg);
-	ASSERT(spa_sync_pass(spa) <= SYNC_PASS_DEFERRED_FREE);
+	ASSERT(spa_sync_pass(spa) < zfs_sync_pass_deferred_free);
+
+	arc_freed(spa, bp);
 
 	zio = zio_create(pio, spa, txg, bp, NULL, BP_GET_PSIZE(bp),
 	    NULL, NULL, ZIO_TYPE_FREE, ZIO_PRIORITY_FREE, flags,
@@ -1066,7 +1080,7 @@ zio_write_bp_init(zio_t *zio)
 		ASSERT(zio->io_child_type == ZIO_CHILD_LOGICAL);
 		ASSERT(!BP_GET_DEDUP(bp));
 
-		if (pass > SYNC_PASS_DONT_COMPRESS)
+		if (pass >= zfs_sync_pass_dont_compress)
 			compress = ZIO_COMPRESS_OFF;
 
 		/* Make sure someone doesn't change their mind on overwrites */
@@ -1095,7 +1109,7 @@ zio_write_bp_init(zio_t *zio)
 	 * There should only be a handful of blocks after pass 1 in any case.
 	 */
 	if (bp->blk_birth == zio->io_txg && BP_GET_PSIZE(bp) == psize &&
-	    pass > SYNC_PASS_REWRITE) {
+	    pass >= zfs_sync_pass_rewrite) {
 		enum zio_stage gang_stages = zio->io_pipeline & ZIO_GANG_STAGES;
 		ASSERT(psize != 0);
 		zio->io_pipeline = ZIO_REWRITE_PIPELINE | gang_stages;
@@ -1147,7 +1161,7 @@ zio_free_bp_init(zio_t *zio)
  */
 
 static void
-zio_taskq_dispatch(zio_t *zio, enum zio_taskq_type q, boolean_t cutinline)
+zio_taskq_dispatch(zio_t *zio, zio_taskq_type_t q, boolean_t cutinline)
 {
 	spa_t *spa = zio->io_spa;
 	zio_type_t t = zio->io_type;
@@ -1168,10 +1182,11 @@ zio_taskq_dispatch(zio_t *zio, enum zio_taskq_type q, boolean_t cutinline)
 		t = ZIO_TYPE_NULL;
 
 	/*
-	 * If this is a high priority I/O, then use the high priority taskq.
+	 * If this is a high priority I/O, then use the high priority taskq if
+	 * available.
 	 */
 	if (zio->io_priority == ZIO_PRIORITY_NOW &&
-	    spa->spa_zio_taskq[t][q + 1] != NULL)
+	    spa->spa_zio_taskq[t][q + 1].stqs_count != 0)
 		q++;
 
 	ASSERT3U(q, <, ZIO_TASKQ_TYPES);
@@ -1182,20 +1197,25 @@ zio_taskq_dispatch(zio_t *zio, enum zio_taskq_type q, boolean_t cutinline)
 	 * to dispatch the zio to another taskq at the same time.
 	 */
 	ASSERT(taskq_empty_ent(&zio->io_tqent));
-	taskq_dispatch_ent(spa->spa_zio_taskq[t][q],
-	    (task_func_t *)zio_execute, zio, flags, &zio->io_tqent);
+	spa_taskq_dispatch_ent(spa, t, q, (task_func_t *)zio_execute, zio,
+	    flags, &zio->io_tqent);
 }
 
 static boolean_t
-zio_taskq_member(zio_t *zio, enum zio_taskq_type q)
+zio_taskq_member(zio_t *zio, zio_taskq_type_t q)
 {
 	kthread_t *executor = zio->io_executor;
 	spa_t *spa = zio->io_spa;
 	zio_type_t t;
 
-	for (t = 0; t < ZIO_TYPES; t++)
-		if (taskq_member(spa->spa_zio_taskq[t][q], executor))
-			return (B_TRUE);
+	for (t = 0; t < ZIO_TYPES; t++) {
+		spa_taskqs_t *tqs = &spa->spa_zio_taskq[t][q];
+		uint_t i;
+		for (i = 0; i < tqs->stqs_count; i++) {
+			if (taskq_member(tqs->stqs_taskq[i], executor))
+				return (B_TRUE);
+		}
+	}
 
 	return (B_FALSE);
 }
@@ -1222,7 +1242,7 @@ zio_interrupt(zio_t *zio)
  * vdev-level caching or aggregation; (5) the I/O is deferred
  * due to vdev-level queueing; (6) the I/O is handed off to
  * another thread.  In all cases, the pipeline stops whenever
- * there's no CPU work; it never burns a thread in cv_wait().
+ * there's no CPU work; it never burns a thread in cv_wait_io().
  *
  * There's no locking on io_stage because there's no legitimate way
  * for multiple threads to be attempting to process the same I/O.
@@ -1289,12 +1309,14 @@ __zio_execute(zio_t *zio)
 		/*
 		 * If we executing in the context of the tx_sync_thread,
 		 * or we are performing pool initialization outside of a
-		 * zio_taskq[ZIO_TASKQ_ISSUE] context.  Then issue the zio
-		 * async to minimize stack usage for these deep call paths.
+		 * zio_taskq[ZIO_TASKQ_ISSUE|ZIO_TASKQ_ISSUE_HIGH] context.
+		 * Then issue the zio asynchronously to minimize stack usage
+		 * for these deep call paths.
 		 */
 		if ((dp && curthread == dp->dp_tx.tx_sync_thread) ||
 		    (dp && spa_is_initializing(dp->dp_spa) &&
-		    !zio_taskq_member(zio, ZIO_TASKQ_ISSUE))) {
+		    !zio_taskq_member(zio, ZIO_TASKQ_ISSUE) &&
+		    !zio_taskq_member(zio, ZIO_TASKQ_ISSUE_HIGH))) {
 			zio_taskq_dispatch(zio, ZIO_TASKQ_ISSUE, cut);
 			return;
 		}
@@ -1421,6 +1443,9 @@ zio_suspend(spa_t *spa, zio_t *zio)
 		fm_panic("Pool '%s' has encountered an uncorrectable I/O "
 		    "failure and the failure mode property for this pool "
 		    "is set to panic.", spa_name(spa));
+
+	cmn_err(CE_WARN, "Pool '%s' has encountered an uncorrectable I/O "
+	    "failure and has been suspended.\n", spa_name(spa));
 
 	zfs_ereport_post(FM_EREPORT_ZFS_IO_FAILURE, spa, NULL, NULL, 0, 0);
 
@@ -2025,7 +2050,7 @@ zio_ddt_collision(zio_t *zio, ddt_t *ddt, ddt_entry_t *dde)
 
 			ddt_exit(ddt);
 
-			error = arc_read_nolock(NULL, spa, &blk,
+			error = arc_read(NULL, spa, &blk,
 			    arc_getbuf_func, &abuf, ZIO_PRIORITY_SYNC_READ,
 			    ZIO_FLAG_CANFAIL | ZIO_FLAG_SPECULATIVE,
 			    &aflags, &zio->io_bookmark);
@@ -2279,7 +2304,7 @@ zio_dva_allocate(zio_t *zio)
 	}
 
 	ASSERT(BP_IS_HOLE(bp));
-	ASSERT3U(BP_GET_NDVAS(bp), ==, 0);
+	ASSERT0(BP_GET_NDVAS(bp));
 	ASSERT3U(zio->io_prop.zp_copies, >, 0);
 	ASSERT3U(zio->io_prop.zp_copies, <=, spa_max_replication(spa));
 	ASSERT3U(zio->io_size, ==, BP_GET_PSIZE(bp));
@@ -2906,11 +2931,11 @@ zio_done(zio_t *zio)
 	vdev_stat_update(zio, zio->io_size);
 
 	/*
-	 * If this I/O is attached to a particular vdev is slow, exeeding
+	 * If this I/O is attached to a particular vdev is slow, exceeding
 	 * 30 seconds to complete, post an error described the I/O delay.
 	 * We ignore these errors if the device is currently unavailable.
 	 */
-	if (zio->io_delay >= zio_delay_max) {
+	if (zio->io_delay >= MSEC_TO_TICK(zio_delay_max)) {
 		if (zio->io_vd != NULL && !vdev_is_dead(zio->io_vd))
 			zfs_ereport_post(FM_EREPORT_ZFS_DELAY, zio->io_spa,
                                          zio->io_vd, zio, 0, 0);
@@ -3060,8 +3085,8 @@ zio_done(zio_t *zio)
 			 * Hand it off to the otherwise-unused claim taskq.
 			 */
 			ASSERT(taskq_empty_ent(&zio->io_tqent));
-			(void) taskq_dispatch_ent(
-			    zio->io_spa->spa_zio_taskq[ZIO_TYPE_CLAIM][ZIO_TASKQ_ISSUE],
+			spa_taskq_dispatch_ent(zio->io_spa,
+			    ZIO_TYPE_CLAIM, ZIO_TASKQ_ISSUE,
 			    (task_func_t *)zio_reexecute, zio, 0,
 			    &zio->io_tqent);
 		}
@@ -3210,4 +3235,16 @@ MODULE_PARM_DESC(zio_delay_max, "Max zio millisec delay before posting event");
 
 module_param(zio_requeue_io_start_cut_in_line, int, 0644);
 MODULE_PARM_DESC(zio_requeue_io_start_cut_in_line, "Prioritize requeued I/O");
+
+module_param(zfs_sync_pass_deferred_free, int, 0644);
+MODULE_PARM_DESC(zfs_sync_pass_deferred_free,
+    "defer frees starting in this pass");
+
+module_param(zfs_sync_pass_dont_compress, int, 0644);
+MODULE_PARM_DESC(zfs_sync_pass_dont_compress,
+    "don't compress starting in this pass");
+
+module_param(zfs_sync_pass_rewrite, int, 0644);
+MODULE_PARM_DESC(zfs_sync_pass_rewrite,
+    "rewrite new bps starting in this pass");
 #endif

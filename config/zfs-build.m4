@@ -86,10 +86,10 @@ AC_DEFUN([ZFS_AC_CONFIG], [
 	ZFS_AC_CONFIG_ALWAYS
 
 	case "$ZFS_CONFIG" in
-		kernel) ZFS_AC_CONFIG_KERNEL ;;
 		user)	ZFS_AC_CONFIG_USER   ;;
-		all)    ZFS_AC_CONFIG_KERNEL
-			ZFS_AC_CONFIG_USER   ;;
+		kernel) ZFS_AC_CONFIG_KERNEL ;;
+		all)    ZFS_AC_CONFIG_USER
+			ZFS_AC_CONFIG_KERNEL ;;
 		srpm)                        ;;
 		*)
 		AC_MSG_RESULT([Error!])
@@ -138,7 +138,7 @@ AC_DEFUN([ZFS_AC_RPM], [
 		AC_MSG_RESULT([$HAVE_RPMBUILD])
 	])
 
-	RPM_DEFINE_COMMON=
+	RPM_DEFINE_COMMON='--define "$(DEBUG_ZFS) 1" --define "$(DEBUG_DMU_TX) 1"'
 	RPM_DEFINE_UTIL=
 	RPM_DEFINE_KMOD='--define "kernels $(LINUX_VERSION)"'
 	RPM_DEFINE_DKMS=
