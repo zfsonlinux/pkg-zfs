@@ -1,8 +1,11 @@
+
+ACLOCAL_AMFLAGS = -I config
+
 include $(top_srcdir)/config/rpm.am
 include $(top_srcdir)/config/deb.am
 include $(top_srcdir)/config/tgz.am
 
-SUBDIRS = include rpm
+SUBDIRS = include
 if CONFIG_USER
 SUBDIRS += lib cmd man scripts
 endif
