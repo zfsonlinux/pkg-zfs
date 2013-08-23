@@ -773,12 +773,13 @@ void
 dmu_tx_hold_space(dmu_tx_t *tx, uint64_t space)
 {
 	dmu_tx_hold_t *txh;
+
 	ASSERT(tx->tx_txg == 0);
 
 	txh = dmu_tx_hold_object_impl(tx, tx->tx_objset,
 	    DMU_NEW_OBJECT, THT_SPACE, space, 0);
-
-	txh->txh_space_towrite += space;
+	if (txh)
+		txh->txh_space_towrite += space;
 }
 
 int
@@ -923,7 +924,7 @@ dmu_tx_try_assign(dmu_tx_t *tx, uint64_t txg_how)
 	uint64_t memory, asize, fsize, usize;
 	uint64_t towrite, tofree, tooverwrite, tounref, tohold, fudge;
 
-	ASSERT3U(tx->tx_txg, ==, 0);
+	ASSERT0(tx->tx_txg);
 
 	if (tx->tx_err) {
 		DMU_TX_STAT_BUMP(dmu_tx_error);
@@ -1089,11 +1090,14 @@ dmu_tx_unassign(dmu_tx_t *tx)
 int
 dmu_tx_assign(dmu_tx_t *tx, uint64_t txg_how)
 {
+	hrtime_t before, after;
 	int err;
 
 	ASSERT(tx->tx_txg == 0);
 	ASSERT(txg_how != 0);
 	ASSERT(!dsl_pool_sync_context(tx->tx_pool));
+
+	before = gethrtime();
 
 	while ((err = dmu_tx_try_assign(tx, txg_how)) != 0) {
 		dmu_tx_unassign(tx);
@@ -1105,6 +1109,11 @@ dmu_tx_assign(dmu_tx_t *tx, uint64_t txg_how)
 	}
 
 	txg_rele_to_quiesce(&tx->tx_txgh);
+
+	after = gethrtime();
+
+	dsl_pool_tx_assign_add_usecs(tx->tx_pool,
+	    (after - before) / NSEC_PER_USEC);
 
 	return (0);
 }
@@ -1312,6 +1321,8 @@ dmu_tx_hold_spill(dmu_tx_t *tx, uint64_t object)
 
 	txh = dmu_tx_hold_object_impl(tx, tx->tx_objset, object,
 	    THT_SPILL, 0, 0);
+	if (txh == NULL)
+		return;
 
 	dn = txh->txh_dnode;
 

@@ -20,6 +20,7 @@
  */
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013 by Saso Kiselkov. All rights reserved.
  */
 
 /* Portions Copyright 2010 Robert Milkowski */
@@ -274,14 +275,11 @@ dmu_objset_open_impl(spa_t *spa, dsl_dataset_t *ds, blkptr_t *bp,
 
 		if (DMU_OS_IS_L2CACHEABLE(os))
 			aflags |= ARC_L2CACHE;
+		if (DMU_OS_IS_L2COMPRESSIBLE(os))
+			aflags |= ARC_L2COMPRESS;
 
 		dprintf_bp(os->os_rootbp, "reading %s", "");
-		/*
-		 * XXX when bprewrite scrub can change the bp,
-		 * and this is called from dmu_objset_open_ds_os, the bp
-		 * could change, and we'll need a lock.
-		 */
-		err = dsl_read_nolock(NULL, spa, os->os_rootbp,
+		err = arc_read(NULL, spa, os->os_rootbp,
 		    arc_getbuf_func, &os->os_phys_buf,
 		    ZIO_PRIORITY_SYNC_READ, ZIO_FLAG_CANFAIL, &aflags, &zb);
 		if (err) {
@@ -1119,15 +1117,15 @@ dmu_objset_sync(objset_t *os, zio_t *pio, dmu_tx_t *tx)
 	SET_BOOKMARK(&zb, os->os_dsl_dataset ?
 	    os->os_dsl_dataset->ds_object : DMU_META_OBJSET,
 	    ZB_ROOT_OBJECT, ZB_ROOT_LEVEL, ZB_ROOT_BLKID);
-	VERIFY3U(0, ==, arc_release_bp(os->os_phys_buf, &os->os_phys_buf,
-	    os->os_rootbp, os->os_spa, &zb));
+	arc_release(os->os_phys_buf, &os->os_phys_buf);
 
 	dmu_write_policy(os, NULL, 0, 0, &zp);
 
 	zio = arc_write(pio, os->os_spa, tx->tx_txg,
-	    os->os_rootbp, os->os_phys_buf, DMU_OS_IS_L2CACHEABLE(os), &zp,
-	    dmu_objset_write_ready, dmu_objset_write_done, os,
-	    ZIO_PRIORITY_ASYNC_WRITE, ZIO_FLAG_MUSTSUCCEED, &zb);
+	    os->os_rootbp, os->os_phys_buf, DMU_OS_IS_L2CACHEABLE(os),
+	    DMU_OS_IS_L2COMPRESSIBLE(os), &zp, dmu_objset_write_ready,
+	    dmu_objset_write_done, os, ZIO_PRIORITY_ASYNC_WRITE,
+	    ZIO_FLAG_MUSTSUCCEED, &zb);
 
 	/*
 	 * Sync special dnodes - the parent IO for the sync is the root block
@@ -1765,7 +1763,7 @@ dmu_objset_prefetch(const char *name, void *arg)
 			SET_BOOKMARK(&zb, ds->ds_object, ZB_ROOT_OBJECT,
 			    ZB_ROOT_LEVEL, ZB_ROOT_BLKID);
 
-			(void) dsl_read_nolock(NULL, dsl_dataset_get_spa(ds),
+			(void) arc_read(NULL, dsl_dataset_get_spa(ds),
 			    &ds->ds_phys->ds_bp, NULL, NULL,
 			    ZIO_PRIORITY_ASYNC_READ,
 			    ZIO_FLAG_CANFAIL | ZIO_FLAG_SPECULATIVE,

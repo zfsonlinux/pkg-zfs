@@ -41,6 +41,8 @@
 extern "C" {
 #endif
 
+extern int zfs_txg_synctime_ms;
+
 struct objset;
 struct dsl_dir;
 struct dsl_dataset;
@@ -87,6 +89,7 @@ typedef struct dsl_pool {
 	uint64_t dp_root_dir_obj;
 	struct taskq *dp_iput_taskq;
 	kstat_t *dp_txg_kstat;
+	kstat_t *dp_tx_assign_kstat;
 
 	/* No lock needed - sync context only */
 	blkptr_t dp_meta_rootbp;
@@ -109,6 +112,8 @@ typedef struct dsl_pool {
 	uint64_t dp_mos_uncompressed_delta;
 	uint64_t dp_txg_history_size;
 	list_t dp_txg_history;
+	uint64_t dp_tx_assign_size;
+	kstat_named_t *dp_tx_assign_buckets;
 
 
 	/* Has its own locking */
@@ -145,12 +150,6 @@ void dsl_pool_willuse_space(dsl_pool_t *dp, int64_t space, dmu_tx_t *tx);
 void dsl_free(dsl_pool_t *dp, uint64_t txg, const blkptr_t *bpp);
 void dsl_free_sync(zio_t *pio, dsl_pool_t *dp, uint64_t txg,
     const blkptr_t *bpp);
-int dsl_read(zio_t *pio, spa_t *spa, const blkptr_t *bpp, arc_buf_t *pbuf,
-    arc_done_func_t *done, void *private, int priority, int zio_flags,
-    uint32_t *arc_flags, const zbookmark_t *zb);
-int dsl_read_nolock(zio_t *pio, spa_t *spa, const blkptr_t *bpp,
-    arc_done_func_t *done, void *private, int priority, int zio_flags,
-    uint32_t *arc_flags, const zbookmark_t *zb);
 void dsl_pool_create_origin(dsl_pool_t *dp, dmu_tx_t *tx);
 void dsl_pool_upgrade_clones(dsl_pool_t *dp, dmu_tx_t *tx);
 void dsl_pool_upgrade_dir_clones(dsl_pool_t *dp, dmu_tx_t *tx);
@@ -165,6 +164,8 @@ extern int dsl_pool_user_release(dsl_pool_t *dp, uint64_t dsobj,
     const char *tag, dmu_tx_t *tx);
 extern void dsl_pool_clean_tmp_userrefs(dsl_pool_t *dp);
 int dsl_pool_open_special_dir(dsl_pool_t *dp, const char *name, dsl_dir_t **);
+
+void dsl_pool_tx_assign_add_usecs(dsl_pool_t *dp, uint64_t usecs);
 
 txg_history_t *dsl_pool_txg_history_add(dsl_pool_t *dp, uint64_t txg);
 txg_history_t *dsl_pool_txg_history_get(dsl_pool_t *dp, uint64_t txg);

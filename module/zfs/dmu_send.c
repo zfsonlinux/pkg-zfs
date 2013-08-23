@@ -39,6 +39,7 @@
 #include <sys/dsl_prop.h>
 #include <sys/dsl_pool.h>
 #include <sys/dsl_synctask.h>
+#include <sys/spa_impl.h>
 #include <sys/zfs_ioctl.h>
 #include <sys/zap.h>
 #include <sys/zio_checksum.h>
@@ -53,21 +54,48 @@ int zfs_send_corrupt_data = B_FALSE;
 
 static char *dmu_recv_tag = "dmu_recv_tag";
 
-static int
-dump_bytes(dmu_sendarg_t *dsp, void *buf, int len)
+typedef struct dump_bytes_io {
+	dmu_sendarg_t	*dbi_dsp;
+	void		*dbi_buf;
+	int		dbi_len;
+} dump_bytes_io_t;
+
+static void
+dump_bytes_strategy(void *arg)
 {
+	dump_bytes_io_t *dbi = (dump_bytes_io_t *)arg;
+	dmu_sendarg_t *dsp = dbi->dbi_dsp;
 	dsl_dataset_t *ds = dsp->dsa_os->os_dsl_dataset;
 	ssize_t resid; /* have to get resid to get detailed errno */
-	ASSERT3U(len % 8, ==, 0);
+	ASSERT0(dbi->dbi_len % 8);
 
-	fletcher_4_incremental_native(buf, len, &dsp->dsa_zc);
+	fletcher_4_incremental_native(dbi->dbi_buf, dbi->dbi_len, &dsp->dsa_zc);
 	dsp->dsa_err = vn_rdwr(UIO_WRITE, dsp->dsa_vp,
-	    (caddr_t)buf, len,
+	    (caddr_t)dbi->dbi_buf, dbi->dbi_len,
 	    0, UIO_SYSSPACE, FAPPEND, RLIM64_INFINITY, CRED(), &resid);
 
 	mutex_enter(&ds->ds_sendstream_lock);
-	*dsp->dsa_off += len;
+	*dsp->dsa_off += dbi->dbi_len;
 	mutex_exit(&ds->ds_sendstream_lock);
+}
+
+static int
+dump_bytes(dmu_sendarg_t *dsp, void *buf, int len)
+{
+	dump_bytes_io_t dbi;
+
+	dbi.dbi_dsp = dsp;
+	dbi.dbi_buf = buf;
+	dbi.dbi_len = len;
+
+	/*
+	 * The vn_rdwr() call is performed in a taskq to ensure that there is
+	 * always enough stack space to write safely to the target filesystem.
+	 * The ZIO_TYPE_FREE threads are used because there can be a lot of
+	 * them and they are used in vdev_file.c for a similar purpose.
+	 */
+	spa_taskq_dispatch_sync(dmu_objset_spa(dsp->dsa_os), ZIO_TYPE_FREE,
+	    ZIO_TASKQ_ISSUE, dump_bytes_strategy, &dbi, TQ_SLEEP);
 
 	return (dsp->dsa_err);
 }
@@ -302,7 +330,7 @@ dump_dnode(dmu_sendarg_t *dsp, uint64_t object, dnode_phys_t *dnp)
 
 /* ARGSUSED */
 static int
-backup_cb(spa_t *spa, zilog_t *zilog, const blkptr_t *bp, arc_buf_t *pbuf,
+backup_cb(spa_t *spa, zilog_t *zilog, const blkptr_t *bp,
     const zbookmark_t *zb, const dnode_phys_t *dnp, void *arg)
 {
 	dmu_sendarg_t *dsp = arg;
@@ -331,9 +359,9 @@ backup_cb(spa_t *spa, zilog_t *zilog, const blkptr_t *bp, arc_buf_t *pbuf,
 		uint32_t aflags = ARC_WAIT;
 		arc_buf_t *abuf;
 
-		if (dsl_read(NULL, spa, bp, pbuf,
-		    arc_getbuf_func, &abuf, ZIO_PRIORITY_ASYNC_READ,
-		    ZIO_FLAG_CANFAIL, &aflags, zb) != 0)
+		if (arc_read(NULL, spa, bp, arc_getbuf_func, &abuf,
+		    ZIO_PRIORITY_ASYNC_READ, ZIO_FLAG_CANFAIL,
+		    &aflags, zb) != 0)
 			return (EIO);
 
 		blk = abuf->b_data;
@@ -350,9 +378,9 @@ backup_cb(spa_t *spa, zilog_t *zilog, const blkptr_t *bp, arc_buf_t *pbuf,
 		arc_buf_t *abuf;
 		int blksz = BP_GET_LSIZE(bp);
 
-		if (arc_read_nolock(NULL, spa, bp,
-		    arc_getbuf_func, &abuf, ZIO_PRIORITY_ASYNC_READ,
-		    ZIO_FLAG_CANFAIL, &aflags, zb) != 0)
+		if (arc_read(NULL, spa, bp, arc_getbuf_func, &abuf,
+		    ZIO_PRIORITY_ASYNC_READ, ZIO_FLAG_CANFAIL,
+		    &aflags, zb) != 0)
 			return (EIO);
 
 		err = dump_spill(dsp, zb->zb_object, blksz, abuf->b_data);
@@ -362,9 +390,9 @@ backup_cb(spa_t *spa, zilog_t *zilog, const blkptr_t *bp, arc_buf_t *pbuf,
 		arc_buf_t *abuf;
 		int blksz = BP_GET_LSIZE(bp);
 
-		if (dsl_read(NULL, spa, bp, pbuf,
-		    arc_getbuf_func, &abuf, ZIO_PRIORITY_ASYNC_READ,
-		    ZIO_FLAG_CANFAIL, &aflags, zb) != 0) {
+		if (arc_read(NULL, spa, bp, arc_getbuf_func, &abuf,
+		    ZIO_PRIORITY_ASYNC_READ, ZIO_FLAG_CANFAIL,
+		    &aflags, zb) != 0) {
 			if (zfs_send_corrupt_data) {
 				uint64_t *ptr;
 				/* Send a block filled with 0x"zfs badd bloc" */
@@ -960,7 +988,7 @@ restore_read(struct restorearg *ra, int len)
 	int done = 0;
 
 	/* some things will require 8-byte alignment, so everything must */
-	ASSERT3U(len % 8, ==, 0);
+	ASSERT0(len % 8);
 
 	while (done < len) {
 		ssize_t resid;
@@ -1639,7 +1667,7 @@ out:
 		(void) add_ds_to_guidmap(drc->drc_guid_to_ds_map, ds);
 	dsl_dataset_disown(ds, dmu_recv_tag);
 	myerr = dsl_dataset_destroy(drc->drc_real_ds, dmu_recv_tag, B_FALSE);
-	ASSERT3U(myerr, ==, 0);
+	ASSERT0(myerr);
 	return (err);
 }
 
