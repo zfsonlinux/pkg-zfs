@@ -1,3 +1,99 @@
+spl-linux (0.6.1-2~raring~1.gbp61179b) raring; urgency=low
+
+  ** SNAPSHOT build @61179bcd5263f546aa8a4bcf3a3d721999db6675 **
+
+  [ Brian Behlendorf ]
+  * Tag spl-0.6.1
+
+  [ Darik Horn ]
+  * Add gbp.conf file for Ubuntu 12.04 Precise.
+  * Add gbp.conf file Ubuntu 12.10 Quantal.
+  * Delete quilt pc area.
+  * PPA 0.6.1-1~precise release.
+
+  [ Brian Behlendorf ]
+  * Provide ${kmodname}-devel-kmod for yum-builddep
+
+  [ Darik Horn ]
+  * Delete quilt pc area.
+  * PPA 0.6.1-1~quantal release.
+
+  [ Jan Engelhardt ]
+  * build: resolve orthographic and other grammatical errors
+  * build: use CPPFLAGS
+  * gitignore: anchor entries at their respective directory
+  * build: do not call boilerplate ourself
+
+  [ Brian Behlendorf ]
+  * Automake 1.10.1 compat: AM_SILENT_RULES
+  * Replace the SPL_AC_META perl dependency with awk
+  * Add additional dependencies for DKMS package
+
+  [ Etienne Dechamps ]
+  * Fix various generic kmod RPM spec issues.
+
+  [ Turbo Fredriksson ]
+  * Support .nogitrelease file
+  * Add --bump=0 to alien
+  * Ignore *.{deb,rpm,tar.gz} files in the top directory.
+
+  [ Brian Behlendorf ]
+  * Add msec/usec/nsec to tick convertors
+  * Fix delay()
+  * Fix taskq_wait_id()
+
+  [ Darik Horn ]
+  * Update debian/gbp.conf for snapshot builds.
+
+  [ Tim Chase ]
+  * Fix --enable-debug-kmem-tracking option
+
+  [ Brian Behlendorf ]
+  * Add ASSERT0 and VERIFY0 macros
+  * Fix ASSERT0 and VERIFY0 macro typo
+
+  [ Matthew Thode ]
+  * Copy spl.release.in to kernel dir
+
+  [ Nathaniel Clark ]
+  * Add --buildroot option to kmod build
+
+  [ Yuxuan Shui ]
+  * Linux 3.10 compat: struct vmalloc_info moved
+  * Linux 3.10 compat: replace PDE()->data with PDE_DATA()
+  * Linux 3.10 compat: add missing include of linux/slab.h
+
+  [ Richard Yao ]
+  * Linux 3.10 compat: Do not rely on struct proc_dir_entry definition
+
+  [ Brian Behlendorf ]
+  * Fix --enable-debug-kmem-tracking option
+  * Fix bogus kmem leak warning
+  * Improve build instructions
+
+  [ James H ]
+  * Modify gethrestime to use current_kernel_time()
+
+  [ Brian Behlendorf ]
+  * Return -1 for generic kmem cache shrinker
+  * Fix KMC_OFFSLAB type caches
+  * Add kmod repo integration
+
+  [ Richard Yao ]
+  * Linux 3.11 compat: Replace num_physpages with totalram_pages
+  * Fix race in spl_kmem_cache_reap_now()
+  * PaX/GrSecurity Linux 3.8.y compat: Use __no_const on struct ctl_table
+  * Linux 3.8 compat: Use kuid_t/kgid_t when required
+
+  [ Darik Horn ]
+  * Use dh_autoreconf.
+  * Use dh_auto_configure.
+  * Revert "Set extend-diff-ignore='.*' in the debian/source/options file"
+  * Use the deb revision instead of the META release.
+  * Demote the source format and delete the rpm tree.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 22 Aug 2013 21:28:24 -0500
+
 spl-linux (0.6.1-1~raring) raring; urgency=low
 
   * Initial release.
