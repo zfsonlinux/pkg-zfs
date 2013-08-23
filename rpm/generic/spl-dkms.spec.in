@@ -15,6 +15,8 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch:      noarch
 
 Requires:       dkms >= 2.2.0.2
+Requires:       gcc, make, perl
+Requires:       kernel-devel
 Provides:       %{module}-kmod = %{version}
 
 %description
@@ -62,6 +64,7 @@ dkms remove -m %{module} -v %{version} --all --rpm_safe_upgrade
 exit 0
 
 %changelog
-* Tue Mar 12 2013 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.0-1
-- Initial dkms packaging.
-
+* Wed Aug 21 2013 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.2-1
+- Released 0.6.2-1
+* Fri Mar 22 2013 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.1-1
+- First official stable release.
