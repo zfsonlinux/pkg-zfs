@@ -80,6 +80,7 @@
 #include <sys/zfs_vfsops.h>
 #include <sys/zfs_vnops.h>
 #include <sys/zfs_znode.h>
+#include <sys/zap.h>
 #include <sys/vfs.h>
 #include <sys/zpl.h>
 
@@ -91,11 +92,8 @@ typedef struct xattr_filldir {
 } xattr_filldir_t;
 
 static int
-zpl_xattr_filldir(void *arg, const char *name, int name_len,
-    loff_t offset, uint64_t objnum, unsigned int d_type)
+zpl_xattr_filldir(xattr_filldir_t *xf, const char *name, int name_len)
 {
-	xattr_filldir_t *xf = arg;
-
 	if (!strncmp(name, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN))
 		if (!(ITOZSB(xf->inode)->z_flags & ZSB_XATTR))
 			return (0);
@@ -118,12 +116,46 @@ zpl_xattr_filldir(void *arg, const char *name, int name_len,
 	return (0);
 }
 
+/*
+ * Read as many directory entry names as will fit in to the provided buffer,
+ * or when no buffer is provided calculate the required buffer size.
+ */
+int
+zpl_xattr_readdir(struct inode *dxip, xattr_filldir_t *xf)
+{
+	zap_cursor_t zc;
+	zap_attribute_t	zap;
+	int error;
+
+	zap_cursor_init(&zc, ITOZSB(dxip)->z_os, ITOZ(dxip)->z_id);
+
+	while ((error = -zap_cursor_retrieve(&zc, &zap)) == 0) {
+
+		if (zap.za_integer_length != 8 || zap.za_num_integers != 1) {
+			error = -ENXIO;
+			break;
+		}
+
+		error = zpl_xattr_filldir(xf, zap.za_name, strlen(zap.za_name));
+		if (error)
+			break;
+
+		zap_cursor_advance(&zc);
+	}
+
+	zap_cursor_fini(&zc);
+
+	if (error == -ENOENT)
+		error = 0;
+
+	return (error);
+}
+
 static ssize_t
 zpl_xattr_list_dir(xattr_filldir_t *xf, cred_t *cr)
 {
 	struct inode *ip = xf->inode;
 	struct inode *dxip = NULL;
-	loff_t pos = 3;  /* skip '.', '..', and '.zfs' entries. */
 	int error;
 
 	/* Lookup the xattr directory */
@@ -135,8 +167,7 @@ zpl_xattr_list_dir(xattr_filldir_t *xf, cred_t *cr)
 		return (error);
 	}
 
-	/* Fill provided buffer via zpl_zattr_filldir helper */
-	error = -zfs_readdir(dxip, (void *)xf, zpl_xattr_filldir, &pos, cr);
+	error = zpl_xattr_readdir(dxip, xf);
 	iput(dxip);
 
 	return (error);
@@ -162,8 +193,8 @@ zpl_xattr_list_sa(xattr_filldir_t *xf)
 	while ((nvp = nvlist_next_nvpair(zp->z_xattr_cached, nvp)) != NULL) {
 		ASSERT3U(nvpair_type(nvp), ==, DATA_TYPE_BYTE_ARRAY);
 
-		error = zpl_xattr_filldir((void *)xf, nvpair_name(nvp),
-		     strlen(nvpair_name(nvp)), 0, 0, 0);
+		error = zpl_xattr_filldir(xf, nvpair_name(nvp),
+		     strlen(nvpair_name(nvp)));
 		if (error)
 			return (error);
 	}
@@ -225,6 +256,11 @@ zpl_xattr_get_dir(struct inode *ip, const char *name, void *value,
 		goto out;
 	}
 
+	if (size < i_size_read(xip)) {
+		error = -ERANGE;
+		goto out;
+	}
+
 	error = zpl_read_common(xip, value, size, 0, UIO_SYSSPACE, 0, cr);
 out:
 	if (xip)
@@ -263,9 +299,12 @@ zpl_xattr_get_sa(struct inode *ip, const char *name, void *value, size_t size)
 	if (!size)
 		return (nv_size);
 
-	memcpy(value, nv_value, MIN(size, nv_size));
+	if (size < nv_size)
+		return (-ERANGE);
 
-	return (MIN(size, nv_size));
+	memcpy(value, nv_value, nv_size);
+
+	return (nv_size);
 }
 
 static int
@@ -280,7 +319,7 @@ __zpl_xattr_get(struct inode *ip, const char *name, void *value, size_t size,
 
 	if (zsb->z_use_sa && zp->z_is_sa) {
 		error = zpl_xattr_get_sa(ip, name, value, size);
-		if (error >= 0)
+		if (error != -ENOENT)
 			goto out;
 	}
 

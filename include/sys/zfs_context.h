@@ -25,6 +25,7 @@
 /*
  * Copyright 2011 Nexenta Systems, Inc. All rights reserved.
  * Copyright (c) 2012, Joyent, Inc. All rights reserved.
+ * Copyright (c) 2012 by Delphix. All rights reserved.
  */
 
 #ifndef _SYS_ZFS_CONTEXT_H
@@ -71,7 +72,6 @@
 #define	_SYS_RWLOCK_H
 #define	_SYS_CONDVAR_H
 #define	_SYS_SYSTM_H
-#define	_SYS_DEBUG_H
 #define	_SYS_T_LOCK_H
 #define	_SYS_VNODE_H
 #define	_SYS_VFS_H
@@ -111,6 +111,7 @@
 #include <sys/u8_textprep.h>
 #include <sys/fm/fs/zfs.h>
 #include <sys/sunddi.h>
+#include <sys/debug.h>
 
 /*
  * Stack
@@ -400,13 +401,17 @@ extern taskq_t	*taskq_create(const char *, int, pri_t, int, int, uint_t);
 #define	taskq_create_sysdc(a, b, d, e, p, dc, f) \
 	    (taskq_create(a, b, maxclsyspri, d, e, f))
 extern taskqid_t taskq_dispatch(taskq_t *, task_func_t, void *, uint_t);
+extern taskqid_t taskq_dispatch_delay(taskq_t *, task_func_t, void *, uint_t,
+    clock_t);
 extern void	taskq_dispatch_ent(taskq_t *, task_func_t, void *, uint_t,
     taskq_ent_t *);
 extern int	taskq_empty_ent(taskq_ent_t *);
 extern void	taskq_init_ent(taskq_ent_t *);
 extern void	taskq_destroy(taskq_t *);
 extern void	taskq_wait(taskq_t *);
+extern void	taskq_wait_id(taskq_t *, taskqid_t);
 extern int	taskq_member(taskq_t *, kthread_t *);
+extern int	taskq_cancel_id(taskq_t *, taskqid_t);
 extern void	system_taskq_init(void);
 extern void	system_taskq_fini(void);
 
@@ -522,6 +527,11 @@ extern vnode_t *rootdir;
 #define	hz	119	/* frequency when using gethrtime() >> 23 for lbolt */
 
 extern void delay(clock_t ticks);
+
+#define	SEC_TO_TICK(sec)	((sec) * hz)
+#define	MSEC_TO_TICK(msec)	((msec) / (MILLISEC / hz))
+#define	USEC_TO_TICK(usec)	((usec) / (MICROSEC / hz))
+#define	NSEC_TO_TICK(usec)	((usec) / (NANOSEC / hz))
 
 #define	gethrestime_sec() time(NULL)
 #define	gethrestime(t) \

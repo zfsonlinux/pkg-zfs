@@ -94,7 +94,12 @@ zpool \- configures ZFS storage pools
 
 .LP
 .nf
-\fBzpool list\fR [\fB-Hv\fR] [\fB-o\fR \fIproperty\fR[,...]] [\fIpool\fR] ...
+\fBzpool labelclear\fR [\fB-f\fR] \fIdevice\fR
+.fi
+
+.LP
+.nf
+\fBzpool list\fR [\fB-T\fR u | d ] [\fB-Hv\fR] [\fB-o\fR \fIproperty\fR[,...]] [\fIpool\fR] ... [\fIinterval\fR[\fIcount\fR]]
 .fi
 
 .LP
@@ -110,6 +115,11 @@ zpool \- configures ZFS storage pools
 .LP
 .nf
 \fBzpool reguid\fR \fIpool\fR
+.fi
+
+.LP
+.nf
+\fBzpool reopen\fR \fIpool\fR
 .fi
 
 .LP
@@ -130,6 +140,11 @@ zpool \- configures ZFS storage pools
 .LP
 .nf
 \fBzpool set\fR \fIproperty\fR=\fIvalue\fR \fIpool\fR
+.fi
+
+.LP
+.nf
+\fBzpool split\fR [\fB-n\fR] [\fB-R\fR \fIaltroot\fR] [\fB-o\fR \fIproperty=value\fR] \fIpool\fR \fInewpool\fR
 .fi
 
 .LP
@@ -479,6 +494,7 @@ Percentage of pool space used. This property can also be referred to by its shor
 \fB\fBexpandsize\fR\fR
 .ad
 .RS 20n
+.rt
 Amount of uninitialized space within the pool or device that can be used to
 increase the total capacity of the pool.  Uninitialized space consists of
 any space on an EFI labeled vdev which has not been brought online
@@ -487,19 +503,23 @@ any space on an EFI labeled vdev which has not been brought online
 
 .sp
 .ne 2
+.mk
 .na
 \fB\fBfree\fR\fR
 .ad
 .RS 20n
+.rt
 The amount of free space available in the pool.
 .RE
 
 .sp
 .ne 2
+.mk
 .na
 \fB\fBfreeing\fR\fR
 .ad
 .RS 20n
+.rt
 After a file system or snapshot is destroyed, the space it was using is
 returned to the pool asynchronously. \fB\fBfreeing\fR\fR is the amount of
 space remaining to be reclaimed. Over time \fB\fBfreeing\fR\fR will decrease
@@ -508,6 +528,7 @@ while \fB\fBfree\fR\fR increases.
 
 .sp
 .ne 2
+.mk
 .na
 \fB\fBhealth\fR\fR
 .ad
@@ -540,10 +561,12 @@ Total size of the storage pool.
 
 .sp
 .ne 2
+.mk
 .na
 \fB\fBunsupported@\fR\fIfeature_guid\fR\fR
 .ad
 .RS 20n
+.rt
 Information about unsupported features that are enabled on the pool. See
 \fBzpool-features\fR(5) for details.
 .RE
@@ -1412,11 +1435,33 @@ Verbose statistics. Reports usage statistics for individual \fIvdevs\fR within t
 .ne 2
 .mk
 .na
-\fB\fBzpool list\fR [\fB-Hv\fR] [\fB-o\fR \fIprops\fR[,...]] [\fIpool\fR] ...\fR
+\fB\fBzpool labelclear\fR [\fB-f\fR] \fIdevice\fR
 .ad
 .sp .6
 .RS 4n
-Lists the given pools along with a health status and space usage. When given no arguments, all pools in the system are listed.
+Removes ZFS label information from the specified device. The device must not be part of an active pool configuration.
+.sp
+.ne 2
+.mk
+.na
+\fB\fB-f\fR\fR
+.ad
+.RS 12n
+.rt
+Treat exported or foreign devices as inactive.
+.RE
+
+.RE
+
+.sp
+.ne 2
+.mk
+.na
+\fB\fBzpool list\fR [\fB-T\fR \fBu\fR | \fBd\fR] [\fB-Hv\fR] [\fB-o\fR \fIprops\fR[,...]] [\fIpool\fR] ... [\fIinterval\fR[\fIcount\fR]]\fR
+.ad
+.sp .6
+.RS 4n
+Lists the given pools along with a health status and space usage. If no \fIpools\fR are specified, all pools in the system are listed. When given an \fIinterval\fR, the information is printed every \fIinterval\fR seconds until \fBCtrl-C\fR is pressed. If \fIcount\fR is specified, the command exits after \fIcount\fR reports are printed.
 .sp
 .ne 2
 .mk
@@ -1426,6 +1471,18 @@ Lists the given pools along with a health status and space usage. When given no 
 .RS 12n
 .rt  
 Scripted mode. Do not display headers, and separate fields by a single tab instead of arbitrary space.
+.RE
+
+.ne 2
+.mk
+.na
+\fB\fB-T\fR \fBu\fR | \fBd\fR\fR
+.ad
+.RS 12n
+.rt  
+Display a time stamp.
+.sp
+Specify \fBu\fR for a printed representation of the internal representation of time. See \fBtime\fR(2). Specify \fBd\fR for standard date format. See \fBdate\fR(1).
 .RE
 
 .sp
@@ -1508,8 +1565,18 @@ Expand the device to use all available space. If the device is part of a mirror 
 .ad
 .sp .6
 .RS 4n
-Generates a new unique identifier for the pool.  You must ensure that all devices in this pool are online and
-healthy before performing this action.
+Generates a new unique identifier for the pool. You must ensure that all
+devices in this pool are online and healthy before performing this action.
+.RE
+
+.sp
+.ne 2
+.na
+\fB\fBzpool reopen\fR \fIpool\fR
+.ad
+.sp .6
+.RS 4n
+Reopen all the vdevs associated with the pool.
 .RE
 
 .sp
@@ -1583,6 +1650,51 @@ Stop scrubbing.
 .sp .6
 .RS 4n
 Sets the given property on the specified pool. See the "Properties" section for more information on what properties can be set and acceptable values.
+.RE
+
+.sp
+.ne 2
+.mk
+.na
+\fBzpool split\fR [\fB-n\fR] [\fB-R\fR \fIaltroot\fR] [\fB-o\fR \fIproperty=value\fR] \fIpool\fR \fInewpool\fR
+.ad
+.sp .6
+.RS 4n
+Split devices off \fIpool\fR creating \fInewpool\fR.  All \fBvdev\fRs in \fIpool\fR must be mirrors.  At the time of the split, \fInewpool\fR will be a replica of \fIpool\fR.
+
+.sp
+.ne 2
+.mk
+.na
+\fB\fB-n\fR \fR
+.ad
+.sp .6
+.RS 4n
+Do dry run, do not actually perform the split. Print out the expected configuration of \fInewpool\fR.
+.RE
+
+.sp
+.ne 2
+.mk
+.na
+\fB\fB-R\fR \fIaltroot\fR \fR
+.ad
+.sp .6
+.RS 4n
+Set \fIaltroot\fR for \fInewpool\fR and automaticaly import it.  This can be useful to avoid mountpoint collisions if \fInewpool\fR is imported on the same filesystem as \fIpool\fR.
+.RE
+
+.sp
+.ne 2
+.mk
+.na
+\fB\fB-o\fR \fIproperty=value\fR \fR
+.ad
+.sp .6
+.RS 4n
+Sets the specified property for \fInewpool\fR. See the “Properties” section for more information on the available pool properties.
+.RE
+
 .RE
 
 .sp

@@ -1,10 +1,13 @@
+
+ACLOCAL_AMFLAGS = -I config
+
 include $(top_srcdir)/config/rpm.am
 include $(top_srcdir)/config/deb.am
 include $(top_srcdir)/config/tgz.am
 
-SUBDIRS = include rpm
+SUBDIRS = include
 if CONFIG_USER
-SUBDIRS += dracut udev etc man scripts lib cmd
+SUBDIRS += udev etc man scripts lib cmd
 endif
 if CONFIG_KERNEL
 SUBDIRS += module
@@ -17,7 +20,7 @@ nodist_kernel_HEADERS = zfs.release zfs_config.h module/$(LINUX_SYMBOLS)
 endif
 
 AUTOMAKE_OPTIONS = foreign
-EXTRA_DIST  = autogen.sh copy-builtin
+EXTRA_DIST  =
 EXTRA_DIST += config/config.awk config/rpm.am config/deb.am config/tgz.am
 EXTRA_DIST += META DISCLAIMER COPYRIGHT README.markdown OPENSOLARIS.LICENSE
 

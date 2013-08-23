@@ -34,9 +34,10 @@ AC_INIT
 AC_LANG(C)
 ZFS_AC_META
 AC_CONFIG_AUX_DIR([config])
+AC_CONFIG_MACRO_DIR([config])
 AC_CANONICAL_SYSTEM
 AM_MAINTAINER_MODE
-AM_SILENT_RULES
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AM_INIT_AUTOMAKE([$ZFS_META_NAME], [$ZFS_META_VERSION])
 AC_CONFIG_HEADERS([zfs_config.h], [
 	(mv zfs_config.h zfs_config.h.tmp &&
@@ -56,12 +57,9 @@ ZFS_AC_DEBUG_DMU_TX
 
 AC_CONFIG_FILES([ 
 	Makefile
-	dracut/Makefile
-	dracut/90zfs/Makefile
 	udev/Makefile
 	udev/rules.d/Makefile
 	etc/Makefile
-	etc/init.d/Makefile
 	etc/zfs/Makefile
 	man/Makefile
 	man/man1/Makefile
@@ -101,6 +99,7 @@ AC_CONFIG_FILES([
 	cmd/fsck_zfs/Makefile
 	cmd/zvol_id/Makefile
 	cmd/vdev_id/Makefile
+	cmd/arcstat/Makefile
 	module/Makefile
 	module/avl/Makefile
 	module/nvpair/Makefile
@@ -119,15 +118,6 @@ AC_CONFIG_FILES([
 	scripts/zpios-test/Makefile
 	scripts/zpool-config/Makefile
 	scripts/common.sh
-	rpm/Makefile
-	rpm/fedora/Makefile
-	rpm/fedora/zfs.spec
-	rpm/fedora/zfs-kmod.spec
-	rpm/fedora/zfs-dkms.spec
-	rpm/generic/Makefile
-	rpm/generic/zfs.spec
-	rpm/generic/zfs-kmod.spec
-	rpm/generic/zfs-dkms.spec
 	zfs-script-config.sh
 	zfs.release
 ])

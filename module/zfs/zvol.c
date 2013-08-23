@@ -1024,7 +1024,11 @@ out_mutex:
 	return (error);
 }
 
+#ifdef HAVE_BLOCK_DEVICE_OPERATIONS_RELEASE_VOID
+static void
+#else
 static int
+#endif
 zvol_release(struct gendisk *disk, fmode_t mode)
 {
 	zvol_state_t *zv = disk->private_data;
@@ -1044,7 +1048,9 @@ zvol_release(struct gendisk *disk, fmode_t mode)
 	if (drop_mutex)
 		mutex_exit(&zvol_state_lock);
 
+#ifndef HAVE_BLOCK_DEVICE_OPERATIONS_RELEASE_VOID
 	return (0);
+#endif
 }
 
 static int
@@ -1214,8 +1220,9 @@ zvol_alloc(dev_t dev, const char *name)
 	int error = 0;
 
 	zv = kmem_zalloc(sizeof (zvol_state_t), KM_SLEEP);
-	if (zv == NULL)
-		goto out;
+
+	spin_lock_init(&zv->zv_lock);
+	list_link_init(&zv->zv_next);
 
 	zv->zv_queue = blk_init_queue(zvol_request, &zv->zv_lock);
 	if (zv->zv_queue == NULL)
@@ -1250,9 +1257,6 @@ zvol_alloc(dev_t dev, const char *name)
 	    sizeof (rl_t), offsetof(rl_t, r_node));
 	zv->zv_znode.z_is_zvol = TRUE;
 
-	spin_lock_init(&zv->zv_lock);
-	list_link_init(&zv->zv_next);
-
 	zv->zv_disk->major = zvol_major;
 	zv->zv_disk->first_minor = (dev & MINORMASK);
 	zv->zv_disk->fops = &zvol_ops;
@@ -1267,7 +1271,7 @@ out_queue:
 	blk_cleanup_queue(zv->zv_queue);
 out_kmem:
 	kmem_free(zv, sizeof (zvol_state_t));
-out:
+
 	return NULL;
 }
 
@@ -1563,30 +1567,36 @@ zvol_init(void)
 {
 	int error;
 
+	list_create(&zvol_state_list, sizeof (zvol_state_t),
+	            offsetof(zvol_state_t, zv_next));
+	mutex_init(&zvol_state_lock, NULL, MUTEX_DEFAULT, NULL);
+
 	zvol_taskq = taskq_create(ZVOL_DRIVER, zvol_threads, maxclsyspri,
 		                  zvol_threads, INT_MAX, TASKQ_PREPOPULATE);
 	if (zvol_taskq == NULL) {
 		printk(KERN_INFO "ZFS: taskq_create() failed\n");
-		return (-ENOMEM);
+		error = -ENOMEM;
+		goto out1;
 	}
 
 	error = register_blkdev(zvol_major, ZVOL_DRIVER);
 	if (error) {
 		printk(KERN_INFO "ZFS: register_blkdev() failed %d\n", error);
-		taskq_destroy(zvol_taskq);
-		return (error);
+		goto out2;
 	}
 
 	blk_register_region(MKDEV(zvol_major, 0), 1UL << MINORBITS,
 	                    THIS_MODULE, zvol_probe, NULL, NULL);
 
-	mutex_init(&zvol_state_lock, NULL, MUTEX_DEFAULT, NULL);
-	list_create(&zvol_state_list, sizeof (zvol_state_t),
-	            offsetof(zvol_state_t, zv_next));
-
-	(void) zvol_create_minors(NULL);
-
 	return (0);
+
+out2:
+	taskq_destroy(zvol_taskq);
+out1:
+	mutex_destroy(&zvol_state_lock);
+	list_destroy(&zvol_state_list);
+
+	return (error);
 }
 
 void
