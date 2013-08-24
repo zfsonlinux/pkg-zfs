@@ -523,13 +523,12 @@ get_configs(libzfs_handle_t *hdl, pool_list_t *pl, boolean_t active_ok)
 				 *	version
 				 *	pool guid
 				 *	name
-				 *	pool txg (if available)
 				 *	comment (if available)
 				 *	pool state
 				 *	hostid (if available)
 				 *	hostname (if available)
 				 */
-				uint64_t state, version, pool_txg;
+				uint64_t state, version;
 				char *comment = NULL;
 
 				version = fnvlist_lookup_uint64(tmp,
@@ -544,11 +543,6 @@ get_configs(libzfs_handle_t *hdl, pool_list_t *pl, boolean_t active_ok)
 				    ZPOOL_CONFIG_POOL_NAME);
 				fnvlist_add_string(config,
 				    ZPOOL_CONFIG_POOL_NAME, name);
-
-				if (nvlist_lookup_uint64(tmp,
-				    ZPOOL_CONFIG_POOL_TXG, &pool_txg) == 0)
-					fnvlist_add_uint64(config,
-					    ZPOOL_CONFIG_POOL_TXG, pool_txg);
 
 				if (nvlist_lookup_string(tmp,
 				    ZPOOL_CONFIG_COMMENT, &comment) == 0)
@@ -868,7 +862,7 @@ zpool_read_label(int fd, nvlist_t **config)
 
 	*config = NULL;
 
-	if (fstat64(fd, &statbuf) == -1)
+	if (fstat64_blk(fd, &statbuf) == -1)
 		return (0);
 	size = P2ALIGN_TYPED(statbuf.st_size, sizeof (vdev_label_t), uint64_t);
 
@@ -903,6 +897,36 @@ zpool_read_label(int fd, nvlist_t **config)
 
 	free(label);
 	*config = NULL;
+	return (0);
+}
+
+/*
+ * Given a file descriptor, clear (zero) the label information.  This function
+ * is used in the appliance stack as part of the ZFS sysevent module and
+ * to implement the "zpool labelclear" command.
+ */
+int
+zpool_clear_label(int fd)
+{
+	struct stat64 statbuf;
+	int l;
+	vdev_label_t *label;
+	uint64_t size;
+
+	if (fstat64_blk(fd, &statbuf) == -1)
+		return (0);
+	size = P2ALIGN_TYPED(statbuf.st_size, sizeof (vdev_label_t), uint64_t);
+
+	if ((label = calloc(sizeof (vdev_label_t), 1)) == NULL)
+		return (-1);
+
+	for (l = 0; l < VDEV_LABELS; l++) {
+		if (pwrite64(fd, label, sizeof (vdev_label_t),
+		    label_offset(size, l)) != sizeof (vdev_label_t))
+			return (-1);
+	}
+
+	free(label);
 	return (0);
 }
 

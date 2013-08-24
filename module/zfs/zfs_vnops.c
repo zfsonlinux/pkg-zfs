@@ -20,6 +20,7 @@
  */
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012 by Delphix. All rights reserved.
  */
 
 /* Portions Copyright 2007 Jeremy Teo */
@@ -238,6 +239,68 @@ zfs_close(struct inode *ip, int flag, cred_t *cr)
 	return (0);
 }
 EXPORT_SYMBOL(zfs_close);
+
+#if defined(SEEK_HOLE) && defined(SEEK_DATA)
+/*
+ * Lseek support for finding holes (cmd == SEEK_HOLE) and
+ * data (cmd == SEEK_DATA). "off" is an in/out parameter.
+ */
+static int
+zfs_holey_common(struct inode *ip, int cmd, loff_t *off)
+{
+	znode_t	*zp = ITOZ(ip);
+	uint64_t noff = (uint64_t)*off; /* new offset */
+	uint64_t file_sz;
+	int error;
+	boolean_t hole;
+
+	file_sz = zp->z_size;
+	if (noff >= file_sz)  {
+		return (ENXIO);
+	}
+
+	if (cmd == SEEK_HOLE)
+		hole = B_TRUE;
+	else
+		hole = B_FALSE;
+
+	error = dmu_offset_next(ZTOZSB(zp)->z_os, zp->z_id, hole, &noff);
+
+	/* end of file? */
+	if ((error == ESRCH) || (noff > file_sz)) {
+		/*
+		 * Handle the virtual hole at the end of file.
+		 */
+		if (hole) {
+			*off = file_sz;
+			return (0);
+		}
+		return (ENXIO);
+	}
+
+	if (noff < *off)
+		return (error);
+	*off = noff;
+	return (error);
+}
+
+int
+zfs_holey(struct inode *ip, int cmd, loff_t *off)
+{
+	znode_t	*zp = ITOZ(ip);
+	zfs_sb_t *zsb = ITOZSB(ip);
+	int error;
+
+	ZFS_ENTER(zsb);
+	ZFS_VERIFY_ZP(zp);
+
+	error = zfs_holey_common(ip, cmd, off);
+
+	ZFS_EXIT(zsb);
+	return (error);
+}
+EXPORT_SYMBOL(zfs_holey);
+#endif /* SEEK_HOLE && SEEK_DATA */
 
 #if defined(_KERNEL)
 /*
@@ -1523,7 +1586,7 @@ top:
 	    &xattr_obj, sizeof (xattr_obj));
 	if (error == 0 && xattr_obj) {
 		error = zfs_zget(zsb, xattr_obj, &xzp);
-		ASSERT3U(error, ==, 0);
+		ASSERT0(error);
 		dmu_tx_hold_sa(tx, zp->z_sa_hdl, B_TRUE);
 		dmu_tx_hold_sa(tx, xzp->z_sa_hdl, B_FALSE);
 	}
@@ -1934,8 +1997,7 @@ EXPORT_SYMBOL(zfs_rmdir);
  */
 /* ARGSUSED */
 int
-zfs_readdir(struct inode *ip, void *dirent, filldir_t filldir,
-    loff_t *pos, cred_t *cr)
+zfs_readdir(struct inode *ip, struct dir_context *ctx, cred_t *cr)
 {
 	znode_t		*zp = ITOZ(ip);
 	zfs_sb_t	*zsb = ITOZSB(ip);
@@ -1947,6 +2009,7 @@ zfs_readdir(struct inode *ip, void *dirent, filldir_t filldir,
 	uint8_t		prefetch;
 	int		done = 0;
 	uint64_t	parent;
+	loff_t		*pos = &(ctx->pos);
 
 	ZFS_ENTER(zsb);
 	ZFS_VERIFY_ZP(zp);
@@ -2035,11 +2098,11 @@ zfs_readdir(struct inode *ip, void *dirent, filldir_t filldir,
 
 			objnum = ZFS_DIRENT_OBJ(zap.za_first_integer);
 		}
-		done = filldir(dirent, zap.za_name, strlen(zap.za_name),
-			       zap_cursor_serialize(&zc), objnum, 0);
-		if (done) {
+
+		done = !dir_emit(ctx, zap.za_name, strlen(zap.za_name),
+		    objnum, ZFS_DIRENT_TYPE(zap.za_first_integer));
+		if (done)
 			break;
-		}
 
 		/* Prefetch znode */
 		if (prefetch) {
@@ -2837,7 +2900,7 @@ top:
 		zp->z_mode = new_mode;
 		ASSERT3P(aclp, !=, NULL);
 		err = zfs_aclset_common(zp, aclp, cr, tx);
-		ASSERT3U(err, ==, 0);
+		ASSERT0(err);
 		if (zp->z_acl_cached)
 			zfs_acl_free(zp->z_acl_cached);
 		zp->z_acl_cached = aclp;
@@ -3346,7 +3409,7 @@ top:
 
 			error = sa_update(szp->z_sa_hdl, SA_ZPL_FLAGS(zsb),
 			    (void *)&szp->z_pflags, sizeof (uint64_t), tx);
-			ASSERT3U(error, ==, 0);
+			ASSERT0(error);
 
 			error = zfs_link_destroy(sdl, szp, tx, ZRENAMING, NULL);
 			if (error == 0) {
