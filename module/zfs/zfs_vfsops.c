@@ -233,10 +233,11 @@ zfs_register_callbacks(zfs_sb_t *zsb)
 {
 	struct dsl_dataset *ds = NULL;
 	objset_t *os = zsb->z_os;
+	boolean_t do_readonly = B_FALSE;
 	int error = 0;
 
 	if (zfs_is_readonly(zsb) || !spa_writeable(dmu_objset_spa(os)))
-		readonly_changed_cb(zsb, B_TRUE);
+		do_readonly = B_TRUE;
 
 	/*
 	 * Register property callbacks.
@@ -270,6 +271,9 @@ zfs_register_callbacks(zfs_sb_t *zsb)
 	    "nbmand", nbmand_changed_cb, zsb);
 	if (error)
 		goto unregister;
+
+	if (do_readonly)
+		readonly_changed_cb(zsb, B_TRUE);
 
 	return (0);
 
@@ -1056,10 +1060,12 @@ zfs_sb_teardown(zfs_sb_t *zsb, boolean_t unmounting)
 	}
 
 	/*
-	 * Drain the iput_taskq to ensure all active references to the
+	 * If someone has not already unmounted this file system,
+	 * drain the iput_taskq to ensure all active references to the
 	 * zfs_sb_t have been handled only then can it be safely destroyed.
 	 */
-	taskq_wait(dsl_pool_iput_taskq(dmu_objset_pool(zsb->z_os)));
+	if (zsb->z_os)
+		taskq_wait(dsl_pool_iput_taskq(dmu_objset_pool(zsb->z_os)));
 
 	/*
 	 * Close the zil. NB: Can't close the zil while zfs_inactive
@@ -1480,10 +1486,11 @@ bail:
 
 	if (err) {
 		/*
-		 * Since we couldn't reopen zfs_sb_t, force
-		 * unmount this file system.
+		 * Since we couldn't reopen zfs_sb_t or, setup the
+		 * sa framework, force unmount this file system.
 		 */
-		(void) zfs_umount(zsb->z_sb);
+		if (zsb->z_os)
+			(void) zfs_umount(zsb->z_sb);
 	}
 	return (err);
 }
@@ -1537,7 +1544,7 @@ zfs_set_version(zfs_sb_t *zsb, uint64_t newvers)
 
 		error = zap_add(os, MASTER_NODE_OBJ,
 		    ZFS_SA_ATTRS, 8, 1, &sa_obj, tx);
-		ASSERT3U(error, ==, 0);
+		ASSERT0(error);
 
 		VERIFY(0 == sa_set_sa_object(os, sa_obj));
 		sa_register_update_callback(os, zfs_sa_upgrade);

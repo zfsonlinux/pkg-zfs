@@ -268,13 +268,13 @@ vdev_disk_open(vdev_t *v, uint64_t *psize, uint64_t *max_psize,
 	 * Devices are always opened by the path provided at configuration
 	 * time.  This means that if the provided path is a udev by-id path
 	 * then drives may be recabled without an issue.  If the provided
-	 * path is a udev by-path path then the physical location information
+	 * path is a udev by-path path, then the physical location information
 	 * will be preserved.  This can be critical for more complicated
 	 * configurations where drives are located in specific physical
 	 * locations to maximize the systems tolerence to component failure.
-	 * Alternately you can provide your own udev rule to flexibly map
+	 * Alternatively, you can provide your own udev rule to flexibly map
 	 * the drives as you see fit.  It is not advised that you use the
-	 * /dev/[hd]d devices which may be reorder due to probing order.
+	 * /dev/[hd]d devices which may be reordered due to probing order.
 	 * Devices in the wrong locations will be detected by the higher
 	 * level vdev validation.
 	 */
@@ -407,8 +407,7 @@ vdev_disk_dio_put(dio_request_t *dr)
 		vdev_disk_dio_free(dr);
 
 		if (zio) {
-			zio->io_delay = jiffies_to_msecs(
-			    jiffies_64 - zio->io_delay);
+			zio->io_delay = jiffies_64 - zio->io_delay;
 			zio->io_error = error;
 			ASSERT3S(zio->io_error, >=, 0);
 			if (zio->io_error)
@@ -609,7 +608,7 @@ BIO_END_IO_PROTO(vdev_disk_io_flush_completion, bio, size, rc)
 {
 	zio_t *zio = bio->bi_private;
 
-	zio->io_delay = jiffies_to_msecs(jiffies_64 - zio->io_delay);
+	zio->io_delay = jiffies_64 - zio->io_delay;
 	zio->io_error = -rc;
 	if (rc && (rc == -EOPNOTSUPP))
 		zio->io_vd->vdev_nowritecache = B_TRUE;
@@ -633,7 +632,7 @@ vdev_disk_io_flush(struct block_device *bdev, zio_t *zio)
 	if (!q)
 		return ENXIO;
 
-	bio = bio_alloc(GFP_KERNEL, 0);
+	bio = bio_alloc(GFP_NOIO, 0);
 	if (!bio)
 		return ENOMEM;
 
