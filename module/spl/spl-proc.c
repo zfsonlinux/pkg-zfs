@@ -29,6 +29,7 @@
 #include <linux/kmod.h>
 #include <linux/seq_file.h>
 #include <linux/proc_compat.h>
+#include <linux/version.h>
 #include <spl-debug.h>
 
 #ifdef SS_DEBUG_SUBSYS
@@ -36,6 +37,12 @@
 #endif
 
 #define SS_DEBUG_SUBSYS SS_PROC
+
+#if defined(CONSTIFY_PLUGIN) && LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0)
+typedef struct ctl_table __no_const spl_ctl_table;
+#else
+typedef struct ctl_table spl_ctl_table;
+#endif
 
 #ifdef DEBUG_KMEM
 static unsigned long table_min = 0;
@@ -323,7 +330,7 @@ SPL_PROC_HANDLER(proc_force_bug)
 SPL_PROC_HANDLER(proc_console_max_delay_cs)
 {
         int rc, max_delay_cs;
-        struct ctl_table dummy = *table;
+        spl_ctl_table dummy = *table;
         long d;
 	SENTRY;
 
@@ -355,7 +362,7 @@ SPL_PROC_HANDLER(proc_console_max_delay_cs)
 SPL_PROC_HANDLER(proc_console_min_delay_cs)
 {
         int rc, min_delay_cs;
-        struct ctl_table dummy = *table;
+        spl_ctl_table dummy = *table;
         long d;
 	SENTRY;
 
@@ -387,7 +394,7 @@ SPL_PROC_HANDLER(proc_console_min_delay_cs)
 SPL_PROC_HANDLER(proc_console_backoff)
 {
         int rc, backoff;
-        struct ctl_table dummy = *table;
+        spl_ctl_table dummy = *table;
 	SENTRY;
 
         dummy.data = &backoff;
@@ -417,7 +424,7 @@ SPL_PROC_HANDLER(proc_domemused)
 {
         int rc = 0;
         unsigned long min = 0, max = ~0, val;
-        struct ctl_table dummy = *table;
+        spl_ctl_table dummy = *table;
 	SENTRY;
 
         dummy.data = &val;
@@ -444,7 +451,7 @@ SPL_PROC_HANDLER(proc_doslab)
 {
         int rc = 0;
         unsigned long min = 0, max = ~0, val = 0, mask;
-        struct ctl_table dummy = *table;
+        spl_ctl_table dummy = *table;
         spl_kmem_cache_t *skc;
         SENTRY;
 
@@ -1120,39 +1127,6 @@ static struct ctl_table spl_root[] = {
 	{ 0 }
 };
 
-static int
-proc_dir_entry_match(int len, const char *name, struct proc_dir_entry *de)
-{
-        if (de->namelen != len)
-                return 0;
-
-        return !memcmp(name, de->name, len);
-}
-
-struct proc_dir_entry *
-proc_dir_entry_find(struct proc_dir_entry *root, const char *str)
-{
-	struct proc_dir_entry *de;
-
-	for (de = root->subdir; de; de = de->next)
-		if (proc_dir_entry_match(strlen(str), str, de))
-			return de;
-
-	return NULL;
-}
-
-int
-proc_dir_entries(struct proc_dir_entry *root)
-{
-	struct proc_dir_entry *de;
-	int i = 0;
-
-	for (de = root->subdir; de; de = de->next)
-		i++;
-
-	return i;
-}
-
 int
 spl_proc_init(void)
 {
@@ -1174,11 +1148,11 @@ spl_proc_init(void)
         if (proc_spl_kmem == NULL)
                 SGOTO(out, rc = -EUNATCH);
 
-	proc_spl_kmem_slab = create_proc_entry("slab", 0444, proc_spl_kmem);
+	proc_spl_kmem_slab = proc_create_data("slab", 0444,
+		proc_spl_kmem, &proc_slab_operations, NULL);
         if (proc_spl_kmem_slab == NULL)
 		SGOTO(out, rc = -EUNATCH);
 
-        proc_spl_kmem_slab->proc_fops = &proc_slab_operations;
 #endif /* DEBUG_KMEM */
 
         proc_spl_kstat = proc_mkdir("kstat", proc_spl);
