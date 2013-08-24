@@ -1,5 +1,77 @@
-spl-linux (0.6.1-1~raring) raring; urgency=low
+spl-linux (0.6.2-1~saucy) saucy; urgency=low
 
-  * Initial release.
+  [ Jan Engelhardt ]
+  * build: resolve orthographic and other grammatical errors
+  * build: use CPPFLAGS
+  * gitignore: anchor entries at their respective directory
+  * build: do not call boilerplate ourself
 
- -- Darik Horn <dajhorn@vanadac.com>  Tue, 26 Mar 2013 20:48:09 -0500
+  [ Brian Behlendorf ]
+  * Automake 1.10.1 compat: AM_SILENT_RULES
+  * Replace the SPL_AC_META perl dependency with awk
+  * Add additional dependencies for DKMS package
+
+  [ Etienne Dechamps ]
+  * Fix various generic kmod RPM spec issues.
+
+  [ Turbo Fredriksson ]
+  * Support .nogitrelease file
+  * Add --bump=0 to alien
+  * Ignore *.{deb,rpm,tar.gz} files in the top directory.
+
+  [ Brian Behlendorf ]
+  * Add msec/usec/nsec to tick convertors
+  * Fix delay()
+  * Fix taskq_wait_id()
+
+  [ Tim Chase ]
+  * Fix --enable-debug-kmem-tracking option
+
+  [ Brian Behlendorf ]
+  * Add ASSERT0 and VERIFY0 macros
+  * Fix ASSERT0 and VERIFY0 macro typo
+
+  [ Matthew Thode ]
+  * Copy spl.release.in to kernel dir
+
+  [ Nathaniel Clark ]
+  * Add --buildroot option to kmod build
+
+  [ Yuxuan Shui ]
+  * Linux 3.10 compat: struct vmalloc_info moved
+  * Linux 3.10 compat: replace PDE()->data with PDE_DATA()
+  * Linux 3.10 compat: add missing include of linux/slab.h
+
+  [ Richard Yao ]
+  * Linux 3.10 compat: Do not rely on struct proc_dir_entry definition
+
+  [ Brian Behlendorf ]
+  * Fix --enable-debug-kmem-tracking option
+  * Fix bogus kmem leak warning
+  * Improve build instructions
+
+  [ James H ]
+  * Modify gethrestime to use current_kernel_time()
+
+  [ Brian Behlendorf ]
+  * Return -1 for generic kmem cache shrinker
+  * Fix KMC_OFFSLAB type caches
+  * Add kmod repo integration
+
+  [ Richard Yao ]
+  * Linux 3.11 compat: Replace num_physpages with totalram_pages
+  * Fix race in spl_kmem_cache_reap_now()
+  * PaX/GrSecurity Linux 3.8.y compat: Use __no_const on struct ctl_table
+  * Linux 3.8 compat: Use kuid_t/kgid_t when required
+
+  [ Brian Behlendorf ]
+  * Tag spl-0.6.2
+
+  [ Darik Horn ]
+  * Use dh_autoreconf.
+  * Use dh_auto_configure.
+  * Revert "Set extend-diff-ignore='.*' in the debian/source/options file"
+  * Use the deb revision instead of the META release.
+  * Update gbp.conf for Ubuntu 13.10 Saucy Salamander.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 23 Aug 2013 19:11:52 -0500
