@@ -1,4 +1,4 @@
-# Copyright (c) 2010, Aneurin Price <aneurin.price@gmail.com>
+# Copyright (c) 2013, Aneurin Price <aneurin.price@gmail.com>
 
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
@@ -21,48 +21,64 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
+if [ -w /dev/zfs ]; then
+    __ZFS_CMD="zfs"
+    __ZPOOL_CMD="zpool"
+else
+    __ZFS_CMD="sudo zfs"
+    __ZPOOL_CMD="sudo zpool"
+fi
+
+ZFS_COMPLETE_DATASETS_INCLUDE_SNAPSHOTS=false
+
 __zfs_get_commands()
 {
-    zfs 2>&1 | awk '/^\t[a-z]/ {print $1}' | uniq
+    $__ZFS_CMD 2>&1 | awk '/^\t[a-z]/ {print $1}' | uniq
 }
 
 __zfs_get_properties()
 {
-    zfs get 2>&1 | awk '$2 == "YES" || $2 == "NO" {print $1}'; echo all
+    $__ZFS_CMD get 2>&1 | awk '$2 == "YES" || $2 == "NO" {print $1}'; echo all
 }
 
 __zfs_get_editable_properties()
 {
-    zfs get 2>&1 | awk '$2 == "YES" {printf("%s=\n", $1)}'
+    $__ZFS_CMD get 2>&1 | awk '$2 == "YES" {printf("%s=\n", $1)}'
 }
 
 __zfs_get_inheritable_properties()
 {
-    zfs get 2>&1 | awk '$3 == "YES" {print $1}'
+    $__ZFS_CMD get 2>&1 | awk '$3 == "YES" {print $1}'
 }
 
 __zfs_list_datasets()
 {
-    zfs list -H -o name
+    if $ZFS_COMPLETE_DATASETS_INCLUDE_SNAPSHOTS
+    then
+        $__ZFS_CMD list -H -o name -t all
+    else
+        $__ZFS_CMD list -H -o name
+    fi
 }
 
 __zfs_list_filesystems()
 {
-    zfs list -H -o name -t filesystem
+    $__ZFS_CMD list -H -o name -t filesystem
 }
 
 __zfs_list_snapshots()
 {
-    zfs list -H -o name -t snapshot
+    $__ZFS_CMD list -H -o name -t snapshot
 }
 
 __zfs_list_volumes()
 {
-    zfs list -H -o name -t volume
+    $__ZFS_CMD list -H -o name -t volume
 }
 
 __zfs_argument_chosen()
 {
+    local word property
     for word in $(seq $((COMP_CWORD-1)) -1 2)
     do
         local prev="${COMP_WORDS[$word]}"
@@ -159,22 +175,22 @@ __zfs_complete()
 
 __zpool_get_commands()
 {
-    zpool 2>&1 | awk '/^\t[a-z]/ {print $1}' | uniq
+    $__ZPOOL_CMD 2>&1 | awk '/^\t[a-z]/ {print $1}' | uniq
 }
 
 __zpool_get_properties()
 {
-    zpool get 2>&1 | awk '$2 == "YES" || $2 == "NO" {print $1}'; echo all
+    $__ZPOOL_CMD get 2>&1 | awk '$2 == "YES" || $2 == "NO" {print $1}'; echo all
 }
 
 __zpool_get_editable_properties()
 {
-    zpool get 2>&1 | awk '$2 == "YES" {printf("%s=\n", $1)}'
+    $__ZPOOL_CMD get 2>&1 | awk '$2 == "YES" {printf("%s=\n", $1)}'
 }
 
 __zpool_list_pools()
 {
-    zpool list -H -o name
+    $__ZPOOL_CMD list -H -o name
 }
 
 __zpool_complete()
