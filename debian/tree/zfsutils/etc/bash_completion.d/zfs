@@ -82,7 +82,7 @@ __zfs_argument_chosen()
     for word in $(seq $((COMP_CWORD-1)) -1 2)
     do
         local prev="${COMP_WORDS[$word]}"
-        if [[ "$prev" == [^,]*,* ]]
+        if [[ "$prev" == [^,]*,* ]] || [[ "$prev" == *:* ]]
         then
             return 0
         fi
@@ -131,8 +131,8 @@ __zfs_complete()
 {
     local cur prev cmd cmds
     COMPREPLY=()
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    # Don't split on colon
+    _get_comp_words_by_ref -n : -c cur -p prev -w COMP_WORDS -i COMP_CWORD
     cmd="${COMP_WORDS[1]}"
     cmds=$(__zfs_get_commands)
 
@@ -145,7 +145,6 @@ __zfs_complete()
     case "${cmd}" in
         clone)
             __zfs_complete_ordered_arguments "$(__zfs_list_snapshots)" "$(__zfs_list_filesystems) $(__zfs_list_volumes)" $cur
-            return 0
             ;;
         get)
             case "${prev}" in
@@ -175,11 +174,9 @@ __zfs_complete()
                     fi
                     ;;
             esac
-            return 0
             ;;
         inherit)
             __zfs_complete_ordered_arguments "$(__zfs_get_inheritable_properties)" "$(__zfs_list_datasets)" $cur
-            return 0
             ;;
         list)
             case "${prev}" in
@@ -207,30 +204,25 @@ __zfs_complete()
                     fi
                     ;;
             esac
-            return 0
             ;;
         promote)
             COMPREPLY=($(compgen -W "$(__zfs_list_filesystems)" -- "$cur"))
-            return 0
             ;;
         rollback|send)
             COMPREPLY=($(compgen -W "$(__zfs_list_snapshots)" -- "$cur"))
-            return 0
             ;;
         snapshot)
             COMPREPLY=($(compgen -W "$(__zfs_list_filesystems) $(__zfs_list_volumes)" -- "$cur"))
-            return 0
             ;;
         set)
             __zfs_complete_ordered_arguments "$(__zfs_get_editable_properties)" "$(__zfs_list_filesystems) $(__zfs_list_volumes)" $cur
-            return 0
             ;;
         *)
             COMPREPLY=($(compgen -W "$(__zfs_list_datasets)" -- "$cur"))
-            return 0
             ;;
     esac
-
+    __ltrim_colon_completions "$cur"
+    return 0
 }
 
 __zpool_get_commands()
