@@ -70,6 +70,15 @@ __zfs_match_snapshot()
     fi
 }
 
+__zfs_match_explicit_snapshot()
+{
+    local base_dataset=$(expr "$cur" : '\(.*\)@')
+    if [ ! "x$base_dataset" = "x" ]
+    then
+        $__ZFS_CMD list -H -o name -t snapshot -d 1 $base_dataset
+    fi
+}
+
 __zfs_list_volumes()
 {
     $__ZFS_CMD list -H -o name -t volume
@@ -183,7 +192,7 @@ __zfs_complete()
                     else
                         if __zfs_argument_chosen $(__zfs_get_properties)
                         then
-                            COMPREPLY=($(compgen -W "$(__zfs_list_datasets)" -- "$cur"))
+                            COMPREPLY=($(compgen -W "$(__zfs_match_explicit_snapshot) $(__zfs_list_datasets)" -- "$cur"))
                         else
                             __zfs_complete_multiple_options "$(__zfs_get_properties)" "$cur"
                         fi
@@ -192,7 +201,7 @@ __zfs_complete()
             esac
             ;;
         inherit)
-            __zfs_complete_ordered_arguments "$(__zfs_get_inheritable_properties)" "$(__zfs_list_datasets)" $cur
+            __zfs_complete_ordered_arguments "$(__zfs_get_inheritable_properties)" "$(__zfs_match_explicit_snapshot) $(__zfs_list_datasets)" $cur
             ;;
         list)
             case "${prev}" in
@@ -216,7 +225,7 @@ __zfs_complete()
                     then
                         COMPREPLY=($(compgen -W "-{H,r,d,o,t,s,S}" -- "$cur"))
                     else
-                        COMPREPLY=($(compgen -W "$(__zfs_list_datasets)" -- "$cur"))
+                        COMPREPLY=($(compgen -W "$(__zfs_match_explicit_snapshot) $(__zfs_list_datasets)" -- "$cur"))
                     fi
                     ;;
             esac
@@ -247,7 +256,7 @@ __zfs_complete()
             __zfs_complete_ordered_arguments "$(__zfs_get_editable_properties)" "$(__zfs_list_filesystems) $(__zfs_list_volumes)" $cur
             ;;
         *)
-            COMPREPLY=($(compgen -W "$(__zfs_list_datasets)" -- "$cur"))
+            COMPREPLY=($(compgen -W "$(__zfs_match_explicit_snapshot) $(__zfs_list_datasets)" -- "$cur"))
             ;;
     esac
     __ltrim_colon_completions "$cur"
