@@ -31,7 +31,7 @@ fi
 
 __zfs_get_commands()
 {
-    $__ZFS_CMD 2>&1 | awk '/^\t[a-z]/ {print $1}' | uniq
+    $__ZFS_CMD 2>&1 | awk '/^\t[a-z]/ {print $1}' | cut -f1 -d '|' | uniq
 }
 
 __zfs_get_properties()
@@ -41,7 +41,7 @@ __zfs_get_properties()
 
 __zfs_get_editable_properties()
 {
-    $__ZFS_CMD get 2>&1 | awk '$2 == "YES" {printf("%s=\n", $1)}'
+    $__ZFS_CMD get 2>&1 | awk '$2 == "YES" {print $1"="}'
 }
 
 __zfs_get_inheritable_properties()
@@ -66,7 +66,7 @@ __zfs_match_snapshot()
     then
         $__ZFS_CMD list -H -o name -t snapshot -d 1 $base_dataset
     else
-        $__ZFS_CMD list -H -o name | awk '{print $1"@"}'
+        $__ZFS_CMD list -H -o name -t filesystem,volume | awk '{print $1"@"}'
     fi
 }
 
@@ -90,7 +90,7 @@ __zfs_argument_chosen()
     for word in $(seq $((COMP_CWORD-1)) -1 2)
     do
         local prev="${COMP_WORDS[$word]}"
-        if [[ ${COMP_WORDS[$word-1]} != -[to] ]]
+        if [[ ${COMP_WORDS[$word-1]} != -[tos] ]]
         then
             if [[ "$prev" == [^,]*,* ]] || [[ "$prev" == *[@:]* ]]
             then
@@ -135,6 +135,18 @@ __zfs_complete_multiple_options()
     fi
 }
 
+__zfs_complete_switch()
+{
+    local options=$1
+    if [ "x${cur:0:1}" = "x-" ]
+    then
+        COMPREPLY=($(compgen -W "-{$options}" -- "$cur"))
+        return 0
+    else
+        return 1
+    fi
+}
+
 __zfs_complete()
 {
     local cur prev cmd cmds
@@ -142,10 +154,10 @@ __zfs_complete()
     # Don't split on colon
     _get_comp_words_by_ref -n : -c cur -p prev -w COMP_WORDS -i COMP_CWORD
     cmd="${COMP_WORDS[1]}"
-    cmds=$(__zfs_get_commands)
 
     if [ "${prev##*/}" = "zfs" ]
     then
+        cmds=$(__zfs_get_commands)
         COMPREPLY=($(compgen -W "$cmds -?" -- "$cur"))
         return 0
     fi
@@ -157,10 +169,8 @@ __zfs_complete()
                     COMPREPLY=($(compgen -W "$(__zfs_get_editable_properties)" -- "$cur"))
                     ;;
                 *)
-                    if [ "x${cur:0:1}" = "x-" ]
+                    if ! __zfs_complete_switch "o,p"
                     then
-                        COMPREPLY=($(compgen -W "-{o,p}" -- "$cur"))
-                    else
                         if __zfs_argument_chosen
                         then
                             COMPREPLY=($(compgen -W "$(__zfs_list_datasets)" -- "$cur"))
@@ -177,19 +187,17 @@ __zfs_complete()
                     COMPREPLY=($(compgen -W "" -- "$cur"))
                     ;;
                 -t)
-                    COMPREPLY=($(compgen -W "filesystem volume snapshot all" -- "$cur"))
+                    __zfs_complete_multiple_options "filesystem volume snapshot all" "$cur"
                     ;;
                 -s)
-                    COMPREPLY=($(compgen -W "local default inherited temporary none" -- "$cur"))
+                    __zfs_complete_multiple_options "local default inherited temporary none" "$cur"
                     ;;
                 -o)
                     __zfs_complete_multiple_options "name property value source recieved all" "$cur"
                     ;;
                 *)
-                    if [ "x${cur:0:1}" = "x-" ]
+                    if ! __zfs_complete_switch "H,r,p,d,o,t,s"
                     then
-                        COMPREPLY=($(compgen -W "-{H,r,p,d,o,t,s}" -- "$cur"))
-                    else
                         if __zfs_argument_chosen $(__zfs_get_properties)
                         then
                             COMPREPLY=($(compgen -W "$(__zfs_match_explicit_snapshot) $(__zfs_list_datasets)" -- "$cur"))
@@ -201,7 +209,10 @@ __zfs_complete()
             esac
             ;;
         inherit)
-            __zfs_complete_ordered_arguments "$(__zfs_get_inheritable_properties)" "$(__zfs_match_explicit_snapshot) $(__zfs_list_datasets)" $cur
+            if ! __zfs_complete_switch "r"
+            then
+                __zfs_complete_ordered_arguments "$(__zfs_get_inheritable_properties)" "$(__zfs_match_explicit_snapshot) $(__zfs_list_datasets)" $cur
+            fi
             ;;
         list)
             case "${prev}" in
@@ -209,22 +220,17 @@ __zfs_complete()
                     COMPREPLY=($(compgen -W "" -- "$cur"))
                     ;;
                 -t)
-                    COMPREPLY=($(compgen -W "filesystem volume snapshot all" -- "$cur"))
+                    __zfs_complete_multiple_options "filesystem volume snapshot all" "$cur"
                     ;;
                 -o)
                     __zfs_complete_multiple_options "$(__zfs_get_properties)" "$cur"
                     ;;
-                -s)
-                    COMPREPLY=($(compgen -W "$(__zfs_get_properties)" -- "$cur"))
-                    ;;
-                -S)
+                -s|-S)
                     COMPREPLY=($(compgen -W "$(__zfs_get_properties)" -- "$cur"))
                     ;;
                 *)
-                    if [ "x${cur:0:1}" = "x-" ]
+                    if ! __zfs_complete_switch "H,r,d,o,t,s,S"
                     then
-                        COMPREPLY=($(compgen -W "-{H,r,d,o,t,s,S}" -- "$cur"))
-                    else
                         COMPREPLY=($(compgen -W "$(__zfs_match_explicit_snapshot) $(__zfs_list_datasets)" -- "$cur"))
                     fi
                     ;;
@@ -234,18 +240,14 @@ __zfs_complete()
             COMPREPLY=($(compgen -W "$(__zfs_list_filesystems)" -- "$cur"))
             ;;
         rollback)
-            if [ "x${cur:0:1}" = "x-" ]
+            if ! __zfs_complete_switch "r,R,f"
             then
-                COMPREPLY=($(compgen -W "-{r,R,f}" -- "$cur"))
-            else
                 COMPREPLY=($(compgen -W "$(__zfs_match_snapshot)" -- "$cur"))
             fi
             ;;
         send)
-            if [ "x${cur:0:1}" = "x-" ]
+            if ! __zfs_complete_switch "d,n,P,p,R,v,i,I"
             then
-                COMPREPLY=($(compgen -W "-{d,n,P,p,R,v,i,I}" -- "$cur"))
-            else
                 COMPREPLY=($(compgen -W "$(__zfs_match_snapshot)" -- "$cur"))
             fi
             ;;
@@ -253,7 +255,7 @@ __zfs_complete()
             COMPREPLY=($(compgen -W "$(__zfs_list_filesystems) $(__zfs_list_volumes)" -- "$cur"))
             ;;
         set)
-            __zfs_complete_ordered_arguments "$(__zfs_get_editable_properties)" "$(__zfs_list_filesystems) $(__zfs_list_volumes)" $cur
+            __zfs_complete_ordered_arguments "$(__zfs_get_editable_properties)" "$(__zfs_match_explicit_snapshot) $(__zfs_list_datasets)" $cur
             ;;
         *)
             COMPREPLY=($(compgen -W "$(__zfs_match_explicit_snapshot) $(__zfs_list_datasets)" -- "$cur"))
@@ -275,7 +277,7 @@ __zpool_get_properties()
 
 __zpool_get_editable_properties()
 {
-    $__ZPOOL_CMD get 2>&1 | awk '$2 == "YES" {printf("%s=\n", $1)}'
+    $__ZPOOL_CMD get 2>&1 | awk '$2 == "YES" {print $1"="}'
 }
 
 __zpool_list_pools()
@@ -290,10 +292,10 @@ __zpool_complete()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     cmd="${COMP_WORDS[1]}"
-    cmds=$(__zpool_get_commands)
 
     if [ "${prev##*/}" = "zpool" ]
     then
+        cmds=$(__zpool_get_commands)
         COMPREPLY=($(compgen -W "$cmds" -- "$cur"))
         return 0
     fi
@@ -335,4 +337,4 @@ __zpool_complete()
 }
 
 complete -F __zfs_complete zfs
-complete -o filenames -F __zpool_complete zpool
+complete -F __zpool_complete zpool
