@@ -79,6 +79,28 @@ __zfs_match_explicit_snapshot()
     fi
 }
 
+__zfs_match_multiple_snapshots()
+{
+    local existing_opts=$(expr "$cur" : '\(.*\)[%,]')
+    if [[ $existing_opts ]]
+    then
+        local base_dataset=${cur%@*}
+        if [[ $base_dataset != $cur ]]
+        then
+            local cur=${cur##*,}
+            if [[ $cur =~ ^%|%.*% ]]
+            then
+                # correct range syntax is start%end
+                return 1
+            fi
+            local range_start=$(expr "$cur" : '\(.*%\)')
+            $__ZFS_CMD list -H -o name -t snapshot -d 1 $base_dataset | sed 's$.*@$'$range_start'$g'
+        fi
+    else
+        __zfs_match_explicit_snapshot; __zfs_list_datasets
+    fi
+}
+
 __zfs_list_volumes()
 {
     $__ZFS_CMD list -H -o name -t volume
@@ -252,10 +274,39 @@ __zfs_complete()
             fi
             ;;
         snapshot)
-            COMPREPLY=($(compgen -W "$(__zfs_list_filesystems) $(__zfs_list_volumes)" -- "$cur"))
+            case "${prev}" in
+                -o)
+                    COMPREPLY=($(compgen -W "$(__zfs_get_editable_properties)" -- "$cur"))
+                    ;;
+                *)
+                    if ! __zfs_complete_switch "o,r"
+                    then
+                        COMPREPLY=($(compgen -W "$(__zfs_list_datasets | awk '{print $1"@"}')" -- "$cur"))
+                    fi
+                    ;;
+            esac
             ;;
         set)
             __zfs_complete_ordered_arguments "$(__zfs_get_editable_properties)" "$(__zfs_match_explicit_snapshot) $(__zfs_list_datasets)" $cur
+            ;;
+        upgrade)
+            case "${prev}" in
+                -a|-V|-v)
+                    COMPREPLY=($(compgen -W "" -- "$cur"))
+                    ;;
+                *)
+                    if ! __zfs_complete_switch "a,V,v,r"
+                    then
+                        COMPREPLY=($(compgen -W "$(__zfs_list_filesystems)" -- "$cur"))
+                    fi
+                    ;;
+            esac
+            ;;
+        destroy)
+            if ! __zfs_complete_switch "d,f,n,p,R,r,v"
+            then
+                __zfs_complete_multiple_options "$(__zfs_match_multiple_snapshots)" $cur
+            fi
             ;;
         *)
             COMPREPLY=($(compgen -W "$(__zfs_match_explicit_snapshot) $(__zfs_list_datasets)" -- "$cur"))
