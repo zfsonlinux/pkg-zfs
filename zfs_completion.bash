@@ -21,7 +21,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
-if [ -w /dev/zfs ]; then
+if [[ -w /dev/zfs ]]; then
     __ZFS_CMD="zfs"
     __ZPOOL_CMD="zpool"
 else
@@ -61,8 +61,8 @@ __zfs_list_filesystems()
 
 __zfs_match_snapshot()
 {
-    local base_dataset=$(expr "$cur" : '\(.*\)@')
-    if [ ! "x$base_dataset" = "x" ]
+    local base_dataset=${cur%@*}
+    if [[ $base_dataset != $cur ]]
     then
         $__ZFS_CMD list -H -o name -t snapshot -d 1 $base_dataset
     else
@@ -72,8 +72,8 @@ __zfs_match_snapshot()
 
 __zfs_match_explicit_snapshot()
 {
-    local base_dataset=$(expr "$cur" : '\(.*\)@')
-    if [ ! "x$base_dataset" = "x" ]
+    local base_dataset=${cur%@*}
+    if [[ $base_dataset != $cur ]]
     then
         $__ZFS_CMD list -H -o name -t snapshot -d 1 $base_dataset
     fi
@@ -98,7 +98,7 @@ __zfs_argument_chosen()
             fi
             for property in $@
             do
-                if [ "x$prev" = "x$property" ]
+                if [[ $prev == "$property" ]]
                 then
                     return 0
                 fi
@@ -129,7 +129,7 @@ __zfs_complete_multiple_options()
 
     COMPREPLY=($(compgen -W "$options" -- "${cur##*,}"))
     local existing_opts=$(expr "$cur" : '\(.*,\)')
-    if [ ! "x$existing_opts" = "x" ]
+    if [[ $existing_opts ]] 
     then
         COMPREPLY=( "${COMPREPLY[@]/#/${existing_opts}}" )
     fi
@@ -138,7 +138,7 @@ __zfs_complete_multiple_options()
 __zfs_complete_switch()
 {
     local options=$1
-    if [ "x${cur:0:1}" = "x-" ]
+    if [[ ${cur:0:1} == - ]]
     then
         COMPREPLY=($(compgen -W "-{$options}" -- "$cur"))
         return 0
@@ -155,7 +155,7 @@ __zfs_complete()
     _get_comp_words_by_ref -n : -c cur -p prev -w COMP_WORDS -i COMP_CWORD
     cmd="${COMP_WORDS[1]}"
 
-    if [ "${prev##*/}" = "zfs" ]
+    if [[ ${prev##*/} == zfs ]]
     then
         cmds=$(__zfs_get_commands)
         COMPREPLY=($(compgen -W "$cmds -?" -- "$cur"))
@@ -293,7 +293,7 @@ __zpool_complete()
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     cmd="${COMP_WORDS[1]}"
 
-    if [ "${prev##*/}" = "zpool" ]
+    if [[ ${prev##*/} == zpool ]]
     then
         cmds=$(__zpool_get_commands)
         COMPREPLY=($(compgen -W "$cmds" -- "$cur"))
@@ -306,7 +306,7 @@ __zpool_complete()
             return 0
             ;;
         import)
-            if [ "x$prev" = "x-d" ]
+            if [[ $prev == -d ]]
             then
                 _filedir -d
             else
