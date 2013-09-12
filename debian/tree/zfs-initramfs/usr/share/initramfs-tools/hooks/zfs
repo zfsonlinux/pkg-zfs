@@ -15,7 +15,9 @@ COPY_EXEC_LIST="$COPY_EXEC_LIST /bin/hostname /sbin/blkid"
 
 # Explicitly specify all kernel modules because automatic dependency resolution
 # is unreliable on many systems.
-MANUAL_ADD_MODULES_LIST="zlib_deflate spl zavl zcommon znvpair zunicode zfs"
+BASE_MODULES="zlib_deflate spl zavl zcommon znvpair zunicode zfs"
+CRPT_MODULES="sun-ccm sun-gcm sun-ctr"
+MANUAL_ADD_MODULES_LIST="$BASE_MODULES"
 
 # Generic result code.
 RC=0
@@ -68,6 +70,11 @@ else
 	hostname >"$DESTDIR/etc/hostname"
 fi
 
-# The spl package ensures that the /etc/hostid file exists.
-# NB: Commentary in the spl.postinst script.
-cp -p "/etc/hostid" "$DESTDIR/etc/hostid"
+# The spl-dkms package ensures that the /etc/hostid file exists.
+# NB: Commentary in the spl-dkms.postinst script.
+[ -f "/etc/hostid" ] && cp -p "/etc/hostid" "$DESTDIR/etc/hostid"
+
+# Install the zpool.cache file.
+[ ! -d "$DESTDIR/boot/zfs" ] && mkdir -p "$DESTDIR/boot/zfs"
+[ -d /boot/zfs ] && cp -r /boot/zfs "$DESTDIR/boot"
+exit 0

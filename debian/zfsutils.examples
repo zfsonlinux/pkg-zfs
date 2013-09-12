@@ -2,9 +2,6 @@ etc/zfs/vdev_id.conf.alias.example
 etc/zfs/vdev_id.conf.multipath.example
 etc/zfs/vdev_id.conf.sas_direct.example
 etc/zfs/vdev_id.conf.sas_switch.example
-etc/zfs/zdev.conf.x4550.example
-etc/zfs/zdev.conf.supermicro.example
-etc/zfs/zdev.conf.dragon.example
 scripts/common.sh
 scripts/zconfig.sh
 scripts/zfault.sh
@@ -57,3 +54,4 @@ scripts/zpool-config/zpool-raid0.sh
 scripts/zpool-config/zpool-raid10.sh
 scripts/zpool-config/zpool-raidz.sh
 scripts/zpool-create.sh
+debian/examples/zfsutils/*

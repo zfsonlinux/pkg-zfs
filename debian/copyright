@@ -138,7 +138,8 @@ License: GPL-2+
 
 Files: debian/*
 Copyright: Darik Horn <dajhorn@vanadac.com>
-Source: https://github.com/dajhorn/pkg-spl/
+ Carlos Alberto Lopez Perez <clopez@igalia.com>
+ Aron Xu <aron@debian.org>
 License: GPL-2+
 
 Files: etc/init.d/zfs.gentoo.in

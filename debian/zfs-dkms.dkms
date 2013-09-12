@@ -40,6 +40,7 @@ PRE_BUILD="configure
       fi
     }
   )
+  --with-spl-timeout=600
 "
 POST_BUILD="cp
   ${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}/build/zfs_config.h

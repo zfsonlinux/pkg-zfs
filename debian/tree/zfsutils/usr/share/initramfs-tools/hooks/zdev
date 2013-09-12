@@ -4,8 +4,8 @@
 #
 
 PREREQ="udev"
-PREREQ_UDEV_RULES="60-zpool.rules 60-zvol.rules 69-vdev.rules"
-COPY_EXEC_LIST="/lib/udev/vdev_id /lib/udev/zvol_id /lib/udev/zpool_id"
+PREREQ_UDEV_RULES="60-zvol.rules 69-vdev.rules"
+COPY_EXEC_LIST="/lib/udev/zvol_id /lib/udev/vdev_id"
 
 # Generic result code.
 RC=0
@@ -56,7 +56,7 @@ done
 
 if [ -f '/etc/default/zfs' -a -r '/etc/default/zfs' ]
 then
-	mkdir -p "$DESTDIR/etc/default"	
+	mkdir -p "$DESTDIR/etc/default"
 	cp -a '/etc/default/zfs' "$DESTDIR/etc/default/"
 fi
 

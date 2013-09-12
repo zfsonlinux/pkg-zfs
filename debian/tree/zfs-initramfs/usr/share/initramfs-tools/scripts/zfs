@@ -78,27 +78,60 @@ mountroot()
 	# Use "rpool" as the default, like on most Solaris systems.
 	[ -z "$ZFS_RPOOL" ] && ZFS_RPOOL='rpool'
 
-	# @FIXME: Forcing the import should not be necessary.
-	#
-	# Consider inhibiting automatic zpool imports in the initramfs
-	# environment and doing a full import in the regular system instead.
+	if [ -f /etc/zfs/zpool.cache ]; then
+		ZPOOL_CACHE=/etc/zfs/zpool.cache
+	elif [ -f /boot/zfs/zpool.cache ]; then
+		ZPOOL_CACHE=/boot/zfs/zpool.cache
+	fi
+
+	# zpool import refuse to import without a valid mtab
+	[ ! -f /proc/mounts ] && mount proc /proc
+	[ ! -f /etc/mtab ] && cat /proc/mounts > /etc/mtab
+
+	# Just make sure it's not already imported. Should be impossible, but...
+	zpool list "$ZFS_RPOOL" 1>/dev/null 2>&1
+	ZFS_ERROR=$?
 
 	[ "$quiet" != "y" ] && log_begin_msg "Importing ZFS root pool $ZFS_RPOOL"
-	if [ -f /etc/zfs/zpool.cache ]
+	# Attempt 1: Try the correct/proper way.
+	if [ "$ZFS_ERROR" -ne 0 -a -n "$ZPOOL_CACHE" ]
 	then
-		ZFS_STDERR=$(zpool list "$ZFS_RPOOL" 1>/dev/null 2>&1 \
-		  || zpool import -f -N "$ZFS_RPOOL" 2>&1)
+		ZFS_CMD="zpool import -c $ZPOOL_CACHE -N $ZFS_RPOOL"
+
+		ZFS_STDERR=$($ZFS_CMD 2>&1)
 		ZFS_ERROR=$?
-	else
-		ZFS_STDERR=$(zpool import -f -N "$ZFS_RPOOL" 2>&1)
+
+		[ "$ZFS_ERROR" -ne 0 ] && echo "FAIL: $ZFS_CMD. Retrying..."
+	fi
+
+	# Attempt 2: Try forcing the import, using /dev/disk/by-id if it exists.
+	[ -d /dev/disk/by-id ] && DISK_BY_ID="-d /dev/disk/by-id"
+	if [ "$ZFS_ERROR" -ne 0 -o -z "$ZPOOL_CACHE" ]
+	then
+		ZFS_CMD="zpool import -f -N $DISK_BY_ID $ZFS_RPOOL"
+
+		ZFS_STDERR=$($ZFS_CMD 2>&1)
 		ZFS_ERROR=$?
+
+		[ "$ZFS_ERROR" -ne 0 ] && echo "FAIL: $ZFS_CMD. Retrying..."
+	fi
+
+	# Attempt 3: Last ditch attempt. If DISK_BY_ID is set, we've already tried...
+	if [ "$ZFS_ERROR" -ne 0 -a -z "$DISK_BY_ID" ]
+	then
+		ZFS_CMD="zpool import -f -N $ZFS_RPOOL"
+
+		ZFS_STDERR=$($ZFS_CMD 2>&1)
+		ZFS_ERROR=$?
+
+		[ "$ZFS_ERROR" -ne 0 ] && echo "FAIL: $ZFS_CMD. Retrying..."
 	fi
 	[ "$quiet" != "y" ] && log_end_msg
 
 	if [ "$ZFS_ERROR" -ne 0 ]
 	then
 		disable_plymouth
-		echo "Command: zpool import -f -N $ZFS_RPOOL"
+		echo "Command: $ZFS_CMD"
 		echo "Message: $ZFS_STDERR"
 		echo "Error: $ZFS_ERROR"
 		echo ""
@@ -130,6 +163,46 @@ mountroot()
 	[ "$quiet" != "y" ] && log_begin_msg "Setting mountpoint=/ on ZFS filesystem $ZFS_BOOTFS"
 	ZFS_STDERR=$(zfs set mountpoint=/ "$ZFS_BOOTFS" 2>&1)
 	[ "$quiet" != "y" ] && log_end_msg
+
+	if zfs 2>&1 | grep -q 'key -l '
+	then
+		# 'zfs key' is availible (hence we have crypto), check if filesystem is encrypted.
+		set -- `zfs get encryption $ZFS_BOOTFS | grep ^$ZFS_RPOOL`
+		crypt_type=$3
+		if [ "$crypt_type" != "off" ]
+		then
+			[ "$quiet" != "y" ] && log_begin_msg "Loading crypto wrapper key for $ZFS_BOOTFS"
+
+			# Just make sure that ALL crypto modules module is loaded.
+			# Simplest just to load all...
+			for mod in sun-ccm sun-gcm sun-ctr
+			do
+				modprobe $mod
+			done
+
+			# If the key isn't availible, then this will fail!
+			ZFS_CMD="zfs key -l -a"
+			ZFS_STDERR=$($ZFS_CMD 2>&1)
+			ZFS_ERROR=$?
+
+			if [ "$ZFS_ERROR" -ne 0 ]
+			then
+			    disable_plymouth
+			    echo "FAIL: $ZFS_CMD"
+			    echo "Message: $ZFS_STDERR"
+			    echo "Error: $ZFS_ERROR"
+			    echo ""
+			    echo "Failed to load zfs encryption wrapper key (s)."
+			    echo "Please verify dataset property 'keysource' for datasets"
+			    echo "and rerun: $ZFS_CMD"
+			    /bin/sh
+
+			    ZFS_ERROR=0
+			else
+			    [ "$quiet" != "y" ] && log_end_msg
+			fi
+		fi
+	fi
 
 	# Ideally, the root filesystem would be mounted like this:
 	#

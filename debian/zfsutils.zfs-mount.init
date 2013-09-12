@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 ### BEGIN INIT INFO
-# Provides: zvol zfs
+# Provides: zvol zfs zfs-mount
 # Required-Start: $local_fs
 # Required-Stop: $local_fs
 # Default-Start: 2 3 4 5
@@ -16,7 +16,11 @@
 PATH=/sbin:/bin
 
 . /lib/lsb/init-functions
-. /lib/init/vars.sh
+# Do not source /lib/init/*.sh as they are not public APIs after getting rid
+# of /lib/init/rw. However, this line may help when doing back port to older
+# releases.
+#
+#. /lib/init/vars.sh
 
 [ -f /etc/default/zfs ] && . /etc/default/zfs
 
