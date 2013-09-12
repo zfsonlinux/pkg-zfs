@@ -1,5 +1,20 @@
-spl-linux (0.6.1-1~wheezy) wheezy; urgency=low
+spl-linux (0.6.2-1) wheezy; urgency=low
 
-  * Initial release.
+  * New upstream release.
 
- -- Darik Horn <dajhorn@vanadac.com>  Tue, 26 Mar 2013 21:43:49 -0500
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 11 Sep 2013 02:35:29 +0200
+
+spl-linux (0.6.1-2) experimental; urgency=low
+
+  * Add license info for scripts/kmodtool
+  * Add linux 3.10 compatibility patch from upstream. (Closes: #717565)
+  * Add facility to build udeb and binary modules, thanks Turbo Fredriksson
+    for the work.
+
+ -- Aron Xu <aron@debian.org>  Mon, 29 Jul 2013 16:04:24 +0800
+
+spl-linux (0.6.1-1) experimental; urgency=low
+
+  * Initial Release (Closes: #686453)
+
+ -- Aron Xu <aron@debian.org>  Tue, 02 Apr 2013 01:03:05 +0200

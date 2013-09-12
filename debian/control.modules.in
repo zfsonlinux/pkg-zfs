@@ -1,0 +1,52 @@
+Source: spl-linux
+Section: kernel
+Priority: extra
+Maintainer: Debian ZFS on Linux maintainers <pkg-zfsonlinux-devel@lists.alioth.debian.org>
+Uploaders: Aron Xu <aron@debian.org>, Carlos Alberto Lopez Perez <clopez@igalia.com>, Turbo Fredriksson <turbo@debian.org>
+Build-Depends: autotools-dev,
+ autoconf,
+ autogen,
+ automake,
+ debhelper (>= 7.4),
+ dkms (>> 2.1.1.2-5),
+ libtool,
+ linux-headers-_KVERS_-common,
+ linux-headers-_KVERS_
+Standards-Version: 3.9.4
+Homepage: http://www.zfsonlinux.org/
+Vcs-Git: git://anonscm.debian.org/pkg-zfsonlinux/spl.git
+Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-zfsonlinux/spl.git
+
+Package: spl-modules-_KVERS_
+Architecture: _ARCH_
+Provides: spl-modules
+Depends: linux-image-_KVERS_
+Recommends: spl (>= ${source:Upstream-Version})
+Description: Solaris Porting Layer kernel modules for Linux (kernel _KVERS_)
+ The Solaris Porting Layer (SPL) is a Linux kernel module which provides
+ many of the Solaris kernel APIs. This shim layer makes it possible to
+ run Solaris kernel code in the Linux kernel with relatively minimal
+ modification.
+ .
+ This package contains the compiled kernel module for _KVERS_
+ .
+ If you have compiled your own kernel, you will most likely need to build
+ your own spl-modules. The spl-source package has been
+ provided for use with the Debian kernel-package utility to produce a 
+ version of spl-module for your kernel.
+
+Package: spl-modules-_KVERS_-di
+Package-Type: udeb
+Provides: spl-modules-_KVERS_-udeb
+Section: debian-installer
+Architecture: _ARCH_
+Depends: ${shlibs:Depends}, ${misc:Depends}, zlib-modules-_KVERS_-di
+Description: Solaris Porting Layer kernel modules for Linux (debian-installar version for kernel _KVERS_)
+ The Solaris Porting Layer (SPL) is a Linux kernel module which provides
+ many of the Solaris kernel APIs. This shim layer makes it possible to
+ run Solaris kernel code in the Linux kernel with relatively minimal
+ modification.
+ .
+ This package contains the compiled kernel module for _KVERS_
+ .
+ This is a minimal package for use in debian-installer.

@@ -21,6 +21,10 @@ set -e
 # If this file don't already exists on our system or has less than 4 bytes, then
 # we will stabilize our current hostid by writing its value to /etc/hostid
 
+# Run depmod first
+depmod
+
+# Deal with hostid issue as usual
 if [ ! -f /etc/hostid ] || [ $(stat -c %s /etc/hostid) -lt 4 ] ; then
 
 	# Write our current hostid to /etc/hostid
