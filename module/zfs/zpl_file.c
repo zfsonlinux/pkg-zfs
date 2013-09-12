@@ -52,6 +52,9 @@ zpl_release(struct inode *ip, struct file *filp)
 	cred_t *cr = CRED();
 	int error;
 
+	if (ITOZ(ip)->z_atime_dirty)
+		mark_inode_dirty(ip);
+
 	crhold(cr);
 	error = -zfs_close(ip, filp->f_flags, cr);
 	crfree(cr);
@@ -61,20 +64,33 @@ zpl_release(struct inode *ip, struct file *filp)
 }
 
 static int
-zpl_readdir(struct file *filp, void *dirent, filldir_t filldir)
+zpl_iterate(struct file *filp, struct dir_context *ctx)
 {
 	struct dentry *dentry = filp->f_path.dentry;
 	cred_t *cr = CRED();
 	int error;
 
 	crhold(cr);
-	error = -zfs_readdir(dentry->d_inode, dirent, filldir,
-	    &filp->f_pos, cr);
+	error = -zfs_readdir(dentry->d_inode, ctx, cr);
 	crfree(cr);
 	ASSERT3S(error, <=, 0);
 
 	return (error);
 }
+
+#if !defined(HAVE_VFS_ITERATE)
+static int
+zpl_readdir(struct file *filp, void *dirent, filldir_t filldir)
+{
+	struct dir_context ctx = DIR_CONTEXT_INIT(dirent, filldir, filp->f_pos);
+	int error;
+
+	error = zpl_iterate(filp, &ctx);
+	filp->f_pos = ctx.pos;
+
+	return (error);
+}
+#endif /* HAVE_VFS_ITERATE */
 
 #if defined(HAVE_FSYNC_WITH_DENTRY)
 /*
@@ -233,6 +249,28 @@ zpl_write(struct file *filp, const char __user *buf, size_t len, loff_t *ppos)
 
 	*ppos += wrote;
 	return (wrote);
+}
+
+static loff_t
+zpl_llseek(struct file *filp, loff_t offset, int whence)
+{
+#if defined(SEEK_HOLE) && defined(SEEK_DATA)
+	if (whence == SEEK_DATA || whence == SEEK_HOLE) {
+		struct inode *ip = filp->f_mapping->host;
+		loff_t maxbytes = ip->i_sb->s_maxbytes;
+		loff_t error;
+
+		spl_inode_lock(ip);
+		error = -zfs_holey(ip, whence, &offset);
+		if (error == 0)
+			error = lseek_execute(filp, ip, offset, maxbytes);
+		spl_inode_unlock(ip);
+
+		return (error);
+	}
+#endif /* SEEK_HOLE && SEEK_DATA */
+
+	return generic_file_llseek(filp, offset, whence);
 }
 
 /*
@@ -433,6 +471,27 @@ zpl_fallocate(struct file *filp, int mode, loff_t offset, loff_t len)
 }
 #endif /* HAVE_FILE_FALLOCATE */
 
+static long
+zpl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	switch (cmd) {
+	case ZFS_IOC_GETFLAGS:
+	case ZFS_IOC_SETFLAGS:
+		return (-EOPNOTSUPP);
+	default:
+		return (-ENOTTY);
+	}
+}
+
+#ifdef CONFIG_COMPAT
+static long
+zpl_compat_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	return zpl_ioctl(filp, cmd, arg);
+}
+#endif /* CONFIG_COMPAT */
+
+
 const struct address_space_operations zpl_address_space_operations = {
 	.readpages	= zpl_readpages,
 	.readpage	= zpl_readpage,
@@ -443,20 +502,31 @@ const struct address_space_operations zpl_address_space_operations = {
 const struct file_operations zpl_file_operations = {
 	.open		= zpl_open,
 	.release	= zpl_release,
-	.llseek		= generic_file_llseek,
+	.llseek		= zpl_llseek,
 	.read		= zpl_read,
 	.write		= zpl_write,
-	.readdir	= zpl_readdir,
 	.mmap		= zpl_mmap,
 	.fsync		= zpl_fsync,
 #ifdef HAVE_FILE_FALLOCATE
 	.fallocate      = zpl_fallocate,
 #endif /* HAVE_FILE_FALLOCATE */
+	.unlocked_ioctl = zpl_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl   = zpl_compat_ioctl,
+#endif
 };
 
 const struct file_operations zpl_dir_file_operations = {
 	.llseek		= generic_file_llseek,
 	.read		= generic_read_dir,
+#ifdef HAVE_VFS_ITERATE
+	.iterate	= zpl_iterate,
+#else
 	.readdir	= zpl_readdir,
+#endif
 	.fsync		= zpl_fsync,
+	.unlocked_ioctl = zpl_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl   = zpl_compat_ioctl,
+#endif
 };

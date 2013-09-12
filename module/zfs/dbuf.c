@@ -22,6 +22,7 @@
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2011 Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 2012 by Delphix. All rights reserved.
+ * Copyright (c) 2013 by Saso Kiselkov. All rights reserved.
  */
 
 #include <sys/zfs_context.h>
@@ -373,7 +374,7 @@ dbuf_verify(dmu_buf_impl_t *db)
 	} else if (db->db_blkid == DMU_SPILL_BLKID) {
 		ASSERT(dn != NULL);
 		ASSERT3U(db->db.db_size, >=, dn->dn_bonuslen);
-		ASSERT3U(db->db.db_offset, ==, 0);
+		ASSERT0(db->db.db_offset);
 	} else {
 		ASSERT3U(db->db.db_offset, ==, db->db_blkid * db->db.db_size);
 	}
@@ -559,7 +560,6 @@ dbuf_read_impl(dmu_buf_impl_t *db, zio_t *zio, uint32_t *flags)
 	spa_t *spa;
 	zbookmark_t zb;
 	uint32_t aflags = ARC_NOWAIT;
-	arc_buf_t *pbuf;
 
 	DB_DNODE_ENTER(db);
 	dn = DB_DNODE(db);
@@ -615,20 +615,16 @@ dbuf_read_impl(dmu_buf_impl_t *db, zio_t *zio, uint32_t *flags)
 
 	if (DBUF_IS_L2CACHEABLE(db))
 		aflags |= ARC_L2CACHE;
+	if (DBUF_IS_L2COMPRESSIBLE(db))
+		aflags |= ARC_L2COMPRESS;
 
 	SET_BOOKMARK(&zb, db->db_objset->os_dsl_dataset ?
 	    db->db_objset->os_dsl_dataset->ds_object : DMU_META_OBJSET,
 	    db->db.db_object, db->db_level, db->db_blkid);
 
 	dbuf_add_ref(db, NULL);
-	/* ZIO_FLAG_CANFAIL callers have to check the parent zio's error */
 
-	if (db->db_parent)
-		pbuf = db->db_parent->db_buf;
-	else
-		pbuf = db->db_objset->os_phys_buf;
-
-	(void) dsl_read(zio, spa, db->db_blkptr, pbuf,
+	(void) arc_read(zio, spa, db->db_blkptr,
 	    dbuf_read_done, db, ZIO_PRIORITY_SYNC_READ,
 	    (*flags & DB_RF_CANFAIL) ? ZIO_FLAG_CANFAIL : ZIO_FLAG_MUSTSUCCEED,
 	    &aflags, &zb);
@@ -1026,7 +1022,6 @@ void
 dbuf_release_bp(dmu_buf_impl_t *db)
 {
 	objset_t *os;
-	zbookmark_t zb;
 
 	DB_GET_OBJSET(&os, db);
 	ASSERT(dsl_pool_sync_context(dmu_objset_pool(os)));
@@ -1034,13 +1029,7 @@ dbuf_release_bp(dmu_buf_impl_t *db)
 	    list_link_active(&os->os_dsl_dataset->ds_synced_link));
 	ASSERT(db->db_parent == NULL || arc_released(db->db_parent->db_buf));
 
-	zb.zb_objset = os->os_dsl_dataset ?
-	    os->os_dsl_dataset->ds_object : 0;
-	zb.zb_object = db->db.db_object;
-	zb.zb_level = db->db_level;
-	zb.zb_blkid = db->db_blkid;
-	(void) arc_release_bp(db->db_buf, db,
-	    db->db_blkptr, os->os_spa, &zb);
+	(void) arc_release(db->db_buf, db);
 }
 
 dbuf_dirty_record_t *
@@ -1886,7 +1875,6 @@ dbuf_prefetch(dnode_t *dn, uint64_t blkid)
 		if (bp && !BP_IS_HOLE(bp)) {
 			int priority = dn->dn_type == DMU_OT_DDT_ZAP ?
 			    ZIO_PRIORITY_DDT_PREFETCH : ZIO_PRIORITY_ASYNC_READ;
-			arc_buf_t *pbuf;
 			dsl_dataset_t *ds = dn->dn_objset->os_dsl_dataset;
 			uint32_t aflags = ARC_NOWAIT | ARC_PREFETCH;
 			zbookmark_t zb;
@@ -1894,13 +1882,8 @@ dbuf_prefetch(dnode_t *dn, uint64_t blkid)
 			SET_BOOKMARK(&zb, ds ? ds->ds_object : DMU_META_OBJSET,
 			    dn->dn_object, 0, blkid);
 
-			if (db)
-				pbuf = db->db_buf;
-			else
-				pbuf = dn->dn_objset->os_phys_buf;
-
-			(void) dsl_read(NULL, dn->dn_objset->os_spa,
-			    bp, pbuf, NULL, NULL, priority,
+			(void) arc_read(NULL, dn->dn_objset->os_spa,
+			    bp, NULL, NULL, priority,
 			    ZIO_FLAG_CANFAIL | ZIO_FLAG_SPECULATIVE,
 			    &aflags, &zb);
 		}
@@ -2433,7 +2416,7 @@ dbuf_sync_leaf(dbuf_dirty_record_t *dr, dmu_tx_t *tx)
 		dbuf_dirty_record_t **drp;
 
 		ASSERT(*datap != NULL);
-		ASSERT3U(db->db_level, ==, 0);
+		ASSERT0(db->db_level);
 		ASSERT3U(dn->dn_phys->dn_bonuslen, <=, DN_MAX_BONUSLEN);
 		bcopy(*datap, DN_BONUS(dn->dn_phys), dn->dn_phys->dn_bonuslen);
 		DB_DNODE_EXIT(db);
@@ -2636,7 +2619,7 @@ dbuf_write_done(zio_t *zio, arc_buf_t *buf, void *vdb)
 	uint64_t txg = zio->io_txg;
 	dbuf_dirty_record_t **drp, *dr;
 
-	ASSERT3U(zio->io_error, ==, 0);
+	ASSERT0(zio->io_error);
 	ASSERT(db->db_blkptr == bp);
 
 	if (zio->io_flags & ZIO_FLAG_IO_REWRITE) {
@@ -2842,9 +2825,10 @@ dbuf_write(dbuf_dirty_record_t *dr, arc_buf_t *data, dmu_tx_t *tx)
 	} else {
 		ASSERT(arc_released(data));
 		dr->dr_zio = arc_write(zio, os->os_spa, txg,
-		    db->db_blkptr, data, DBUF_IS_L2CACHEABLE(db), &zp,
-		    dbuf_write_ready, dbuf_write_done, db,
-		    ZIO_PRIORITY_ASYNC_WRITE, ZIO_FLAG_MUSTSUCCEED, &zb);
+		    db->db_blkptr, data, DBUF_IS_L2CACHEABLE(db),
+		    DBUF_IS_L2COMPRESSIBLE(db), &zp, dbuf_write_ready,
+		    dbuf_write_done, db, ZIO_PRIORITY_ASYNC_WRITE,
+		    ZIO_FLAG_MUSTSUCCEED, &zb);
 	}
 }
 
