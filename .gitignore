@@ -52,3 +52,14 @@ cscope.*
 *.rpm
 *.deb
 *.tar.gz
+spl-*
+META.orig
+
+#
+# Some debian dir stuff
+debian/control
+debian/files
+debian/spl.debhelper.log
+debian/spl.substvars
+debian/spl
+debian/tmp/
