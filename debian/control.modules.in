@@ -19,9 +19,11 @@ Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-zfsonlinux/spl.git
 
 Package: spl-modules-_KVERS_
 Architecture: _ARCH_
-Provides: spl-modules
-Depends: linux-image-_KVERS_
+Provides: spl-modules, spl-dkms
+Depends: linux-image-_KVERS_ (= _IMGVER_)
 Recommends: spl (>= ${source:Upstream-Version})
+Conflicts: spl-dkms
+Replaces: spl-dkms
 Description: Solaris Porting Layer kernel modules for Linux (kernel _KVERS_)
  The Solaris Porting Layer (SPL) is a Linux kernel module which provides
  many of the Solaris kernel APIs. This shim layer makes it possible to
@@ -37,7 +39,9 @@ Description: Solaris Porting Layer kernel modules for Linux (kernel _KVERS_)
 
 Package: spl-modules-_KVERS_-di
 Package-Type: udeb
-Provides: spl-modules-_KVERS_-udeb
+Provides: spl-modules-_KVERS_-udeb, spl-dkms
+Conflicts: spl-dkms
+Replaces: spl-dkms
 Section: debian-installer
 Architecture: _ARCH_
 Depends: ${shlibs:Depends}, ${misc:Depends}, zlib-modules-_KVERS_-di
