@@ -59,7 +59,8 @@ META.orig
 # Some debian dir stuff
 debian/control
 debian/files
-debian/spl.debhelper.log
-debian/spl.substvars
-debian/spl
+debian/zfs.debhelper.log
+debian/zfs.substvars
+debian/zfs
 debian/tmp/
+debian/zfs-modules-[0-9]*
