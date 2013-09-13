@@ -18,9 +18,11 @@ Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-zfsonlinux/spl.git
 
 Package: zfs-modules-_KVERS_
 Architecture: _ARCH_
-Provides: zfs-modules
-Depends: linux-image-_KVERS_, spl-modules | spl-dkms
+Provides: zfs-modules, zfs-dkms
+Depends: linux-image-_KVERS_ (= _IMGVER_), spl-modules | spl-dkms
 Recommends: zfsutils
+Conflicts: zfs-dkms
+Replaces: zfs-dkms
 Description: Native ZFS filesystem kernel modules for Linux (kernel _KVERS_)
  An advanced integrated volume manager and filesystem that is designed for
  performance and data integrity. Snapshots, clones, checksums, deduplication,
@@ -40,7 +42,9 @@ Package-Type: udeb
 Section: debian-installer
 Architecture: _ARCH_
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Provides: zfs-modules, zfs-modules-_KVERS_-udeb
+Provides: zfs-modules, zfs-modules-_KVERS_-udeb, zfs-dkms
+Conflicts: zfs-dkms
+Replaces: zfs-dkms
 Description: Native ZFS filesystem kernel modules for Linux (debian-installar version for kernel _KVERS_)
  An advanced integrated volume manager and filesystem that is designed for
  performance and data integrity. Snapshots, clones, checksums, deduplication,
