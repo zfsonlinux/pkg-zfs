@@ -1,0 +1,16 @@
+Index: zfs/lib/libzfs/Makefile.am
+===================================================================
+--- zfs.orig/lib/libzfs/Makefile.am	2013-09-14 01:39:42.980509000 -0500
++++ zfs/lib/libzfs/Makefile.am		2013-09-14 01:42:21.780509000 -0500
+@@ -22,8 +22,11 @@ libzfs_la_SOURCES = \
+   $(top_srcdir)/lib/libzfs/libzfs_util.c
+ 
+ libzfs_la_LIBADD = \
++		   $(top_builddir)/lib/libavl/libavl.la \
++		   $(top_builddir)/lib/libefi/libefi.la \
+ 		   $(top_builddir)/lib/libshare/libshare.la \
+ 		   $(top_builddir)/lib/libnvpair/libnvpair.la \
++		   $(top_builddir)/lib/libuutil/libuutil.la \
+ 		   $(top_builddir)/lib/libzpool/libzpool.la
+ 
+ libzfs_la_LDFLAGS = -lm -ldl -version-info 1:1:0 $(LIBSELINUX)

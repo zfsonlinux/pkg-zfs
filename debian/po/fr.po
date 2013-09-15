@@ -1,4 +1,4 @@
-# Translation of zfs-linux debconf templates to French. 
+# Translation of zfs-linux debconf templates to French.
 # Copyright (C) 2013, French l10n team <debian-l10n-french@lists.debian.org>
 # This file is distributed under the same license as the zfs-linux package.
 # Julien Patriarca <leatherface@debian.org>, 2013.

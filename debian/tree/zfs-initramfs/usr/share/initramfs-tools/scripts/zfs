@@ -156,7 +156,7 @@ mountroot()
 		echo ""
 		echo "Manually mount the root filesystem on $rootmnt and then exit."
 		echo "Hint: Try:  mount -t zfs -o zfsutil $ZFS_RPOOL/ROOT/system $rootmnt"
-		/bin/sh	
+		/bin/sh
 	fi
 
 	# Force the mountpoint to the only correct value for a root filesystem.
@@ -227,7 +227,7 @@ mountroot()
 		echo "Error: $ZFS_ERROR"
 		echo ""
 		echo "Manually mount the root filesystem on $rootmnt and then exit."
-		/bin/sh	
+		/bin/sh
 	fi
 
 	[ "$quiet" != "y" ] && log_begin_msg "Running /scripts/local-bottom"

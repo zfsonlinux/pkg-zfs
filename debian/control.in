@@ -96,7 +96,7 @@ Description: Native ZFS filesystem kernel modules for Linux
 
 Package: zfs-initramfs
 Architecture: linux-any
-Depends: zfs-modules | zfs-dkms, zfsutils, ${misc:Depends}
+Depends: initramfs-tools, zfs-modules | zfs-dkms, zfsutils, ${misc:Depends}
 Description: Native ZFS root filesystem capabilities for Linux
  The Z file system is a pooled filesystem designed for maximum data
  integrity, supporting data snapshots, multiple copies, and data
@@ -108,7 +108,7 @@ Description: Native ZFS root filesystem capabilities for Linux
 Package: zfsutils
 Section: admin
 Architecture: linux-any
-Depends: ${misc:Depends}, ${shlibs:Depends}
+Depends: initscripts, lsb-base, ${misc:Depends}, ${shlibs:Depends}
 Recommends: zfs-modules | zfs-dkms
 Suggests: nfs-kernel-server, samba-common-bin (>= 3.0.23), zfs-initramfs
 Conflicts: zfs, zfs-fuse
@@ -128,7 +128,7 @@ Architecture: linux-any
 Depends: libnvpair1 (= ${binary:Version}),
          libuutil1 (= ${binary:Version}),
          libzfs1 (= ${binary:Version}),
-         libzpoo1 (= ${binary:Version}),
+         libzpool1 (= ${binary:Version}),
          ${misc:Depends}
 Recommends: zfsutils (= ${binary:Version})
 Description: Debugging symbols for ZFS userland libraries and tools
@@ -136,5 +136,5 @@ Description: Debugging symbols for ZFS userland libraries and tools
  integrity, supporting data snapshots, multiple copies, and data
  checksums.
  .
- This package contains the debugging symbols for libzpoo1, libzfs1,
+ This package contains the debugging symbols for libzpool1, libzfs1,
  libnvpair1, libuutil1, and zfsutils.

@@ -4,6 +4,8 @@ LSB_DISTRIBUTOR := $(shell lsb_release -is)
 NAME := $(shell awk '$$1 == "Name:" { print $$2; }' META)
 VERSION := $(shell dpkg-parsechangelog \
   | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f1)
+REVISION := $(shell dpkg-parsechangelog \
+  | awk '$$1 == &quot;Version:&quot; { print $$2; }' | cut -d- -f2-)
 
 DKMSFILES := module include config zfs.release.in autogen.sh META AUTHORS \
 		DISCLAIMER COPYRIGHT OPENSOLARIS.LICENSE README.markdown
@@ -30,6 +32,8 @@ non_epoch_version=$(shell echo $(KVERS) | perl -pe 's/^\d+://')
 PACKAGE=zfs
 pmodules = $(PACKAGE)-modules-$(non_epoch_version)
 
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
 KIMGVER=$(shell dpkg -s linux-image-$(KVERS) | grep ^Version | sed 's/.*: //')
 
 %:
@@ -42,18 +46,20 @@ ifeq ($(BUILD_UDEB), true)
 endif
 
 	@# Embed the downstream version in the module.
-	@sed -e 's/^Version:.*/Version:      $(VERSION)/' -i.orig META
+	@sed \
+	  -e 's/^Version:.*/Version:      $(VERSION)/' \
+	  -e 's/^Release:.*/Release:      $(REVISION)/' \
+	  -i.orig META
 
 	@# Create the makefiles and configure script.
 	./autogen.sh
 
 	@# Build the userland, but don't build the kernel modules.
-	./configure \
-	  --prefix='' \
-	  --libexecdir=/usr/libexec \
+	dh_auto_configure -- \
+	  --bindir=/bin \
+	  --sbindir=/sbin \
 	  --libdir=/lib \
-	  --includedir=/usr/include \
-	  --datarootdir=/usr/share \
+	  --with-udevdir=/lib/udev \
 	  --with-config=user
 
 override_dh_auto_test:
@@ -122,8 +128,9 @@ ifeq ($(LSB_DISTRIBUTOR),Debian)
 	  --no-restart-on-upgrade --no-start -- defaults 18 00
 else ifeq ($(LSB_DISTRIBUTOR),Ubuntu)
 	@# Ubuntu runs nfs-kernel-server at sysv sequence 20 80.
+	@# iscsitarget at 20 20, and samba through upstart.
 	dh_installinit --name=zfs-share \
-	  --no-restart-on-upgrade --no-start -- defaults 21 79
+	  --no-restart-on-upgrade --no-start -- defaults 25 15
 else
 	dh_installinit --name=zfs-share \
 	  --no-restart-on-upgrade --no-start
@@ -176,7 +183,7 @@ override_dh_prep-deb-files:
 
 override_dh_configure_modules_udeb: override_dh_configure_modules_udeb_stamp
 override_dh_configure_modules_udeb_stamp:
-	./configure \
+	dh_auto_configure -- \
 		--without-selinux \
 		--with-config=kernel \
 		--with-linux=$(KSRC) \
@@ -186,7 +193,7 @@ override_dh_configure_modules_udeb_stamp:
 
 override_dh_configure_modules: override_dh_configure_modules_stamp
 override_dh_configure_modules_stamp:
-	./configure \
+	dh_auto_configure -- \
 		--with-config=kernel \
 		--with-linux=$(KSRC) \
 		--with-linux-obj=$(KOBJ) \
