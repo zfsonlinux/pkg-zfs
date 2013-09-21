@@ -1,3 +1,9 @@
+zfs-linux (0.6.2-2~squeeze) squeeze; urgency=low
+
+  * Build for Squeeze
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 21 Sep 2013 08:37:10 +0200
+
 zfs-linux (0.6.2-1) wheezy; urgency=low
 
   * New Release
