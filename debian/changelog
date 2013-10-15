@@ -1,3 +1,10 @@
+zfs-linux (0.6.2-2) wheezy; urgency=low
+
+  * Add 'file' as dependency to 'zfs-dkms'.
+    Closes: https://github.com/zfsonlinux/zfs/issues/1755
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 15 Oct 2013 13:58:24 +0200
+
 zfs-linux (0.6.2-1) wheezy; urgency=low
 
   * New Release

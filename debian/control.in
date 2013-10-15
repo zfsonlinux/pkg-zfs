@@ -82,7 +82,7 @@ Description: Native ZFS pool library for Linux
 Package: zfs-dkms
 Architecture: all
 Pre-Depends: spl-dkms (>= ${source:Upstream-Version})
-Depends: dkms (>> 2.1.1.2-5), lsb-release, ${misc:Depends}
+Depends: dkms (>> 2.1.1.2-5), lsb-release, ${misc:Depends}, file
 Recommends: zfsutils
 Replaces: lzfs, lzfs-dkms
 Provides: lustre-backend-fs, lzfs, lzfs-dkms, zfs-modules
