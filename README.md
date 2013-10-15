@@ -45,6 +45,7 @@ $ git checkout master/ubuntu/precise
 
 1. Now compile it:
 ```
+$ ./autogen.sh
 $ git-buildpackage -uc -us
 ```
 
