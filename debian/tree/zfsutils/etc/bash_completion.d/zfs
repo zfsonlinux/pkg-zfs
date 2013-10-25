@@ -215,7 +215,7 @@ __zfs_complete()
                     __zfs_complete_multiple_options "local default inherited temporary none" "$cur"
                     ;;
                 -o)
-                    __zfs_complete_multiple_options "name property value source recieved all" "$cur"
+                    __zfs_complete_multiple_options "name property value source received all" "$cur"
                     ;;
                 *)
                     if ! __zfs_complete_switch "H,r,p,d,o,t,s"
