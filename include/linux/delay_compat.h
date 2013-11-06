@@ -1,5 +1,5 @@
 /*****************************************************************************\
- *  Copyright (C) 2007-2010 Lawrence Livermore National Security, LLC.
+ *  Copyright (C) 2007-2013 Lawrence Livermore National Security, LLC.
  *  Copyright (C) 2007 The Regents of the University of California.
  *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
  *  Written by Brian Behlendorf <behlendorf1@llnl.gov>.
@@ -22,9 +22,26 @@
  *  with the SPL.  If not, see <http://www.gnu.org/licenses/>.
 \*****************************************************************************/
 
-#ifndef _SPL_SDT_H
-#define _SPL_SDT_H
+#ifndef _SPL_DELAY_COMPAT_H
+#define _SPL_DELAY_COMPAT_H
 
-#define SET_ERROR(x) (x)
+#include <linux/delay.h>
+#include <linux/time.h>
 
-#endif /* SPL_SDT_H */
+/* usleep_range() introduced in 2.6.36 */
+#ifndef HAVE_USLEEP_RANGE
+
+static inline void
+usleep_range(unsigned long min, unsigned long max)
+{
+	unsigned int min_ms = min / USEC_PER_MSEC;
+
+	if (min >= MAX_UDELAY_MS)
+		msleep(min_ms);
+	else
+		udelay(min);
+}
+
+#endif /* HAVE_USLEEP_RANGE */
+
+#endif /* _SPL_DELAY_COMPAT_H */
