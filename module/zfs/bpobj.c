@@ -20,7 +20,7 @@
  */
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012 by Delphix. All rights reserved.
+ * Copyright (c) 2013 by Delphix. All rights reserved.
  */
 
 #include <sys/bpobj.h>
@@ -366,6 +366,7 @@ bpobj_enqueue_subobj(bpobj_t *bpo, uint64_t subobj, dmu_tx_t *tx)
 {
 	bpobj_t subbpo;
 	uint64_t used, comp, uncomp, subsubobjs;
+	ASSERTV(dmu_object_info_t doi);
 
 	ASSERT(bpo->bpo_havesubobj);
 	ASSERT(bpo->bpo_havecomp);
@@ -392,6 +393,9 @@ bpobj_enqueue_subobj(bpobj_t *bpo, uint64_t subobj, dmu_tx_t *tx)
 		    DMU_OT_BPOBJ_SUBOBJ, SPA_MAXBLOCKSIZE, DMU_OT_NONE, 0, tx);
 	}
 
+	ASSERT0(dmu_object_info(bpo->bpo_os, bpo->bpo_phys->bpo_subobjs, &doi));
+	ASSERT3U(doi.doi_type, ==, DMU_OT_BPOBJ_SUBOBJ);
+
 	mutex_enter(&bpo->bpo_lock);
 	dmu_write(bpo->bpo_os, bpo->bpo_phys->bpo_subobjs,
 	    bpo->bpo_phys->bpo_num_subobjs * sizeof (subobj),
@@ -414,6 +418,12 @@ bpobj_enqueue_subobj(bpobj_t *bpo, uint64_t subobj, dmu_tx_t *tx)
 
 			VERIFY3U(0, ==, dmu_buf_hold(bpo->bpo_os, subsubobjs,
 			    0, FTAG, &subdb, 0));
+			/*
+			 * Make sure that we are not asking dmu_write()
+			 * to write more data than we have in our buffer.
+			 */
+			VERIFY3U(subdb->db_size, >=,
+			    numsubsub * sizeof (subobj));
 			dmu_write(bpo->bpo_os, bpo->bpo_phys->bpo_subobjs,
 			    bpo->bpo_phys->bpo_num_subobjs * sizeof (subobj),
 			    numsubsub * sizeof (subobj), subdb->db_data, tx);

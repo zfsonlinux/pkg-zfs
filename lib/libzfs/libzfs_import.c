@@ -365,7 +365,7 @@ static nvlist_t *
 refresh_config(libzfs_handle_t *hdl, nvlist_t *config)
 {
 	nvlist_t *nvl;
-	zfs_cmd_t zc = { "\0", "\0", "\0", "\0", 0 };
+	zfs_cmd_t zc = {"\0"};
 	int err;
 
 	if (zcmd_write_conf_nvlist(hdl, &zc, config) != 0)
@@ -965,7 +965,7 @@ zpool_find_import_blkid(libzfs_handle_t *hdl, pool_list_t *pools)
 		goto err_blkid2;
 	}
 
-	err = blkid_dev_set_search(iter, "TYPE", "zfs");
+	err = blkid_dev_set_search(iter, "TYPE", "zfs_member");
 	if (err != 0) {
 		(void) zfs_error_fmt(hdl, EZFS_BADCACHE,
 		    dgettext(TEXT_DOMAIN, "blkid_dev_set_search() %d"), err);

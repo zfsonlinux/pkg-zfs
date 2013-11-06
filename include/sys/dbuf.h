@@ -20,6 +20,7 @@
  */
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013 by Delphix. All rights reserved.
  * Copyright (c) 2013 by Saso Kiselkov. All rights reserved.
  */
 
@@ -131,6 +132,7 @@ typedef struct dbuf_dirty_record {
 			blkptr_t dr_overridden_by;
 			override_states_t dr_override_state;
 			uint8_t dr_copies;
+			boolean_t dr_nopwrite;
 		} dl;
 	} dt;
 } dbuf_dirty_record_t;
@@ -282,6 +284,9 @@ void dbuf_free_range(struct dnode *dn, uint64_t start, uint64_t end,
 
 void dbuf_new_size(dmu_buf_impl_t *db, int size, dmu_tx_t *tx);
 
+void dbuf_stats_init(dbuf_hash_table_t *hash);
+void dbuf_stats_destroy(void);
+
 #define	DB_DNODE(_db)		((_db)->db_dnode_handle->dnh_dnode)
 #define	DB_DNODE_LOCK(_db)	((_db)->db_dnode_handle->dnh_zrlock)
 #define	DB_DNODE_ENTER(_db)	(zrl_add(&DB_DNODE_LOCK(_db)))
@@ -307,20 +312,17 @@ void dbuf_fini(void);
 
 boolean_t dbuf_is_metadata(dmu_buf_impl_t *db);
 
-#define	DBUF_IS_METADATA(_db)	\
-	(dbuf_is_metadata(_db))
-
 #define	DBUF_GET_BUFC_TYPE(_db)	\
-	(DBUF_IS_METADATA(_db) ? ARC_BUFC_METADATA : ARC_BUFC_DATA)
+	(dbuf_is_metadata(_db) ? ARC_BUFC_METADATA : ARC_BUFC_DATA)
 
 #define	DBUF_IS_CACHEABLE(_db)						\
 	((_db)->db_objset->os_primary_cache == ZFS_CACHE_ALL ||		\
-	(DBUF_IS_METADATA(_db) &&					\
+	(dbuf_is_metadata(_db) &&					\
 	((_db)->db_objset->os_primary_cache == ZFS_CACHE_METADATA)))
 
 #define	DBUF_IS_L2CACHEABLE(_db)					\
 	((_db)->db_objset->os_secondary_cache == ZFS_CACHE_ALL ||	\
-	(DBUF_IS_METADATA(_db) &&					\
+	(dbuf_is_metadata(_db) &&					\
 	((_db)->db_objset->os_secondary_cache == ZFS_CACHE_METADATA)))
 
 #define	DBUF_IS_L2COMPRESSIBLE(_db)					\
