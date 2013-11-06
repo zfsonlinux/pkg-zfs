@@ -7,17 +7,6 @@ does not contain the userland. (eg: Dist --with-config=kernel only.)
 
 For all userland components in each automake template, delete
 instances of EXTRA_DIST and change dist_ to nodist_.
----
- Makefile.am                       |    3 +--
- cmd/vdev_id/Makefile.am           |    2 +-
- etc/zfs/Makefile.am               |    2 --
- man/man8/Makefile.am              |    1 -
- scripts/Makefile.am               |    2 +-
- scripts/zpios-profile/Makefile.am |    2 +-
- scripts/zpios-test/Makefile.am    |    2 +-
- scripts/zpool-config/Makefile.am  |    2 +-
- udev/rules.d/Makefile.am          |    5 -----
- 9 files changed, 6 insertions(+), 15 deletions(-)
 
 Index: b/Makefile.am
 ===================================================================
@@ -60,21 +49,6 @@ Index: b/man/man8/Makefile.am
 -
  install-data-local:
  	$(INSTALL) -d -m 0755 "$(DESTDIR)$(mandir)/man8"
-Index: b/scripts/Makefile.am
-===================================================================
---- a/scripts/Makefile.am
-+++ b/scripts/Makefile.am
-@@ -1,9 +1,7 @@
- SUBDIRS = zpool-config zpios-test zpios-profile
- 
--EXTRA_DIST = dkms.mkconf dkms.postinst kmodtool
--
- pkgdatadir = $(datadir)/@PACKAGE@
--dist_pkgdata_SCRIPTS = \
-+nodist_pkgdata_SCRIPTS = \
- 	$(top_builddir)/scripts/common.sh \
- 	$(top_srcdir)/scripts/zconfig.sh \
- 	$(top_srcdir)/scripts/zfault.sh \
 Index: b/scripts/zpios-profile/Makefile.am
 ===================================================================
 --- a/scripts/zpios-profile/Makefile.am
