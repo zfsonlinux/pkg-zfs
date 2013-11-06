@@ -1,3 +1,12 @@
+spl-linux (0.6.2-2~precise~2.gbp7a3237) precise; urgency=low
+
+  ** SNAPSHOT build @7a323738f85820c0045f32bd7c7ba62f43da7803 **
+
+  [ Richard Yao ]
+  * Linux 3.12 compat: New shrinker API
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 06 Nov 2013 15:56:49 -0600
+
 spl-linux (0.6.2-2~precise~1.gbpa57a97) precise; urgency=low
 
   ** SNAPSHOT build @a57a97c72ec311a8d05a84a5431ae52561f1a57b **
