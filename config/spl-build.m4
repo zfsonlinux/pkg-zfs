@@ -27,8 +27,7 @@ AC_DEFUN([SPL_AC_CONFIG_KERNEL], [
 	SPL_AC_TYPE_ATOMIC64_XCHG
 	SPL_AC_TYPE_UINTPTR_T
 	SPL_AC_2ARGS_REGISTER_SYSCTL
-	SPL_AC_SET_SHRINKER
-	SPL_AC_3ARGS_SHRINKER_CALLBACK
+	SPL_AC_SHRINKER_CALLBACK
 	SPL_AC_PATH_IN_NAMEIDATA
 	SPL_AC_TASK_CURR
 	SPL_AC_CTL_UNNUMBERED
@@ -93,6 +92,7 @@ AC_DEFUN([SPL_AC_CONFIG_KERNEL], [
 	SPL_AC_RWSEM_SPINLOCK_IS_RAW
 	SPL_AC_SCHED_RT_HEADER
 	SPL_AC_2ARGS_VFS_GETATTR
+	SPL_AC_USLEEP_RANGE
 ])
 
 AC_DEFUN([SPL_AC_MODULE_SYMVERS], [
@@ -884,37 +884,18 @@ AC_DEFUN([SPL_AC_2ARGS_REGISTER_SYSCTL],
 	])
 ])
 
-dnl #
-dnl # 2.6.23 API change
-dnl # Old set_shrinker API replaced with register_shrinker
-dnl #
-AC_DEFUN([SPL_AC_SET_SHRINKER], [
-	AC_MSG_CHECKING([whether set_shrinker() available])
-	SPL_LINUX_TRY_COMPILE([
-		#include <linux/mm.h>
-	],[
-		return set_shrinker(DEFAULT_SEEKS, NULL);
-	],[
-		AC_MSG_RESULT([yes])
-		AC_DEFINE(HAVE_SET_SHRINKER, 1,
-		          [set_shrinker() available])
-	],[
-		AC_MSG_RESULT([no])
-	])
-])
-
-dnl #
-dnl # 2.6.35 API change,
-dnl # Add context to shrinker callback
-dnl #
-AC_DEFUN([SPL_AC_3ARGS_SHRINKER_CALLBACK],
-	[AC_MSG_CHECKING([whether shrinker callback wants 3 args])
+AC_DEFUN([SPL_AC_SHRINKER_CALLBACK],[
 	tmp_flags="$EXTRA_KCFLAGS"
 	EXTRA_KCFLAGS="-Werror"
+	dnl #
+	dnl # 2.6.23 to 2.6.34 API change
+	dnl # ->shrink(int nr_to_scan, gfp_t gfp_mask)
+	dnl #
+	AC_MSG_CHECKING([whether old 2-argument shrinker exists])
 	SPL_LINUX_TRY_COMPILE([
 		#include <linux/mm.h>
 
-		int shrinker_cb(struct shrinker *, int, unsigned int);
+		int shrinker_cb(int nr_to_scan, gfp_t gfp_mask);
 	],[
 		struct shrinker cache_shrinker = {
 			.shrink = shrinker_cb,
@@ -923,10 +904,86 @@ AC_DEFUN([SPL_AC_3ARGS_SHRINKER_CALLBACK],
 		register_shrinker(&cache_shrinker);
 	],[
 		AC_MSG_RESULT(yes)
-		AC_DEFINE(HAVE_3ARGS_SHRINKER_CALLBACK, 1,
-		          [shrinker callback wants 3 args])
+		AC_DEFINE(HAVE_2ARGS_OLD_SHRINKER_CALLBACK, 1,
+			[old shrinker callback wants 2 args])
 	],[
 		AC_MSG_RESULT(no)
+		dnl #
+		dnl # 2.6.35 - 2.6.39 API change
+		dnl # ->shrink(struct shrinker *,
+		dnl #          int nr_to_scan, gfp_t gfp_mask)
+		dnl #
+		AC_MSG_CHECKING([whether old 3-argument shrinker exists])
+		SPL_LINUX_TRY_COMPILE([
+			#include <linux/mm.h>
+
+			int shrinker_cb(struct shrinker *, int nr_to_scan,
+					gfp_t gfp_mask);
+		],[
+			struct shrinker cache_shrinker = {
+				.shrink = shrinker_cb,
+				.seeks = DEFAULT_SEEKS,
+			};
+			register_shrinker(&cache_shrinker);
+		],[
+			AC_MSG_RESULT(yes)
+			AC_DEFINE(HAVE_3ARGS_SHRINKER_CALLBACK, 1,
+				[old shrinker callback wants 3 args])
+		],[
+			AC_MSG_RESULT(no)
+			dnl #
+			dnl # 3.0 - 3.11 API change
+			dnl # ->shrink(struct shrinker *,
+			dnl #          struct shrink_control *sc)
+			dnl #
+			AC_MSG_CHECKING(
+				[whether new 2-argument shrinker exists])
+			SPL_LINUX_TRY_COMPILE([
+				#include <linux/mm.h>
+
+				int shrinker_cb(struct shrinker *,
+						struct shrink_control *sc);
+			],[
+				struct shrinker cache_shrinker = {
+					.shrink = shrinker_cb,
+					.seeks = DEFAULT_SEEKS,
+				};
+				register_shrinker(&cache_shrinker);
+			],[
+				AC_MSG_RESULT(yes)
+				AC_DEFINE(HAVE_2ARGS_NEW_SHRINKER_CALLBACK, 1,
+					[new shrinker callback wants 2 args])
+			],[
+				AC_MSG_RESULT(no)
+				dnl #
+				dnl # 3.12 API change,
+				dnl # ->shrink() is logically split in to
+				dnl # ->count_objects() and ->scan_objects()
+				dnl #
+				AC_MSG_CHECKING(
+				    [whether ->count_objects callback exists])
+				SPL_LINUX_TRY_COMPILE([
+					#include <linux/mm.h>
+
+					unsigned long shrinker_cb(
+						struct shrinker *,
+						struct shrink_control *sc);
+				],[
+					struct shrinker cache_shrinker = {
+						.count_objects = shrinker_cb,
+						.scan_objects = shrinker_cb,
+						.seeks = DEFAULT_SEEKS,
+					};
+					register_shrinker(&cache_shrinker);
+				],[
+					AC_MSG_RESULT(yes)
+					AC_DEFINE(HAVE_SPLIT_SHRINKER_CALLBACK,
+						1, [->count_objects exists])
+				],[
+					AC_MSG_ERROR(error)
+				])
+			])
+		])
 	])
 	EXTRA_KCFLAGS="$tmp_flags"
 ])
@@ -2398,5 +2455,27 @@ AC_DEFUN([SPL_AC_2ARGS_VFS_GETATTR], [
 		],[
 			AC_MSG_ERROR(unknown)
 		])
+	])
+])
+
+dnl #
+dnl # 2.6.36 API compatibility.
+dnl # Added usleep_range timer.
+dnl # usleep_range is a finer precision implementation of msleep
+dnl # designed to be a drop-in replacement for udelay where a precise
+dnl # sleep / busy-wait is unnecessary.
+dnl #
+AC_DEFUN([SPL_AC_USLEEP_RANGE], [
+	AC_MSG_CHECKING([whether usleep_range() is available])
+	SPL_LINUX_TRY_COMPILE([
+		#include <linux/delay.h>
+	],[
+		usleep_range(0, 0);
+	],[
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(HAVE_USLEEP_RANGE, 1,
+		          [usleep_range is available])
+	],[
+		AC_MSG_RESULT(no)
 	])
 ])
