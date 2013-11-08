@@ -1,3 +1,44 @@
+spl-linux (0.6.2-2~saucy~1.gbp293b4e) saucy; urgency=low
+
+  ** SNAPSHOT build @293b4e4c8647115349bae4056f426b921ede39eb **
+
+  [ Richard Yao ]
+  * Replace current_kernel_time() with getnstimeofday()
+
+  [ Ned Bass ]
+  * Add kpreempt() compatibility macro
+
+  [ Kohsuke Kawaguchi ]
+  * Document how to run SPLAT
+
+  [ Brian Behlendorf ]
+  * Consistently use local_irq_disable/local_irq_enable
+
+  [ Richard Yao ]
+  * Define SET_ERROR()
+
+  [ Prakash Surya ]
+  * Add callbacks for displaying KSTAT_TYPE_RAW kstats
+  * Add wrappers for accessing PID and command info
+
+  [ Brian Behlendorf ]
+  * Revert "Add KSTAT_TYPE_TXG type"
+
+  [ Cyril Plisko ]
+  * Kstat to use private lock by default
+
+  [ Ned Bass ]
+  * 3537 add kstat_waitq_enter and friends
+  * Emulate illumos interface cv_timedwait_hires()
+
+  [ Richard Yao ]
+  * Linux 3.12 compat: New shrinker API
+
+  [ Darik Horn ]
+  * Update debian/gbp.conf for snapshot builds.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 07 Nov 2013 23:11:34 -0600
+
 spl-linux (0.6.2-1~saucy) saucy; urgency=low
 
   [ Jan Engelhardt ]
