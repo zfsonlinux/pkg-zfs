@@ -1,3 +1,223 @@
+zfs-linux (0.6.2-2~saucy~1.gbpc1521e) saucy; urgency=low
+
+  ** SNAPSHOT build @c1521e5c113e266f0fb5a971cfe8ca9d12157cc3 **
+
+  [ Matthew Ahrens ]
+  * Illumos #2882, #2883, #2900
+  * Illumos #3464
+
+  [ Tim Chase ]
+  * Fix dmu_objset_find_dp() KM_SLEEP warning
+
+  [ Richard Yao ]
+  * Stop runtime pointer modifications in autotools checks
+
+  [ Brian Behlendorf ]
+  * Fix uninitialized variables
+  * Fix zpl_mknod() return values
+
+  [ Kohsuke Kawaguchi ]
+  * Reduce the stack usage of dsl_dataset_remove_clones_key
+
+  [ GregorKopka ]
+  * Removing unneeded mutex for reading vq_pending_tree size
+
+  [ Brian Behlendorf ]
+  * Fix spa_deadman() TQ_SLEEP warning
+
+  [ Tim Chase ]
+  * Fix several new KM_SLEEP warnings
+  * Allocate the ioctl "output" nvlist with KM_PUSHPAGE.
+
+  [ Brian Behlendorf ]
+  * Export addition dsl_prop_* symbols
+
+  [ Richard Yao ]
+  * Update drive database
+
+  [ Brian Behlendorf ]
+  * Fix memory leak false positive in log_internal()
+
+  [ Ned Bass ]
+  * Export symbols dsl_pool_config_{enter,exit}
+
+  [ Neil Stockbridge ]
+  * Update detach section of zpool(8)
+
+  [ Richard Yao ]
+  * Fix libblkid support
+  * Generate libraries with correct DT_NEEDED entries
+  * Fix libzfs_core changes to follow GNU libtool guidelines
+
+  [ George Wilson ]
+  * Illumos #3552
+
+  [ Tim Chase ]
+  * Add missing dsl pool configuration lock
+  * Dedup-related documentation additions for zpool and zdb.
+
+  [ Richard Yao ]
+  * Linux 3.11 compat: Rename LZ4 symbols
+
+  [ Brian Behlendorf ]
+  * Increase default udev wait time
+  * Revert "Add new kstat for monitoring time in dmu_tx_assign"
+  * Revert "Add txgs-<pool> kstat file"
+
+  [ Prakash Surya ]
+  * Add visibility in to arc_read
+
+  [ Brian Behlendorf ]
+  * Add visibility in to txg sync behavior
+  * Add visibility in to dmu_tx_assign times
+  * Add visibility in to cached dbufs
+  * Add dbufstat.py command
+
+  [ Steven Hartland ]
+  * Corrected "zfs list -t <type>" syntax
+
+  [ Ralf Ertzinger ]
+  * Introduce zpool_get_prop_literal interface
+  * Add -p switch to "zpool get"
+
+  [ Richard Yao ]
+  * Restructure zfs_readdir() to fix regressions
+
+  [ Prakash Surya ]
+  * Add script to fix file names in upstream patches
+
+  [ Brian Behlendorf ]
+  * Prevent xattr remove from creating xattr directory
+  * Improve xattr property documentation
+
+  [ Massimo Maggi ]
+  * Posix ACL Support
+
+  [ Richard Yao ]
+  * Reintroduce uio_prefaultpages()
+  * Fix order of function calls in zio_free_sync()
+  * Fix incorrect usage of strdup() in zfs_unmount_snap()
+  * Add missing copyright notices from Illumos
+  * Add missing code to zfs_debug.{c,h}
+
+  [ Brian Behlendorf ]
+  * Add cstyle.pl utility and cstyle.1 man page
+
+  [ George Wilson ]
+  * Illumos #3522
+
+  [ Matthew Ahrens ]
+  * Illumos #3537
+
+  [ George Wilson ]
+  * Illumos #3561, #3116
+  * Illumos #3578, #3579
+
+  [ Matthew Ahrens ]
+  * Illumos #3588
+  * Illumos #3603, #3604: bobj improvements
+
+  [ Yuri Pankov ]
+  * Illumos #3517
+
+  [ Matthew Ahrens ]
+  * Illumos #3598
+  * Illumos #3645, #3692
+
+  [ George Wilson ]
+  * Illumos #3642, #3643
+
+  [ Mark Shellenbaum ]
+  * 6939941 problem with moving files in zfs
+  * 6977619 NULL pointer deference in sa_handle_get_from_db()
+
+  [ Adam Leventhal ]
+  * Illumos #3582, #3584
+
+  [ Martin Matuska ]
+  * Illumos #3699, #3739
+
+  [ Will Andrews ]
+  * Illumos #3741
+  * Illumos #3742
+  * Illumos #3743
+  * Illumos #3744
+  * Illumos #3745, #3811
+
+  [ Steven Hartland ]
+  * Illumos #3740
+  * Illumos #3818
+
+  [ Matthew Ahrens ]
+  * Illumos #3829
+
+  [ Keith M Wesolowski ]
+  * Illumos #3894
+
+  [ Matthew Ahrens ]
+  * Illumos #3888
+
+  [ Keith M Wesolowski ]
+  * Illumos #3875
+
+  [ George Wilson ]
+  * Illumos #3236
+
+  [ Matthew Ahrens ]
+  * Illumos #3112, #3113, #3114
+  * Illumos #3836
+  * Illumos #3834
+
+  [ Steven Hartland ]
+  * Illumos #3909
+  * Illumos #3973
+
+  [ Matthew Ahrens ]
+  * Illumos #3955
+
+  [ George Wilson ]
+  * Illumos #3949, #3950, #3952, #3953
+  * Illumos #3956, #3957, #3958, #3959, #3960, #3961, #3962
+
+  [ Matthew Ahrens ]
+  * Illumos #3996
+  * Illumos #4047
+
+  [ Marcel Telka ]
+  * Illumos #4061
+
+  [ Matthew Ahrens ]
+  * Illumos #4046
+
+  [ George Wilson ]
+  * Illumos #3954, #4080, #4081
+
+  [ Matthew Ahrens ]
+  * Illumos #4082
+
+  [ George Wilson ]
+  * Illumos #4168, #4169, #4170
+
+  [ Saso Kiselkov ]
+  * Illumos #3995
+
+  [ Brian Behlendorf ]
+  * Switch allocations from KM_SLEEP to KM_PUSHPAGE
+
+  [ Matthew Ahrens ]
+  * 26126 panic system rather than corrupting pool if we hit bug 26100
+
+  [ Massimo Maggi ]
+  * Honor CONFIG_FS_POSIX_ACL kernel option
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+  * Kludge deb format 3 snapshot build inadequacy.
+  * Integrate libzfs_core changes.
+  * Update debian/gbp.conf for snapshot builds.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 07 Nov 2013 23:28:24 -0600
+
 zfs-linux (0.6.2-1~saucy) saucy; urgency=low
 
   [ Nick Garvey ]
