@@ -62,7 +62,7 @@ zpool \- configures ZFS storage pools
 
 .LP
 .nf
-\fBzpool get\fR "\fIall\fR" | \fIproperty\fR[,...] \fIpool\fR ...
+\fBzpool get\fR [\fB-p\fR] "\fIall\fR" | \fIproperty\fR[,...] \fIpool\fR ...
 .fi
 
 .LP
@@ -89,7 +89,7 @@ zpool \- configures ZFS storage pools
 
 .LP
 .nf
-\fBzpool iostat\fR [\fB-T\fR u | d ] [\fB-v\fR] [\fIpool\fR] ... [\fIinterval\fR[\fIcount\fR]]
+\fBzpool iostat\fR [\fB-T\fR d | u ] [\fB-v\fR] [\fIpool\fR] ... [\fIinterval\fR[\fIcount\fR]]
 .fi
 
 .LP
@@ -99,7 +99,8 @@ zpool \- configures ZFS storage pools
 
 .LP
 .nf
-\fBzpool list\fR [\fB-T\fR u | d ] [\fB-Hv\fR] [\fB-o\fR \fIproperty\fR[,...]] [\fIpool\fR] ... [\fIinterval\fR[\fIcount\fR]]
+\fBzpool list\fR [\fB-T\fR d | u ] [\fB-Hv\fR] [\fB-o\fR \fIproperty\fR[,...]] [\fIpool\fR] ...
+     [\fIinterval\fR[\fIcount\fR]]
 .fi
 
 .LP
@@ -149,7 +150,7 @@ zpool \- configures ZFS storage pools
 
 .LP
 .nf
-\fBzpool status\fR [\fB-xv\fR] [\fIpool\fR] ...
+\fBzpool status\fR [\fB-xvD\fR] [\fB-T\fR d | u] [\fIpool\fR] ... [\fIinterval\fR [\fIcount\fR]]
 .fi
 
 .LP
@@ -1001,7 +1002,7 @@ Forces any active datasets contained within the pool to be unmounted.
 .ad
 .sp .6
 .RS 4n
-Detaches \fIdevice\fR from a mirror. The operation is refused if there are no other valid replicas of the data.
+Detaches \fIdevice\fR from a mirror. The operation is refused if there are no other valid replicas of the data.  If \fIdevice\fR may be re-added to the pool later on then consider the "\fBzpool offline\fR" command instead.
 .RE
 
 .sp
@@ -1036,7 +1037,7 @@ This command will forcefully export the pool even if it has a shared spare that 
 .ne 2
 .mk
 .na
-\fB\fBzpool get\fR "\fIall\fR" | \fIproperty\fR[,...] \fIpool\fR ...\fR
+\fB\fBzpool get\fR [\fB-p\fR] "\fIall\fR" | \fIproperty\fR[,...] \fIpool\fR ...\fR
 .ad
 .sp .6
 .RS 4n
@@ -1053,6 +1054,17 @@ Retrieves the given list of properties (or all properties if "\fBall\fR" is used
 .sp
 
 See the "Properties" section for more information on the available pool properties.
+.sp
+.ne 2
+.mk
+.na
+\fB\fB-p\fR\fR
+.ad
+.RS 6n
+.rt
+Display numbers in parseable (exact) values.
+.RE
+
 .RE
 
 .sp
@@ -1400,7 +1412,7 @@ Allows a pool to import when there is a missing log device.
 .ne 2
 .mk
 .na
-\fB\fBzpool iostat\fR [\fB-T\fR \fBu\fR | \fBd\fR] [\fB-v\fR] [\fIpool\fR] ... [\fIinterval\fR[\fIcount\fR]]\fR
+\fB\fBzpool iostat\fR [\fB-T\fR \fBd\fR | \fBu\fR] [\fB-v\fR] [\fIpool\fR] ... [\fIinterval\fR[\fIcount\fR]]\fR
 .ad
 .sp .6
 .RS 4n
@@ -1457,7 +1469,7 @@ Treat exported or foreign devices as inactive.
 .ne 2
 .mk
 .na
-\fB\fBzpool list\fR [\fB-T\fR \fBu\fR | \fBd\fR] [\fB-Hv\fR] [\fB-o\fR \fIprops\fR[,...]] [\fIpool\fR] ... [\fIinterval\fR[\fIcount\fR]]\fR
+\fB\fBzpool list\fR [\fB-T\fR \fBd\fR | \fBu\fR] [\fB-Hv\fR] [\fB-o\fR \fIprops\fR[,...]] [\fIpool\fR] ... [\fIinterval\fR[\fIcount\fR]]\fR
 .ad
 .sp .6
 .RS 4n
@@ -1476,7 +1488,7 @@ Scripted mode. Do not display headers, and separate fields by a single tab inste
 .ne 2
 .mk
 .na
-\fB\fB-T\fR \fBu\fR | \fBd\fR\fR
+\fB\fB-T\fR \fBd\fR | \fBu\fR\fR
 .ad
 .RS 12n
 .rt  
@@ -1701,7 +1713,7 @@ Sets the specified property for \fInewpool\fR. See the “Properties” section 
 .ne 2
 .mk
 .na
-\fB\fBzpool status\fR [\fB-xv\fR] [\fIpool\fR] ...\fR
+\fBzpool status\fR [\fB-xvD\fR] [\fB-T\fR d | u] [\fIpool\fR] ... [\fIinterval\fR [\fIcount\fR]]
 .ad
 .sp .6
 .RS 4n
@@ -1714,7 +1726,7 @@ If a scrub or resilver is in progress, this command reports the percentage done 
 .na
 \fB\fB-x\fR\fR
 .ad
-.RS 6n
+.RS 12n
 .rt  
 Only display status for pools that are exhibiting errors or are otherwise unavailable. Warnings about pools not using the latest on-disk format will not be included.
 .RE
@@ -1725,11 +1737,34 @@ Only display status for pools that are exhibiting errors or are otherwise unavai
 .na
 \fB\fB-v\fR\fR
 .ad
-.RS 6n
+.RS 12n
 .rt  
 Displays verbose data error information, printing out a complete list of all data errors since the last complete pool scrub.
 .RE
 
+.sp
+.ne 2
+.mk
+.na
+\fB\fB-D\fR\fR
+.ad
+.RS 12n
+.rt
+Display a histogram of deduplication statistics, showing the allocated (physically present on disk) and
+referenced (logically referenced in the pool) block counts and sizes by reference count.
+.RE
+
+.sp
+.ne 2
+.mk
+.na
+\fB\fB-T\fR \fBd\fR | \fBu\fR\fR
+.ad
+.RS 12n
+.rt
+Display a time stamp.
+.sp
+Specify \fBu\fR for a printed representation of the internal representation of time. See \fBtime\fR(2). Specify \fBd\fR for standard date format. See \fBdate\fR(1).
 .RE
 
 .sp

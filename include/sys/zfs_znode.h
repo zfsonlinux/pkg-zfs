@@ -20,6 +20,7 @@
  */
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012 by Delphix. All rights reserved.
  */
 
 #ifndef	_SYS_FS_ZFS_ZNODE_H
@@ -138,8 +139,9 @@ extern "C" {
 
 #define	ZFS_MAX_BLOCKSIZE	(SPA_MAXBLOCKSIZE)
 
-/* Path component length */
 /*
+ * Path component length
+ *
  * The generic fs code uses MAXNAMELEN to represent
  * what the largest component length is.  Unfortunately,
  * this length includes the terminating NULL.  ZFS needs
@@ -247,26 +249,24 @@ typedef struct znode {
 
 #define	S_ISDEV(mode)	(S_ISCHR(mode) || S_ISBLK(mode) || S_ISFIFO(mode))
 
-/*
- * ZFS_ENTER() is called on entry to each ZFS inode and vfs operation.
- * ZFS_EXIT() must be called before exitting the vop.
- * ZFS_VERIFY_ZP() verifies the znode is valid.
- */
+/* Called on entry to each ZFS vnode and vfs operation  */
 #define	ZFS_ENTER(zsb) \
 	{ \
-		rrw_enter(&(zsb)->z_teardown_lock, RW_READER, FTAG); \
+		rrw_enter_read(&(zsb)->z_teardown_lock, FTAG); \
 		if ((zsb)->z_unmounted) { \
 			ZFS_EXIT(zsb); \
 			return (EIO); \
 		} \
 	}
 
+/* Must be called before exiting the vop */
 #define	ZFS_EXIT(zsb) \
 	{ \
 		rrw_exit(&(zsb)->z_teardown_lock, FTAG); \
 		tsd_exit(); \
 	}
 
+/* Verifies the znode is valid */
 #define	ZFS_VERIFY_ZP(zp) \
 	if ((zp)->z_sa_hdl == NULL) { \
 		ZFS_EXIT(ZTOZSB(zp)); \
@@ -288,15 +288,14 @@ typedef struct znode {
 #define	ZFS_OBJ_HOLD_OWNED(zsb, obj_num) \
 	mutex_owned(ZFS_OBJ_MUTEX((zsb), (obj_num)))
 
-/*
- * Macros to encode/decode ZFS stored time values from/to struct timespec
- */
+/* Encode ZFS stored time values from a struct timespec */
 #define	ZFS_TIME_ENCODE(tp, stmp)		\
 {						\
 	(stmp)[0] = (uint64_t)(tp)->tv_sec;	\
 	(stmp)[1] = (uint64_t)(tp)->tv_nsec;	\
 }
 
+/* Decode ZFS stored time values to a struct timespec */
 #define	ZFS_TIME_DECODE(tp, stmp)		\
 {						\
 	(tp)->tv_sec = (time_t)(stmp)[0];		\
