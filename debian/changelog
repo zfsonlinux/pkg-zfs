@@ -1,3 +1,43 @@
+zfs-linux (0.6.2-2~precise~2.gbp8db412) precise; urgency=low
+
+  ** SNAPSHOT build @8db412f5608576b6dc06a2bdf13261221649eada **
+
+  [ Tim Chase ]
+  * Document the dedupditto pool property.
+  * Handle concurrent snapshot automounts failing due to EBUSY.
+
+  [ Matthew Thode ]
+  * Updating init scripts to have more robust grepping
+
+  [ Bassu ]
+  * Explain 'zfs list -t snap -o name -s name' speedup
+
+  [ Matthew Thode ]
+  * pep8 code readability changes
+  * Python 3 fixes
+
+  [ Tim Chase ]
+  * Fix rollback of mounted filesystem regression
+  * Some nvlist allocations in hold processing need to use KM_PUSHPAGE.
+
+  [ Brian Behlendorf ]
+  * Reduce stack for traverse_visitbp() recursion
+
+  [ Matthew Thode ]
+  * Fixes (extends) support for selinux xattrs to more inode types
+
+  [ Cyril Plisko ]
+  * Tighten zfs dependency on zfs-kmod
+
+  [ Brian Behlendorf ]
+  * Remove the slog restriction on bootfs pools
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+  * Update Remove-all-upstream-init.d-components.patch
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 15 Nov 2013 00:16:29 -0600
+
 zfs-linux (0.6.2-2~precise~1.gbp8420db) precise; urgency=low
 
   ** SNAPSHOT build @8420db6374657013cb177fdc00609b6ccc07a5e2 **
