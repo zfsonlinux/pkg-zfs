@@ -1751,8 +1751,7 @@ zfs_ioc_vdev_add(zfs_cmd_t *zc)
 {
 	spa_t *spa;
 	int error;
-	nvlist_t *config, **l2cache, **spares;
-	uint_t nl2cache = 0, nspares = 0;
+	nvlist_t *config;
 
 	error = spa_open(zc->zc_name, &spa, FTAG);
 	if (error != 0)
@@ -1760,28 +1759,6 @@ zfs_ioc_vdev_add(zfs_cmd_t *zc)
 
 	error = get_nvlist(zc->zc_nvlist_conf, zc->zc_nvlist_conf_size,
 	    zc->zc_iflags, &config);
-	(void) nvlist_lookup_nvlist_array(config, ZPOOL_CONFIG_L2CACHE,
-	    &l2cache, &nl2cache);
-
-	(void) nvlist_lookup_nvlist_array(config, ZPOOL_CONFIG_SPARES,
-	    &spares, &nspares);
-
-	/*
-	 * A root pool with concatenated devices is not supported.
-	 * Thus, can not add a device to a root pool.
-	 *
-	 * Intent log device can not be added to a rootpool because
-	 * during mountroot, zil is replayed, a seperated log device
-	 * can not be accessed during the mountroot time.
-	 *
-	 * l2cache and spare devices are ok to be added to a rootpool.
-	 */
-	if (spa_bootfs(spa) != 0 && nl2cache == 0 && nspares == 0) {
-		nvlist_free(config);
-		spa_close(spa, FTAG);
-		return (SET_ERROR(EDOM));
-	}
-
 	if (error == 0) {
 		error = spa_vdev_add(spa, config);
 		nvlist_free(config);
@@ -5590,7 +5567,7 @@ zfsdev_ioctl(struct file *filp, unsigned cmd, unsigned long arg)
 	uint_t vecnum;
 	int error, rc, len, flag = 0;
 	const zfs_ioc_vec_t *vec;
-	char saved_poolname[MAXNAMELEN];
+	char *saved_poolname;
 	nvlist_t *innvl = NULL;
 
 	vecnum = cmd - ZFS_IOC_FIRST;
@@ -5599,6 +5576,7 @@ zfsdev_ioctl(struct file *filp, unsigned cmd, unsigned long arg)
 	vec = &zfs_ioc_vec[vecnum];
 
 	zc = kmem_zalloc(sizeof (zfs_cmd_t), KM_SLEEP | KM_NODEBUG);
+	saved_poolname = kmem_alloc(MAXNAMELEN, KM_SLEEP);
 
 	error = ddi_copyin((void *)arg, zc, sizeof (zfs_cmd_t), flag);
 	if (error != 0) {
@@ -5718,6 +5696,7 @@ out:
 		(void) tsd_set(zfs_allow_log_key, strdup(saved_poolname));
 	}
 
+	kmem_free(saved_poolname, MAXNAMELEN);
 	kmem_free(zc, sizeof (zfs_cmd_t));
 	return (-error);
 }
