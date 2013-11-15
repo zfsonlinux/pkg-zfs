@@ -1,3 +1,15 @@
+spl-linux (0.6.2-2~precise~3.gbp106aa4) precise; urgency=low
+
+  ** SNAPSHOT build @106aa4077735ed4ad86ecbf9c1fd1f394f8a59ea **
+
+  [ Cyril Plisko ]
+  * Tighten spl dependency on spl-kmod
+
+  [ Brian Behlendorf ]
+  * Retroactively fix bogus %changelog date
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 14 Nov 2013 22:50:04 -0600
+
 spl-linux (0.6.2-2~precise~2.gbp7a3237) precise; urgency=low
 
   ** SNAPSHOT build @7a323738f85820c0045f32bd7c7ba62f43da7803 **
