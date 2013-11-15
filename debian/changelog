@@ -1,3 +1,15 @@
+spl-linux (0.6.2-2~saucy~2.gbpc60af6) saucy; urgency=low
+
+  ** SNAPSHOT build @c60af64d8acea08b6432c1e5589138d6c455135b **
+
+  [ Cyril Plisko ]
+  * Tighten spl dependency on spl-kmod
+
+  [ Brian Behlendorf ]
+  * Retroactively fix bogus %changelog date
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 15 Nov 2013 13:44:59 -0600
+
 spl-linux (0.6.2-2~saucy~1.gbp293b4e) saucy; urgency=low
 
   ** SNAPSHOT build @293b4e4c8647115349bae4056f426b921ede39eb **
