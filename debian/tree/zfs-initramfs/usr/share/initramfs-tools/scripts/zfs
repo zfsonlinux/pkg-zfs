@@ -181,7 +181,7 @@ mountroot()
 			done
 
 			# If the key isn't availible, then this will fail!
-			ZFS_CMD="zfs key -l -a"
+			ZFS_CMD="zfs key -l -r $ZFS_BOOTFS"
 			ZFS_STDERR=$($ZFS_CMD 2>&1)
 			ZFS_ERROR=$?
 
