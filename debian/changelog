@@ -1,3 +1,11 @@
+zfs-linux (0.6.2-3) wheezy; urgency=low
+
+  * Include the /etc/modprobe.d/{spl,zfs} files in the initrd if they exist.
+  * Don't load all crypto keys keys if booting on encrypted bootfs, just the
+    bootfs one (recursivly).
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 01 Jan 2014 12:12:13 +0100
+
 zfs-linux (0.6.2-2) wheezy; urgency=low
 
   * Add 'file' as dependency to 'zfs-dkms'.
