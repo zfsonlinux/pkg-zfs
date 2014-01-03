@@ -1,3 +1,9 @@
+zfs-linux (0.6.2-4~wheezy) wheezy; urgency=low
+
+  * Be smarter about how we find the kernel source directory for dkms.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 03 Jan 2014 10:51:20 +0100
+
 zfs-linux (0.6.2-3) wheezy; urgency=low
 
   * Include the /etc/modprobe.d/{spl,zfs} files in the initrd if they exist.
