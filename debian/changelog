@@ -1,3 +1,9 @@
+spl-linux (0.6.2-3~wheezy) wheezy; urgency=low
+
+  * Be smarter about how we find the kernel source directory for dkms.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 03 Jan 2014 10:46:05 +0100
+
 spl-linux (0.6.2-2) wheezy; urgency=low
 
   * Add 'file' as dependency to 'zfs-dkms'.
