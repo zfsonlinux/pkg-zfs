@@ -64,7 +64,7 @@ __zfs_match_snapshot()
     local base_dataset=${cur%@*}
     if [[ $base_dataset != $cur ]]
     then
-        $__ZFS_CMD list -H -o name -t snapshot -d 1 $base_dataset
+        $__ZFS_CMD list -H -o name -s name -t snapshot -d 1 $base_dataset
     else
         $__ZFS_CMD list -H -o name -t filesystem,volume | awk '{print $1"@"}'
     fi
@@ -75,7 +75,7 @@ __zfs_match_explicit_snapshot()
     local base_dataset=${cur%@*}
     if [[ $base_dataset != $cur ]]
     then
-        $__ZFS_CMD list -H -o name -t snapshot -d 1 $base_dataset
+        $__ZFS_CMD list -H -o name -s name -t snapshot -d 1 $base_dataset
     fi
 }
 
@@ -94,7 +94,7 @@ __zfs_match_multiple_snapshots()
                 return 1
             fi
             local range_start=$(expr "$cur" : '\(.*%\)')
-            $__ZFS_CMD list -H -o name -t snapshot -d 1 $base_dataset | sed 's$.*@$'$range_start'$g'
+            $__ZFS_CMD list -H -o name -s name -t snapshot -d 1 $base_dataset | sed 's$.*@$'$range_start'$g'
         fi
     else
         __zfs_match_explicit_snapshot; __zfs_list_datasets
