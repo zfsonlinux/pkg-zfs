@@ -7,7 +7,7 @@ include $(top_srcdir)/config/tgz.am
 
 SUBDIRS = include rpm
 if CONFIG_USER
-SUBDIRS += dracut udev etc man scripts lib cmd contrib
+SUBDIRS += dracut udev etc man scripts lib cmd contrib initramfs
 endif
 if CONFIG_KERNEL
 SUBDIRS += module
