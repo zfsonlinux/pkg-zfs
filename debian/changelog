@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-0~g540ce4~wheezy) wheezy; urgency=low
+
+  * Preversion of latest GIT HEAD.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 25 Feb 2014 02:29:37 +0100
+
 zfs-linux (0.6.2-4~wheezy) wheezy; urgency=low
 
   * Be smarter about how we find the kernel source directory for dkms.
