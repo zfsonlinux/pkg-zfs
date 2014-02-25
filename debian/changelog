@@ -1,3 +1,9 @@
+spl-linux (0.6.3-1~ge41661e~wheezy) wheezy; urgency=low
+
+  * Preversion of latest GIT HEAD.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 25 Feb 2014 02:44:48 +0100
+
 spl-linux (0.6.2-3~wheezy) wheezy; urgency=low
 
   * Be smarter about how we find the kernel source directory for dkms.
