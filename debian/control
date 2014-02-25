@@ -48,16 +48,16 @@ Description: Solaris userland utility library for Linux
 Package: libzfs-dev
 Section: libdevel
 Architecture: linux-any
-Depends: libzfs##SHLIB_MAJOR## (= ${binary:Version}), ${misc:Depends}
+Depends: libzfs2 (= ${binary:Version}), ${misc:Depends}
 Provides: libnvpair-dev, libuutil-dev
 Description: Native ZFS filesystem development files for Linux
  Header files and static libraries for compiling software  against
  libraries of native ZFS filesystem.
  .
  This package includes the development files of libnvpair1, libuutil1
- and libzfs##SHLIB_MAJOR##.
+ and libzfs2.
 
-Package: libzfs##SHLIB_MAJOR##
+Package: libzfs2
 Section: libs
 Architecture: linux-any
 Depends: ${misc:Depends}, ${shlibs:Depends}
@@ -70,7 +70,7 @@ Description: Native ZFS filesystem library for Linux
  .
  The ZFS library provides support for managing ZFS filesystems.
 
-Package: libzpool##SHLIB_MAJOR##
+Package: libzpool2
 Section: libs
 Architecture: linux-any
 Depends: ${misc:Depends}, ${shlibs:Depends}
@@ -131,8 +131,8 @@ Priority: extra
 Architecture: linux-any
 Depends: libnvpair1 (= ${binary:Version}),
          libuutil1 (= ${binary:Version}),
-         libzfs##SHLIB_MAJOR## (= ${binary:Version}),
-         libzpool##SHLIB_MAJOR## (= ${binary:Version}),
+         libzfs2 (= ${binary:Version}),
+         libzpool2 (= ${binary:Version}),
          ${misc:Depends}
 Recommends: zfsutils (= ${binary:Version})
 Description: Debugging symbols for ZFS userland libraries and tools
@@ -140,5 +140,5 @@ Description: Debugging symbols for ZFS userland libraries and tools
  integrity, supporting data snapshots, multiple copies, and data
  checksums.
  .
- This package contains the debugging symbols for libzpool##SHLIB_MAJOR##, libzfs##SHLIB_MAJOR##,
+ This package contains the debugging symbols for libzpool2, libzfs2,
  libnvpair1, libuutil1, and zfsutils.

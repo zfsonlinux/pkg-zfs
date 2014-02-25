@@ -29,11 +29,13 @@ Description: Solaris userland utility library for Linux (debian-installer)
  .
  This is a minimal package for use in debian-installer.
 
-Package: libzfs1-udeb
+Package: libzfs##SHLIB_MAJOR##-udeb
 Package-Type: udeb
 Section: debian-installer
 Architecture: linux-any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Conflicts: libzfs1-udeb
+Replaces: libzfs1-udeb
 Description: OpenSolaris ZFS library (debian-installer)
  The Z file system is a pooled filesystem designed for maximum data integrity,
  supporting data snapshots, multiple copies, and data checksums.
@@ -42,11 +44,13 @@ Description: OpenSolaris ZFS library (debian-installer)
  .
  This is a minimal package for use in debian-installer.
 
-Package: libzpool1-udeb
+Package: libzpool##SHLIB_MAJOR##-udeb
 Package-Type: udeb
 Section: debian-installer
 Architecture: linux-any
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Conflicts: libzpool1-udeb
+Replaces: libzpool1-udeb
 Description: Native ZFS pool library for Linux (debian-installer)
  The Z file system is a pooled filesystem designed for maximum data
  integrity, supporting data snapshots, multiple copies, and data
@@ -61,9 +65,11 @@ Package-Type: udeb
 Section: debian-installer
 Architecture: linux-any
 Depends: ${shlibs:Depends}, ${misc:Depends},
- libuutil1-udeb (= ${binary:Version}), libnvpair1-udeb (= ${binary:Version}),
- libzfs1-udeb (= ${binary:Version}), libzpool1-udeb (= ${binary:Version}),
- zfs-modules,
+ libuutil1-udeb (= ${binary:Version}),
+ libnvpair1-udeb (= ${binary:Version}),
+ libzfs##SHLIB_MAJOR##-udeb (= ${binary:Version}),
+ libzpool##SHLIB_MAJOR##-udeb (= ${binary:Version}),
+ zfs-modules
 Description: command-line tools to manage ZFS filesystems (debian-installer)
  The Z file system is a pooled filesystem designed for maximum data
  integrity, supporting data snapshots, multiple copies, and data checksums.

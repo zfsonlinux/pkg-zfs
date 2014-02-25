@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-0.2~g0ad85e~wheezy) wheezy; urgency=low
+
+  * SHLIB major version changed so rename packages accordingly.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 25 Feb 2014 08:22:07 +0100
+
 zfs-linux (0.6.3-0~g540ce4~wheezy) wheezy; urgency=low
 
   * Preversion of latest GIT HEAD.
