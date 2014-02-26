@@ -87,4 +87,14 @@ done
 # Install the zpool.cache file.
 [ ! -d "$DESTDIR/boot/zfs" ] && mkdir -p "$DESTDIR/boot/zfs"
 [ -d /boot/zfs ] && cp -r /boot/zfs "$DESTDIR/boot"
+
+# With pull request #1476 (not yet merged) comes a verbose warning
+# if /usr/bin/net doesn't exist or isn't executable. Just create
+# a dummy...
+[ ! -d "$DESTDIR/usr/bin" ] && mkdir -p "$DESTDIR/usr/bin"
+if [ ! -x "$DESTDIR/usr/bin/net" ]; then
+    touch "$DESTDIR/usr/bin/net"
+    chmod +x "$DESTDIR/usr/bin/net"
+fi
+
 exit 0

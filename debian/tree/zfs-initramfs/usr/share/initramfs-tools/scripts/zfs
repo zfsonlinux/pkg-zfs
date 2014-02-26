@@ -9,18 +9,20 @@
 
 pre_mountroot()
 {
-	[ "$quiet" != "y" ] && log_begin_msg "Running /scripts/local-top"
-	run_scripts /scripts/local-top
-	[ "$quiet" != "y" ] && log_end_msg
+	if type run_scripts > /dev/null 2>&1 ; then
+		[ "$quiet" != "y" ] && $log_begin_msg "Running /scripts/local-top"
+		run_scripts /scripts/local-top
+		[ "$quiet" != "y" ] && $log_end_msg
+	fi
 
 	if [ -r '/etc/default/zfs' ]
 	then
 		. '/etc/default/zfs'
 		if [ "$ZFS_INITRD_PRE_MOUNTROOT_SLEEP" -gt '0' ]
 		then
-			[ "$quiet" != "y" ] && log_begin_msg "Sleeping for $ZFS_INITRD_PRE_MOUNTROOT_SLEEP seconds..."
+			[ "$quiet" != "y" ] && $log_begin_msg "Sleeping for $ZFS_INITRD_PRE_MOUNTROOT_SLEEP seconds..."
 			sleep "$ZFS_INITRD_PRE_MOUNTROOT_SLEEP"
-			[ "$quiet" != "y" ] && log_end_msg
+			[ "$quiet" != "y" ] && $log_end_msg
 		fi
 	fi
 }
@@ -39,24 +41,76 @@ mountroot()
 {
 	pre_mountroot
 
-	[ "$quiet" != "y" ] && log_begin_msg "Running /scripts/local-premount"
-	run_scripts /scripts/local-premount
-	[ "$quiet" != "y" ] && log_end_msg
+	if type run_scripts > /dev/null 2>&1 ; then
+		[ "$quiet" != "y" ] && $log_begin_msg "Running /scripts/local-premount"
+		run_scripts /scripts/local-premount
+		[ "$quiet" != "y" ] && $log_end_msg
+	fi
 
 	# Wait for all of the /dev/{hd,sd}[a-z] device nodes to appear.
-	wait_for_udev
+	if type wait_for_udev > /dev/null 2>&1 ; then
+		wait_for_udev
+	elif type wait_for_dev > /dev/null 2>&1 ; then
+		wait_for_dev
+	fi
+
+	# zpool import refuse to import without a valid mtab
+	[ ! -f /proc/mounts ] && mount proc /proc
+	[ ! -f /etc/mtab ] && cat /proc/mounts > /etc/mtab
 
 	# Load the module now to get consistent automatic pool import behavior.
 	modprobe zfs
 
-	# Check the kernel command line for overrides.
+	# Look for the cache file
+	if [ -f /etc/zfs/zpool.cache ]; then
+		ZPOOL_CACHE=/etc/zfs/zpool.cache
+	elif [ -f /boot/zfs/zpool.cache ]; then
+		ZPOOL_CACHE=/boot/zfs/zpool.cache
+	fi
+
+	# ----------------------------------------------------------------
+	# G E T  P O O L  A N D  R O O T  F I L E S Y S T E M
+
+	# Supports the following kernel command line argument combinations
+	# (in this order - first match win):
+	#	rpool=<pool> bootfs=<pool>/<dataset>
+	#	bootfs=<pool>/<dataset>
+	#	root=zfs:AUTO
+	#	root=zfs:<pool>/<dataset>
+	#	-B zfs-bootfs=<pool>/<dataset>
+	#	rpool=rpool	(default if none of the above is used)
+	#
+	# Option <dataset> could also be <snapshot>
+	#
+	# In addition, setting one of zfs_force, zfs.force orzfsforce to
+	# yes, on or 1 will force import the pool.
+
+	# Support force option
+	ZPOOL_FORCE=""
+	if grep -qiE '(^|[^\\](\\\\)* )(zfs_force|zfs\.force|zfsforce)=(on|yes|1)( |$)' /proc/cmdline
+	then
+		ZPOOL_FORCE="-f"
+	fi
+
+	# 'ROOT' is for Debian GNU/Linux (etc), 'root' is for Redhat/Fedora (etc)
+	if [ -n "$root" -a -z "$ROOT" ]
+	then
+		ROOT=${root}
+	fi
+
+	# 'rootmnt' is for Debian GNU/Linux (etc), 'NEWROOT' is for RedHat/Fedora (etc)
+	if [ -n "$NEWROOT" -a -z "$rootmnt" ]
+	then
+		rootmnt=${NEWROOT}
+	fi
+
+	# Look for 'rpool' and 'bootfs' parameter
 	ZFS_RPOOL="${rpool#rpool=}"
 	ZFS_BOOTFS="${bootfs#bootfs=}"
 
+	# Check for the `-B zfs-bootfs=%s/%u,...` kind of parameter.
 	if [ -z "$ZFS_RPOOL" ]
 	then
-		# Check for the `-B zfs-bootfs=%s/%u,...` kind of parameter.
-		#
 		# The ${zfs-bootfs} variable is set at the kernel commmand
 		# line, usually by GRUB, but it cannot be referenced here
 		# directly because bourne variable names cannot contain a
@@ -75,82 +129,206 @@ mountroot()
 		ZFS_RPOOL=$(echo "$ZFS_RPOOL" | sed -e 's,/.*,,')
 	fi
 
-	# Use "rpool" as the default, like on most Solaris systems.
+	# Support Fedora/Redhat type argument 'root=zfs:....'
+	if [ -z "$ZFS_RPOOL" -a -z "$ZFS_BOOTFS" ] && echo "$ROOT" | grep -q "^zfs:"
+	then
+		if [ "$ROOT" = "zfs:AUTO" ]
+		then
+			# Might be imported by the kernel module, so try searching before
+			# we import anything.
+			ZFS_BOOTFS=`zpool list -H -o bootfs | sed -n '/-/ !p' | sed 'q'`
+		        if [ "$?" != "0"  -o -z "$ZFS_BOOTFS" -o \
+			     "$ZFS_BOOTFS" = "no pools available" ]
+			then
+				# Not there, so we need to import everything.
+
+				[ "$quiet" != "y" ] && $log_begin_msg "Attempting to import additional pools."
+				ZFS_CMD="zpool import -N -a ${ZPOOL_FORCE}"
+				ZFS_STDERR=$($ZFS_CMD 2>&1)
+				ZFS_ERROR=$?
+				[ "$quiet" != "y" ] && $log_end_msg $ZFS_ERROR
+
+				# Doing something about the/an error here isn't
+				# nessesary - if there are no other pools, the
+				# following command will just fail silently to
+				# find anything (which is semi-ok - it will be
+				# dealt with later).
+
+				ZFS_BOOTFS=`zpool list -H -o bootfs | sed -n '/-/ !p' | sed 'q'`
+
+				# Success or failure, re-export everything since
+				# we're not prepared to take responsibility for
+				# them quite yet (in this form).
+				# We want to do this correctly later...
+				zpool list -H | while read pool rest
+				do
+					zpool export "$pool"
+		                done
+			fi
+		else
+			# No auto - use overrides.
+			ZFS_BOOTFS="${ROOT#zfs:}"
+			ZFS_RPOOL="${ZFS_BOOTFS%%/*}"
+		fi
+	fi
+
+	if [ -z "$ZFS_RPOOL" -a -n "$ZFS_BOOTFS" ]
+	then
+		# We (still) don't have the POOL, but we have a BOOTFS. The
+		# pool is (should be the the first part of the bootfs dataset
+		# path)...
+		ZFS_RPOOL="${ZFS_BOOTFS%%/*}"
+	fi
+
+	# Last ditch attempt - use "rpool" as the default, like on most Solaris systems.
 	[ -z "$ZFS_RPOOL" ] && ZFS_RPOOL='rpool'
 
-	if [ -f /etc/zfs/zpool.cache ]; then
-		ZPOOL_CACHE=/etc/zfs/zpool.cache
-	elif [ -f /boot/zfs/zpool.cache ]; then
-		ZPOOL_CACHE=/boot/zfs/zpool.cache
-	fi
+	# ----------------------------------------------------------------
+	# I M P O R T  P O O L
 
-	# zpool import refuse to import without a valid mtab
-	[ ! -f /proc/mounts ] && mount proc /proc
-	[ ! -f /etc/mtab ] && cat /proc/mounts > /etc/mtab
-
-	# Just make sure it's not already imported. Should be impossible, but...
-	zpool list "$ZFS_RPOOL" 1>/dev/null 2>&1
-	ZFS_ERROR=$?
-
-	[ "$quiet" != "y" ] && log_begin_msg "Importing ZFS root pool $ZFS_RPOOL"
+	[ "$quiet" != "y" ] && $log_begin_msg "Importing ZFS root pool $ZFS_RPOOL"
 	# Attempt 1: Try the correct/proper way.
-	if [ "$ZFS_ERROR" -ne 0 -a -n "$ZPOOL_CACHE" ]
+	if [ "$ZFS_ERROR" != 0 -a -n "$ZPOOL_CACHE" ]
 	then
-		ZFS_CMD="zpool import -c $ZPOOL_CACHE -N $ZFS_RPOOL"
+		ZFS_CMD="zpool import -c ${ZPOOL_CACHE} -N ${ZFS_RPOOL} ${ZPOOL_FORCE}"
 
 		ZFS_STDERR=$($ZFS_CMD 2>&1)
 		ZFS_ERROR=$?
 
-		[ "$ZFS_ERROR" -ne 0 ] && echo "FAIL: $ZFS_CMD. Retrying..."
+		[ "$ZFS_ERROR" != 0 ] && echo "FAIL: $ZFS_CMD. Retrying..."
 	fi
 
-	# Attempt 2: Try forcing the import, using /dev/disk/by-id if it exists.
+	# Attempt 2: Try using /dev/disk/by-id if it exists.
+	# NOTE: This should really be attempt 1!
 	[ -d /dev/disk/by-id ] && DISK_BY_ID="-d /dev/disk/by-id"
-	if [ "$ZFS_ERROR" -ne 0 -o -z "$ZPOOL_CACHE" ]
+	if [ "$ZFS_ERROR" != 0 -o -z "$ZPOOL_CACHE" ]
 	then
-		ZFS_CMD="zpool import -f -N $DISK_BY_ID $ZFS_RPOOL"
+		ZFS_CMD="zpool import -N ${DISK_BY_ID} ${ZFS_RPOOL} ${ZPOOL_FORCE}"
 
 		ZFS_STDERR=$($ZFS_CMD 2>&1)
 		ZFS_ERROR=$?
 
-		[ "$ZFS_ERROR" -ne 0 ] && echo "FAIL: $ZFS_CMD. Retrying..."
+		[ "$ZFS_ERROR" != 0 ] && echo "FAIL: $ZFS_CMD. Retrying..."
 	fi
 
 	# Attempt 3: Last ditch attempt. If DISK_BY_ID is set, we've already tried...
-	if [ "$ZFS_ERROR" -ne 0 -a -z "$DISK_BY_ID" ]
+	if [ "$ZFS_ERROR" != 0 -a -z "$DISK_BY_ID" ]
 	then
-		ZFS_CMD="zpool import -f -N $ZFS_RPOOL"
+		ZFS_CMD="zpool import -N ${ZFS_RPOOL} ${ZPOOL_FORCE}"
 
 		ZFS_STDERR=$($ZFS_CMD 2>&1)
 		ZFS_ERROR=$?
 
-		[ "$ZFS_ERROR" -ne 0 ] && echo "FAIL: $ZFS_CMD. Retrying..."
+		[ "$ZFS_ERROR" != 0 ] && echo "FAIL: $ZFS_CMD. Retrying..."
 	fi
-	[ "$quiet" != "y" ] && log_end_msg
+	[ "$quiet" != "y" ] && $log_end_msg
 
-	if [ "$ZFS_ERROR" -ne 0 ]
+	if [ "$ZFS_ERROR" != 0 ]
 	then
+		# Unable to import pool -- let the user sort this out
 		disable_plymouth
+		echo ""
 		echo "Command: $ZFS_CMD"
 		echo "Message: $ZFS_STDERR"
 		echo "Error: $ZFS_ERROR"
 		echo ""
 		echo "Manually import the root pool at the command prompt and then exit."
-		echo "Hint: Try:  zpool import -f -R / -N $ZFS_RPOOL"
+		echo "Hint: Try:  zpool import -R / -N ${ZFS_RPOOL}"
 		/bin/sh
 	fi
 
+	# ----------------------------------------------------------------
+
+	# Booting from a snapshot?
+	if [ -n "$ZFS_BOOTFS" ] && echo "$ZFS_BOOTFS" | grep -q '@'
+	then
+		# Make sure that the snapshot specified exist.
+		if ! zfs get -H type $ZFS_BOOTFS 2> /dev/null | grep -q "^$ZFS_BOOTFS"
+		then
+			# Use the original dataset (the part before '@').
+			[ "$quiet" != "y" ] && $log_begin_msg "Snapshot does not exist. Using base dataset for root."
+			ZFS_BOOTFS=`echo "$ZFS_BOOTFS" | sed 's/@.*//'`
+			[ "$quiet" != "y" ] && $log_end_msg
+		else
+			# Replace the '@' separating dataset and snapshot name with a underscore
+			# NOTE: This might not be the prettiest, but at least we'll know where the
+			#       dataset came from.
+			dset=`echo "$ZFS_BOOTFS" | sed 's/@/_/'`
+
+			# If the destination dataset for the clone already exists, destroy it.
+			if zfs get -H type $dset 2> /dev/null | grep -q "^$dset"
+			then
+				[ "$quiet" != "y" ] && $log_begin_msg "Destroying clone destination dataset"
+				ZFS_CMD="zfs destroy $dset"
+				ZFS_STDERR=$($ZFS_CMD 2>&1)
+				ZFS_ERROR=$?
+
+				# Destroying the clone target was not successfull -- let the user sort this out
+				if [ "$ZFS_ERROR" != 0 ]
+				then
+					disable_plymouth
+					echo ""
+					echo "Command: $ZFS_CMD"
+					echo "Message: $ZFS_STDERR"
+					echo "Error: $ZFS_ERROR"
+					echo ""
+					echo "Failed to destroy the already existing dataset the clone would create."
+	                                echo "Please make sure that '$dset' is not availible."
+					/bin/sh
+
+					ZFS_ERROR=0
+				else
+					[ "$quiet" != "y" ] && $log_end_msg
+				fi
+			fi
+
+			# Clone the snapshot into a dataset we can boot from
+			[ "$quiet" != "y" ] && $log_begin_msg "Cloning boot snapshot to dataset"
+			ZFS_CMD="zfs clone $ZFS_BOOTFS $dset"
+			ZFS_STDERR=$($ZFS_CMD 2>&1)
+			ZFS_ERROR=$?
+
+			# Clone was not successfull -- let the user sort this out
+			if [ "$ZFS_ERROR" != 0 ]
+			then
+				disable_plymouth
+				echo ""
+				echo "Command: $ZFS_CMD"
+				echo "Message: $ZFS_STDERR"
+				echo "Error: $ZFS_ERROR"
+				echo ""
+				echo "Failed to clone snapshot."
+                                echo "Make sure that the any problems are corrected and then make sure"
+                                echo "that the dataset '$dset' exists and is bootable."
+				/bin/sh
+
+				ZFS_ERROR=0
+			else
+				[ "$quiet" != "y" ] && $log_end_msg
+			fi
+
+			# Success - unmount the filesystem
+			umount /$dset
+
+			# Use the clone as bootfs.
+			ZFS_BOOTFS="$dset"
+		fi
+	fi
+
+	# Last ditch attempt - try to find the bootfs automatically
 	if [ -z "$ZFS_BOOTFS" ]
 	then
-		[ "$quiet" != "y" ] && log_begin_msg "Getting ZFS bootfs property"
+		[ "$quiet" != "y" ] && $log_begin_msg "Getting ZFS bootfs property"
 		ZFS_BOOTFS=$(zpool list -H -o bootfs "$ZFS_RPOOL")
 		ZFS_ERROR=$?
-		[ "$quiet" != "y" ] && log_end_msg
+		[ "$quiet" != "y" ] && $log_end_msg
 	fi
 
 	if [ -z "$ZFS_BOOTFS" ]
 	then
+		# Unable to figure out the bootfs -- let the user sort this out
 		disable_plymouth
+		echo ""
 		echo "Command: zpool list -H -o bootfs $ZFS_RPOOL"
 		echo "Error: $ZFS_ERROR, unable to get the bootfs property."
 		echo ""
@@ -159,10 +337,8 @@ mountroot()
 		/bin/sh
 	fi
 
-	# Force the mountpoint to the only correct value for a root filesystem.
-	[ "$quiet" != "y" ] && log_begin_msg "Setting mountpoint=/ on ZFS filesystem $ZFS_BOOTFS"
-	ZFS_STDERR=$(zfs set mountpoint=/ "$ZFS_BOOTFS" 2>&1)
-	[ "$quiet" != "y" ] && log_end_msg
+	# ----------------------------------------------------------------
+	# M O U N T  R O O T  F I L E S Y S T E M
 
 	if zfs 2>&1 | grep -q 'key -l '
 	then
@@ -171,7 +347,7 @@ mountroot()
 		crypt_type=$3
 		if [ "$crypt_type" != "off" ]
 		then
-			[ "$quiet" != "y" ] && log_begin_msg "Loading crypto wrapper key for $ZFS_BOOTFS"
+			[ "$quiet" != "y" ] && $log_begin_msg "Loading crypto wrapper key for $ZFS_BOOTFS"
 
 			# Just make sure that ALL crypto modules module is loaded.
 			# Simplest just to load all...
@@ -185,10 +361,11 @@ mountroot()
 			ZFS_STDERR=$($ZFS_CMD 2>&1)
 			ZFS_ERROR=$?
 
-			if [ "$ZFS_ERROR" -ne 0 ]
+			if [ "$ZFS_ERROR" != 0 ]
 			then
 			    disable_plymouth
-			    echo "FAIL: $ZFS_CMD"
+			    echo ""
+			    echo "Command: $ZFS_CMD"
 			    echo "Message: $ZFS_STDERR"
 			    echo "Error: $ZFS_ERROR"
 			    echo ""
@@ -199,7 +376,7 @@ mountroot()
 
 			    ZFS_ERROR=0
 			else
-			    [ "$quiet" != "y" ] && log_end_msg
+			    [ "$quiet" != "y" ] && $log_end_msg
 			fi
 		fi
 	fi
@@ -213,16 +390,22 @@ mountroot()
 	# the pivot into the regular root, which later breaks things like
 	# `zfs mount -a` and the /etc/mtab refresh.
 
-	[ "$quiet" != "y" ] && log_begin_msg "Mounting ZFS filesystem $ZFS_BOOTFS"
-	ZFS_STDERR=$(mount -t zfs -o zfsutil "$ZFS_BOOTFS" "$rootmnt" 2>&1)
+	[ "$quiet" != "y" ] && $log_begin_msg "Mounting root filesystem"
+	mountpoint=`zfs get -H -o value mountpoint $ZFS_BOOTFS`
+	if [ "$mountpoint" = "legacy" ] ; then
+		ZFS_CMD="mount -t zfs"
+	else
+		ZFS_CMD="mount -o zfsutil -t zfs"
+	fi
+	ZFS_STDERR=$($ZFS_CMD ${ZFS_BOOTFS} ${rootmnt} 2>&1)
 	ZFS_ERROR=$?
-	[ "$quiet" != "y" ] && log_end_msg
+	[ "$quiet" != "y" ] && $log_end_msg
 
-	if [ "$ZFS_ERROR" -ne 0 ]
+	if [ "$ZFS_ERROR" != 0 ]
 	then
 		disable_plymouth
 		echo ""
-		echo "Command: mount -t zfs -o zfsutil $ZFS_BOOTFS $rootmnt"
+		echo "Command: ${ZFS_CMD} ${ZFS_BOOTFS} ${rootmnt}"
 		echo "Message: $ZFS_STDERR"
 		echo "Error: $ZFS_ERROR"
 		echo ""
@@ -230,7 +413,9 @@ mountroot()
 		/bin/sh
 	fi
 
-	[ "$quiet" != "y" ] && log_begin_msg "Running /scripts/local-bottom"
-	run_scripts /scripts/local-bottom
-	[ "$quiet" != "y" ] && log_end_msg
+	if type run_scripts > /dev/null 2>&1 ; then
+		[ "$quiet" != "y" ] && $log_begin_msg "Running /scripts/local-bottom"
+		run_scripts /scripts/local-bottom
+		[ "$quiet" != "y" ] && $log_end_msg
+	fi
 }
