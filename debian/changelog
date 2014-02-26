@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-0.5~g0ad85e~wheezy) wheezy; urgency=low
+
+  * Update with latest init scripts https://github.com/zfsonlinux/zfs/pull/2106.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 26 Feb 2014 06:31:23 +0100
+
 zfs-linux (0.6.3-0.3~g0ad85e~wheezy) wheezy; urgency=low
 
   * Update with latest initramfs tools from https://github.com/zfsonlinux/zfs/pull/2087.
