@@ -10,9 +10,10 @@ Description: Upgrading from 0.6.2
  It will segfault, because it can not retreive the information it
  needs to work.
  .
- A reboot should solve this issue.
- .
  The problem looks like this:
  .
      hostname:~# zpool status
      no pools available
+ .
+ A reboot should solve this issue. But before doing that, make sure to
+ read /usr/share/doc/zfsutils/README.upgrade_from_0.6.2.

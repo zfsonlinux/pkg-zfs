@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-0.7~g0ad85e~wheezy) wheezy; urgency=low
+
+  * Improve the warning from previous commit.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 27 Feb 2014 10:13:22 +0100
+
 zfs-linux (0.6.3-0.6~g0ad85e~wheezy) wheezy; urgency=low
 
   * If upgrading from 0.6.2, make sure we issue a warning about 'missing' pool.
