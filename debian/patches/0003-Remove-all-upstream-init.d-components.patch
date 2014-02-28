@@ -1,0 +1,19 @@
+From: Darik Horn <dajhorn@vanadac.com>
+Date: Tue, 17 Jan 2012 11:54:21 -0600
+Subject: Remove all upstream init.d components.
+
+The etc/init.d/ components are redundant because the debian/ overlay
+bundles init files according to Debian packaging policy.
+
+Index: pkg-zfs/configure.ac
+===================================================================
+--- pkg-zfs.orig/configure.ac	2014-02-28 12:06:34.000000000 +0100
++++ pkg-zfs/configure.ac	2014-02-28 12:20:41.517852205 +0100
+@@ -62,7 +62,6 @@
+ 	udev/Makefile
+ 	udev/rules.d/Makefile
+ 	etc/Makefile
+-	etc/init.d/Makefile
+ 	etc/zfs/Makefile
+ 	etc/systemd/Makefile
+ 	etc/systemd/system/Makefile

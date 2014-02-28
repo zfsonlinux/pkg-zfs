@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-0.9~g0ad85e~wheezy) wheezy; urgency=low
+
+  * Merge some debian patches from snapshot/ubuntu/saucy/0.6.2-2_saucy_2.gbp46f6df.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 28 Feb 2014 12:08:39 +0100
+
 zfs-linux (0.6.3-0.8~g0ad85e~wheezy) wheezy; urgency=low
 
   * Slight rewrite of the zfs initramfs boot script.
