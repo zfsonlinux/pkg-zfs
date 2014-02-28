@@ -1,3 +1,14 @@
+zfs-linux (0.6.3-0.8~g0ad85e~wheezy) wheezy; urgency=low
+
+  * Slight rewrite of the zfs initramfs boot script.
+    1. Add 'zfs_autoimport_disable=1' to the modprobe command line
+    2. Support the 'root=ZFS=....' parameter
+    3. When called with 'zfs:AUTO', get a list of pools available for import
+       and import them one at a time, looking for a 'bootfs' option. If found,
+       leave pool imported, otherwise export it.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 28 Feb 2014 05:01:35 +0100
+
 zfs-linux (0.6.3-0.7~g0ad85e~wheezy) wheezy; urgency=low
 
   * Improve the warning from previous commit.
