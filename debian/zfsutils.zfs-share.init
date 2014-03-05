@@ -21,7 +21,7 @@
 ### END INIT INFO
 
 # Source the common init script
-. `dirname $0`/zfs-common
+. /etc/zfs/common.init
 servicename=zfs-share
 
 # ----------------------------------------------------

@@ -143,10 +143,6 @@ else
 	  --no-restart-on-upgrade --no-start
 endif
 
-	@# Install the common script, used by zfs-{mount,share}.
-	cp debian/zfsutils.zfs-common.init debian/zfsutils/etc/init.d/zfs-common
-	chmod 644 debian/zfsutils/etc/init.d/zfs-common
-
 override_dh_dkms:
 	dh_dkms -V $(VERSION)
 
