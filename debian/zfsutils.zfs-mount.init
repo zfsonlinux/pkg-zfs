@@ -14,6 +14,7 @@
 ### BEGIN INIT INFO
 # Provides:       zvol zfs zfs-mount
 # Required-Start: $local_fs
+# Required-Stop:  
 # X-Stop-After:   umountfs
 # Default-Start:  2 3 4 5
 # Default-Stop:   0 1 6
