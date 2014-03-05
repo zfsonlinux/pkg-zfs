@@ -15,6 +15,9 @@ ZFS_SHARE='no'
 # Run `zfs unshare -a` during system stop?
 ZFS_UNSHARE='no'
 
+# Use /dev/disk/by-id (select yes) or /etc/zfs/zpool.cache.
+USE_DISK_BY_ID='yes'
+
 # Build kernel modules with the --enable-debug switch?
 ZFS_DKMS_ENABLE_DEBUG='no'
 
