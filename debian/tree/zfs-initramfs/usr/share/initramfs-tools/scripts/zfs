@@ -94,6 +94,7 @@ mountroot()
 	#	rpool=<pool> bootfs=<pool>/<dataset>
 	#	-B zfs-bootfs=<pool>/<fs>
 	#	rpool=rpool		(default if none of the above is used)
+	#	root=<pool>/<dataset>
 	#	root=ZFS=<pool>/<dataset>
 	#	root=zfs:AUTO
 	#	root=zfs:<pool>/<dataset>
@@ -135,12 +136,12 @@ mountroot()
 		# object number.
 		#
 		# Strip everything after the first slash character.
-		ZFS_RPOOL=$(echo "$ZFS_RPOOL" | sed -e 's,/.*,,')
+		ZFS_RPOOL=${ZFS_RPOOL%%/*}
 	fi
 
 	# ------------
 	# rpool= but no bootfs=,root=ZFS or root=zfs: options.
-	if [ -n "ZFS_RPOOL" -a -z "$ZFS_BOOTFS" ] && ! echo "$ROOT" | egrep -q "ZFS=|zfs:"
+	if [ -n "$ZFS_RPOOL" -a -z "$ZFS_BOOTFS" ] && ! echo "$ROOT" | egrep -q "ZFS=|zfs:"
 	then
 		# Do auto detect. Do this by 'cheating' - set 'root=zfs:AUTO' which
 		# will be caught later
@@ -149,8 +150,13 @@ mountroot()
 	fi
 
 	# ------------
-	# No rpool option - use "rpool" as the default, like on most Solaris systems.
-	[ -z "$ZFS_RPOOL" ] && ZFS_RPOOL='rpool'
+	# Support the 'root=<pool>/<dataset>' option.
+	if [ -z "$ZFS_RPOOL" -a -z "$ZFS_BOOTFS" -a -n "$ROOT" ] && ! echo "$ROOT" | egrep -iq "^/|^zfs"
+	then
+		# Strip everything after the first slash character.
+		ZFS_RPOOL=${ROOT%%/*}
+		ZFS_BOOTFS=$ROOT
+	fi
 
 	# ------------
 	# Support the 'root=ZFS=....' parameter (Debian GNU/Linux default)
