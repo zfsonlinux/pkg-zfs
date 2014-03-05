@@ -69,6 +69,8 @@ elif [ -f /etc/sysconfig/zfs ]; then
 	. /etc/sysconfig/zfs
 fi
 
+[ ! -d "$LOCKDIR" ] && mkdir $LOCKDIR
+
 # ----------------------------------------------------
 
 zfs_installed() {
