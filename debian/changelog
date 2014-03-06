@@ -1,3 +1,30 @@
+spl-linux (0.6.2-2~trusty~3.gbpc35b1e) trusty; urgency=low
+
+  ** SNAPSHOT build @c35b1ea9df930a72db7cabfe483e67cb3bec3af0 **
+
+  [ Turbo Fredriksson ]
+  * Document SPL module parameters.
+
+  [ Richard Yao ]
+  * Linux 3.13 compat: Remove unused flags variable from __cv_init()
+  * Linux 3.13 compat: Pass NULL for new delegated inode argument
+
+  [ Brian Behlendorf ]
+  * Add module versioning
+  * Include linux/vmalloc.h for ARM and Sparc
+  * Remove default taskq thread to CPU bindings
+
+  [ marku89 ]
+  * Define the needed ISA types for Sparc
+
+  [ Brian Behlendorf ]
+  * Remove incorrect use of EXTRA_DIST for man pages
+
+  [ Darik Horn ]
+  * Update gbp.conf for T-series snapshot builds.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 05 Mar 2014 18:56:54 -0600
+
 spl-linux (0.6.2-2~saucy~2.gbpc60af6) saucy; urgency=low
 
   ** SNAPSHOT build @c60af64d8acea08b6432c1e5589138d6c455135b **
