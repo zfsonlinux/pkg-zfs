@@ -15,12 +15,14 @@ Index: b/configure.ac
  	etc/Makefile
 -	etc/init.d/Makefile
  	etc/zfs/Makefile
- 	man/Makefile
- 	man/man1/Makefile
+ 	etc/systemd/Makefile
+ 	etc/systemd/system/Makefile
 Index: b/etc/Makefile.am
 ===================================================================
 --- a/etc/Makefile.am
 +++ b/etc/Makefile.am
-@@ -1 +1 @@
--SUBDIRS = init.d zfs
+@@ -1,2 +1,2 @@
+-SUBDIRS = zfs $(ZFS_INIT_SYSTEMD) $(ZFS_INIT_SYSV) $(ZFS_MODULE_LOAD)
+-DIST_SUBDIRS = init.d zfs systemd modules-load.d
 +SUBDIRS = zfs
++DIST_SUBDIRS = zfs

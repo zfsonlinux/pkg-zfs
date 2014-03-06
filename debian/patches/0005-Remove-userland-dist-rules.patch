@@ -37,18 +37,6 @@ Index: b/etc/zfs/Makefile.am
  	vdev_id.conf.multipath.example
  
 -EXTRA_DIST = $(pkgsysconf_DATA)
-Index: b/man/man8/Makefile.am
-===================================================================
---- a/man/man8/Makefile.am
-+++ b/man/man8/Makefile.am
-@@ -8,7 +8,5 @@
- 	zpool.8 \
- 	zstreamdump.8
- 
--EXTRA_DIST = $(man_MANS)
--
- install-data-local:
- 	$(INSTALL) -d -m 0755 "$(DESTDIR)$(mandir)/man8"
 Index: b/scripts/zpios-profile/Makefile.am
 ===================================================================
 --- a/scripts/zpios-profile/Makefile.am
