@@ -23,6 +23,10 @@
  * Use is subject to license terms.
  */
 
+/*
+ * Copyright (c) 2013 by Delphix. All rights reserved.
+ */
+
 #include <sys/zfs_context.h>
 #include <sys/dnode.h>
 #include <sys/dmu_objset.h>
@@ -134,7 +138,8 @@ dmu_zfetch_colinear(zfetch_t *zf, zstream_t *zh)
 			diff = z_comp->zst_offset - z_walk->zst_offset;
 			if (z_comp->zst_offset + diff == zh->zst_offset) {
 				z_walk->zst_offset = zh->zst_offset;
-				z_walk->zst_direction = diff < 0 ? -1 : 1;
+				z_walk->zst_direction = diff < 0 ?
+				    ZFETCH_BACKWARD : ZFETCH_FORWARD;
 				z_walk->zst_stride =
 				    diff * z_walk->zst_direction;
 				z_walk->zst_ph_offset =
@@ -152,7 +157,8 @@ dmu_zfetch_colinear(zfetch_t *zf, zstream_t *zh)
 			diff = z_walk->zst_offset - z_comp->zst_offset;
 			if (z_walk->zst_offset + diff == zh->zst_offset) {
 				z_walk->zst_offset = zh->zst_offset;
-				z_walk->zst_direction = diff < 0 ? -1 : 1;
+				z_walk->zst_direction = diff < 0 ?
+				    ZFETCH_BACKWARD : ZFETCH_FORWARD;
 				z_walk->zst_stride =
 				    diff * z_walk->zst_direction;
 				z_walk->zst_ph_offset =
@@ -287,7 +293,7 @@ dmu_zfetch_fetch(dnode_t *dn, uint64_t blkid, uint64_t nblks)
 	fetchsz = dmu_zfetch_fetchsz(dn, blkid, nblks);
 
 	for (i = 0; i < fetchsz; i++) {
-		dbuf_prefetch(dn, blkid + i);
+		dbuf_prefetch(dn, blkid + i, ZIO_PRIORITY_ASYNC_READ);
 	}
 
 	return (fetchsz);
@@ -699,7 +705,8 @@ dmu_zfetch(zfetch_t *zf, uint64_t offset, uint64_t size, int prefetched)
 			if (cur_streams >= max_streams) {
 				return;
 			}
-			newstream = kmem_zalloc(sizeof (zstream_t), KM_PUSHPAGE);
+			newstream =
+			    kmem_zalloc(sizeof (zstream_t), KM_PUSHPAGE);
 		}
 
 		newstream->zst_offset = zst.zst_offset;
@@ -739,4 +746,3 @@ MODULE_PARM_DESC(zfetch_block_cap, "Max number of blocks to fetch at a time");
 module_param(zfetch_array_rd_sz, ulong, 0644);
 MODULE_PARM_DESC(zfetch_array_rd_sz, "Number of bytes in a array_read");
 #endif
-

@@ -143,6 +143,11 @@ typedef enum {
 	ZFS_PROP_INCONSISTENT,		/* not exposed to the user */
 	ZFS_PROP_SNAPDEV,
 	ZFS_PROP_ACLTYPE,
+	ZFS_PROP_SELINUX_CONTEXT,
+	ZFS_PROP_SELINUX_FSCONTEXT,
+	ZFS_PROP_SELINUX_DEFCONTEXT,
+	ZFS_PROP_SELINUX_ROOTCONTEXT,
+	ZFS_PROP_RELATIME,
 	ZFS_NUM_PROPS
 } zfs_prop_t;
 
@@ -543,6 +548,7 @@ typedef struct zpool_rewind_policy {
 #define	ZPOOL_CONFIG_CAN_RDONLY		"can_rdonly"	/* not stored on disk */
 #define	ZPOOL_CONFIG_FEATURES_FOR_READ	"features_for_read"
 #define	ZPOOL_CONFIG_FEATURE_STATS	"feature_stats"	/* not stored on disk */
+#define	ZPOOL_CONFIG_ERRATA		"errata"	/* not stored on disk */
 /*
  * The persistent vdev state is stored as separate values rather than a single
  * 'vdev_state' entry.  This is because a device can be in multiple states, such
@@ -699,6 +705,17 @@ typedef enum dsl_scan_state {
 	DSS_NUM_STATES
 } dsl_scan_state_t;
 
+/*
+ * Errata described by http://zfsonlinux.org/msg/ZFS-8000-ER.  The ordering
+ * of this enum must be maintained to ensure the errata identifiers map to
+ * the correct documentation.  New errata may only be appended to the list
+ * and must contain corresponding documentation at the above link.
+ */
+typedef enum zpool_errata {
+	ZPOOL_ERRATA_NONE,
+	ZPOOL_ERRATA_ZOL_2094_SCRUB,
+	ZPOOL_ERRATA_ZOL_2094_ASYNC_DESTROY,
+} zpool_errata_t;
 
 /*
  * Vdev statistics.  Note: all fields should be 64-bit because this
@@ -768,6 +785,9 @@ typedef struct ddt_histogram {
  * /dev/zfs ioctl numbers.
  */
 typedef enum zfs_ioc {
+	/*
+	 * Illumos - 69/128 numbers reserved.
+	 */
 	ZFS_IOC_FIRST =	('Z' << 8),
 	ZFS_IOC = ZFS_IOC_FIRST,
 	ZFS_IOC_POOL_CREATE = ZFS_IOC_FIRST,
@@ -793,8 +813,6 @@ typedef enum zfs_ioc {
 	ZFS_IOC_DATASET_LIST_NEXT,
 	ZFS_IOC_SNAPSHOT_LIST_NEXT,
 	ZFS_IOC_SET_PROP,
-	ZFS_IOC_CREATE_MINOR,
-	ZFS_IOC_REMOVE_MINOR,
 	ZFS_IOC_CREATE,
 	ZFS_IOC_DESTROY,
 	ZFS_IOC_ROLLBACK,
@@ -807,7 +825,6 @@ typedef enum zfs_ioc {
 	ZFS_IOC_ERROR_LOG,
 	ZFS_IOC_CLEAR,
 	ZFS_IOC_PROMOTE,
-	ZFS_IOC_DESTROY_SNAPS,
 	ZFS_IOC_SNAPSHOT,
 	ZFS_IOC_DSOBJ_TO_DSNAME,
 	ZFS_IOC_OBJ_TO_PATH,
@@ -830,24 +847,36 @@ typedef enum zfs_ioc {
 	ZFS_IOC_DIFF,
 	ZFS_IOC_TMP_SNAPSHOT,
 	ZFS_IOC_OBJ_TO_STATS,
-	ZFS_IOC_EVENTS_NEXT,
-	ZFS_IOC_EVENTS_CLEAR,
-	ZFS_IOC_POOL_REGUID,
 	ZFS_IOC_SPACE_WRITTEN,
 	ZFS_IOC_SPACE_SNAPS,
+	ZFS_IOC_DESTROY_SNAPS,
+	ZFS_IOC_POOL_REGUID,
 	ZFS_IOC_POOL_REOPEN,
 	ZFS_IOC_SEND_PROGRESS,
 	ZFS_IOC_LOG_HISTORY,
 	ZFS_IOC_SEND_NEW,
 	ZFS_IOC_SEND_SPACE,
 	ZFS_IOC_CLONE,
+
+	/*
+	 * Linux - 3/64 numbers reserved.
+	 */
+	ZFS_IOC_LINUX = ('Z' << 8) + 0x80,
+	ZFS_IOC_EVENTS_NEXT,
+	ZFS_IOC_EVENTS_CLEAR,
+
+	/*
+	 * FreeBSD - 1/64 numbers reserved.
+	 */
+	ZFS_IOC_FREEBSD = ('Z' << 8) + 0xC0,
+
 	ZFS_IOC_LAST
 } zfs_ioc_t;
 
 /*
  * zvol ioctl to get dataset name
  */
-#define BLKZNAME		_IOR(0x12,125,char[ZFS_MAXNAMELEN])
+#define	BLKZNAME		_IOR(0x12, 125, char[ZFS_MAXNAMELEN])
 
 /*
  * Internal SPA load state.  Used by FMA diagnosis engine.

@@ -1608,7 +1608,8 @@ show_import(nvlist_t *config)
 	uint64_t guid;
 	char *msgid;
 	nvlist_t *nvroot;
-	int reason;
+	zpool_status_t reason;
+	zpool_errata_t errata;
 	const char *health;
 	uint_t vsc;
 	int namewidth;
@@ -1627,7 +1628,7 @@ show_import(nvlist_t *config)
 	    (uint64_t **)&vs, &vsc) == 0);
 	health = zpool_state_to_name(vs->vs_state, vs->vs_aux);
 
-	reason = zpool_import_status(config, &msgid);
+	reason = zpool_import_status(config, &msgid, &errata);
 
 	(void) printf(gettext("   pool: %s\n"), name);
 	(void) printf(gettext("     id: %llu\n"), (u_longlong_t)guid);
@@ -1715,6 +1716,11 @@ show_import(nvlist_t *config)
 		    "resilvered.\n"));
 		break;
 
+	case ZPOOL_STATUS_ERRATA:
+		(void) printf(gettext(" status: Errata #%d detected.\n"),
+		    errata);
+		break;
+
 	default:
 		/*
 		 * No other status can be seen when importing pools.
@@ -1736,6 +1742,34 @@ show_import(nvlist_t *config)
 			(void) printf(gettext(" action: The pool can be "
 			    "imported using its name or numeric "
 			    "identifier and\n\tthe '-f' flag.\n"));
+		} else if (reason == ZPOOL_STATUS_ERRATA) {
+			switch (errata) {
+			case ZPOOL_ERRATA_NONE:
+				break;
+
+			case ZPOOL_ERRATA_ZOL_2094_SCRUB:
+				(void) printf(gettext(" action: The pool can "
+				    "be imported using its name or numeric "
+				    "identifier,\n\thowever there is a compat"
+				    "ibility issue which should be corrected"
+				    "\n\tby running 'zpool scrub'\n"));
+				break;
+
+			case ZPOOL_ERRATA_ZOL_2094_ASYNC_DESTROY:
+				(void) printf(gettext(" action: The pool can"
+				    "not be imported with this version of ZFS "
+				    "due to\n\tan active asynchronous destroy. "
+				    "Revert to an earlier version\n\tand "
+				    "allow the destroy to complete before "
+				    "updating.\n"));
+				break;
+
+			default:
+				/*
+				 * All errata must contain an action message.
+				 */
+				assert(0);
+			}
 		} else {
 			(void) printf(gettext(" action: The pool can be "
 			    "imported using its name or numeric "
@@ -2568,7 +2602,7 @@ get_columns(void)
 		columns = 999;
 	}
 
-	return columns;
+	return (columns);
 }
 
 int
@@ -4125,13 +4159,14 @@ status_callback(zpool_handle_t *zhp, void *data)
 	status_cbdata_t *cbp = data;
 	nvlist_t *config, *nvroot;
 	char *msgid;
-	int reason;
+	zpool_status_t reason;
+	zpool_errata_t errata;
 	const char *health;
 	uint_t c;
 	vdev_stat_t *vs;
 
 	config = zpool_get_config(zhp, NULL);
-	reason = zpool_get_status(zhp, &msgid);
+	reason = zpool_get_status(zhp, &msgid, &errata);
 
 	cbp->cb_count++;
 
@@ -4347,6 +4382,28 @@ status_callback(zpool_handle_t *zhp, void *data)
 		    "device(s) and run 'zpool online',\n"
 		    "\tor ignore the intent log records by running "
 		    "'zpool clear'.\n"));
+		break;
+
+	case ZPOOL_STATUS_ERRATA:
+		(void) printf(gettext("status: Errata #%d detected.\n"),
+		    errata);
+
+		switch (errata) {
+		case ZPOOL_ERRATA_NONE:
+			break;
+
+		case ZPOOL_ERRATA_ZOL_2094_SCRUB:
+			(void) printf(gettext("action: To correct the issue "
+			    "run 'zpool scrub'.\n"));
+			break;
+
+		default:
+			/*
+			 * All errata which allow the pool to be imported
+			 * must contain an action message.
+			 */
+			assert(0);
+		}
 		break;
 
 	default:
@@ -5037,19 +5094,21 @@ get_history_one(zpool_handle_t *zhp, void *data)
 			}
 			(void) printf("%s [internal %s txg:%lld] %s", tbuf,
 			    zfs_history_event_names[ievent],
-			    (long long int)fnvlist_lookup_uint64(rec, ZPOOL_HIST_TXG),
+			    (longlong_t) fnvlist_lookup_uint64(
+			    rec, ZPOOL_HIST_TXG),
 			    fnvlist_lookup_string(rec, ZPOOL_HIST_INT_STR));
 		} else if (nvlist_exists(rec, ZPOOL_HIST_INT_NAME)) {
 			if (!cb->internal)
 				continue;
 			(void) printf("%s [txg:%lld] %s", tbuf,
-			    (long long int)fnvlist_lookup_uint64(rec, ZPOOL_HIST_TXG),
+			    (longlong_t) fnvlist_lookup_uint64(
+			    rec, ZPOOL_HIST_TXG),
 			    fnvlist_lookup_string(rec, ZPOOL_HIST_INT_NAME));
 			if (nvlist_exists(rec, ZPOOL_HIST_DSNAME)) {
 				(void) printf(" %s (%llu)",
 				    fnvlist_lookup_string(rec,
 				    ZPOOL_HIST_DSNAME),
-				    (long long unsigned int)fnvlist_lookup_uint64(rec,
+				    (u_longlong_t)fnvlist_lookup_uint64(rec,
 				    ZPOOL_HIST_DSID));
 			}
 			(void) printf(" %s", fnvlist_lookup_string(rec,
@@ -5165,10 +5224,10 @@ zpool_do_events_short(nvlist_t *nvl)
 	verify(nvlist_lookup_int64_array(nvl, FM_EREPORT_TIME, &tv, &n) == 0);
 	memset(str, ' ', 32);
 	(void) ctime_r((const time_t *)&tv[0], ctime_str);
-	(void) strncpy(str,    ctime_str+4,  6);             /* 'Jun 30'     */
-	(void) strncpy(str+7,  ctime_str+20, 4);             /* '1993'       */
-	(void) strncpy(str+12, ctime_str+11, 8);             /* '21:49:08'   */
-	(void) sprintf(str+20, ".%09lld", (longlong_t)tv[1]);/* '.123456789' */
+	(void) strncpy(str, ctime_str+4,  6);		/* 'Jun 30' */
+	(void) strncpy(str+7, ctime_str+20, 4);		/* '1993' */
+	(void) strncpy(str+12, ctime_str+11, 8);	/* '21:49:08' */
+	(void) sprintf(str+20, ".%09lld", (longlong_t)tv[1]); /* '.123456789' */
 	(void) printf(gettext("%s "), str);
 
 	verify(nvlist_lookup_string(nvl, FM_CLASS, &ptr) == 0);
@@ -5276,10 +5335,10 @@ zpool_do_events_nvprint(nvlist_t *nvl, int depth)
 			printf(gettext("(%d embedded nvlists)\n"), nelem);
 			for (i = 0; i < nelem; i++) {
 				printf(gettext("%*s%s[%d] = %s\n"),
-				       depth, "", name, i, "(embedded nvlist)");
+				    depth, "", name, i, "(embedded nvlist)");
 				zpool_do_events_nvprint(val[i], depth + 8);
 				printf(gettext("%*s(end %s[%i])\n"),
-				       depth, "", name, i);
+				    depth, "", name, i);
 			}
 			printf(gettext("%*s(end %s)\n"), depth, "", name);
 			}
@@ -5357,7 +5416,8 @@ zpool_do_events_nvprint(nvlist_t *nvl, int depth)
 
 			(void) nvpair_value_int64_array(nvp, &val, &nelem);
 			for (i = 0; i < nelem; i++)
-				printf(gettext("0x%llx "), (u_longlong_t)val[i]);
+				printf(gettext("0x%llx "),
+				    (u_longlong_t)val[i]);
 
 			break;
 			}
@@ -5368,7 +5428,8 @@ zpool_do_events_nvprint(nvlist_t *nvl, int depth)
 
 			(void) nvpair_value_uint64_array(nvp, &val, &nelem);
 			for (i = 0; i < nelem; i++)
-				printf(gettext("0x%llx "), (u_longlong_t)val[i]);
+				printf(gettext("0x%llx "),
+				    (u_longlong_t)val[i]);
 
 			break;
 			}
@@ -5392,8 +5453,8 @@ zpool_do_events_next(ev_opts_t *opts)
 	nvlist_t *nvl;
 	int cleanup_fd, ret, dropped;
 
-        cleanup_fd = open(ZFS_DEV, O_RDWR);
-        VERIFY(cleanup_fd >= 0);
+	cleanup_fd = open(ZFS_DEV, O_RDWR);
+	VERIFY(cleanup_fd >= 0);
 
 	if (!opts->scripted)
 		(void) printf(gettext("%-30s %s\n"), "TIME", "CLASS");
@@ -5418,7 +5479,7 @@ zpool_do_events_next(ev_opts_t *opts)
 		nvlist_free(nvl);
 	}
 
-        VERIFY(0 == close(cleanup_fd));
+	VERIFY(0 == close(cleanup_fd));
 
 	return (ret);
 }
@@ -5476,7 +5537,7 @@ zpool_do_events(int argc, char **argv)
 	else
 		ret = zpool_do_events_next(&opts);
 
-	return ret;
+	return (ret);
 }
 
 static int
@@ -5690,8 +5751,7 @@ main(int argc, char **argv)
 	/*
 	 * Special case '-?'
 	 */
-	if ((strcmp(cmdname, "-?") == 0) ||
-	     strcmp(cmdname, "--help") == 0)
+	if ((strcmp(cmdname, "-?") == 0) || strcmp(cmdname, "--help") == 0)
 		usage(B_TRUE);
 
 	if ((g_zfs = libzfs_init()) == NULL)

@@ -123,6 +123,42 @@ dsl_scan_init(dsl_pool_t *dp, uint64_t txg)
 		err = zap_lookup(dp->dp_meta_objset, DMU_POOL_DIRECTORY_OBJECT,
 		    DMU_POOL_SCAN, sizeof (uint64_t), SCAN_PHYS_NUMINTS,
 		    &scn->scn_phys);
+		/*
+		 * Detect if the pool contains the signature of #2094.  If it
+		 * does properly update the scn->scn_phys structure and notify
+		 * the administrator by setting an errata for the pool.
+		 */
+		if (err == EOVERFLOW) {
+			uint64_t zaptmp[SCAN_PHYS_NUMINTS + 1];
+			VERIFY3S(SCAN_PHYS_NUMINTS, ==, 24);
+			VERIFY3S(offsetof(dsl_scan_phys_t, scn_flags), ==,
+			    (23 * sizeof (uint64_t)));
+
+			err = zap_lookup(dp->dp_meta_objset,
+			    DMU_POOL_DIRECTORY_OBJECT, DMU_POOL_SCAN,
+			    sizeof (uint64_t), SCAN_PHYS_NUMINTS + 1, &zaptmp);
+			if (err == 0) {
+				uint64_t overflow = zaptmp[SCAN_PHYS_NUMINTS];
+
+				if (overflow & ~DSL_SCAN_FLAGS_MASK ||
+				    scn->scn_async_destroying) {
+					spa->spa_errata =
+					    ZPOOL_ERRATA_ZOL_2094_ASYNC_DESTROY;
+					return (EOVERFLOW);
+				}
+
+				bcopy(zaptmp, &scn->scn_phys,
+				    SCAN_PHYS_NUMINTS * sizeof (uint64_t));
+				scn->scn_phys.scn_flags = overflow;
+
+				/* Required scrub already in progress. */
+				if (scn->scn_phys.scn_state == DSS_FINISHED ||
+				    scn->scn_phys.scn_state == DSS_CANCELED)
+					spa->spa_errata =
+					    ZPOOL_ERRATA_ZOL_2094_SCRUB;
+			}
+		}
+
 		if (err == ENOENT)
 			return (0);
 		else if (err)
@@ -201,9 +237,11 @@ dsl_scan_setup_sync(void *arg, dmu_tx_t *tx)
 
 		if (vdev_resilver_needed(spa->spa_root_vdev,
 		    &scn->scn_phys.scn_min_txg, &scn->scn_phys.scn_max_txg)) {
-			spa_event_notify(spa, NULL, FM_EREPORT_ZFS_RESILVER_START);
+			spa_event_notify(spa, NULL,
+			    FM_EREPORT_ZFS_RESILVER_START);
 		} else {
-			spa_event_notify(spa, NULL, FM_EREPORT_ZFS_SCRUB_START);
+			spa_event_notify(spa, NULL,
+			    FM_EREPORT_ZFS_SCRUB_START);
 		}
 
 		spa->spa_scrub_started = B_TRUE;
@@ -317,6 +355,9 @@ dsl_scan_done(dsl_scan_t *scn, boolean_t complete, dmu_tx_t *tx)
 	}
 
 	scn->scn_phys.scn_end_time = gethrestime_sec();
+
+	if (spa->spa_errata == ZPOOL_ERRATA_ZOL_2094_SCRUB)
+		spa->spa_errata = 0;
 }
 
 /* ARGSUSED */
@@ -783,7 +824,7 @@ dsl_scan_visitbp(blkptr_t *bp, const zbookmark_t *zb,
 	if (buf)
 		(void) arc_buf_remove_ref(buf, &buf);
 out:
-	kmem_free(bp_toread, sizeof(blkptr_t));
+	kmem_free(bp_toread, sizeof (blkptr_t));
 }
 
 static void
@@ -1290,8 +1331,8 @@ dsl_scan_visit(dsl_scan_t *scn, dmu_tx_t *tx)
 	 * bookmark so we don't think that we're still trying to resume.
 	 */
 	bzero(&scn->scn_phys.scn_bookmark, sizeof (zbookmark_t));
-	zc = kmem_alloc(sizeof(zap_cursor_t), KM_PUSHPAGE);
-	za = kmem_alloc(sizeof(zap_attribute_t), KM_PUSHPAGE);
+	zc = kmem_alloc(sizeof (zap_cursor_t), KM_PUSHPAGE);
+	za = kmem_alloc(sizeof (zap_attribute_t), KM_PUSHPAGE);
 
 	/* keep pulling things out of the zap-object-as-queue */
 	while (zap_cursor_init(zc, dp->dp_meta_objset,
@@ -1325,8 +1366,8 @@ dsl_scan_visit(dsl_scan_t *scn, dmu_tx_t *tx)
 	}
 	zap_cursor_fini(zc);
 out:
-	kmem_free(za, sizeof(zap_attribute_t));
-	kmem_free(zc, sizeof(zap_cursor_t));
+	kmem_free(za, sizeof (zap_attribute_t));
+	kmem_free(zc, sizeof (zap_cursor_t));
 }
 
 static boolean_t
@@ -1650,7 +1691,6 @@ dsl_scan_scrub_cb(dsl_pool_t *dp,
 	uint64_t phys_birth = BP_PHYSICAL_BIRTH(bp);
 	boolean_t needs_io = B_FALSE;
 	int zio_flags = ZIO_FLAG_SCAN_THREAD | ZIO_FLAG_RAW | ZIO_FLAG_CANFAIL;
-	int zio_priority = 0;
 	int scan_delay = 0;
 	int d;
 
@@ -1663,13 +1703,11 @@ dsl_scan_scrub_cb(dsl_pool_t *dp,
 	ASSERT(DSL_SCAN_IS_SCRUB_RESILVER(scn));
 	if (scn->scn_phys.scn_func == POOL_SCAN_SCRUB) {
 		zio_flags |= ZIO_FLAG_SCRUB;
-		zio_priority = ZIO_PRIORITY_SCRUB;
 		needs_io = B_TRUE;
 		scan_delay = zfs_scrub_delay;
 	} else {
 		ASSERT3U(scn->scn_phys.scn_func, ==, POOL_SCAN_RESILVER);
 		zio_flags |= ZIO_FLAG_RESILVER;
-		zio_priority = ZIO_PRIORITY_RESILVER;
 		needs_io = B_FALSE;
 		scan_delay = zfs_resilver_delay;
 	}
@@ -1727,7 +1765,7 @@ dsl_scan_scrub_cb(dsl_pool_t *dp,
 			delay(scan_delay);
 
 		zio_nowait(zio_read(NULL, spa, bp, data, size,
-		    dsl_scan_scrub_done, NULL, zio_priority,
+		    dsl_scan_scrub_done, NULL, ZIO_PRIORITY_SCRUB,
 		    zio_flags, zb));
 	}
 

@@ -21,10 +21,10 @@
 
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright 2011 Nexenta Systems, Inc. All rights reserved.
  * Copyright (c) 2012 by Delphix. All rights reserved.
  * Copyright (c) 2012, Joyent, Inc. All rights reserved.
  * Copyright (c) 2013 Steven Hartland. All rights reserved.
+ * Copyright 2013 Nexenta Systems, Inc. All rights reserved.
  */
 
 #ifndef	_LIBZFS_H
@@ -312,6 +312,7 @@ typedef enum {
 	ZPOOL_STATUS_IO_FAILURE_WAIT,	/* failed I/O, failmode 'wait' */
 	ZPOOL_STATUS_IO_FAILURE_CONTINUE, /* failed I/O, failmode 'continue' */
 	ZPOOL_STATUS_BAD_LOG,		/* cannot read log chain(s) */
+	ZPOOL_STATUS_ERRATA,		/* informational errata available */
 
 	/*
 	 * If the pool has unsupported features but can still be opened in
@@ -347,8 +348,10 @@ typedef enum {
 	ZPOOL_STATUS_OK
 } zpool_status_t;
 
-extern zpool_status_t zpool_get_status(zpool_handle_t *, char **);
-extern zpool_status_t zpool_import_status(nvlist_t *, char **);
+extern zpool_status_t zpool_get_status(zpool_handle_t *, char **,
+    zpool_errata_t *);
+extern zpool_status_t zpool_import_status(nvlist_t *, char **,
+    zpool_errata_t *);
 extern void zpool_dump_ddt(const ddt_stat_t *dds, const ddt_histogram_t *ddh);
 
 /*
@@ -478,7 +481,8 @@ typedef struct zprop_list {
 	boolean_t	pl_fixed;
 } zprop_list_t;
 
-extern int zfs_expand_proplist(zfs_handle_t *, zprop_list_t **, boolean_t);
+extern int zfs_expand_proplist(zfs_handle_t *, zprop_list_t **, boolean_t,
+    boolean_t);
 extern void zfs_prune_proplist(zfs_handle_t *, uint8_t *);
 
 #define	ZFS_MOUNTPOINT_NONE	"none"

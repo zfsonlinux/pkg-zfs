@@ -5,6 +5,7 @@ nodist_pkgdata_SCRIPTS = \
 	$(top_builddir)/scripts/common.sh \
 	$(top_srcdir)/scripts/zconfig.sh \
 	$(top_srcdir)/scripts/zfault.sh \
+	$(top_srcdir)/scripts/zimport.sh \
 	$(top_srcdir)/scripts/zfs.sh \
 	$(top_srcdir)/scripts/zpool-create.sh \
 	$(top_srcdir)/scripts/zpios.sh \
@@ -15,6 +16,7 @@ nodist_pkgdata_SCRIPTS = \
 ZFS=$(top_builddir)/scripts/zfs.sh
 ZCONFIG=$(top_builddir)/scripts/zconfig.sh
 ZFAULT=$(top_builddir)/scripts/zfault.sh
+ZIMPORT=$(top_builddir)/scripts/zimport.sh
 ZTEST=$(top_builddir)/cmd/ztest/ztest
 ZPIOS_SANITY=$(top_builddir)/scripts/zpios-sanity.sh
 

@@ -138,6 +138,12 @@ atime_changed_cb(void *arg, uint64_t newval)
 }
 
 static void
+relatime_changed_cb(void *arg, uint64_t newval)
+{
+	((zfs_sb_t *)arg)->z_relatime = newval;
+}
+
+static void
 xattr_changed_cb(void *arg, uint64_t newval)
 {
 	zfs_sb_t *zsb = arg;
@@ -276,6 +282,8 @@ zfs_register_callbacks(zfs_sb_t *zsb)
 	error = dsl_prop_register(ds,
 	    zfs_prop_to_name(ZFS_PROP_ATIME), atime_changed_cb, zsb);
 	error = error ? error : dsl_prop_register(ds,
+	    zfs_prop_to_name(ZFS_PROP_RELATIME), relatime_changed_cb, zsb);
+	error = error ? error : dsl_prop_register(ds,
 	    zfs_prop_to_name(ZFS_PROP_XATTR), xattr_changed_cb, zsb);
 	error = error ? error : dsl_prop_register(ds,
 	    zfs_prop_to_name(ZFS_PROP_RECORDSIZE), blksz_changed_cb, zsb);
@@ -314,6 +322,8 @@ unregister:
 	 */
 	(void) dsl_prop_unregister(ds, zfs_prop_to_name(ZFS_PROP_ATIME),
 	    atime_changed_cb, zsb);
+	(void) dsl_prop_unregister(ds, zfs_prop_to_name(ZFS_PROP_RELATIME),
+	    relatime_changed_cb, zsb);
 	(void) dsl_prop_unregister(ds, zfs_prop_to_name(ZFS_PROP_XATTR),
 	    xattr_changed_cb, zsb);
 	(void) dsl_prop_unregister(ds, zfs_prop_to_name(ZFS_PROP_RECORDSIZE),
@@ -914,6 +924,9 @@ zfs_unregister_callbacks(zfs_sb_t *zsb)
 		VERIFY(dsl_prop_unregister(ds, "atime", atime_changed_cb,
 		    zsb) == 0);
 
+		VERIFY(dsl_prop_unregister(ds, "relatime", relatime_changed_cb,
+		    zsb) == 0);
+
 		VERIFY(dsl_prop_unregister(ds, "xattr", xattr_changed_cb,
 		    zsb) == 0);
 
@@ -1091,6 +1104,14 @@ zfs_sb_teardown(zfs_sb_t *zsb, boolean_t unmounting)
 {
 	znode_t	*zp;
 
+	/*
+	 * If someone has not already unmounted this file system,
+	 * drain the iput_taskq to ensure all active references to the
+	 * zfs_sb_t have been handled only then can it be safely destroyed.
+	 */
+	if (zsb->z_os)
+		taskq_wait(dsl_pool_iput_taskq(dmu_objset_pool(zsb->z_os)));
+
 	rrw_enter(&zsb->z_teardown_lock, RW_WRITER, FTAG);
 
 	if (!unmounting) {
@@ -1103,14 +1124,6 @@ zfs_sb_teardown(zfs_sb_t *zsb, boolean_t unmounting)
 		 */
 		shrink_dcache_sb(zsb->z_parent->z_sb);
 	}
-
-	/*
-	 * If someone has not already unmounted this file system,
-	 * drain the iput_taskq to ensure all active references to the
-	 * zfs_sb_t have been handled only then can it be safely destroyed.
-	 */
-	if (zsb->z_os)
-		taskq_wait(dsl_pool_iput_taskq(dmu_objset_pool(zsb->z_os)));
 
 	/*
 	 * Close the zil. NB: Can't close the zil while zfs_inactive
@@ -1144,10 +1157,8 @@ zfs_sb_teardown(zfs_sb_t *zsb, boolean_t unmounting)
 	mutex_enter(&zsb->z_znodes_lock);
 	for (zp = list_head(&zsb->z_all_znodes); zp != NULL;
 	    zp = list_next(&zsb->z_all_znodes, zp)) {
-		if (zp->z_sa_hdl) {
-			ASSERT(atomic_read(&ZTOI(zp)->i_count) > 0);
+		if (zp->z_sa_hdl)
 			zfs_znode_dmu_fini(zp);
-		}
 	}
 	mutex_exit(&zsb->z_znodes_lock);
 
@@ -1251,10 +1262,12 @@ zfs_domount(struct super_block *sb, void *data, int silent)
 
 		atime_changed_cb(zsb, B_FALSE);
 		readonly_changed_cb(zsb, B_TRUE);
-		if ((error = dsl_prop_get_integer(osname,"xattr",&pval,NULL)))
+		if ((error = dsl_prop_get_integer(osname,
+		    "xattr", &pval, NULL)))
 			goto out;
 		xattr_changed_cb(zsb, pval);
-		if ((error = dsl_prop_get_integer(osname,"acltype",&pval,NULL)))
+		if ((error = dsl_prop_get_integer(osname,
+		    "acltype", &pval, NULL)))
 			goto out;
 		acltype_changed_cb(zsb, pval);
 		zsb->z_issnap = B_TRUE;

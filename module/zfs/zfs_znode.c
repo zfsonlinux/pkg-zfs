@@ -355,6 +355,7 @@ zfs_znode_alloc(zfs_sb_t *zsb, dmu_buf_t *db, int blksz,
 {
 	znode_t	*zp;
 	struct inode *ip;
+	uint64_t mode;
 	uint64_t parent;
 	sa_bulk_attr_t bulk[9];
 	int count = 0;
@@ -386,7 +387,7 @@ zfs_znode_alloc(zfs_sb_t *zsb, dmu_buf_t *db, int blksz,
 
 	zfs_znode_sa_init(zsb, zp, db, obj_type, hdl);
 
-	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_MODE(zsb), NULL, &zp->z_mode, 8);
+	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_MODE(zsb), NULL, &mode, 8);
 	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_GEN(zsb), NULL, &zp->z_gen, 8);
 	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_SIZE(zsb), NULL, &zp->z_size, 8);
 	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_LINKS(zsb), NULL, &zp->z_links, 8);
@@ -405,6 +406,8 @@ zfs_znode_alloc(zfs_sb_t *zsb, dmu_buf_t *db, int blksz,
 
 		goto error;
 	}
+
+	zp->z_mode = mode;
 
 	/*
 	 * xattr znodes hold a reference on their unique parent
@@ -440,7 +443,7 @@ zfs_znode_alloc(zfs_sb_t *zsb, dmu_buf_t *db, int blksz,
 error:
 	unlock_new_inode(ip);
 	iput(ip);
-	return NULL;
+	return (NULL);
 }
 
 /*
@@ -647,7 +650,7 @@ zfs_mknode(znode_t *dzp, vattr_t *vap, dmu_tx_t *tx, cred_t *cr,
 	 * order for  DMU_OT_ZNODE is critical since it needs to be constructed
 	 * in the old znode_phys_t format.  Don't change this ordering
 	 */
-	sa_attrs = kmem_alloc(sizeof(sa_bulk_attr_t) * ZPL_END, KM_PUSHPAGE);
+	sa_attrs = kmem_alloc(sizeof (sa_bulk_attr_t) * ZPL_END, KM_PUSHPAGE);
 
 	if (obj_type == DMU_OT_ZNODE) {
 		SA_ADD_BULK_ATTR(sa_attrs, cnt, SA_ZPL_ATIME(zsb),
@@ -749,7 +752,7 @@ zfs_mknode(znode_t *dzp, vattr_t *vap, dmu_tx_t *tx, cred_t *cr,
 		err = zfs_aclset_common(*zpp, acl_ids->z_aclp, cr, tx);
 		ASSERT0(err);
 	}
-	kmem_free(sa_attrs, sizeof(sa_bulk_attr_t) * ZPL_END);
+	kmem_free(sa_attrs, sizeof (sa_bulk_attr_t) * ZPL_END);
 	ZFS_OBJ_HOLD_EXIT(zsb, obj);
 }
 
@@ -1106,23 +1109,89 @@ zfs_zinactive(znode_t *zp)
 		ZFS_OBJ_HOLD_EXIT(zsb, z_id);
 }
 
+static inline int
+zfs_compare_timespec(struct timespec *t1, struct timespec *t2)
+{
+	if (t1->tv_sec < t2->tv_sec)
+		return (-1);
+
+	if (t1->tv_sec > t2->tv_sec)
+		return (1);
+
+	return (t1->tv_nsec - t2->tv_nsec);
+}
+
+/*
+ *  Determine whether the znode's atime must be updated.  The logic mostly
+ *  duplicates the Linux kernel's relatime_need_update() functionality.
+ *  This function is only called if the underlying filesystem actually has
+ *  atime updates enabled.
+ */
+static inline boolean_t
+zfs_atime_need_update(znode_t *zp, timestruc_t *now)
+{
+	if (!ZTOZSB(zp)->z_relatime)
+		return (B_TRUE);
+
+	/*
+	 * In relatime mode, only update the atime if the previous atime
+	 * is earlier than either the ctime or mtime or if at least a day
+	 * has passed since the last update of atime.
+	 */
+	if (zfs_compare_timespec(&ZTOI(zp)->i_mtime, &ZTOI(zp)->i_atime) >= 0)
+		return (B_TRUE);
+
+	if (zfs_compare_timespec(&ZTOI(zp)->i_ctime, &ZTOI(zp)->i_atime) >= 0)
+		return (B_TRUE);
+
+	if ((long)now->tv_sec - ZTOI(zp)->i_atime.tv_sec >= 24*60*60)
+		return (B_TRUE);
+
+	return (B_FALSE);
+}
+
+/*
+ * Prepare to update znode time stamps.
+ *
+ *	IN:	zp	- znode requiring timestamp update
+ *		flag	- ATTR_MTIME, ATTR_CTIME, ATTR_ATIME flags
+ *		have_tx	- true of caller is creating a new txg
+ *
+ *	OUT:	zp	- new atime (via underlying inode's i_atime)
+ *		mtime	- new mtime
+ *		ctime	- new ctime
+ *
+ * NOTE: The arguments are somewhat redundant.  The following condition
+ * is always true:
+ *
+ *		have_tx == !(flag & ATTR_ATIME)
+ */
 void
 zfs_tstamp_update_setup(znode_t *zp, uint_t flag, uint64_t mtime[2],
     uint64_t ctime[2], boolean_t have_tx)
 {
 	timestruc_t	now;
 
+	ASSERT(have_tx == !(flag & ATTR_ATIME));
 	gethrestime(&now);
 
-	if (have_tx) {	/* will sa_bulk_update happen really soon? */
+	/*
+	 * NOTE: The following test intentionally does not update z_atime_dirty
+	 * in the case where an ATIME update has been requested but for which
+	 * the update is omitted due to relatime logic.  The rationale being
+	 * that if the flag was set somewhere else, we should leave it alone
+	 * here.
+	 */
+	if (flag & ATTR_ATIME) {
+		if (zfs_atime_need_update(zp, &now)) {
+			ZFS_TIME_ENCODE(&now, zp->z_atime);
+			ZTOI(zp)->i_atime.tv_sec = zp->z_atime[0];
+			ZTOI(zp)->i_atime.tv_nsec = zp->z_atime[1];
+			zp->z_atime_dirty = 1;
+		}
+	} else {
 		zp->z_atime_dirty = 0;
 		zp->z_seq++;
-	} else {
-		zp->z_atime_dirty = 1;
-	}
-
-	if (flag & ATTR_ATIME) {
-		ZFS_TIME_ENCODE(&now, zp->z_atime);
 	}
 
 	if (flag & ATTR_MTIME) {
@@ -1205,7 +1274,6 @@ zfs_extend(znode_t *zp, uint64_t end)
 		zfs_range_unlock(rl);
 		return (0);
 	}
-top:
 	tx = dmu_tx_create(zsb->z_os);
 	dmu_tx_hold_sa(tx, zp->z_sa_hdl, B_FALSE);
 	zfs_sa_upgrade_txholds(tx, zp);
@@ -1225,13 +1293,8 @@ top:
 		newblksz = 0;
 	}
 
-	error = dmu_tx_assign(tx, TXG_NOWAIT);
+	error = dmu_tx_assign(tx, TXG_WAIT);
 	if (error) {
-		if (error == ERESTART) {
-			dmu_tx_wait(tx);
-			dmu_tx_abort(tx);
-			goto top;
-		}
 		dmu_tx_abort(tx);
 		zfs_range_unlock(rl);
 		return (error);
@@ -1419,13 +1482,8 @@ log:
 	tx = dmu_tx_create(zsb->z_os);
 	dmu_tx_hold_sa(tx, zp->z_sa_hdl, B_FALSE);
 	zfs_sa_upgrade_txholds(tx, zp);
-	error = dmu_tx_assign(tx, TXG_NOWAIT);
+	error = dmu_tx_assign(tx, TXG_WAIT);
 	if (error) {
-		if (error == ERESTART) {
-			dmu_tx_wait(tx);
-			dmu_tx_abort(tx);
-			goto log;
-		}
 		dmu_tx_abort(tx);
 		return (error);
 	}

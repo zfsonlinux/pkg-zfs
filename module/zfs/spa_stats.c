@@ -122,14 +122,14 @@ spa_read_history_update(kstat_t *ksp, int rw)
 
 		while ((srh = list_remove_head(&ssh->list))) {
 			ssh->size--;
-			kmem_free(srh, sizeof(spa_read_history_t));
+			kmem_free(srh, sizeof (spa_read_history_t));
 		}
 
 		ASSERT3U(ssh->size, ==, 0);
 	}
 
 	ksp->ks_ndata = ssh->size;
-	ksp->ks_data_size = ssh->size * sizeof(spa_read_history_t);
+	ksp->ks_data_size = ssh->size * sizeof (spa_read_history_t);
 
 	return (0);
 }
@@ -181,7 +181,7 @@ spa_read_history_destroy(spa_t *spa)
 	mutex_enter(&ssh->lock);
 	while ((srh = list_remove_head(&ssh->list))) {
 		ssh->size--;
-		kmem_free(srh, sizeof(spa_read_history_t));
+		kmem_free(srh, sizeof (spa_read_history_t));
 	}
 
 	ASSERT3U(ssh->size, ==, 0);
@@ -206,9 +206,8 @@ spa_read_history_add(spa_t *spa, const zbookmark_t *zb, uint32_t aflags)
 	if (zfs_read_history_hits == 0 && (aflags & ARC_CACHED))
 		return;
 
-	srh = kmem_zalloc(sizeof(spa_read_history_t), KM_PUSHPAGE);
-	strlcpy(srh->origin, zb->zb_func, sizeof(srh->origin));
-	strlcpy(srh->comm, getcomm(), sizeof(srh->comm));
+	srh = kmem_zalloc(sizeof (spa_read_history_t), KM_PUSHPAGE);
+	strlcpy(srh->comm, getcomm(), sizeof (srh->comm));
 	srh->start  = gethrtime();
 	srh->objset = zb->zb_objset;
 	srh->object = zb->zb_object;
@@ -226,7 +225,7 @@ spa_read_history_add(spa_t *spa, const zbookmark_t *zb, uint32_t aflags)
 	while (ssh->size > zfs_read_history) {
 		ssh->size--;
 		rm = list_remove_tail(&ssh->list);
-		kmem_free(rm, sizeof(spa_read_history_t));
+		kmem_free(rm, sizeof (spa_read_history_t));
 	}
 
 	mutex_exit(&ssh->lock);
@@ -258,9 +257,9 @@ static int
 spa_txg_history_headers(char *buf, size_t size)
 {
 	size = snprintf(buf, size - 1, "%-8s %-16s %-5s %-12s %-12s %-12s "
-	    "%-8s %-8s %-12s %-12s %-12s\n", "txg", "birth", "state",
+	    "%-8s %-8s %-12s %-12s %-12s %-12s\n", "txg", "birth", "state",
 	    "nreserved", "nread", "nwritten", "reads", "writes",
-	    "otime", "qtime", "stime");
+	    "otime", "qtime", "wtime", "stime");
 	buf[size] = '\0';
 
 	return (0);
@@ -270,13 +269,14 @@ static int
 spa_txg_history_data(char *buf, size_t size, void *data)
 {
 	spa_txg_history_t *sth = (spa_txg_history_t *)data;
-	uint64_t open = 0, quiesce = 0, sync = 0;
+	uint64_t open = 0, quiesce = 0, wait = 0, sync = 0;
 	char state;
 
 	switch (sth->state) {
 		case TXG_STATE_BIRTH:		state = 'B';	break;
 		case TXG_STATE_OPEN:		state = 'O';	break;
 		case TXG_STATE_QUIESCED:	state = 'Q';	break;
+		case TXG_STATE_WAIT_FOR_SYNC:	state = 'W';	break;
 		case TXG_STATE_SYNCED:		state = 'S';	break;
 		case TXG_STATE_COMMITTED:	state = 'C';	break;
 		default:			state = '?';	break;
@@ -290,17 +290,22 @@ spa_txg_history_data(char *buf, size_t size, void *data)
 		quiesce = sth->times[TXG_STATE_QUIESCED] -
 		    sth->times[TXG_STATE_OPEN];
 
-	if (sth->times[TXG_STATE_SYNCED])
-		sync = sth->times[TXG_STATE_SYNCED] -
+	if (sth->times[TXG_STATE_WAIT_FOR_SYNC])
+		wait = sth->times[TXG_STATE_WAIT_FOR_SYNC] -
 		    sth->times[TXG_STATE_QUIESCED];
 
+	if (sth->times[TXG_STATE_SYNCED])
+		sync = sth->times[TXG_STATE_SYNCED] -
+		    sth->times[TXG_STATE_WAIT_FOR_SYNC];
+
 	size = snprintf(buf, size - 1, "%-8llu %-16llu %-5c %-12llu "
-	    "%-12llu %-12llu %-8llu %-8llu %-12llu %-12llu %-12llu\n",
+	    "%-12llu %-12llu %-8llu %-8llu %-12llu %-12llu %-12llu %-12llu\n",
 	    (longlong_t)sth->txg, sth->times[TXG_STATE_BIRTH], state,
 	    (u_longlong_t)sth->nreserved,
 	    (u_longlong_t)sth->nread, (u_longlong_t)sth->nwritten,
 	    (u_longlong_t)sth->reads, (u_longlong_t)sth->writes,
-	    (u_longlong_t)open, (u_longlong_t)quiesce, (u_longlong_t)sync);
+	    (u_longlong_t)open, (u_longlong_t)quiesce, (u_longlong_t)wait,
+	    (u_longlong_t)sync);
 	buf[size] = '\0';
 
 	return (0);
@@ -343,14 +348,14 @@ spa_txg_history_update(kstat_t *ksp, int rw)
 
 		while ((sth = list_remove_head(&ssh->list))) {
 			ssh->size--;
-			kmem_free(sth, sizeof(spa_txg_history_t));
+			kmem_free(sth, sizeof (spa_txg_history_t));
 		}
 
 		ASSERT3U(ssh->size, ==, 0);
 	}
 
 	ksp->ks_ndata = ssh->size;
-	ksp->ks_data_size = ssh->size * sizeof(spa_txg_history_t);
+	ksp->ks_data_size = ssh->size * sizeof (spa_txg_history_t);
 
 	return (0);
 }
@@ -402,7 +407,7 @@ spa_txg_history_destroy(spa_t *spa)
 	mutex_enter(&ssh->lock);
 	while ((sth = list_remove_head(&ssh->list))) {
 		ssh->size--;
-		kmem_free(sth, sizeof(spa_txg_history_t));
+		kmem_free(sth, sizeof (spa_txg_history_t));
 	}
 
 	ASSERT3U(ssh->size, ==, 0);
@@ -416,7 +421,7 @@ spa_txg_history_destroy(spa_t *spa)
  * Add a new txg to historical record.
  */
 void
-spa_txg_history_add(spa_t *spa, uint64_t txg)
+spa_txg_history_add(spa_t *spa, uint64_t txg, hrtime_t birth_time)
 {
 	spa_stats_history_t *ssh = &spa->spa_stats.txg_history;
 	spa_txg_history_t *sth, *rm;
@@ -424,10 +429,10 @@ spa_txg_history_add(spa_t *spa, uint64_t txg)
 	if (zfs_txg_history == 0 && ssh->size == 0)
 		return;
 
-	sth = kmem_zalloc(sizeof(spa_txg_history_t), KM_PUSHPAGE);
+	sth = kmem_zalloc(sizeof (spa_txg_history_t), KM_PUSHPAGE);
 	sth->txg = txg;
 	sth->state = TXG_STATE_OPEN;
-	sth->times[TXG_STATE_BIRTH] = gethrtime();
+	sth->times[TXG_STATE_BIRTH] = birth_time;
 
 	mutex_enter(&ssh->lock);
 
@@ -437,7 +442,7 @@ spa_txg_history_add(spa_t *spa, uint64_t txg)
 	while (ssh->size > zfs_txg_history) {
 		ssh->size--;
 		rm = list_remove_tail(&ssh->list);
-		kmem_free(rm, sizeof(spa_txg_history_t));
+		kmem_free(rm, sizeof (spa_txg_history_t));
 	}
 
 	mutex_exit(&ssh->lock);
@@ -459,7 +464,7 @@ spa_txg_history_set(spa_t *spa, uint64_t txg, txg_state_t completed_state,
 
 	mutex_enter(&ssh->lock);
 	for (sth = list_head(&ssh->list); sth != NULL;
-	     sth = list_next(&ssh->list, sth)) {
+	    sth = list_next(&ssh->list, sth)) {
 		if (sth->txg == txg) {
 			sth->times[completed_state] = completed_time;
 			sth->state++;
@@ -488,7 +493,7 @@ spa_txg_history_set_io(spa_t *spa, uint64_t txg, uint64_t nread,
 
 	mutex_enter(&ssh->lock);
 	for (sth = list_head(&ssh->list); sth != NULL;
-	     sth = list_next(&ssh->list, sth)) {
+	    sth = list_next(&ssh->list, sth)) {
 		if (sth->txg == txg) {
 			sth->nread = nread;
 			sth->nwritten = nwritten;
@@ -536,7 +541,7 @@ spa_tx_assign_update(kstat_t *ksp, int rw)
 			break;
 
 	ksp->ks_ndata = i;
-	ksp->ks_data_size = i * sizeof(kstat_named_t);
+	ksp->ks_data_size = i * sizeof (kstat_named_t);
 
 	return (0);
 }
@@ -553,7 +558,7 @@ spa_tx_assign_init(spa_t *spa)
 	mutex_init(&ssh->lock, NULL, MUTEX_DEFAULT, NULL);
 
 	ssh->count = 42; /* power of two buckets for 1ns to 2,199s */
-	ssh->size = ssh->count * sizeof(kstat_named_t);
+	ssh->size = ssh->count * sizeof (kstat_named_t);
 	ssh->private = kmem_alloc(ssh->size, KM_SLEEP);
 
 	(void) snprintf(name, KSTAT_STRLEN, "zfs/%s", spa_name(spa));
