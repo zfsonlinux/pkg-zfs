@@ -1,3 +1,226 @@
+zfs-linux (0.6.2-2~trusty~3.gbp9888b6) trusty; urgency=low
+
+  ** SNAPSHOT build @9888b652c35b794597c8695aa8ccb5dccf78fe76 **
+
+  [ DHE ]
+  * Fix typos in commit b83e3e48c9b183a80dd00eb6c7431a1cbc7d89c9
+
+  [ Steven Hartland ]
+  * Illumos #4322
+
+  [ Maximilian Mehnert ]
+  * Add missing libzfs_core to Makefiles
+
+  [ Turbo Fredriksson ]
+  * Document ZFS module parameters.
+
+  [ Brian Behlendorf ]
+  * Add I/O Read/Write Accounting
+
+  [ Yuri Pankov ]
+  * Illumos #2583 (Closes: #937)
+
+  [ Trey Dockendorf ]
+  * Change zfs-dkms requirement
+
+  [ Etienne Dechamps ]
+  * Only commit the ZIL once in zpl_writepages() (msync() case).
+
+  [ Tim Chase ]
+  * Some nvlist allocations in hold processing need to use KM_PUSHPAGE.
+
+  [ Richard Yao ]
+  * Drive database update
+
+  [ Brian Behlendorf ]
+  * Remove incorrect ASSERT in zfs_sb_teardown()
+
+  [ Richard Yao ]
+  * Properly ignore bdi_setup_and_register return value
+
+  [ Matthew Ahrens ]
+  * Illumos #4347 ZPL can use dmu_tx_assign(TXG_WAIT)
+  * Illumos #4045 write throttle & i/o scheduler performance work
+
+  [ Brian Behlendorf ]
+  * Add module versioning
+  * Fix 'zfs diff' shares error
+
+  [ Turbo Fredriksson ]
+  * Update init script to allow /dev/disk/by-id import
+  * Update init script to allow verbose mounts
+
+  [ James Pan ]
+  * sa_find_sizes() may compute wrong SA header size
+
+  [ Ned Bass ]
+  * Revert "Use directory xattrs for symlinks"
+
+  [ Simon Guest ]
+  * Fix multipath bug in vdev_id caused by inconsistent field numbering
+
+  [ david.chen ]
+  * Remove MAX when initializing arc_c_max
+
+  [ Shen Yan ]
+  * Fix zstream_t incorrect type
+
+  [ Tim Chase ]
+  * Fix atime handling.
+
+  [ George Wilson ]
+  * Illumos #4121 vdev_label_init read only
+
+  [ Brian Behlendorf ]
+  * Remove ZFC_IOC_*_MINOR ioctl()s
+  * Sync /dev/zfs ioctl ordering
+  * Update zfs(8) Snapshots section
+  * cstyle: zvol.c
+  * Silence e2fsck warning in zconfig.sh
+
+  [ Chunwei Chen ]
+  * Fix z_sync_cnt decrement in zfs_close
+
+  [ renelson ]
+  * Fix grammar in parse_options() error message
+  * Handle acl flags from util-linux mount command
+
+  [ Aaron Fineman ]
+  * Cause zfs.spec to place dracut files properly
+
+  [ Turbo Fredriksson ]
+  * Add zfs_send_corrupt_data module option
+
+  [ John Wren Kennedy ]
+  * Illumos #4208
+
+  [ Brian Behlendorf ]
+  * cstyle: Exclude several files from 'make checkstyle'
+  * cstyle: Allow spaces in all comments
+
+  [ Michael Kjorling ]
+  * cstyle: Resolve C style issues
+
+  [ Matthew Thode ]
+  * Add full SELinux support
+
+  [ Brian Behlendorf ]
+  * Register correct handlers for nvlist_{dup,pack,unpack}
+
+  [ Tim Chase ]
+  * Properly handle updates of variably-sized SA entries.
+  * Fix the creation of ZPOOL_HIST_CMD pool history entries.
+
+  [ Turbo Fredriksson ]
+  * Add UNSHARING of filesystems and EXPORTING pools
+
+  [ Brian Behlendorf ]
+  * Enable /etc/mtab cache to improve performance
+  * Remove unconditional sharetab update
+
+  [ John Layman ]
+  * Add ddt, ddt_entry, and l2arc_hdr caches
+
+  [ Brian Behlendorf ]
+  * Define the needed ISA types for Sparc
+  * Use local variable to read zp->z_mode
+  * Fix nvlist 'Bus Error' for Sparc
+  * Fix zfs_getattr_fast types
+  * Force LZ4_FORCE_SW_BITCOUNT for Sparc
+  * Drain iput taskq outside z_teardown_lock
+  * Prevent duplicate mnttab cache entries
+
+  [ Richard Yao ]
+  * Properly link zpool command to libblkid
+
+  [ Brian Behlendorf ]
+  * Disable GCCs aggressive loop optimization
+  * Use long holds in zvol_set_volsize()
+
+  [ Ned Bass ]
+  * vdev_id: support per-channel slot mappings
+
+  [ Brian Behlendorf ]
+  * Remove incorrect use of EXTRA_DIST for man pages
+
+  [ Ned Bass ]
+  * vdev_file_io_start() to use taskq_dispatch(TQ_PUSHPAGE)
+
+  [ Tim Chase ]
+  * Allow chown/chgrp when no ACL SAs exist.
+
+  [ Shen Yan ]
+  * Use enum type(zfetch_dirn_t) instead
+
+  [ Igor Lvovsky ]
+  * Add additional state TXG_STATE_WAIT_FOR_SYNC for txg.
+
+  [ Cyril Plisko ]
+  * Call gethrtime() only once per new txg creation
+
+  [ Patrik Greco ]
+  * Fix error message in zpios
+
+  [ Tim Chase ]
+  * Implement relatime.
+
+  [ Matthew Ahrens ]
+  * Illumos 4504 traverse_visitbp: visit group before user
+  * 4188 assertion failed in dmu_tx_hold_free(): dn_datablkshift != 0
+
+  [ Brian Behlendorf ]
+  * Fix corrupted l2_asize in arcstats
+
+  [ Ralf Ertzinger ]
+  * Add systemd unit files for ZFS startup
+
+  [ Brian Behlendorf ]
+  * Fix zconfig.sh test 9
+
+  [ Ralf Ertzinger ]
+  * Add explicit Conflicts for zfs-fuse packages
+
+  [ Brian Behlendorf ]
+  * Add default FILEDIR path to zpool-config scripts
+
+  [ Tim Chase ]
+  * Propagate errors when registering "relatime" property callback.
+
+  [ Brian Behlendorf ]
+  * Add zimport.sh compatibility test script
+
+  [ Richard Yao ]
+  * Revert changes to zbookmark_t
+
+  [ Brian Behlendorf ]
+  * Use expected zpool_status_t type
+  * Add generic errata infrastructure
+
+  [ Richard Yao ]
+  * Add erratum for issue #2094
+
+  [ Brian Behlendorf ]
+  * Set zfs_arc_min to 4MB
+
+  [ Prakash Surya ]
+  * Adjust arc_p based on "bytes" in arc_shrink
+  * Disable aggressive arc_p growth by default
+  * Allow "arc_p" to drop to zero or grow to "arc_c"
+  * Disable arc_p adapt dampener by default
+  * Revert "Return -1 from arc_shrinker_func()"
+  * Prune metadata from ghost lists in arc_adjust_meta
+  * Remove "arc_meta_used" from arc_adjust calculation
+  * Prioritize "metadata" in arc_get_data_buf
+  * Split "data_size" into "meta" and "data"
+  * Set "arc_meta_limit" to 3/4 arc_c_max by default
+
+  [ Darik Horn ]
+  * Update gbp.conf for T-Series snapshot builds.
+  * Refresh debian/patches after upstream merge.
+  * Demote the package source format.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 05 Mar 2014 19:41:24 -0600
+
 zfs-linux (0.6.2-2~saucy~2.gbp46f6df) saucy; urgency=low
 
   ** SNAPSHOT build @46f6df62ea34ac472648eaaba7a0ba49eb23464f **
