@@ -2,21 +2,35 @@
 
 # Run `zfs mount -a` during system start?
 # This should be 'no' if zfs-mountall or a systemd generator is available.
-ZFS_MOUNT='no'
+ZFS_MOUNT='yes'
 
 # Run `zfs unmount -a` during system stop?
 # This should be 'no' on most systems.
-ZFS_UNMOUNT='no'
+ZFS_UNMOUNT='yes'
 
 # Run `zfs share -a` during system start?
 # nb: The shareiscsi, sharenfs, and sharesmb dataset properties.
-ZFS_SHARE='no'
+ZFS_SHARE='yes'
 
 # Run `zfs unshare -a` during system stop?
-ZFS_UNSHARE='no'
+ZFS_UNSHARE='yes'
 
-# Use /dev/disk/by-id (select yes) or /etc/zfs/zpool.cache.
+# Sould we use '-d /dev/disk/by-id' when importing pool.
+# This is recomended, but the default 'no' uses the cache
+# file
 USE_DISK_BY_ID='yes'
+
+# Should the datasets be mounted verbosly (a mount counter
+# will be used when mounting if set to 'yes').
+VERBOSE_MOUNT='no'
+
+# Should we allow overlay mounts (this is standard in Linux,
+# but not ZFS which comes from Solaris where this is not allowed).
+DO_OVERLAY_MOUNTS='no'
+
+# Any additional option to the 'zfs mount' command line.
+# Include '-o' for each option wanted.
+MOUNT_EXTRA_OPTIONS=""
 
 # Build kernel modules with the --enable-debug switch?
 ZFS_DKMS_ENABLE_DEBUG='no'
@@ -30,3 +44,12 @@ ZFS_DKMS_DISABLE_STRIP='no'
 # Wait for this many seconds in the initrd pre_mountroot?
 # This delays startup and should be '0' on most systems.
 ZFS_INITRD_PRE_MOUNTROOT_SLEEP='0'
+
+# Wait for this many seconds in the initrd mountroot?
+# This delays startup and should be '0' on most systems.
+# This might help on systems which have their ZFS root on
+# a USB disk that takes just a little longer to be available
+ZFS_INITRD_POST_MODPROBE_SLEEP='0'
+
+# Location of the lockfile.
+LOCKDIR=/run/lock

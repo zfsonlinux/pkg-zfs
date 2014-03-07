@@ -9,7 +9,7 @@
 
 pre_mountroot()
 {
-	if type run_scripts > /dev/null 2>&1 && [ -f "/scripts/local-top" ]
+	if type run_scripts > /dev/null 2>&1 && [ -f "/scripts/local-top" -o -d "/scripts/local-top" ]
 	then
 		[ "$quiet" != "y" ] && $log_begin_msg "Running /scripts/local-top"
 		run_scripts /scripts/local-top
@@ -18,7 +18,7 @@ pre_mountroot()
 
 	if [ -r '/etc/default/zfs' ]
 	then
-		. '/etc/default/zfs'
+		. /etc/default/zfs
 		if [ "$ZFS_INITRD_PRE_MOUNTROOT_SLEEP" -gt '0' ]
 		then
 			[ "$quiet" != "y" ] && $log_begin_msg "Sleeping for $ZFS_INITRD_PRE_MOUNTROOT_SLEEP seconds..."
@@ -42,7 +42,7 @@ mountroot()
 {
 	pre_mountroot
 
-	if type run_scripts > /dev/null 2>&1 && [ -f "/scripts/local-premount" ]
+	if type run_scripts > /dev/null 2>&1 && [ -f "/scripts/local-premount" -o -d "/scripts/local-premount" ]
 	then
 		[ "$quiet" != "y" ] && $log_begin_msg "Running /scripts/local-premount"
 		run_scripts /scripts/local-premount
@@ -51,7 +51,7 @@ mountroot()
 
 	# Wait for all of the /dev/{hd,sd}[a-z] device nodes to appear.
 	if type wait_for_udev > /dev/null 2>&1 ; then
-		wait_for_udev
+		wait_for_udev 10
 	elif type wait_for_dev > /dev/null 2>&1 ; then
 		wait_for_dev
 	fi
@@ -63,6 +63,13 @@ mountroot()
 	# Load the module, without importing any pools - we want manual
 	# control over that part!
 	modprobe zfs zfs_autoimport_disable=1
+
+	if [ "$ZFS_INITRD_POST_MODPROBE_SLEEP" -gt '0' ]
+	then
+		[ "$quiet" != "y" ] && $log_begin_msg "Sleeping for $ZFS_INITRD_POST_MODPROBE_SLEEP seconds..."
+		sleep "$ZFS_INITRD_POST_MODPROBE_SLEEP"
+		[ "$quiet" != "y" ] && $log_end_msg
+	fi
 
 	# Look for the cache file
 	if [ -f /etc/zfs/zpool.cache ]; then
@@ -463,7 +470,7 @@ mountroot()
 		/bin/sh
 	fi
 
-	if type run_scripts > /dev/null 2>&1 && [ -f "/scripts/local-bottom" ]
+	if type run_scripts > /dev/null 2>&1 && [ -f "/scripts/local-bottom" -o -d "/scripts/local-bottom" ]
 	then
 		[ "$quiet" != "y" ] && $log_begin_msg "Running /scripts/local-bottom"
 		run_scripts /scripts/local-bottom

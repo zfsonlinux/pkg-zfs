@@ -1,3 +1,15 @@
+zfs-linux (0.6.3-0.13~ga77c4c~wheezy) wheezy; urgency=low
+
+    * Check if /scripts/local-* is either file or directory -
+      should be dir, but just to be safe check both.
+    * Make wait_for_udev wait for 10 seconds.
+    * Add a configurable ZFS_INITRD_POST_MODPROBE_SLEEP (set in
+      /etc/default/zfs) after the modprobe.
+    * Update /etc/defaults/zfs file with more options missed in
+      recent updates.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 07 Mar 2014 19:03:19 +0100
+
 zfs-linux (0.6.3-0.12~ga77c4c~wheezy) wheezy; urgency=low
 
     * Update to latest ZoL GIT version.
