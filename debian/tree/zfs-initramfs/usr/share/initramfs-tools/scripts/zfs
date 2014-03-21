@@ -180,7 +180,7 @@ mountroot()
 		then
 			# Might be imported by the kernel module, so try searching before
 			# we import anything.
-			ZFS_BOOTFS=`zpool list -H -o bootfs | sed -n '/-/ !p' | sed 'q'`
+			ZFS_BOOTFS=`zpool list -H -o bootfs | sed -n '/^-$/ !p' | sed 'q'`
 		        if [ "$?" != "0"  -o -z "$ZFS_BOOTFS" -o \
 			   "$ZFS_BOOTFS" = "no pools available" ]
 			then
