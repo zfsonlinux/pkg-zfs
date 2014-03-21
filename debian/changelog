@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-0.16~a15dac~wheezy) wheezy; urgency=low
+
+    * Update to latest ZoL GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 21 Mar 2014 17:25:42 +0100
+
 zfs-linux (0.6.3-0.15~e2282e~wheezy) wheezy; urgency=low
 
     * Update to latest ZoL GIT version.
