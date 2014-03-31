@@ -84,6 +84,14 @@ endif
 	@# This is required until the zdev.conf conversion is complete.
 	mkdir -p '$(CURDIR)/debian/tree/zfsutils/etc/zfs/'
 
+	@# Ensure that the initramfs-tools hooks are executable.
+	chmod 0755 '$(CURDIR)'/debian/tree/zfsutils/usr/share/initramfs-tools/hooks/*
+	chmod 0755 '$(CURDIR)'/debian/tree/zfs-initramfs/usr/share/initramfs-tools/hooks/*
+
+override_dh_fixperms:
+	@# Prevent execute bits from being stripped for Launchpad builds.
+	dh_fixperms -X/hooks/
+
 override_dh_shlibdeps:
 	@# Suppress libtool dependency_libs warnings that are caused by
 	@# inter-library dependencies.  (eg: zfs -> libzfs -> libuuid)
