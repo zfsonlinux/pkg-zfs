@@ -1,3 +1,80 @@
+zfs-linux (0.6.2-2~trusty~4.gbpf6f7f6) trusty; urgency=low
+
+  ** SNAPSHOT build @f6f7f6c4f619eaa81b0409803757bc2a3eb453e0 **
+
+  [ Andrew Barnes ]
+  * Remove recursion from dsl_dir_willuse_space()
+
+  [ cburroughs ]
+  * Include l2asize in arcstat
+
+  [ Tim Chase ]
+  * Fix zap_lookup() in feature_is_supported().
+
+  [ Alexander Stetsenko ]
+  * Illumos #4574 get_clones_stat does not call zap_count in non-debug kernel
+
+  [ Richard Yao ]
+  * Inform OpenRC that ZFS uses mtab
+  * Invalidate Linux buffer cache on vdevs upon each flush
+
+  [ Ned Bass ]
+  * dmu_tx kstat cleanup
+  * replace nreserved with ndirty in txgs kstat
+  * Improve reporting of tx assignment wait times
+
+  [ Brian Behlendorf ]
+  * Export symbols dsl_sync_task{_nowait}
+
+  [ Tim Chase ]
+  * Use KM_PUSHPAGE in spa_add() for spa_label_features.
+
+  [ Boris Protopopov ]
+  * Illumos #4088 use after free in arc_release()
+
+  [ Turbo Fredriksson ]
+  * Fix NAME section of manpages zhack and fsck.zfs.
+
+  [ Isaac Huang ]
+  * Make arcstat.py default to one header per screen
+  * sighandler() should take 2 arguments
+
+  [ Richard Yao ]
+  * Free props in ztest_init()
+  * Switch ztest mmap(2) ASSERTs to VERIFYs
+  * Remove unused option -r from 'zpool import'
+
+  [ Andrey Vesnovaty ]
+  * Fix regression introduced in port of Illumos #3744
+
+  [ Brian Behlendorf ]
+  * Revert "sighandler() should take 2 arguments"
+
+  [ Isaac Huang ]
+  * sighandler() should take 2 arguments
+
+  [ Richard Yao ]
+  * Assert alignment in umem_alloc_aligned
+  * Implement -t option to zpool import for temporary pool names
+
+  [ Chunwei Chen ]
+  * config: compile test rather than run test
+
+  [ Yuri Pankov ]
+  * Illumos #3120 zinject hangs in zfsdev_ioctl() due to uninitialized zc
+
+  [ Boris Protopopov ]
+  * Illumos #4089 NULL pointer dereference in arc_read()
+
+  [ Richard Yao ]
+  * Revert "Properly ignore bdi_setup_and_register return value"
+  * Linux 3.13 compat: Handle __must_check bdi_setup_and_register
+
+  [ Gunnar Beutner ]
+  * Remount datasets for "zfs inherit".
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 30 Mar 2014 23:40:35 -0500
+
 zfs-linux (0.6.2-2~trusty~3.gbp9888b6) trusty; urgency=low
 
   ** SNAPSHOT build @9888b652c35b794597c8695aa8ccb5dccf78fe76 **
