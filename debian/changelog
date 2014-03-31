@@ -1,3 +1,11 @@
+zfs-linux (0.6.2-2~trusty~5.gbp6e410e) trusty; urgency=low
+
+  ** SNAPSHOT build @6e410e23d03e2d2f8e64248b01da4ef9308dd686 **
+
+  * Ensure the correct mode for zfs-initramfs hooks.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 31 Mar 2014 18:23:45 -0500
+
 zfs-linux (0.6.2-2~trusty~4.gbpf6f7f6) trusty; urgency=low
 
   ** SNAPSHOT build @f6f7f6c4f619eaa81b0409803757bc2a3eb453e0 **
