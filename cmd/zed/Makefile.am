@@ -38,13 +38,10 @@ zedexecdir = $(libexecdir)/zfs/zed.d
 dist_zedexec_SCRIPTS = \
 	$(top_srcdir)/cmd/zed/zed.d/all-debug.sh \
 	$(top_srcdir)/cmd/zed/zed.d/all-syslog.sh \
-	$(top_srcdir)/cmd/zed/zed.d/checksum-email.sh \
-	$(top_srcdir)/cmd/zed/zed.d/checksum-spare.sh \
 	$(top_srcdir)/cmd/zed/zed.d/data-email.sh \
 	$(top_srcdir)/cmd/zed/zed.d/generic-email.sh \
 	$(top_srcdir)/cmd/zed/zed.d/io-email.sh \
 	$(top_srcdir)/cmd/zed/zed.d/io-spare.sh \
-	$(top_srcdir)/cmd/zed/zed.d/resilver.finish-email.sh \
 	$(top_srcdir)/cmd/zed/zed.d/scrub.finish-email.sh
 
 zedconfdefaults = \
