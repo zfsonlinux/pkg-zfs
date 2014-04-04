@@ -1,3 +1,31 @@
+zfs-linux (0.6.2-2~trusty~6.gbp98fe3a) trusty; urgency=low
+
+  ** SNAPSHOT build @98fe3a1d7e413cd1e9fee311b42bb6962cca80d5 **
+
+  [ Brian Behlendorf ]
+  * Add a unique "eid" value to all zevents
+  * Add zpool_events_seek() functionality
+  * Clarify zpool_events_next() comment
+
+  [ Chris Dunlap ]
+  * Add defs for makefile installation dir vars
+  * Replace zpool_events_next() "block" parm w/ "flags"
+  * Initial implementation of zed (ZFS Event Daemon)
+  * Add systemd unit file for zed
+
+  [ Brian Behlendorf ]
+  * Make command line guid parsing more tolerant
+  * Add missing DATA_TYPE_STRING_ARRAY output
+  * Add automatic hot spare functionality
+
+  [ Chris Dunlap ]
+  * Replace check for _POSIX_MEMLOCK w/ HAVE_MLOCKALL
+
+  [ Darik Horn ]
+  * Remove /etc/zfs/zed.d symlinks.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 03 Apr 2014 20:30:11 -0500
+
 zfs-linux (0.6.2-2~trusty~5.gbp6e410e) trusty; urgency=low
 
   ** SNAPSHOT build @6e410e23d03e2d2f8e64248b01da4ef9308dd686 **
