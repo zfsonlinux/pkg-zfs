@@ -1,1 +1,5 @@
 0001-Revert-Remove-etc-hostid-missing-warning.patch
+0002-Linux-3.12-compat-New-shrinker-API.patch
+0003-Linux-3.13-compat-Remove-unused-flags-variable-from-.patch
+0004-Linux-3.13-compat-Pass-NULL-for-new-delegated-inode-.patch
+0005-Support-post-3.13-kthread_create-semantics.patch
