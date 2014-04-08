@@ -859,19 +859,15 @@ zfs_zget(zfs_sb_t *zsb, uint64_t obj_num, znode_t **zpp)
 	znode_t		*zp;
 	int err;
 	sa_handle_t	*hdl;
-	struct inode	*ip;
 
 	*zpp = NULL;
 
 again:
-	ip = ilookup(zsb->z_sb, obj_num);
-
 	ZFS_OBJ_HOLD_ENTER(zsb, obj_num);
 
 	err = sa_buf_hold(zsb->z_os, obj_num, NULL, &db);
 	if (err) {
 		ZFS_OBJ_HOLD_EXIT(zsb, obj_num);
-		iput(ip);
 		return (err);
 	}
 
@@ -882,27 +878,13 @@ again:
 	    doi.doi_bonus_size < sizeof (znode_phys_t)))) {
 		sa_buf_rele(db, NULL);
 		ZFS_OBJ_HOLD_EXIT(zsb, obj_num);
-		iput(ip);
 		return (SET_ERROR(EINVAL));
 	}
 
 	hdl = dmu_buf_get_user(db);
 	if (hdl != NULL) {
-		if (ip == NULL) {
-			/*
-			 * ilookup returned NULL, which means
-			 * the znode is dying - but the SA handle isn't
-			 * quite dead yet, we need to drop any locks
-			 * we're holding, re-schedule the task and try again.
-			 */
-			sa_buf_rele(db, NULL);
-			ZFS_OBJ_HOLD_EXIT(zsb, obj_num);
-
-			schedule();
-			goto again;
-		}
-
 		zp = sa_get_userdata(hdl);
+
 
 		/*
 		 * Since "SA" does immediate eviction we
@@ -917,18 +899,34 @@ again:
 		if (zp->z_unlinked) {
 			err = SET_ERROR(ENOENT);
 		} else {
-			igrab(ZTOI(zp));
+			/*
+			 * If igrab() returns NULL the VFS has independently
+			 * determined the inode should be evicted and has
+			 * called iput_final() to start the eviction process.
+			 * The SA handle is still valid but because the VFS
+			 * requires that the eviction succeed we must drop
+			 * our locks and references to allow the eviction to
+			 * complete.  The zfs_zget() may then be retried.
+			 *
+			 * This unlikely case could be optimized by registering
+			 * a sops->drop_inode() callback.  The callback would
+			 * need to detect the active SA hold thereby informing
+			 * the VFS that this inode should not be evicted.
+			 */
+			if (igrab(ZTOI(zp)) == NULL) {
+				mutex_exit(&zp->z_lock);
+				sa_buf_rele(db, NULL);
+				ZFS_OBJ_HOLD_EXIT(zsb, obj_num);
+				goto again;
+			}
 			*zpp = zp;
 			err = 0;
 		}
-		sa_buf_rele(db, NULL);
 		mutex_exit(&zp->z_lock);
+		sa_buf_rele(db, NULL);
 		ZFS_OBJ_HOLD_EXIT(zsb, obj_num);
-		iput(ip);
 		return (err);
 	}
-
-	ASSERT3P(ip, ==, NULL);
 
 	/*
 	 * Not found create new znode/vnode but only if file exists.
