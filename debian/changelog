@@ -1,3 +1,23 @@
+zfs-linux (0.6.2-2~trusty~7.gbp47d31d) trusty; urgency=low
+
+  ** SNAPSHOT build @47d31d7b152fddaf03c3c76568e539720f142022 **
+
+  [ Brian Behlendorf ]
+  * Revert "Fixed a use-after-free bug in zfs_zget()."
+
+  [ Richard Yao ]
+  * Fix deadlock in zfs_zget()
+  * Fix locking order in zfs_zget()
+
+  [ John M. Layman ]
+  * Fix for re-reading /etc/mtab.
+
+  [ Turbo Fredriksson ]
+  * Support using overlay mounts in defaults/init script.
+  * Allow specifying '-o <opts>' in defaults/init script.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 07 Apr 2014 21:58:47 -0500
+
 zfs-linux (0.6.2-2~trusty~6.gbp98fe3a) trusty; urgency=low
 
   ** SNAPSHOT build @98fe3a1d7e413cd1e9fee311b42bb6962cca80d5 **
