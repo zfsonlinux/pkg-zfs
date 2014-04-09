@@ -1,0 +1,42 @@
+From: Richard Yao <ryao@gentoo.org>
+Date: Fri, 21 Mar 2014 11:10:36 -0400
+Subject: Linux 3.13 compat: Handle __must_check bdi_setup_and_register
+
+torvalds/linux@8077c0d983ab276ec5f2700df56a64d671781905 added a
+__must_check to the bdi_setup_and_register(), which caused our autotools
+check to break. zfsonlinux/zfs@729210564a5325e190fc4fba22bf17bacf957ace
+was intended to correct that, but it depended on -Wno-unused-result,
+which is unrecognized in older GCC versions. That commit has been
+reverted in favor of a solution that does not require
+-Wno-unused-result.
+
+Signed-off-by: Richard Yao <ryao@gentoo.org>
+Signed-off-by: Brian Behlendorf <behlendorf1@llnl.gov>
+Closes #2102
+Closes #2135
+---
+ config/kernel-bdi-setup-and-register.m4 | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/config/kernel-bdi-setup-and-register.m4 b/config/kernel-bdi-setup-and-register.m4
+index 4196091..6369409 100644
+--- a/config/kernel-bdi-setup-and-register.m4
++++ b/config/kernel-bdi-setup-and-register.m4
+@@ -1,6 +1,6 @@
+ dnl #
+ dnl # 2.6.34 API change
+-dnl # The bdi_setup_and_register() helper function is avilable and
++dnl # The bdi_setup_and_register() helper function is avaliable and
+ dnl # exported by the kernel.  This is a trivial helper function but
+ dnl # using it significantly simplifies the code surrounding setting
+ dnl # up and tearing down the bdi structure.
+@@ -10,7 +10,8 @@ AC_DEFUN([ZFS_AC_KERNEL_BDI_SETUP_AND_REGISTER],
+ 	ZFS_LINUX_TRY_COMPILE_SYMBOL([
+ 		#include <linux/backing-dev.h>
+ 	], [
+-		bdi_setup_and_register(NULL, NULL, 0);
++		int r = bdi_setup_and_register(NULL, NULL, 0);
++		r = *(&r);
+ 	], [bdi_setup_and_register], [mm/backing-dev.c], [
+ 		AC_MSG_RESULT(yes)
+ 		AC_DEFINE(HAVE_BDI_SETUP_AND_REGISTER, 1,
