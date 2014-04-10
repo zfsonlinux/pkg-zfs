@@ -59,5 +59,7 @@ extern kthread_t *__thread_create(caddr_t stk, size_t  stksize,
                                   void *args, size_t len, proc_t *pp,
                                   int state, pri_t pri);
 extern void __thread_exit(void);
+extern struct task_struct *spl_kthread_create(int (*func)(void *),
+			void *data, const char namefmt[], ...);
 
 #endif  /* _SPL_THREAD_H */
