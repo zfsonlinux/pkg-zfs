@@ -1,3 +1,17 @@
+spl-linux (0.6.2-2.1~trusty~4.gbp33b127) trusty; urgency=low
+
+  ** SNAPSHOT build @33b1275d3bc5a5c2098ab4db4b6391050b3ee85a **
+
+  [ Brian Behlendorf ]
+  * splat kmem:slab_reclaim: Test cleanup
+  * splat cred:groupmember: Fix false positives
+
+  [ Tim Chase ]
+  * Support post-3.13 kthread_create() semantics.
+  * De-inline spl_kthread_create().
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 10 Apr 2014 12:04:06 -0500
+
 spl-linux (0.6.2-2~trusty~3.gbpc35b1e) trusty; urgency=low
 
   ** SNAPSHOT build @c35b1ea9df930a72db7cabfe483e67cb3bec3af0 **
