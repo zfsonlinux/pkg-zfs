@@ -1,3 +1,35 @@
+zfs-linux (0.6.2-2.1~trusty~8.gbpf34206) trusty; urgency=low
+
+  ** SNAPSHOT build @f34206b6187fe44a95d7c5b8ba4ed0b68170e911 **
+
+  [ Aneurin Price ]
+  * First version of zfs bash completions
+  * Update bash completion
+  * Improve bash completions for zfs get and list
+  * Improve bash completion of user properties
+  * Improve bash completions involving snapshots
+  * Allow completions to expand more snapshot names
+  * Assorted bash completion improvements
+  * bash completion: use builtins where possible
+  * Add completions for zfs snapshot, upgrade, destroy
+  * Fix typo in bash completion
+  * Dramatically improve the speed of snapshot listing
+
+  [ Richard Yao ]
+  * Improve partition detection on lesser used devices
+
+  [ Brian Behlendorf ]
+  * Dynamically create loop devices
+
+  [ Chris Dunlap ]
+  * Set errno for mkdirp() called with NULL path ptr
+  * Replace zed_file_create_dirs() with mkdirp()
+
+  [ Darik Horn ]
+  * Move zfs_completion.bash into the DEB overlay.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 10 Apr 2014 12:20:23 -0500
+
 zfs-linux (0.6.2-2~trusty~7.gbp47d31d) trusty; urgency=low
 
   ** SNAPSHOT build @47d31d7b152fddaf03c3c76568e539720f142022 **
