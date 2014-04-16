@@ -1,3 +1,25 @@
+zfs-linux (0.6.2-2.1~trusty~9.gbp196c59) trusty; urgency=medium
+
+  ** SNAPSHOT build @196c592c7cd2fca31281f466fa52a73f976020a7 **
+
+  [ Brian Behlendorf ]
+  * Improve zfs.sh error messages
+
+  [ Chunwei Chen ]
+  * Linux 3.14 compat: posix_acl_{create,chmod}
+  * Linux 3.14 compat: Immutable biovec changes in vdev_disk.c
+  * Refactor dmu_req_copy for immutable biovec changes
+  * Revert "Fix zvol+btrfs hang"
+  * Linux 3.14 compat: rq_for_each_segment in dmu_req_copy
+
+  [ Brian Behlendorf ]
+  * Make zimport.sh bash dependency explicit
+
+  [ Chunwei Chen ]
+  * Use ddi_time_after and friends to compare time
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 15 Apr 2014 22:31:14 -0400
+
 zfs-linux (0.6.2-2.1~trusty~8.gbpf34206) trusty; urgency=low
 
   ** SNAPSHOT build @f34206b6187fe44a95d7c5b8ba4ed0b68170e911 **
