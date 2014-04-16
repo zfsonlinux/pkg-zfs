@@ -1,3 +1,11 @@
+zfs-linux (0.6.2-2.1~trusty~10.gbp94fd6e) trusty; urgency=low
+
+  ** SNAPSHOT build @94fd6ed064fd225d94e6257040759a356a021927 **
+
+  * No changes; a full upload is required to unwedge the builders.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 16 Apr 2014 10:58:27 -0400
+
 zfs-linux (0.6.2-2.1~trusty~9.gbp196c59) trusty; urgency=medium
 
   ** SNAPSHOT build @196c592c7cd2fca31281f466fa52a73f976020a7 **
