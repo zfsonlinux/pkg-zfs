@@ -1,3 +1,27 @@
+spl-linux (0.6.2-2.1~trusty~5.gbpb54f2d) trusty; urgency=low
+
+  ** SNAPSHOT build @b54f2df0d315085519919f5c43d86df500fa80e2 **
+
+  [ Tim Chase ]
+  * Call kthread_create() correctly with fixed arguments.
+
+  [ Richard Yao ]
+  * Simplify hostid logic
+
+  [ Yuxuan Shui ]
+  * This patch add a CTASSERT macro for compile time assertion.
+
+  [ Chunwei Chen ]
+  * Add ddi_time_after and friends
+
+  [ Andrey Vesnovaty ]
+  * Expose max/min objs per slab and max slab size
+
+  [ Richard Yao ]
+  * Change spl_kmem_cache_expire default setting to 2
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 15 Apr 2014 22:40:30 -0400
+
 spl-linux (0.6.2-2.1~trusty~4.gbp33b127) trusty; urgency=low
 
   ** SNAPSHOT build @33b1275d3bc5a5c2098ab4db4b6391050b3ee85a **
