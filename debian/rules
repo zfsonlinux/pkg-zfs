@@ -3,6 +3,8 @@
 NAME := $(shell awk '$$1 == "Name:" { print $$2; }' META)
 VERSION := $(shell dpkg-parsechangelog \
   | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f1)
+REVISION := $(shell dpkg-parsechangelog \
+  | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f2-)
 
 DKMSFILES := module include config spl.release.in autogen.sh \
 		META AUTHORS DISCLAIMER
