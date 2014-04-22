@@ -78,7 +78,7 @@ override_dh_dkms:
 	dh_dkms -V $(VERSION)
 
 override_dh_auto_clean:
-	dh_auto_clean
+	@if test -e module/Makefile; then dh_auto_clean; fi
 	@if test -e META.orig; then mv META.orig META; fi
 	cp debian/control.in debian/control
 
