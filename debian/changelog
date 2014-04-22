@@ -1,3 +1,22 @@
+zfs-linux (0.6.2-2.1~trusty~11.gbpdc470a) trusty; urgency=low
+
+  ** SNAPSHOT build @dc470a6c04b98c8fa03cd0ab88ce5d1ce47f461d **
+
+  [ DHE ]
+  * Uninitialized variable spa_autoreplace used
+
+  [ Tim Chase ]
+  * Report atime and relatime as the property's actual value.
+
+  [ Brian Behlendorf ]
+  * Various zimport.sh fixes
+  * Fix zfsdev_ioctl() kmem leak warning
+
+  [ Ned Bass ]
+  * Fix LZ4 endianness autodetection
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 22 Apr 2014 09:06:48 -0400
+
 zfs-linux (0.6.2-2.1~trusty~10.gbp94fd6e) trusty; urgency=low
 
   ** SNAPSHOT build @94fd6ed064fd225d94e6257040759a356a021927 **
