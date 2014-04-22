@@ -1,3 +1,9 @@
+spl-linux (0.6.3-4~89aa97~wheezy) wheezy; urgency=low
+
+  * Missed to define REVISION in the debian/rules file.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 22 Apr 2014 20:01:43 +0200
+
 spl-linux (0.6.3-3~89aa97~wheezy) wheezy; urgency=low
 
   * Update both version and release in the meta to get a full module version.
