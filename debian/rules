@@ -28,7 +28,10 @@ override_dh_auto_configure:
 	@cp debian/control.in debian/control
 
 	@# Embed the downstream version in the module.
-	@sed -e 's/^Version:.*/Version:      $(VERSION)/' -i.orig META
+	@sed \
+	  -e 's/^Version:.*/Version:      $(VERSION)/' \
+	  -e 's/^Release:.*/Release:      $(REVISION)/' \
+	  -i.orig META
 
 	@# Create the makefiles and configure script.
 	./autogen.sh
