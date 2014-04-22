@@ -1,3 +1,9 @@
+spl-linux (0.6.3-2~4c9954~wheezy) wheezy; urgency=low
+
+  * Preversion of latest GIT HEAD.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 22 Apr 2014 18:53:43 +0200
+
 spl-linux (0.6.3-1~ge41661e~wheezy) wheezy; urgency=low
 
   * Preversion of latest GIT HEAD.
