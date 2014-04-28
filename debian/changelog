@@ -1,3 +1,9 @@
+spl-linux (0.6.3-5~703371~wheezy) wheezy; urgency=low
+
+  * Preversion of latest GIT HEAD.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 28 Apr 2014 13:24:22 +0200
+
 spl-linux (0.6.3-4~89aa97~wheezy) wheezy; urgency=low
 
   * Missed to define REVISION in the debian/rules file.
