@@ -1,3 +1,15 @@
+zfs-linux (0.6.2-2.1~trusty~12.gbp9626d9) trusty; urgency=low
+
+  ** SNAPSHOT build @9626d999d9284cbb07d134c5b65fa66385e5c447 **
+
+  [ Jorgen Lundman ]
+  * Add support for aarch64 (ARMv8)
+
+  [ Chunwei Chen ]
+  * Add assertion to catch 0-count page
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 27 Apr 2014 20:06:20 -0400
+
 zfs-linux (0.6.2-2.1~trusty~11.gbpdc470a) trusty; urgency=low
 
   ** SNAPSHOT build @dc470a6c04b98c8fa03cd0ab88ce5d1ce47f461d **
