@@ -1,3 +1,18 @@
+spl-linux (0.6.2-2.1~trusty~11.gbpd3c126) trusty; urgency=low
+
+  ** SNAPSHOT build @d3c126dc778cf440cf203268d9acb4be8369b8ee **
+
+  [ Jorgen Lundman ]
+  * Add support for aarch64 (ARMv8)
+
+  [ Chunwei Chen ]
+  * Fix crash when using ZFS on Ceph rbd
+
+  [ Andrey Vesnovaty ]
+  * Evenly distribute the taskq threads across available CPUs
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 27 Apr 2014 20:03:30 -0400
+
 spl-linux (0.6.2-2.1~trusty~10.gbpedccf5) trusty; urgency=low
 
   ** SNAPSHOT build @edccf5d838b707ea195ac4f4638ab7c4cbd77b06 **
