@@ -1,3 +1,12 @@
+zfs-linux (0.6.2-2.1~trusty~13.gbp7d6f55) trusty; urgency=low
+
+  ** SNAPSHOT build @7d6f55265b9a68d9bd2f77874f14fb8238f59bfa **
+
+  [ ilovezfs ]
+  * Fill in mountpoint buffer before using it in errors
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 30 Apr 2014 19:40:07 -0400
+
 zfs-linux (0.6.2-2.1~trusty~12.gbp9626d9) trusty; urgency=low
 
   ** SNAPSHOT build @9626d999d9284cbb07d134c5b65fa66385e5c447 **
