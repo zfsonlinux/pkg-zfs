@@ -1,5 +1,8 @@
 #!/usr/bin/make -f
 
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
 LSB_DISTRIBUTOR := $(shell lsb_release -is)
 NAME := $(shell awk '$$1 == "Name:" { print $$2; }' META)
 VERSION := $(shell dpkg-parsechangelog \
@@ -114,9 +117,15 @@ override_dh_auto_install:
 		rm $${i}; \
 	done
 
+	mkdir -p $(CURDIR)/debian/tmp/usr/sbin
+	mv $(CURDIR)/debian/tmp/bin/*.py $(CURDIR)/debian/tmp/usr/sbin/
+
 override_dh_installinit:
 	@# Install the /etc/default/zfs options file.
 	dh_installinit --name=zfs
+
+	@# Install the ZED init file.
+	dh_installinit --name=zed
 
 	@# Install the /etc/init.d/zfs-mount script.
 ifeq ($(LSB_DISTRIBUTOR),Debian)
