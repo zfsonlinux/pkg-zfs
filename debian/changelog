@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-0.23~7809eb~wheezy) wheezy; urgency=low
+
+    * Make sure zfs-share runs _after_ zfs-mount.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 15 May 2014 02:40:06 +0200
+
 zfs-linux (0.6.3-0.22~7809eb~wheezy) wheezy; urgency=low
 
     * Install additional python scripts.
