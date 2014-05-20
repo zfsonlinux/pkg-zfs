@@ -1,3 +1,13 @@
+spl-linux (0.6.2-2.1~trusty~12.gbp1332dd) trusty; urgency=low
+
+  ** SNAPSHOT build @1332dd7f3a3aaea04468205af7e201a435ac45fc **
+
+  [ Chunwei Chen ]
+  * Linux 3.15 compat: NICE_TO_PRIO and PRIO_TO_NICE
+  * Linux 3.15: vfs_rename() added a flags argument
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 19 May 2014 23:09:53 -0400
+
 spl-linux (0.6.2-2.1~trusty~11.gbpd3c126) trusty; urgency=low
 
   ** SNAPSHOT build @d3c126dc778cf440cf203268d9acb4be8369b8ee **
