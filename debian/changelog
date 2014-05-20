@@ -1,3 +1,53 @@
+zfs-linux (0.6.2-2.1~trusty~14.gbp6232fd) trusty; urgency=low
+
+  ** SNAPSHOT build @6232fdb43eee3a9dfc197c06d81d20710628186f **
+
+  [ Richard Yao ]
+  * Refactor inode_owner_or_capable() autotools check
+  * Implement File Attribute Support
+
+  [ Brian Behlendorf ]
+  * dmu_tx_assign() should not return ENOMEM
+
+  [ Richard Yao ]
+  * Fix libblkid ZFS detection when making new pools
+  * libspl: Implement LWP rwlock interface
+  * ztest: Switch to LWP rwlock interface
+
+  [ Brian Behlendorf ]
+  * Remove SELinux enforcing check from init scripts
+  * Treat spill block dbufs as meta data
+
+  [ George Wilson ]
+  * Illumos #4101 finer-grained control of metaslab_debug
+
+  [ Brian Behlendorf ]
+  * Fix style
+
+  [ Tim Chase ]
+  * Check the dataset type more rigorously when fetching properties.
+
+  [ Brian Behlendorf ]
+  * Handle vdev_lookup_top() failure in dva_get_dsize_sync()
+
+  [ Chunwei Chen ]
+  * Use a dedicated taskq for vdev_file
+
+  [ Richard Yao ]
+  * Handle ZPOOL_STATUS_HOSTID_MISMATCH in zpool status
+
+  [ Tim Chase ]
+  * Allow for lock-free reading zfsdev_state_list.
+  * Calculate header size correctly in sa_find_sizes()
+
+  [ HC ]
+  * Honor zfs_nocacheflush for file vdevs
+
+  [ John Albietz ]
+  * Added INTEL SSD 530 Series
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 19 May 2014 23:13:08 -0400
+
 zfs-linux (0.6.2-2.1~trusty~13.gbp7d6f55) trusty; urgency=low
 
   ** SNAPSHOT build @7d6f55265b9a68d9bd2f77874f14fb8238f59bfa **
