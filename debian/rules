@@ -176,11 +176,11 @@ ifeq ($(BUILD_UDEB), true)
 endif
 
 override_dh_auto_clean:
-	dh_auto_clean
+	@dh_auto_clean
 	@if test -e META.orig; then mv META.orig META; fi
 	debconf-updatepo
 
-override_dh_install:
+override_dh_install: override_dh_installinit
 	find . -name lib*.la -delete
 	dh_install
 
