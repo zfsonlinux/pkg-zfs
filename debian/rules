@@ -124,9 +124,6 @@ override_dh_installinit:
 	@# Install the /etc/default/zfs options file.
 	dh_installinit --name=zfs
 
-	@# Install the ZED init file.
-	dh_installinit --name=zed
-
 	@# Install the /etc/init.d/zfs-mount script.
 ifeq ($(LSB_DISTRIBUTOR),Debian)
 	@# Debian runs local mounts at sysv sequences [10..12] [08..09].
@@ -151,6 +148,9 @@ else
 	dh_installinit --name=zfs-share \
 	  --no-restart-on-upgrade --no-start
 endif
+
+	@# Install the ZED init file.
+	dh_installinit --name=zed
 
 override_dh_dkms:
 	dh_dkms -V $(VERSION)

@@ -1,3 +1,11 @@
+zfs-linux (0.6.3-0.25~2c33b9~wheezy) wheezy; urgency=low
+
+    * Update to latest ZoL GIT version.
+    * Make sure that the zed init script is installed into the package later
+      (after zfs-{mount,share}). Insserv needs to install those links first.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 23 May 2014 13:05:14 +0200
+
 zfs-linux (0.6.3-0.24~2c33b9~wheezy) wheezy; urgency=low
 
     * Update to latest ZoL GIT version.
