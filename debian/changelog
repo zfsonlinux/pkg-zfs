@@ -1,3 +1,15 @@
+spl-linux (0.6.2-2.1~trusty~13.gbp78946f) trusty; urgency=low
+
+  ** SNAPSHOT build @78946f1201805407433a66598b75a7b06ed9ecf7 **
+
+  [ Brian Behlendorf ]
+  * Add KMC_SLAB cache type
+  * Add spl_kmem_cache_reclaim module option
+  * Restrict release number to META version
+  * Fix DKMS package upgrade and packager
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 31 May 2014 11:34:32 -0400
+
 spl-linux (0.6.2-2.1~trusty~12.gbp1332dd) trusty; urgency=low
 
   ** SNAPSHOT build @1332dd7f3a3aaea04468205af7e201a435ac45fc **
