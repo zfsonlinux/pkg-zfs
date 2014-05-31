@@ -1,3 +1,24 @@
+zfs-linux (0.6.2-2.1~trusty~15.gbp9e8a75) trusty; urgency=low
+
+  ** SNAPSHOT build @9e8a75d76156327a2a6a53ce139e42233e10ec77 **
+
+  [ Marcel Huber ]
+  * Omit compiler warning by sticking to RAII
+
+  [ Brian Behlendorf ]
+  * Use default slab types
+  * Restrict release number to META version
+  * Fix DKMS package upgrade and packager
+
+  [ Chris Wedgwood ]
+  * Allow building without ACLs
+
+  [ Richard Yao ]
+  * Fix memory leak in zpool_clear_label()
+  * Remove superfluous statement
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 31 May 2014 11:37:57 -0400
+
 zfs-linux (0.6.2-2.1~trusty~14.gbp6232fd) trusty; urgency=low
 
   ** SNAPSHOT build @6232fdb43eee3a9dfc197c06d81d20710628186f **
