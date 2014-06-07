@@ -1,3 +1,33 @@
+zfs-linux (0.6.2-2.1~trusty~16.gbpbd90bb) trusty; urgency=low
+
+  ** SNAPSHOT build @bd90bbb371035050c38f52738841abf5062fa59d **
+
+  [ Turbo Fredriksson ]
+  * Move the libraries into separate packages (Closes: #2329, #2341)
+
+  [ Ben Allen ]
+  * Update spec file to enable systemd for RHEL7
+
+  [ Turbo Fredriksson ]
+  * Accept kernel source dir(s) specified by ./configure
+
+  [ Derek Dai ]
+  * Do not export pool to prevent cache from been removed
+
+  [ Turbo Fredriksson ]
+  * Only automatically mount a clone when 'canmount == on'.
+  * Document the fact that ashift is vdev specific, not a pool global.
+    (Closes: #2024)
+  * Man page updates for 'zfs share'
+
+  [ Tim Chase ]
+  * Expand the description of scan-related and other parameters.
+
+  [ Turbo Fredriksson ]
+  * Document the -X and -T options to 'zpool import'
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 07 Jun 2014 16:36:56 -0400
+
 zfs-linux (0.6.2-2.1~trusty~15.gbp9e8a75) trusty; urgency=low
 
   ** SNAPSHOT build @9e8a75d76156327a2a6a53ce139e42233e10ec77 **
