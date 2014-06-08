@@ -1,3 +1,15 @@
+zfs-linux (0.6.3-0.27~21b446~wheezy) wheezy; urgency=low
+
+    * Update to latest ZoL GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 08 Jun 2014 14:16:26 +0200
+
+zfs-linux (0.6.3-0.26~2c33b9~wheezy) wheezy; urgency=low
+
+    * Add a /etc/insserv.conf.d/zfs-mount file.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 23 May 2014 21:32:41 +0200
+
 zfs-linux (0.6.3-0.25~2c33b9~wheezy) wheezy; urgency=low
 
     * Update to latest ZoL GIT version.
