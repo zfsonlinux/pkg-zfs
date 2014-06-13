@@ -1,8 +1,8 @@
-spl-linux (0.6.3-7~4cdcdb~wheezy) wheezy; urgency=low
+spl-linux (0.6.3-7~wheezy) wheezy; urgency=low
 
-  * Preversion of latest GIT HEAD.
+  * New upstream release.
 
- -- Turbo Fredriksson <turbo@debian.org>  Sun, 08 Jun 2014 14:09:30 +0200
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 13 Jun 2014 03:38:12 +0200
 
 spl-linux (0.6.3-6~703371~wheezy) wheezy; urgency=low
 
