@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-2~precise) precise; urgency=low
+
+  * Refresh the init.d patch for Launchpad building.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 12 Jun 2014 23:56:09 -0400
+
 zfs-linux (0.6.3-1~precise) precise; urgency=low
 
   [ Aneurin Price ]
