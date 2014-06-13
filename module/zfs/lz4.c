@@ -47,7 +47,8 @@ static kmem_cache_t *lz4_cache;
 
 /*ARGSUSED*/
 size_t
-lz4_compress(void *s_start, void *d_start, size_t s_len, size_t d_len, int n)
+lz4_compress_zfs(void *s_start, void *d_start, size_t s_len,
+    size_t d_len, int n)
 {
 	uint32_t bufsiz;
 	char *dest = d_start;
@@ -74,7 +75,8 @@ lz4_compress(void *s_start, void *d_start, size_t s_len, size_t d_len, int n)
 
 /*ARGSUSED*/
 int
-lz4_decompress(void *s_start, void *d_start, size_t s_len, size_t d_len, int n)
+lz4_decompress_zfs(void *s_start, void *d_start, size_t s_len,
+    size_t d_len, int n)
 {
 	const char *src = s_start;
 	uint32_t bufsiz = BE_IN32(src);
@@ -143,16 +145,16 @@ lz4_decompress(void *s_start, void *d_start, size_t s_len, size_t d_len, int n)
  * 	This function explicitly handles the CTX memory structure.
  *
  * 	ILLUMOS CHANGES: the CTX memory structure must be explicitly allocated
- * 	by the caller (either on the stack or using kmem_cache_alloc). Passing NULL
- * 	isn't valid.
+ * 	by the caller (either on the stack or using kmem_cache_alloc). Passing
+ * 	NULL isn't valid.
  *
  * LZ4_compress64kCtx() :
  * 	Same as LZ4_compressCtx(), but specific to small inputs (<64KB).
  * 	isize *Must* be <64KB, otherwise the output will be corrupted.
  *
  * 	ILLUMOS CHANGES: the CTX memory structure must be explicitly allocated
- * 	by the caller (either on the stack or using kmem_cache_alloc). Passing NULL
- * 	isn't valid.
+ * 	by the caller (either on the stack or using kmem_cache_alloc). Passing
+ * 	NULL isn't valid.
  */
 
 /*
@@ -193,9 +195,7 @@ lz4_decompress(void *s_start, void *d_start, size_t s_len, size_t d_len, int n)
  */
 
 /* 32 or 64 bits ? */
-#if (defined(__x86_64__) || defined(__x86_64) || defined(__amd64__) || \
-    defined(__amd64) || defined(__ppc64__) || defined(_WIN64) || \
-    defined(__LP64__) || defined(_LP64))
+#if defined(_LP64)
 #define	LZ4_ARCH64 1
 #else
 #define	LZ4_ARCH64 0
@@ -205,17 +205,14 @@ lz4_decompress(void *s_start, void *d_start, size_t s_len, size_t d_len, int n)
  * Little Endian or Big Endian?
  * Note: overwrite the below #define if you know your architecture endianess.
  */
-#if (defined(__BIG_ENDIAN__) || defined(__BIG_ENDIAN) || \
-	defined(_BIG_ENDIAN) || defined(_ARCH_PPC) || defined(__PPC__) || \
-	defined(__PPC) || defined(PPC) || defined(__powerpc__) || \
-	defined(__powerpc) || defined(powerpc) || \
-	((defined(__BYTE_ORDER__)&&(__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__))))
+#if defined(_BIG_ENDIAN)
 #define	LZ4_BIG_ENDIAN 1
 #else
 /*
  * Little Endian assumed. PDP Endian and other very rare endian format
  * are unsupported.
  */
+#undef LZ4_BIG_ENDIAN
 #endif
 
 /*
@@ -236,6 +233,9 @@ lz4_decompress(void *s_start, void *d_start, size_t s_len, size_t d_len, int n)
  * kernel
  */
 #undef	LZ4_FORCE_SW_BITCOUNT
+#if defined(__sparc)
+#define	LZ4_FORCE_SW_BITCOUNT
+#endif
 
 /*
  * Compiler Options
@@ -267,7 +267,7 @@ lz4_decompress(void *s_start, void *d_start, size_t s_len, size_t d_len, int n)
 #define	unlikely(expr)	expect((expr) != 0, 0)
 #endif
 
-#define lz4_bswap16(x) ((unsigned short int) ((((x) >> 8) & 0xffu) | \
+#define	lz4_bswap16(x) ((unsigned short int) ((((x) >> 8) & 0xffu) | \
 	(((x) & 0xffu) << 8)))
 
 /* Basic types */
@@ -1009,4 +1009,3 @@ lz4_fini(void)
 		lz4_cache = NULL;
 	}
 }
-

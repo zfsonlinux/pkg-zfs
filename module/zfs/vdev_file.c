@@ -20,7 +20,7 @@
  */
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012 by Delphix. All rights reserved.
+ * Copyright (c) 2013 by Delphix. All rights reserved.
  */
 
 #include <sys/zfs_context.h>
@@ -35,6 +35,8 @@
 /*
  * Virtual device vector for files.
  */
+
+static taskq_t *vdev_file_taskq;
 
 static void
 vdev_file_hold(vdev_t *vd)
@@ -62,7 +64,7 @@ vdev_file_open(vdev_t *vd, uint64_t *psize, uint64_t *max_psize,
 	 */
 	if (vd->vdev_path == NULL || vd->vdev_path[0] != '/') {
 		vd->vdev_stat.vs_aux = VDEV_AUX_BAD_LABEL;
-		return (EINVAL);
+		return (SET_ERROR(EINVAL));
 	}
 
 	/*
@@ -100,7 +102,7 @@ vdev_file_open(vdev_t *vd, uint64_t *psize, uint64_t *max_psize,
 	 */
 	if (vp->v_type != VREG) {
 		vd->vdev_stat.vs_aux = VDEV_AUX_OPEN_FAILED;
-		return (ENODEV);
+		return (SET_ERROR(ENODEV));
 	}
 #endif
 
@@ -154,7 +156,7 @@ vdev_file_io_strategy(void *arg)
 	    0, RLIM64_INFINITY, kcred, &resid);
 
 	if (resid != 0 && zio->io_error == 0)
-		zio->io_error = ENOSPC;
+		zio->io_error = SET_ERROR(ENOSPC);
 
 	zio_interrupt(zio);
 }
@@ -162,31 +164,34 @@ vdev_file_io_strategy(void *arg)
 static int
 vdev_file_io_start(zio_t *zio)
 {
-	spa_t *spa = zio->io_spa;
 	vdev_t *vd = zio->io_vd;
 	vdev_file_t *vf = vd->vdev_tsd;
 
 	if (zio->io_type == ZIO_TYPE_IOCTL) {
 		/* XXPOLICY */
 		if (!vdev_readable(vd)) {
-			zio->io_error = ENXIO;
+			zio->io_error = SET_ERROR(ENXIO);
 			return (ZIO_PIPELINE_CONTINUE);
 		}
 
 		switch (zio->io_cmd) {
 		case DKIOCFLUSHWRITECACHE:
+
+			if (zfs_nocacheflush)
+				break;
+
 			zio->io_error = VOP_FSYNC(vf->vf_vnode, FSYNC | FDSYNC,
 			    kcred, NULL);
 			break;
 		default:
-			zio->io_error = ENOTSUP;
+			zio->io_error = SET_ERROR(ENOTSUP);
 		}
 
 		return (ZIO_PIPELINE_CONTINUE);
 	}
 
-	spa_taskq_dispatch_ent(spa, ZIO_TYPE_FREE, ZIO_TASKQ_ISSUE,
-	    vdev_file_io_strategy, zio, 0, &zio->io_tqent);
+	VERIFY3U(taskq_dispatch(vdev_file_taskq, vdev_file_io_strategy, zio,
+	    TQ_PUSHPAGE), !=, 0);
 
 	return (ZIO_PIPELINE_STOP);
 }
@@ -209,6 +214,21 @@ vdev_ops_t vdev_file_ops = {
 	VDEV_TYPE_FILE,		/* name of this vdev type */
 	B_TRUE			/* leaf vdev */
 };
+
+void
+vdev_file_init(void)
+{
+	vdev_file_taskq = taskq_create("vdev_file_taskq", 100, minclsyspri,
+	    max_ncpus, INT_MAX, TASKQ_PREPOPULATE | TASKQ_THREADS_CPU_PCT);
+
+	VERIFY(vdev_file_taskq);
+}
+
+void
+vdev_file_fini(void)
+{
+	taskq_destroy(vdev_file_taskq);
+}
 
 /*
  * From userland we access disks just like files.

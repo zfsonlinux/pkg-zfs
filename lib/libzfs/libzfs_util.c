@@ -45,6 +45,7 @@
 #include <wait.h>
 
 #include <libzfs.h>
+#include <libzfs_core.h>
 
 #include "libzfs_impl.h"
 #include "zfs_prop.h"
@@ -616,8 +617,8 @@ libzfs_module_loaded(const char *module)
 	const char path_prefix[] = "/sys/module/";
 	char path[256];
 
-	memcpy(path, path_prefix, sizeof(path_prefix) - 1);
-	strcpy(path + sizeof(path_prefix) - 1, module);
+	memcpy(path, path_prefix, sizeof (path_prefix) - 1);
+	strcpy(path + sizeof (path_prefix) - 1, module);
 
 	return (access(path, F_OK) == 0);
 }
@@ -651,12 +652,12 @@ libzfs_run_process(const char *path, char *argv[], int flags)
 		while ((rc = waitpid(pid, &status, 0)) == -1 &&
 			errno == EINTR);
 		if (rc < 0 || !WIFEXITED(status))
-			return -1;
+			return (-1);
 
-		return WEXITSTATUS(status);
+		return (WEXITSTATUS(status));
 	}
 
-	return -1;
+	return (-1);
 }
 
 int
@@ -665,9 +666,9 @@ libzfs_load_module(const char *module)
 	char *argv[4] = {"/sbin/modprobe", "-q", (char *)module, (char *)0};
 
 	if (libzfs_module_loaded(module))
-		return 0;
+		return (0);
 
-	return libzfs_run_process("/sbin/modprobe", argv, 0);
+	return (libzfs_run_process("/sbin/modprobe", argv, 0));
 }
 
 libzfs_handle_t *
@@ -677,8 +678,8 @@ libzfs_init(void)
 
 	if (libzfs_load_module("zfs") != 0) {
 		(void) fprintf(stderr, gettext("Failed to load ZFS module "
-			       "stack.\nLoad the module manually by running "
-			       "'insmod <location>/zfs.ko' as root.\n"));
+		    "stack.\nLoad the module manually by running "
+		    "'insmod <location>/zfs.ko' as root.\n"));
 		return (NULL);
 	}
 
@@ -688,11 +689,11 @@ libzfs_init(void)
 
 	if ((hdl->libzfs_fd = open(ZFS_DEV, O_RDWR)) < 0) {
 		(void) fprintf(stderr, gettext("Unable to open %s: %s.\n"),
-			       ZFS_DEV, strerror(errno));
+		    ZFS_DEV, strerror(errno));
 		if (errno == ENOENT)
 			(void) fprintf(stderr,
-			     gettext("Verify the ZFS module stack is "
-			     "loaded by running '/sbin/modprobe zfs'.\n"));
+			    gettext("Verify the ZFS module stack is "
+			    "loaded by running '/sbin/modprobe zfs'.\n"));
 
 		free(hdl);
 		return (NULL);
@@ -711,6 +712,14 @@ libzfs_init(void)
 	}
 
 	hdl->libzfs_sharetab = fopen("/etc/dfs/sharetab", "r");
+
+	if (libzfs_core_init() != 0) {
+		(void) close(hdl->libzfs_fd);
+		(void) fclose(hdl->libzfs_mnttab);
+		(void) fclose(hdl->libzfs_sharetab);
+		free(hdl);
+		return (NULL);
+	}
 
 	zfs_prop_init();
 	zpool_prop_init();
@@ -733,12 +742,11 @@ libzfs_fini(libzfs_handle_t *hdl)
 	if (hdl->libzfs_sharetab)
 		(void) fclose(hdl->libzfs_sharetab);
 	zfs_uninit_libshare(hdl);
-	if (hdl->libzfs_log_str)
-		(void) free(hdl->libzfs_log_str);
 	zpool_free_handles(hdl);
 	libzfs_fru_clear(hdl, B_TRUE);
 	namespace_clear(hdl);
 	libzfs_mnttab_fini(hdl);
+	libzfs_core_fini();
 	free(hdl);
 }
 
@@ -785,7 +793,10 @@ zfs_path_to_zhandle(libzfs_handle_t *hdl, char *path, zfs_type_t argtype)
 		return (NULL);
 	}
 
-	rewind(hdl->libzfs_mnttab);
+	/* Reopen MNTTAB to prevent reading stale data from open file */
+	if (freopen(MNTTAB, "r", hdl->libzfs_mnttab) == NULL)
+		return (NULL);
+
 	while ((ret = getextmntent(hdl->libzfs_mnttab, &entry, 0)) == 0) {
 		if (makedevice(entry.mnt_major, entry.mnt_minor) ==
 		    statbuf.st_dev) {
@@ -906,7 +917,7 @@ zfs_strcmp_shortname(char *name, char *cmp_name, int wholedisk)
 		if (wholedisk)
 			path_len = zfs_append_partition(path_name, MAXPATHLEN);
 
-		if ((path_len == cmp_len) && !strcmp(path_name, cmp_name)) {
+		if ((path_len == cmp_len) && strcmp(path_name, cmp_name) == 0) {
 			error = 0;
 			break;
 		}
@@ -949,7 +960,7 @@ zfs_strcmp_pathname(char *name, char *cmp, int wholedisk)
 	}
 
 	if (name[0] != '/')
-		return zfs_strcmp_shortname(name, cmp_name, wholedisk);
+		return (zfs_strcmp_shortname(name, cmp_name, wholedisk));
 
 	strncpy(path_name, name, MAXPATHLEN);
 	path_len = strlen(path_name);
@@ -1061,17 +1072,7 @@ zcmd_read_dst_nvlist(libzfs_handle_t *hdl, zfs_cmd_t *zc, nvlist_t **nvlp)
 int
 zfs_ioctl(libzfs_handle_t *hdl, int request, zfs_cmd_t *zc)
 {
-	int error;
-
-	zc->zc_history = (uint64_t)(uintptr_t)hdl->libzfs_log_str;
-	error = ioctl(hdl->libzfs_fd, request, zc);
-	if (hdl->libzfs_log_str) {
-		free(hdl->libzfs_log_str);
-		hdl->libzfs_log_str = NULL;
-	}
-	zc->zc_history = 0;
-
-	return (error);
+	return (ioctl(hdl->libzfs_fd, request, zc));
 }
 
 /*
@@ -1315,10 +1316,10 @@ str2shift(libzfs_handle_t *hdl, const char *buf)
 	 */
 	if (buf[1] == '\0' ||
 	    (toupper(buf[0]) != 'B' &&
-	     ((toupper(buf[1]) == 'B' && buf[2] == '\0') ||
-	      (toupper(buf[1]) == 'I' && toupper(buf[2]) == 'B' &&
-	       buf[3] == '\0'))))
-		return (10*i);
+	    ((toupper(buf[1]) == 'B' && buf[2] == '\0') ||
+	    (toupper(buf[1]) == 'I' && toupper(buf[2]) == 'B' &&
+	    buf[3] == '\0'))))
+		return (10 * i);
 
 	if (hdl)
 		zfs_error_aux(hdl, dgettext(TEXT_DOMAIN,
@@ -1530,7 +1531,7 @@ addlist(libzfs_handle_t *hdl, char *propname, zprop_list_t **listp,
 
 	prop = zprop_name_to_prop(propname, type);
 
-	if (prop != ZPROP_INVAL && !zprop_valid_for_type(prop, type))
+	if (prop != ZPROP_INVAL && !zprop_valid_for_type(prop, type, B_FALSE))
 		prop = ZPROP_INVAL;
 
 	/*

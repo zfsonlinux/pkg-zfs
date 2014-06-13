@@ -71,22 +71,23 @@ typedef struct erpt_dump {
 
 #ifdef _KERNEL
 
-#define ZEVENT_SHUTDOWN	0x1
+#define	ZEVENT_SHUTDOWN		0x1
 
 typedef void zevent_cb_t(nvlist_t *, nvlist_t *);
 
 typedef struct zevent_s {
-	nvlist_t	*ev_nvl;       /* protected by the zevent_lock */
-	nvlist_t	*ev_detector;  /* " */
-	list_t		ev_ze_list;    /* " */
-	list_node_t	ev_node;       /* " */
-	zevent_cb_t	*ev_cb;        /* " */
+	nvlist_t	*ev_nvl;	/* protected by the zevent_lock */
+	nvlist_t	*ev_detector;	/* " */
+	list_t		ev_ze_list;	/* " */
+	list_node_t	ev_node;	/* " */
+	zevent_cb_t	*ev_cb;		/* " */
+	uint64_t	ev_eid;
 } zevent_t;
 
 typedef struct zfs_zevent {
-	zevent_t	*ze_zevent;    /* protected by the zevent_lock */
-	list_node_t	ze_node;       /* " */
-	uint64_t	ze_dropped;    /* " */
+	zevent_t	*ze_zevent;	/* protected by the zevent_lock */
+	list_node_t	ze_node;	/* " */
+	uint64_t	ze_dropped;	/* " */
 } zfs_zevent_t;
 
 extern void fm_init(void);
@@ -98,6 +99,7 @@ extern int zfs_zevent_fd_hold(int, minor_t *, zfs_zevent_t **);
 extern void zfs_zevent_fd_rele(int);
 extern int zfs_zevent_next(zfs_zevent_t *, nvlist_t **, uint64_t *, uint64_t *);
 extern int zfs_zevent_wait(zfs_zevent_t *);
+extern int zfs_zevent_seek(zfs_zevent_t *, uint64_t);
 extern void zfs_zevent_init(zfs_zevent_t **);
 extern void zfs_zevent_destroy(zfs_zevent_t *);
 

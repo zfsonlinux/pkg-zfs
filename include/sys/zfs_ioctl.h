@@ -20,6 +20,7 @@
  */
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012 by Delphix. All rights reserved.
  */
 
 #ifndef	_SYS_ZFS_IOCTL_H
@@ -41,6 +42,15 @@ extern "C" {
 #endif
 
 /*
+ * The structures in this file are passed between userland and the
+ * kernel.  Userland may be running a 32-bit process, while the kernel
+ * is 64-bit.  Therefore, these structures need to compile the same in
+ * 32-bit and 64-bit.  This means not using type "long", and adding
+ * explicit padding so that the 32-bit structure will not be packed more
+ * tightly than the 64-bit structure (which requires 64-bit alignment).
+ */
+
+/*
  * Property values for snapdir
  */
 #define	ZFS_SNAPDIR_HIDDEN		0
@@ -51,6 +61,11 @@ extern "C" {
  */
 #define	ZFS_SNAPDEV_HIDDEN		0
 #define	ZFS_SNAPDEV_VISIBLE		1
+/*
+ * Property values for acltype
+ */
+#define	ZFS_ACLTYPE_OFF			0
+#define	ZFS_ACLTYPE_POSIXACL		1
 
 /*
  * Field manipulation macros for the drr_versioninfo field of the
@@ -244,8 +259,12 @@ typedef struct zinject_record {
 #define	ZINJECT_FLUSH_ARC	0x2
 #define	ZINJECT_UNLOAD_SPA	0x4
 
+#define	ZEVENT_NONE		0x0
 #define	ZEVENT_NONBLOCK		0x1
 #define	ZEVENT_SIZE		1024
+
+#define	ZEVENT_SEEK_START	0
+#define	ZEVENT_SEEK_END		UINT64_MAX
 
 typedef enum zinject_type {
 	ZINJECT_UNINITIALIZED,
@@ -277,22 +296,28 @@ typedef enum zfs_case {
 } zfs_case_t;
 
 typedef struct zfs_cmd {
-	char		zc_name[MAXPATHLEN];
-	char		zc_value[MAXPATHLEN * 2];
-	char		zc_string[MAXNAMELEN];
-	char		zc_top_ds[MAXPATHLEN];
-	uint64_t	zc_guid;
-	uint64_t	zc_nvlist_conf;		/* really (char *) */
-	uint64_t	zc_nvlist_conf_size;
+	char		zc_name[MAXPATHLEN];	/* name of pool or dataset */
 	uint64_t	zc_nvlist_src;		/* really (char *) */
 	uint64_t	zc_nvlist_src_size;
 	uint64_t	zc_nvlist_dst;		/* really (char *) */
 	uint64_t	zc_nvlist_dst_size;
+	boolean_t	zc_nvlist_dst_filled;	/* put an nvlist in dst? */
+	int		zc_pad2;
+
+	/*
+	 * The following members are for legacy ioctls which haven't been
+	 * converted to the new method.
+	 */
+	uint64_t	zc_history;		/* really (char *) */
+	char		zc_value[MAXPATHLEN * 2];
+	char		zc_string[MAXNAMELEN];
+	uint64_t	zc_guid;
+	uint64_t	zc_nvlist_conf;		/* really (char *) */
+	uint64_t	zc_nvlist_conf_size;
 	uint64_t	zc_cookie;
 	uint64_t	zc_objset_type;
 	uint64_t	zc_perm_action;
-	uint64_t 	zc_history;		/* really (char *) */
-	uint64_t 	zc_history_len;
+	uint64_t	zc_history_len;
 	uint64_t	zc_history_offset;
 	uint64_t	zc_obj;
 	uint64_t	zc_iflags;		/* internal to zfs(7fs) */
@@ -335,7 +360,10 @@ extern int zfs_secpolicy_snapshot_perms(const char *name, cred_t *cr);
 extern int zfs_secpolicy_rename_perms(const char *from,
     const char *to, cred_t *cr);
 extern int zfs_secpolicy_destroy_perms(const char *name, cred_t *cr);
-extern int zfs_unmount_snap(const char *, void *);
+extern int zfs_unmount_snap(const char *);
+extern void zfs_destroy_unmount_origin(const char *);
+
+extern boolean_t dataset_name_hidden(const char *name);
 
 enum zfsdev_state_type {
 	ZST_ONEXIT,
@@ -343,8 +371,15 @@ enum zfsdev_state_type {
 	ZST_ALL,
 };
 
+/*
+ * The zfsdev_state_t structure is managed as a singly-linked list
+ * from which items are never deleted.  This allows for lock-free
+ * reading of the list so long as assignments to the zs_next and
+ * reads from zs_minor are performed atomically.  Empty items are
+ * indicated by storing -1 into zs_minor.
+ */
 typedef struct zfsdev_state {
-        list_node_t             zs_next;        /* next zfsdev_state_t link */
+	struct zfsdev_state	*zs_next;	/* next zfsdev_state_t link */
 	struct file		*zs_file;	/* associated file struct */
 	minor_t			zs_minor;	/* made up minor number */
 	void			*zs_onexit;	/* onexit data */

@@ -20,7 +20,7 @@
  */
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012 by Delphix. All rights reserved.
+ * Copyright (c) 2013 by Delphix. All rights reserved.
  */
 
 /*
@@ -276,7 +276,7 @@ zio_handle_device_injection(vdev_t *vd, zio_t *zio, int error)
 				break;
 			}
 			if (handler->zi_record.zi_error == ENXIO) {
-				ret = EIO;
+				ret = SET_ERROR(EIO);
 				break;
 			}
 		}
@@ -345,9 +345,10 @@ spa_handle_ignored_writes(spa_t *spa)
 
 		if (handler->zi_record.zi_duration > 0) {
 			VERIFY(handler->zi_record.zi_timer == 0 ||
-			    handler->zi_record.zi_timer +
-			    handler->zi_record.zi_duration * hz >
-			    ddi_get_lbolt64());
+			    ddi_time_after64(
+			    (int64_t)handler->zi_record.zi_timer +
+			    handler->zi_record.zi_duration * hz,
+			    ddi_get_lbolt64()));
 		} else {
 			/* duration is negative so the subtraction here adds */
 			VERIFY(handler->zi_record.zi_timer == 0 ||
@@ -416,7 +417,7 @@ zio_inject_fault(char *name, int flags, int *id, zinject_record_t *record)
 		 * still allowing it to be unloaded.
 		 */
 		if ((spa = spa_inject_addref(name)) == NULL)
-			return (ENOENT);
+			return (SET_ERROR(ENOENT));
 
 		handler = kmem_alloc(sizeof (inject_handler_t), KM_SLEEP);
 
@@ -468,7 +469,7 @@ zio_inject_list_next(int *id, char *name, size_t buflen,
 		(void) strncpy(name, spa_name(handler->zi_spa), buflen);
 		ret = 0;
 	} else {
-		ret = ENOENT;
+		ret = SET_ERROR(ENOENT);
 	}
 
 	rw_exit(&inject_lock);
@@ -495,7 +496,7 @@ zio_clear_fault(int id)
 
 	if (handler == NULL) {
 		rw_exit(&inject_lock);
-		return (ENOENT);
+		return (SET_ERROR(ENOENT));
 	}
 
 	list_remove(&inject_handlers, handler);
