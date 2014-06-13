@@ -48,18 +48,6 @@ Index: b/etc/zfs/Makefile.am
  	vdev_id.conf.multipath.example
  
 -EXTRA_DIST = $(pkgsysconf_DATA)
-Index: b/man/man8/Makefile.am
-===================================================================
---- a/man/man8/Makefile.am
-+++ b/man/man8/Makefile.am
-@@ -8,7 +8,5 @@
- 	zpool.8 \
- 	zstreamdump.8
- 
--EXTRA_DIST = $(man_MANS)
--
- install-data-local:
- 	$(INSTALL) -d -m 0755 "$(DESTDIR)$(mandir)/man8"
 Index: b/scripts/Makefile.am
 ===================================================================
 --- a/scripts/Makefile.am
@@ -67,7 +55,7 @@ Index: b/scripts/Makefile.am
 @@ -1,9 +1,7 @@
  SUBDIRS = zpool-config zpios-test zpios-profile
  
--EXTRA_DIST = dkms.mkconf dkms.postinst kmodtool
+-EXTRA_DIST = dkms.mkconf dkms.postinst kmodtool zfs2zol-patch.sed cstyle.pl
 -
  pkgdatadir = $(datadir)/@PACKAGE@
 -dist_pkgdata_SCRIPTS = \
