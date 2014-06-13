@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-2~trusty) trusty; urgency=low
+
+  * Refresh the init.d patch for Launchpad building.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 12 Jun 2014 23:42:57 -0400
+
 zfs-linux (0.6.3-1~trusty) trusty; urgency=low
 
   [ Aneurin Price ]
