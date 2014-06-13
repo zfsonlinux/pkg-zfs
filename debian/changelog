@@ -1,3 +1,113 @@
+spl-linux (0.6.3-1~trusty) trusty; urgency=low
+
+  [ Richard Yao ]
+  * Replace current_kernel_time() with getnstimeofday()
+
+  [ Ned Bass ]
+  * Add kpreempt() compatibility macro
+
+  [ Kohsuke Kawaguchi ]
+  * Document how to run SPLAT
+
+  [ Brian Behlendorf ]
+  * Consistently use local_irq_disable/local_irq_enable
+
+  [ Richard Yao ]
+  * Define SET_ERROR()
+
+  [ Prakash Surya ]
+  * Add callbacks for displaying KSTAT_TYPE_RAW kstats
+  * Add wrappers for accessing PID and command info
+
+  [ Brian Behlendorf ]
+  * Revert "Add KSTAT_TYPE_TXG type"
+
+  [ Cyril Plisko ]
+  * Kstat to use private lock by default
+
+  [ Ned Bass ]
+  * 3537 add kstat_waitq_enter and friends
+  * Emulate illumos interface cv_timedwait_hires()
+
+  [ Richard Yao ]
+  * Linux 3.12 compat: New shrinker API
+
+  [ Cyril Plisko ]
+  * Tighten spl dependency on spl-kmod
+
+  [ Brian Behlendorf ]
+  * Retroactively fix bogus %changelog date
+
+  [ Turbo Fredriksson ]
+  * Document SPL module parameters.
+
+  [ Richard Yao ]
+  * Linux 3.13 compat: Remove unused flags variable from __cv_init()
+  * Linux 3.13 compat: Pass NULL for new delegated inode argument
+
+  [ Brian Behlendorf ]
+  * Add module versioning
+  * Include linux/vmalloc.h for ARM and Sparc
+  * Remove default taskq thread to CPU bindings
+
+  [ marku89 ]
+  * Define the needed ISA types for Sparc
+
+  [ Brian Behlendorf ]
+  * Remove incorrect use of EXTRA_DIST for man pages
+  * splat kmem:slab_reclaim: Test cleanup
+  * splat cred:groupmember: Fix false positives
+
+  [ Tim Chase ]
+  * Support post-3.13 kthread_create() semantics.
+  * De-inline spl_kthread_create().
+  * Call kthread_create() correctly with fixed arguments.
+
+  [ Richard Yao ]
+  * Simplify hostid logic
+
+  [ Yuxuan Shui ]
+  * This patch add a CTASSERT macro for compile time assertion.
+
+  [ Chunwei Chen ]
+  * Add ddi_time_after and friends
+
+  [ Andrey Vesnovaty ]
+  * Expose max/min objs per slab and max slab size
+
+  [ Richard Yao ]
+  * Change spl_kmem_cache_expire default setting to 2
+
+  [ Jorgen Lundman ]
+  * Add support for aarch64 (ARMv8)
+
+  [ Chunwei Chen ]
+  * Fix crash when using ZFS on Ceph rbd
+
+  [ Andrey Vesnovaty ]
+  * Evenly distribute the taskq threads across available CPUs
+
+  [ Chunwei Chen ]
+  * Linux 3.15 compat: NICE_TO_PRIO and PRIO_TO_NICE
+  * Linux 3.15: vfs_rename() added a flags argument
+
+  [ Brian Behlendorf ]
+  * Add KMC_SLAB cache type
+  * Add spl_kmem_cache_reclaim module option
+  * Restrict release number to META version
+  * Fix DKMS package upgrade and packager
+
+  [ Turbo Fredriksson ]
+  * Set LANG to a reasonable default (C)
+
+  [ Brian Behlendorf ]
+  * Tag spl-0.6.3
+
+  [ Darik Horn ]
+  * Revert "Backport Linux 3.13 compatibility patches."
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 12 Jun 2014 20:34:23 -0400
+
 spl-linux (0.6.2-2~trusty) trusty; urgency=low
 
   * Update gbp.conf for Ubuntu 14.04 Trusty Tahr.
