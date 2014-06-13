@@ -22,6 +22,7 @@
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2012 by Delphix. All rights reserved.
+ * Copyright (c) 2013 Steven Hartland. All rights reserved.
  */
 
 /*
@@ -66,6 +67,7 @@ static char *zfs_msgid_table[] = {
 	"ZFS-8000-HC",
 	"ZFS-8000-JQ",
 	"ZFS-8000-K4",
+	"ZFS-8000-ER",
 };
 
 #define	NMSGID	(sizeof (zfs_msgid_table) / sizeof (zfs_msgid_table[0]))
@@ -150,6 +152,16 @@ find_vdev_problem(nvlist_t *vdev, int (*func)(uint64_t, uint64_t, uint64_t))
 			return (B_TRUE);
 	}
 
+	/*
+	 * Check any L2 cache devs
+	 */
+	if (nvlist_lookup_nvlist_array(vdev, ZPOOL_CONFIG_L2CACHE, &child,
+	    &children) == 0) {
+		for (c = 0; c < children; c++)
+			if (find_vdev_problem(child[c], func))
+				return (B_TRUE);
+	}
+
 	return (B_FALSE);
 }
 
@@ -171,7 +183,7 @@ find_vdev_problem(nvlist_t *vdev, int (*func)(uint64_t, uint64_t, uint64_t))
  * only picks the most damaging of all the current errors to report.
  */
 static zpool_status_t
-check_status(nvlist_t *config, boolean_t isimport)
+check_status(nvlist_t *config, boolean_t isimport, zpool_errata_t *erratap)
 {
 	nvlist_t *nvroot;
 	vdev_stat_t *vs;
@@ -182,6 +194,7 @@ check_status(nvlist_t *config, boolean_t isimport)
 	uint64_t stateval;
 	uint64_t suspended;
 	uint64_t hostid = 0;
+	uint64_t errata = 0;
 	unsigned long system_hostid = gethostid() & 0xffffffff;
 
 	verify(nvlist_lookup_uint64(config, ZPOOL_CONFIG_VERSION,
@@ -345,13 +358,22 @@ check_status(nvlist_t *config, boolean_t isimport)
 		}
 	}
 
+	/*
+	 * Informational errata available.
+	 */
+	(void) nvlist_lookup_uint64(config, ZPOOL_CONFIG_ERRATA, &errata);
+	if (errata) {
+		*erratap = errata;
+		return (ZPOOL_STATUS_ERRATA);
+	}
+
 	return (ZPOOL_STATUS_OK);
 }
 
 zpool_status_t
-zpool_get_status(zpool_handle_t *zhp, char **msgid)
+zpool_get_status(zpool_handle_t *zhp, char **msgid, zpool_errata_t *errata)
 {
-	zpool_status_t ret = check_status(zhp->zpool_config, B_FALSE);
+	zpool_status_t ret = check_status(zhp->zpool_config, B_FALSE, errata);
 
 	if (ret >= NMSGID)
 		*msgid = NULL;
@@ -362,9 +384,9 @@ zpool_get_status(zpool_handle_t *zhp, char **msgid)
 }
 
 zpool_status_t
-zpool_import_status(nvlist_t *config, char **msgid)
+zpool_import_status(nvlist_t *config, char **msgid, zpool_errata_t *errata)
 {
-	zpool_status_t ret = check_status(config, B_TRUE);
+	zpool_status_t ret = check_status(config, B_TRUE, errata);
 
 	if (ret >= NMSGID)
 		*msgid = NULL;

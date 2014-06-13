@@ -84,6 +84,14 @@ static int zevent_len_cur = 0;
 static int zevent_waiters = 0;
 static int zevent_flags = 0;
 
+/*
+ * The EID (Event IDentifier) is used to uniquely tag a zevent when it is
+ * posted.  The posted EIDs are monotonically increasing but not persistent.
+ * They will be reset to the initial value (1) each time the kernel module is
+ * loaded.
+ */
+static uint64_t zevent_eid = 0;
+
 static kmutex_t zevent_lock;
 static list_t zevent_list;
 static kcondvar_t zevent_cv;
@@ -276,8 +284,8 @@ fm_nvprintr(nvlist_t *nvl, int d, int c, int cols)
 			c = fm_printf(d + 1, c, cols, "[ ");
 			(void) nvpair_value_int8_array(nvp, &val, &nelem);
 			for (i = 0; i < nelem; i++)
-			        c = fm_printf(d + 1, c, cols, "0x%llx ",
-					      (u_longlong_t)val[i]);
+				c = fm_printf(d + 1, c, cols, "0x%llx ",
+				    (u_longlong_t)val[i]);
 
 			c = fm_printf(d + 1, c, cols, "]");
 			break;
@@ -290,8 +298,8 @@ fm_nvprintr(nvlist_t *nvl, int d, int c, int cols)
 			c = fm_printf(d + 1, c, cols, "[ ");
 			(void) nvpair_value_uint8_array(nvp, &val, &nelem);
 			for (i = 0; i < nelem; i++)
-			        c = fm_printf(d + 1, c, cols, "0x%llx ",
-					      (u_longlong_t)val[i]);
+				c = fm_printf(d + 1, c, cols, "0x%llx ",
+				    (u_longlong_t)val[i]);
 
 			c = fm_printf(d + 1, c, cols, "]");
 			break;
@@ -304,8 +312,8 @@ fm_nvprintr(nvlist_t *nvl, int d, int c, int cols)
 			c = fm_printf(d + 1, c, cols, "[ ");
 			(void) nvpair_value_int16_array(nvp, &val, &nelem);
 			for (i = 0; i < nelem; i++)
-			        c = fm_printf(d + 1, c, cols, "0x%llx ",
-					      (u_longlong_t)val[i]);
+				c = fm_printf(d + 1, c, cols, "0x%llx ",
+				    (u_longlong_t)val[i]);
 
 			c = fm_printf(d + 1, c, cols, "]");
 			break;
@@ -318,8 +326,8 @@ fm_nvprintr(nvlist_t *nvl, int d, int c, int cols)
 			c = fm_printf(d + 1, c, cols, "[ ");
 			(void) nvpair_value_uint16_array(nvp, &val, &nelem);
 			for (i = 0; i < nelem; i++)
-			        c = fm_printf(d + 1, c, cols, "0x%llx ",
-					      (u_longlong_t)val[i]);
+				c = fm_printf(d + 1, c, cols, "0x%llx ",
+				    (u_longlong_t)val[i]);
 
 			c = fm_printf(d + 1, c, cols, "]");
 			break;
@@ -332,8 +340,8 @@ fm_nvprintr(nvlist_t *nvl, int d, int c, int cols)
 			c = fm_printf(d + 1, c, cols, "[ ");
 			(void) nvpair_value_int32_array(nvp, &val, &nelem);
 			for (i = 0; i < nelem; i++)
-			        c = fm_printf(d + 1, c, cols, "0x%llx ",
-					      (u_longlong_t)val[i]);
+			c = fm_printf(d + 1, c, cols, "0x%llx ",
+			    (u_longlong_t)val[i]);
 
 			c = fm_printf(d + 1, c, cols, "]");
 			break;
@@ -346,8 +354,8 @@ fm_nvprintr(nvlist_t *nvl, int d, int c, int cols)
 			c = fm_printf(d + 1, c, cols, "[ ");
 			(void) nvpair_value_uint32_array(nvp, &val, &nelem);
 			for (i = 0; i < nelem; i++)
-			        c = fm_printf(d + 1, c, cols, "0x%llx ",
-					      (u_longlong_t)val[i]);
+				c = fm_printf(d + 1, c, cols, "0x%llx ",
+				    (u_longlong_t)val[i]);
 
 			c = fm_printf(d + 1, c, cols, "]");
 			break;
@@ -360,8 +368,8 @@ fm_nvprintr(nvlist_t *nvl, int d, int c, int cols)
 			c = fm_printf(d + 1, c, cols, "[ ");
 			(void) nvpair_value_int64_array(nvp, &val, &nelem);
 			for (i = 0; i < nelem; i++)
-			        c = fm_printf(d + 1, c, cols, "0x%llx ",
-					      (u_longlong_t)val[i]);
+				c = fm_printf(d + 1, c, cols, "0x%llx ",
+				    (u_longlong_t)val[i]);
 
 			c = fm_printf(d + 1, c, cols, "]");
 			break;
@@ -374,8 +382,8 @@ fm_nvprintr(nvlist_t *nvl, int d, int c, int cols)
 			c = fm_printf(d + 1, c, cols, "[ ");
 			(void) nvpair_value_uint64_array(nvp, &val, &nelem);
 			for (i = 0; i < nelem; i++)
-			        c = fm_printf(d + 1, c, cols, "0x%llx ",
-					      (u_longlong_t)val[i]);
+				c = fm_printf(d + 1, c, cols, "0x%llx ",
+				    (u_longlong_t)val[i]);
 
 			c = fm_printf(d + 1, c, cols, "]");
 			break;
@@ -418,15 +426,15 @@ zfs_zevent_alloc(void)
 {
 	zevent_t *ev;
 
-	ev = kmem_zalloc(sizeof(zevent_t), KM_PUSHPAGE);
+	ev = kmem_zalloc(sizeof (zevent_t), KM_PUSHPAGE);
 	if (ev == NULL)
-		return NULL;
+		return (NULL);
 
-	list_create(&ev->ev_ze_list, sizeof(zfs_zevent_t),
+	list_create(&ev->ev_ze_list, sizeof (zfs_zevent_t),
 		    offsetof(zfs_zevent_t, ze_node));
 	list_link_init(&ev->ev_node);
 
-	return ev;
+	return (ev);
 }
 
 static void
@@ -436,7 +444,7 @@ zfs_zevent_free(zevent_t *ev)
 	ev->ev_cb(ev->ev_nvl, ev->ev_detector);
 
 	list_destroy(&ev->ev_ze_list);
-	kmem_free(ev, sizeof(zevent_t));
+	kmem_free(ev, sizeof (zevent_t));
 }
 
 static void
@@ -498,6 +506,7 @@ zfs_zevent_post(nvlist_t *nvl, nvlist_t *detector, zevent_cb_t *cb)
 {
 	int64_t tv_array[2];
 	timestruc_t tv;
+	uint64_t eid;
 	size_t nvl_size = 0;
 	zevent_t *ev;
 
@@ -505,6 +514,12 @@ zfs_zevent_post(nvlist_t *nvl, nvlist_t *detector, zevent_cb_t *cb)
 	tv_array[0] = tv.tv_sec;
 	tv_array[1] = tv.tv_nsec;
 	if (nvlist_add_int64_array(nvl, FM_EREPORT_TIME, tv_array, 2)) {
+		atomic_add_64(&erpt_kstat_data.erpt_set_failed.value.ui64, 1);
+		return;
+	}
+
+	eid = atomic_inc_64_nv(&zevent_eid);
+	if (nvlist_add_uint64(nvl, FM_EREPORT_EID, eid)) {
 		atomic_add_64(&erpt_kstat_data.erpt_set_failed.value.ui64, 1);
 		return;
 	}
@@ -524,9 +539,10 @@ zfs_zevent_post(nvlist_t *nvl, nvlist_t *detector, zevent_cb_t *cb)
 		return;
 	}
 
-        ev->ev_nvl = nvl;
+	ev->ev_nvl = nvl;
 	ev->ev_detector = detector;
 	ev->ev_cb = cb;
+	ev->ev_eid = eid;
 
 	mutex_enter(&zevent_lock);
 	zfs_zevent_insert(ev);
@@ -550,12 +566,12 @@ zfs_zevent_fd_hold(int fd, minor_t *minorp, zfs_zevent_t **ze)
 	file_t *fp;
 	int error;
 
-        fp = getf(fd);
-        if (fp == NULL)
-                return (EBADF);
+	fp = getf(fd);
+	if (fp == NULL)
+		return (EBADF);
 
-        *minorp = zfsdev_getminor(fp->f_file);
-        error = zfs_zevent_minor_to_state(*minorp, ze);
+	*minorp = zfsdev_getminor(fp->f_file);
+	error = zfs_zevent_minor_to_state(*minorp, ze);
 
 	if (error)
 		zfs_zevent_fd_rele(fd);
@@ -577,7 +593,7 @@ zfs_zevent_fd_rele(int fd)
  */
 int
 zfs_zevent_next(zfs_zevent_t *ze, nvlist_t **event, uint64_t *event_size,
-                uint64_t *dropped)
+    uint64_t *dropped)
 {
 	zevent_t *ev;
 	size_t size;
@@ -592,8 +608,10 @@ zfs_zevent_next(zfs_zevent_t *ze, nvlist_t **event, uint64_t *event_size,
 			goto out;
 		}
 	} else {
-		/* Existing stream continue with the next element and remove
-		 * ourselves from the wait queue for the previous element */
+		/*
+		 * Existing stream continue with the next element and remove
+		 * ourselves from the wait queue for the previous element
+		 */
 		ev = list_prev(&zevent_list, ze->ze_zevent);
 		if (ev == NULL) {
 			error = ENOENT;
@@ -619,7 +637,7 @@ zfs_zevent_next(zfs_zevent_t *ze, nvlist_t **event, uint64_t *event_size,
 out:
 	mutex_exit(&zevent_lock);
 
-	return error;
+	return (error);
 }
 
 int
@@ -643,7 +661,68 @@ zfs_zevent_wait(zfs_zevent_t *ze)
 out:
 	mutex_exit(&zevent_lock);
 
-	return error;
+	return (error);
+}
+
+/*
+ * The caller may seek to a specific EID by passing that EID.  If the EID
+ * is still available in the posted list of events the cursor is positioned
+ * there.  Otherwise ENOENT is returned and the cursor is not moved.
+ *
+ * There are two reserved EIDs which may be passed and will never fail.
+ * ZEVENT_SEEK_START positions the cursor at the start of the list, and
+ * ZEVENT_SEEK_END positions the cursor at the end of the list.
+ */
+int
+zfs_zevent_seek(zfs_zevent_t *ze, uint64_t eid)
+{
+	zevent_t *ev;
+	int error = 0;
+
+	mutex_enter(&zevent_lock);
+
+	if (eid == ZEVENT_SEEK_START) {
+		if (ze->ze_zevent)
+			list_remove(&ze->ze_zevent->ev_ze_list, ze);
+
+		ze->ze_zevent = NULL;
+		goto out;
+	}
+
+	if (eid == ZEVENT_SEEK_END) {
+		if (ze->ze_zevent)
+			list_remove(&ze->ze_zevent->ev_ze_list, ze);
+
+		ev = list_head(&zevent_list);
+		if (ev) {
+			ze->ze_zevent = ev;
+			list_insert_head(&ev->ev_ze_list, ze);
+		} else {
+			ze->ze_zevent = NULL;
+		}
+
+		goto out;
+	}
+
+	for (ev = list_tail(&zevent_list); ev != NULL;
+	    ev = list_prev(&zevent_list, ev)) {
+		if (ev->ev_eid == eid) {
+			if (ze->ze_zevent)
+				list_remove(&ze->ze_zevent->ev_ze_list, ze);
+
+			ze->ze_zevent = ev;
+			list_insert_head(&ev->ev_ze_list, ze);
+			break;
+		}
+	}
+
+	if (ev == NULL)
+		error = ENOENT;
+
+out:
+	mutex_exit(&zevent_lock);
+
+	return (error);
 }
 
 void
@@ -1512,7 +1591,8 @@ fm_init(void)
 	}
 
 	mutex_init(&zevent_lock, NULL, MUTEX_DEFAULT, NULL);
-	list_create(&zevent_list, sizeof(zevent_t), offsetof(zevent_t, ev_node));
+	list_create(&zevent_list, sizeof (zevent_t),
+	    offsetof(zevent_t, ev_node));
 	cv_init(&zevent_cv, NULL, CV_DEFAULT, NULL);
 }
 

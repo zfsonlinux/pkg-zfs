@@ -51,7 +51,10 @@ typedef struct zilog zilog_t;
 typedef struct spa_aux_vdev spa_aux_vdev_t;
 typedef struct ddt ddt_t;
 typedef struct ddt_entry ddt_entry_t;
+typedef struct zbookmark zbookmark_t;
+
 struct dsl_pool;
+struct dsl_dataset;
 
 /*
  * General-purpose 32-bit and 64-bit bitfield encodings.
@@ -419,9 +422,9 @@ extern int spa_open_rewind(const char *pool, spa_t **, void *tag,
 extern int spa_get_stats(const char *pool, nvlist_t **config, char *altroot,
     size_t buflen);
 extern int spa_create(const char *pool, nvlist_t *config, nvlist_t *props,
-    const char *history_str, nvlist_t *zplprops);
+    nvlist_t *zplprops);
 extern int spa_import_rootpool(char *devpath, char *devid);
-extern int spa_import(const char *pool, nvlist_t *config, nvlist_t *props,
+extern int spa_import(char *pool, nvlist_t *config, nvlist_t *props,
     uint64_t flags);
 extern nvlist_t *spa_tryimport(nvlist_t *tryconfig);
 extern int spa_destroy(char *pool);
@@ -533,6 +536,43 @@ extern boolean_t spa_refcount_zero(spa_t *spa);
 #define	SCL_ALL		((1 << SCL_LOCKS) - 1)
 #define	SCL_STATE_ALL	(SCL_STATE | SCL_L2ARC | SCL_ZIO)
 
+/* Historical pool statistics */
+typedef struct spa_stats_history {
+	kmutex_t		lock;
+	uint64_t		count;
+	uint64_t		size;
+	kstat_t			*kstat;
+	void			*private;
+	list_t			list;
+} spa_stats_history_t;
+
+typedef struct spa_stats {
+	spa_stats_history_t	read_history;
+	spa_stats_history_t	txg_history;
+	spa_stats_history_t	tx_assign_histogram;
+	spa_stats_history_t	io_history;
+} spa_stats_t;
+
+typedef enum txg_state {
+	TXG_STATE_BIRTH		= 0,
+	TXG_STATE_OPEN		= 1,
+	TXG_STATE_QUIESCED	= 2,
+	TXG_STATE_WAIT_FOR_SYNC	= 3,
+	TXG_STATE_SYNCED	= 4,
+	TXG_STATE_COMMITTED	= 5,
+} txg_state_t;
+
+extern void spa_stats_init(spa_t *spa);
+extern void spa_stats_destroy(spa_t *spa);
+extern void spa_read_history_add(spa_t *spa, const zbookmark_t *zb,
+    uint32_t aflags);
+extern void spa_txg_history_add(spa_t *spa, uint64_t txg, hrtime_t birth_time);
+extern int spa_txg_history_set(spa_t *spa,  uint64_t txg,
+    txg_state_t completed_state, hrtime_t completed_time);
+extern int spa_txg_history_set_io(spa_t *spa,  uint64_t txg, uint64_t nread,
+    uint64_t nwritten, uint64_t reads, uint64_t writes, uint64_t ndirty);
+extern void spa_tx_assign_add_nsecs(spa_t *spa, uint64_t nsecs);
+
 /* Pool configuration locks */
 extern int spa_config_tryenter(spa_t *spa, int locks, void *tag, krw_t rw);
 extern void spa_config_enter(spa_t *spa, int locks, void *tag, krw_t rw);
@@ -629,31 +669,20 @@ extern boolean_t spa_writeable(spa_t *spa);
 extern int spa_mode(spa_t *spa);
 extern uint64_t strtonum(const char *str, char **nptr);
 
-/* history logging */
-typedef enum history_log_type {
-	LOG_CMD_POOL_CREATE,
-	LOG_CMD_NORMAL,
-	LOG_INTERNAL
-} history_log_type_t;
-
-typedef struct history_arg {
-	char *ha_history_str;
-	history_log_type_t ha_log_type;
-	history_internal_events_t ha_event;
-	char *ha_zone;
-	uid_t ha_uid;
-} history_arg_t;
-
 extern char *spa_his_ievent_table[];
 
 extern void spa_history_create_obj(spa_t *spa, dmu_tx_t *tx);
 extern int spa_history_get(spa_t *spa, uint64_t *offset, uint64_t *len_read,
     char *his_buf);
-extern int spa_history_log(spa_t *spa, const char *his_buf,
-    history_log_type_t what);
-extern void spa_history_log_internal(history_internal_events_t event,
-    spa_t *spa, dmu_tx_t *tx, const char *fmt, ...);
-extern void spa_history_log_version(spa_t *spa, history_internal_events_t evt);
+extern int spa_history_log(spa_t *spa, const char *his_buf);
+extern int spa_history_log_nvl(spa_t *spa, nvlist_t *nvl);
+extern void spa_history_log_version(spa_t *spa, const char *operation);
+extern void spa_history_log_internal(spa_t *spa, const char *operation,
+    dmu_tx_t *tx, const char *fmt, ...);
+extern void spa_history_log_internal_ds(struct dsl_dataset *ds, const char *op,
+    dmu_tx_t *tx, const char *fmt, ...);
+extern void spa_history_log_internal_dd(dsl_dir_t *dd, const char *operation,
+    dmu_tx_t *tx, const char *fmt, ...);
 
 /* error handling */
 struct zbookmark;
