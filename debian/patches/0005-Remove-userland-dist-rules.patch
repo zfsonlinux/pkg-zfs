@@ -8,21 +8,22 @@ does not contain the userland. (eg: Dist --with-config=kernel only.)
 For all userland components in each automake template, delete
 instances of EXTRA_DIST and change dist_ to nodist_.
 ---
- Makefile.am                       | 2 +-
- cmd/vdev_id/Makefile.am           | 2 +-
- etc/zfs/Makefile.am               | 1 -
- man/man8/Makefile.am              | 2 --
- scripts/Makefile.am               | 4 +---
- scripts/zpios-profile/Makefile.am | 2 +-
- scripts/zpios-test/Makefile.am    | 2 +-
- scripts/zpool-config/Makefile.am  | 2 +-
- 8 files changed, 6 insertions(+), 11 deletions(-)
+ Makefile.am                       |    3 +--
+ cmd/vdev_id/Makefile.am           |    2 +-
+ etc/zfs/Makefile.am               |    2 --
+ man/man8/Makefile.am              |    1 -
+ scripts/Makefile.am               |    2 +-
+ scripts/zpios-profile/Makefile.am |    2 +-
+ scripts/zpios-test/Makefile.am    |    2 +-
+ scripts/zpool-config/Makefile.am  |    2 +-
+ udev/rules.d/Makefile.am          |    5 -----
+ 9 files changed, 6 insertions(+), 15 deletions(-)
 
-diff --git a/Makefile.am b/Makefile.am
-index 771bec6..16f60b3 100644
+Index: b/Makefile.am
+===================================================================
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -20,7 +20,7 @@ nodist_kernel_HEADERS = zfs.release zfs_config.h module/$(LINUX_SYMBOLS)
+@@ -20,7 +20,7 @@
  endif
  
  AUTOMAKE_OPTIONS = foreign
@@ -31,27 +32,27 @@ index 771bec6..16f60b3 100644
  EXTRA_DIST += config/config.awk config/rpm.am config/deb.am config/tgz.am
  EXTRA_DIST += META DISCLAIMER COPYRIGHT README.markdown OPENSOLARIS.LICENSE
  
-diff --git a/cmd/vdev_id/Makefile.am b/cmd/vdev_id/Makefile.am
-index fb815fa..86d91d3 100644
+Index: b/cmd/vdev_id/Makefile.am
+===================================================================
 --- a/cmd/vdev_id/Makefile.am
 +++ b/cmd/vdev_id/Makefile.am
 @@ -1 +1 @@
 -dist_udev_SCRIPTS = vdev_id
 +nodist_udev_SCRIPTS = vdev_id
-diff --git a/etc/zfs/Makefile.am b/etc/zfs/Makefile.am
-index ff35469..0009f01 100644
+Index: b/etc/zfs/Makefile.am
+===================================================================
 --- a/etc/zfs/Makefile.am
 +++ b/etc/zfs/Makefile.am
-@@ -6,4 +6,3 @@ pkgsysconf_DATA = \
+@@ -6,4 +6,3 @@
  	vdev_id.conf.sas_switch.example \
  	vdev_id.conf.multipath.example
  
 -EXTRA_DIST = $(pkgsysconf_DATA)
-diff --git a/man/man8/Makefile.am b/man/man8/Makefile.am
-index be7bc1d..a99f8da 100644
+Index: b/man/man8/Makefile.am
+===================================================================
 --- a/man/man8/Makefile.am
 +++ b/man/man8/Makefile.am
-@@ -8,7 +8,5 @@ man_MANS = \
+@@ -8,7 +8,5 @@
  	zpool.8 \
  	zstreamdump.8
  
@@ -59,8 +60,8 @@ index be7bc1d..a99f8da 100644
 -
  install-data-local:
  	$(INSTALL) -d -m 0755 "$(DESTDIR)$(mandir)/man8"
-diff --git a/scripts/Makefile.am b/scripts/Makefile.am
-index 08a32b4..8a7b7e0 100644
+Index: b/scripts/Makefile.am
+===================================================================
 --- a/scripts/Makefile.am
 +++ b/scripts/Makefile.am
 @@ -1,9 +1,7 @@
@@ -74,8 +75,8 @@ index 08a32b4..8a7b7e0 100644
  	$(top_builddir)/scripts/common.sh \
  	$(top_srcdir)/scripts/zconfig.sh \
  	$(top_srcdir)/scripts/zfault.sh \
-diff --git a/scripts/zpios-profile/Makefile.am b/scripts/zpios-profile/Makefile.am
-index c87f169..17b134e 100644
+Index: b/scripts/zpios-profile/Makefile.am
+===================================================================
 --- a/scripts/zpios-profile/Makefile.am
 +++ b/scripts/zpios-profile/Makefile.am
 @@ -1,5 +1,5 @@
@@ -85,8 +86,8 @@ index c87f169..17b134e 100644
  	$(top_srcdir)/scripts/zpios-profile/zpios-profile-disk.sh \
  	$(top_srcdir)/scripts/zpios-profile/zpios-profile-pids.sh \
  	$(top_srcdir)/scripts/zpios-profile/zpios-profile-post.sh \
-diff --git a/scripts/zpios-test/Makefile.am b/scripts/zpios-test/Makefile.am
-index c74e24f..5e2a28b 100644
+Index: b/scripts/zpios-test/Makefile.am
+===================================================================
 --- a/scripts/zpios-test/Makefile.am
 +++ b/scripts/zpios-test/Makefile.am
 @@ -1,5 +1,5 @@
@@ -96,8 +97,8 @@ index c74e24f..5e2a28b 100644
  	$(top_srcdir)/scripts/zpios-test/16th-8192rc-4rs-1cs-4off.sh \
  	$(top_srcdir)/scripts/zpios-test/1th-16rc-4rs-1cs-4off.sh \
  	$(top_srcdir)/scripts/zpios-test/1x256th-65536rc-4rs-1cs-4off.sh \
-diff --git a/scripts/zpool-config/Makefile.am b/scripts/zpool-config/Makefile.am
-index 2d77994..ddec457 100644
+Index: b/scripts/zpool-config/Makefile.am
+===================================================================
 --- a/scripts/zpool-config/Makefile.am
 +++ b/scripts/zpool-config/Makefile.am
 @@ -1,5 +1,5 @@

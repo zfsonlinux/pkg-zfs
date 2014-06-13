@@ -1,7 +1,4 @@
-0001-Prevent-manual-builds-in-the-DKMS-source.patch
-0002-Remove-all-upstream-init.d-components.patch
-0003-Remove-the-upstream-dracut-component.patch
-0004-Remove-userland-dist-rules.patch
-0005-Linux-3.11-compat-Rename-LZ4-symbols.patch
-0006-Disable-GCCs-aggressive-loop-optimization.patch
-0007-Linux-3.13-compat-Handle-__must_check-bdi_setup_and_.patch
+0002-Prevent-manual-builds-in-the-DKMS-source.patch
+0003-Remove-all-upstream-init.d-components.patch
+0004-Remove-the-upstream-dracut-component.patch
+0005-Remove-userland-dist-rules.patch

@@ -5,29 +5,31 @@ Subject: Remove all upstream init.d components.
 The etc/init.d/ components are redundant because the debian/ overlay
 bundles init files according to Debian packaging policy.
 ---
- configure.ac             |   1 -
- etc/Makefile.am          |   2 +-
- etc/init.d/.gitignore    |   1 -
- etc/init.d/Makefile.am   |  21 ----
- etc/init.d/zfs.fedora.in | 249 -----------------------------------------------
- etc/init.d/zfs.gentoo.in | 123 -----------------------
- etc/init.d/zfs.lsb.in    | 135 -------------------------
- etc/init.d/zfs.lunar.in  | 100 -------------------
- etc/init.d/zfs.redhat.in | 181 ----------------------------------
- 9 files changed, 1 insertion(+), 812 deletions(-)
+ configure.ac             |    1 -
+ etc/Makefile.am          |    2 +-
+ etc/init.d/.gitignore    |    1 -
+ etc/init.d/Makefile.am   |   22 -----
+ etc/init.d/zfs.arch.in   |   62 ------------
+ etc/init.d/zfs.fedora.in |  244 ----------------------------------------------
+ etc/init.d/zfs.gentoo.in |  111 ---------------------
+ etc/init.d/zfs.lsb.in    |  130 ------------------------
+ etc/init.d/zfs.lunar.in  |   95 ------------------
+ etc/init.d/zfs.redhat.in |  176 ---------------------------------
+ 10 files changed, 1 insertion(+), 843 deletions(-)
  delete mode 100644 etc/init.d/.gitignore
  delete mode 100644 etc/init.d/Makefile.am
+ delete mode 100644 etc/init.d/zfs.arch.in
  delete mode 100644 etc/init.d/zfs.fedora.in
  delete mode 100644 etc/init.d/zfs.gentoo.in
  delete mode 100644 etc/init.d/zfs.lsb.in
  delete mode 100644 etc/init.d/zfs.lunar.in
  delete mode 100644 etc/init.d/zfs.redhat.in
 
-diff --git a/configure.ac b/configure.ac
-index 58e2158..deba063 100644
+Index: b/configure.ac
+===================================================================
 --- a/configure.ac
 +++ b/configure.ac
-@@ -62,7 +62,6 @@ AC_CONFIG_FILES([
+@@ -62,7 +62,6 @@
  	udev/Makefile
  	udev/rules.d/Makefile
  	etc/Makefile
@@ -35,23 +37,21 @@ index 58e2158..deba063 100644
  	etc/zfs/Makefile
  	man/Makefile
  	man/man1/Makefile
-diff --git a/etc/Makefile.am b/etc/Makefile.am
-index 65882b5..b5e497f 100644
+Index: b/etc/Makefile.am
+===================================================================
 --- a/etc/Makefile.am
 +++ b/etc/Makefile.am
 @@ -1 +1 @@
 -SUBDIRS = init.d zfs
 +SUBDIRS = zfs
-diff --git a/etc/init.d/.gitignore b/etc/init.d/.gitignore
-deleted file mode 100644
-index 73304bc..0000000
+Index: b/etc/init.d/.gitignore
+===================================================================
 --- a/etc/init.d/.gitignore
 +++ /dev/null
 @@ -1 +0,0 @@
 -zfs
-diff --git a/etc/init.d/Makefile.am b/etc/init.d/Makefile.am
-deleted file mode 100644
-index 7209348..0000000
+Index: b/etc/init.d/Makefile.am
+===================================================================
 --- a/etc/init.d/Makefile.am
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -76,9 +76,8 @@ index 7209348..0000000
 -
 -distclean-local::
 -	-$(RM) $(init_SCRIPTS)
-diff --git a/etc/init.d/zfs.fedora.in b/etc/init.d/zfs.fedora.in
-deleted file mode 100644
-index 3cece9b..0000000
+Index: b/etc/init.d/zfs.fedora.in
+===================================================================
 --- a/etc/init.d/zfs.fedora.in
 +++ /dev/null
 @@ -1,249 +0,0 @@
@@ -331,9 +330,8 @@ index 3cece9b..0000000
 -esac
 -
 -exit $RETVAL
-diff --git a/etc/init.d/zfs.gentoo.in b/etc/init.d/zfs.gentoo.in
-deleted file mode 100644
-index 0034e02..0000000
+Index: b/etc/init.d/zfs.gentoo.in
+===================================================================
 --- a/etc/init.d/zfs.gentoo.in
 +++ /dev/null
 @@ -1,123 +0,0 @@
@@ -460,9 +458,8 @@ index 0034e02..0000000
 -	# show pool status and list
 -	$ZPOOL status && echo && $ZPOOL list
 -}
-diff --git a/etc/init.d/zfs.lsb.in b/etc/init.d/zfs.lsb.in
-deleted file mode 100644
-index 0d0ffb4..0000000
+Index: b/etc/init.d/zfs.lsb.in
+===================================================================
 --- a/etc/init.d/zfs.lsb.in
 +++ /dev/null
 @@ -1,135 +0,0 @@
@@ -601,9 +598,8 @@ index 0d0ffb4..0000000
 -esac
 -
 -exit $RETVAL
-diff --git a/etc/init.d/zfs.lunar.in b/etc/init.d/zfs.lunar.in
-deleted file mode 100644
-index 3cf79ce..0000000
+Index: b/etc/init.d/zfs.lunar.in
+===================================================================
 --- a/etc/init.d/zfs.lunar.in
 +++ /dev/null
 @@ -1,100 +0,0 @@
@@ -707,9 +703,8 @@ index 3cf79ce..0000000
 -  ;;
 -
 -esac
-diff --git a/etc/init.d/zfs.redhat.in b/etc/init.d/zfs.redhat.in
-deleted file mode 100644
-index fb5187f..0000000
+Index: b/etc/init.d/zfs.redhat.in
+===================================================================
 --- a/etc/init.d/zfs.redhat.in
 +++ /dev/null
 @@ -1,181 +0,0 @@

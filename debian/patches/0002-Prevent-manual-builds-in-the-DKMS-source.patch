@@ -13,15 +13,14 @@ Regardless, local installations usually break managed installations,
 so this autotools test could be further enhanced to check whether
 ZFS has a DKMS registration.
 ---
- config/dkms.m4      | 14 ++++++++++++++
- config/user.m4      |  1 +
- config/zfs-build.m4 |  6 +++---
+ config/dkms.m4      |   14 ++++++++++++++
+ config/user.m4      |    1 +
+ config/zfs-build.m4 |    6 +++---
  3 files changed, 18 insertions(+), 3 deletions(-)
  create mode 100644 config/dkms.m4
 
-diff --git a/config/dkms.m4 b/config/dkms.m4
-new file mode 100644
-index 0000000..cfa1152
+Index: b/config/dkms.m4
+===================================================================
 --- /dev/null
 +++ b/config/dkms.m4
 @@ -0,0 +1,14 @@
@@ -39,11 +38,11 @@ index 0000000..cfa1152
 +		AC_MSG_RESULT([not found])
 +        ])
 +])
-diff --git a/config/user.m4 b/config/user.m4
-index 6925e56..5f6963d 100644
+Index: b/config/user.m4
+===================================================================
 --- a/config/user.m4
 +++ b/config/user.m4
-@@ -2,6 +2,7 @@ dnl #
+@@ -2,6 +2,7 @@
  dnl # Default ZFS user configuration
  dnl #
  AC_DEFUN([ZFS_AC_CONFIG_USER], [
@@ -51,11 +50,11 @@ index 6925e56..5f6963d 100644
  	ZFS_AC_CONFIG_USER_UDEV
  	ZFS_AC_CONFIG_USER_DRACUT
  	ZFS_AC_CONFIG_USER_ARCH
-diff --git a/config/zfs-build.m4 b/config/zfs-build.m4
-index 005185b..549eb73 100644
+Index: b/config/zfs-build.m4
+===================================================================
 --- a/config/zfs-build.m4
 +++ b/config/zfs-build.m4
-@@ -86,10 +86,10 @@ AC_DEFUN([ZFS_AC_CONFIG], [
+@@ -86,10 +86,10 @@
  	ZFS_AC_CONFIG_ALWAYS
  
  	case "$ZFS_CONFIG" in
