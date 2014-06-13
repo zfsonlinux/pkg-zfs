@@ -22,6 +22,9 @@
  * Copyright 2010 Sun Microsystems, Inc.  All rights reserved.
  * Use is subject to license terms.
  */
+/*
+ * Copyright (c) 2012 by Delphix. All rights reserved.
+ */
 
 /*
  * Common routines used by zfs and zpool property management.
@@ -129,7 +132,8 @@ zprop_register_hidden(int prop, const char *name, zprop_type_t type,
     zprop_attr_t attr, int objset_types, const char *colname)
 {
 	zprop_register_impl(prop, name, type, 0, NULL, attr,
-	    objset_types, NULL, colname, B_FALSE, B_FALSE, NULL);
+	    objset_types, NULL, colname,
+	    type == PROP_TYPE_NUMBER, B_FALSE, NULL);
 }
 
 
@@ -347,9 +351,13 @@ zprop_values(int prop, zfs_type_t type)
 
 /*
  * Returns TRUE if the property applies to any of the given dataset types.
+ *
+ * If headcheck is set, the check is being made against the head dataset
+ * type of a snapshot which requires to return B_TRUE when the property
+ * is only valid for snapshots.
  */
 boolean_t
-zprop_valid_for_type(int prop, zfs_type_t type)
+zprop_valid_for_type(int prop, zfs_type_t type, boolean_t headcheck)
 {
 	zprop_desc_t *prop_tbl;
 
@@ -358,6 +366,8 @@ zprop_valid_for_type(int prop, zfs_type_t type)
 
 	ASSERT(prop < zprop_get_numprops(type));
 	prop_tbl = zprop_get_proptable(type);
+	if (headcheck && prop_tbl[prop].pd_types == ZFS_TYPE_SNAPSHOT)
+		return (B_TRUE);
 	return ((prop_tbl[prop].pd_types & type) != 0);
 }
 

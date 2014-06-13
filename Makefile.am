@@ -40,6 +40,10 @@ dist-hook:
 	sed -i 's/Release:[[:print:]]*/Release:      $(RELEASE)/' \
 		$(distdir)/META
 
+checkstyle:
+	@find ${top_srcdir} -name '*.[hc]' ! -name 'zfs_config.*' \
+		! -name '*.mod.c' -type f -exec scripts/cstyle.pl {} \+
+
 ctags:
 	$(RM) $(top_srcdir)/tags
 	find $(top_srcdir) -name .git -prune -o -name '*.[hc]' | xargs ctags

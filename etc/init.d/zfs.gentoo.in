@@ -5,7 +5,7 @@
 
 if [ -z "$init" ]; then
     # Not interactive
-    grep -Eqi 'zfs=off|zfs=no' /proc/cmdline && exit 3
+    grep -qE '(^|[^\\](\\\\)* )zfs=(off|no)( |$)' /proc/cmdline && exit 3
 fi
 
 depend()
@@ -20,6 +20,7 @@ depend()
 
 	# bootmisc will log to /var which may be a different zfs than root.
 	before bootmisc logger
+	use mtab
 	keyword -lxc -openvz -prefix -vserver
 }
 

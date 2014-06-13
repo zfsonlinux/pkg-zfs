@@ -21,7 +21,7 @@
 
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012 by Delphix. All rights reserved.
+ * Copyright (c) 2013 by Delphix. All rights reserved.
  * Copyright 2011 Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 2012, Joyent, Inc. All rights reserved.
  */
@@ -51,6 +51,16 @@ typedef enum {
 	ZFS_TYPE_VOLUME		= 0x4,
 	ZFS_TYPE_POOL		= 0x8
 } zfs_type_t;
+
+typedef enum dmu_objset_type {
+	DMU_OST_NONE,
+	DMU_OST_META,
+	DMU_OST_ZFS,
+	DMU_OST_ZVOL,
+	DMU_OST_OTHER,			/* For testing only! */
+	DMU_OST_ANY,			/* Be careful! */
+	DMU_OST_NUMTYPES
+} dmu_objset_type_t;
 
 #define	ZFS_TYPE_DATASET	\
 	(ZFS_TYPE_FILESYSTEM | ZFS_TYPE_VOLUME | ZFS_TYPE_SNAPSHOT)
@@ -128,7 +138,16 @@ typedef enum {
 	ZFS_PROP_REFRATIO,
 	ZFS_PROP_WRITTEN,
 	ZFS_PROP_CLONES,
+	ZFS_PROP_LOGICALUSED,
+	ZFS_PROP_LOGICALREFERENCED,
+	ZFS_PROP_INCONSISTENT,		/* not exposed to the user */
 	ZFS_PROP_SNAPDEV,
+	ZFS_PROP_ACLTYPE,
+	ZFS_PROP_SELINUX_CONTEXT,
+	ZFS_PROP_SELINUX_FSCONTEXT,
+	ZFS_PROP_SELINUX_DEFCONTEXT,
+	ZFS_PROP_SELINUX_ROOTCONTEXT,
+	ZFS_PROP_RELATIME,
 	ZFS_NUM_PROPS
 } zfs_prop_t;
 
@@ -236,7 +255,7 @@ boolean_t zfs_prop_written(const char *);
 int zfs_prop_index_to_string(zfs_prop_t, uint64_t, const char **);
 int zfs_prop_string_to_index(zfs_prop_t, const char *, uint64_t *);
 uint64_t zfs_prop_random_value(zfs_prop_t, uint64_t seed);
-boolean_t zfs_prop_valid_for_type(int, zfs_type_t);
+boolean_t zfs_prop_valid_for_type(int, zfs_type_t, boolean_t);
 
 /*
  * Pool property functions shared between libzfs and kernel.
@@ -516,7 +535,7 @@ typedef struct zpool_rewind_policy {
 #define	ZPOOL_CONFIG_SPLIT_GUID		"split_guid"
 #define	ZPOOL_CONFIG_SPLIT_LIST		"guid_list"
 #define	ZPOOL_CONFIG_REMOVING		"removing"
-#define	ZPOOL_CONFIG_RESILVERING	"resilvering"
+#define	ZPOOL_CONFIG_RESILVER_TXG	"resilver_txg"
 #define	ZPOOL_CONFIG_COMMENT		"comment"
 #define	ZPOOL_CONFIG_SUSPENDED		"suspended"	/* not stored on disk */
 #define	ZPOOL_CONFIG_TIMESTAMP		"timestamp"	/* not stored on disk */
@@ -529,6 +548,7 @@ typedef struct zpool_rewind_policy {
 #define	ZPOOL_CONFIG_CAN_RDONLY		"can_rdonly"	/* not stored on disk */
 #define	ZPOOL_CONFIG_FEATURES_FOR_READ	"features_for_read"
 #define	ZPOOL_CONFIG_FEATURE_STATS	"feature_stats"	/* not stored on disk */
+#define	ZPOOL_CONFIG_ERRATA		"errata"	/* not stored on disk */
 /*
  * The persistent vdev state is stored as separate values rather than a single
  * 'vdev_state' entry.  This is because a device can be in multiple states, such
@@ -685,6 +705,17 @@ typedef enum dsl_scan_state {
 	DSS_NUM_STATES
 } dsl_scan_state_t;
 
+/*
+ * Errata described by http://zfsonlinux.org/msg/ZFS-8000-ER.  The ordering
+ * of this enum must be maintained to ensure the errata identifiers map to
+ * the correct documentation.  New errata may only be appended to the list
+ * and must contain corresponding documentation at the above link.
+ */
+typedef enum zpool_errata {
+	ZPOOL_ERRATA_NONE,
+	ZPOOL_ERRATA_ZOL_2094_SCRUB,
+	ZPOOL_ERRATA_ZOL_2094_ASYNC_DESTROY,
+} zpool_errata_t;
 
 /*
  * Vdev statistics.  Note: all fields should be 64-bit because this
@@ -753,10 +784,13 @@ typedef struct ddt_histogram {
 /*
  * /dev/zfs ioctl numbers.
  */
-#define	ZFS_IOC		('Z' << 8)
-
 typedef enum zfs_ioc {
-	ZFS_IOC_POOL_CREATE = ZFS_IOC,
+	/*
+	 * Illumos - 69/128 numbers reserved.
+	 */
+	ZFS_IOC_FIRST =	('Z' << 8),
+	ZFS_IOC = ZFS_IOC_FIRST,
+	ZFS_IOC_POOL_CREATE = ZFS_IOC_FIRST,
 	ZFS_IOC_POOL_DESTROY,
 	ZFS_IOC_POOL_IMPORT,
 	ZFS_IOC_POOL_EXPORT,
@@ -779,8 +813,6 @@ typedef enum zfs_ioc {
 	ZFS_IOC_DATASET_LIST_NEXT,
 	ZFS_IOC_SNAPSHOT_LIST_NEXT,
 	ZFS_IOC_SET_PROP,
-	ZFS_IOC_CREATE_MINOR,
-	ZFS_IOC_REMOVE_MINOR,
 	ZFS_IOC_CREATE,
 	ZFS_IOC_DESTROY,
 	ZFS_IOC_ROLLBACK,
@@ -793,7 +825,6 @@ typedef enum zfs_ioc {
 	ZFS_IOC_ERROR_LOG,
 	ZFS_IOC_CLEAR,
 	ZFS_IOC_PROMOTE,
-	ZFS_IOC_DESTROY_SNAPS_NVL,
 	ZFS_IOC_SNAPSHOT,
 	ZFS_IOC_DSOBJ_TO_DSNAME,
 	ZFS_IOC_OBJ_TO_PATH,
@@ -816,19 +847,37 @@ typedef enum zfs_ioc {
 	ZFS_IOC_DIFF,
 	ZFS_IOC_TMP_SNAPSHOT,
 	ZFS_IOC_OBJ_TO_STATS,
-	ZFS_IOC_EVENTS_NEXT,
-	ZFS_IOC_EVENTS_CLEAR,
-	ZFS_IOC_POOL_REGUID,
 	ZFS_IOC_SPACE_WRITTEN,
 	ZFS_IOC_SPACE_SNAPS,
+	ZFS_IOC_DESTROY_SNAPS,
+	ZFS_IOC_POOL_REGUID,
 	ZFS_IOC_POOL_REOPEN,
 	ZFS_IOC_SEND_PROGRESS,
+	ZFS_IOC_LOG_HISTORY,
+	ZFS_IOC_SEND_NEW,
+	ZFS_IOC_SEND_SPACE,
+	ZFS_IOC_CLONE,
+
+	/*
+	 * Linux - 3/64 numbers reserved.
+	 */
+	ZFS_IOC_LINUX = ('Z' << 8) + 0x80,
+	ZFS_IOC_EVENTS_NEXT,
+	ZFS_IOC_EVENTS_CLEAR,
+	ZFS_IOC_EVENTS_SEEK,
+
+	/*
+	 * FreeBSD - 1/64 numbers reserved.
+	 */
+	ZFS_IOC_FREEBSD = ('Z' << 8) + 0xC0,
+
+	ZFS_IOC_LAST
 } zfs_ioc_t;
 
 /*
  * zvol ioctl to get dataset name
  */
-#define BLKZNAME		_IOR(0x12,125,char[ZFS_MAXNAMELEN])
+#define	BLKZNAME		_IOR(0x12, 125, char[ZFS_MAXNAMELEN])
 
 /*
  * Internal SPA load state.  Used by FMA diagnosis engine.
@@ -864,6 +913,12 @@ typedef enum {
 #define	ZPOOL_HIST_TXG		"history txg"
 #define	ZPOOL_HIST_INT_EVENT	"history internal event"
 #define	ZPOOL_HIST_INT_STR	"history internal str"
+#define	ZPOOL_HIST_INT_NAME	"internal_name"
+#define	ZPOOL_HIST_IOCTL	"ioctl"
+#define	ZPOOL_HIST_INPUT_NVL	"in_nvl"
+#define	ZPOOL_HIST_OUTPUT_NVL	"out_nvl"
+#define	ZPOOL_HIST_DSNAME	"dsname"
+#define	ZPOOL_HIST_DSID		"dsid"
 
 /*
  * Flags for ZFS_IOC_VDEV_SET_STATE
@@ -882,6 +937,7 @@ typedef enum {
 #define	ZFS_IMPORT_ANY_HOST	0x2
 #define	ZFS_IMPORT_MISSING_LOG	0x4
 #define	ZFS_IMPORT_ONLY		0x8
+#define	ZFS_IMPORT_TEMP_NAME	0x10
 
 /*
  * Sysevent payload members.  ZFS will generate the following sysevents with the
@@ -908,57 +964,6 @@ typedef enum {
 #define	ZFS_EV_POOL_GUID	"pool_guid"
 #define	ZFS_EV_VDEV_PATH	"vdev_path"
 #define	ZFS_EV_VDEV_GUID	"vdev_guid"
-
-/*
- * Note: This is encoded on-disk, so new events must be added to the
- * end, and unused events can not be removed.  Be sure to edit
- * libzfs_pool.c: hist_event_table[].
- */
-typedef enum history_internal_events {
-	LOG_NO_EVENT = 0,
-	LOG_POOL_CREATE,
-	LOG_POOL_VDEV_ADD,
-	LOG_POOL_REMOVE,
-	LOG_POOL_DESTROY,
-	LOG_POOL_EXPORT,
-	LOG_POOL_IMPORT,
-	LOG_POOL_VDEV_ATTACH,
-	LOG_POOL_VDEV_REPLACE,
-	LOG_POOL_VDEV_DETACH,
-	LOG_POOL_VDEV_ONLINE,
-	LOG_POOL_VDEV_OFFLINE,
-	LOG_POOL_UPGRADE,
-	LOG_POOL_CLEAR,
-	LOG_POOL_SCAN,
-	LOG_POOL_PROPSET,
-	LOG_DS_CREATE,
-	LOG_DS_CLONE,
-	LOG_DS_DESTROY,
-	LOG_DS_DESTROY_BEGIN,
-	LOG_DS_INHERIT,
-	LOG_DS_PROPSET,
-	LOG_DS_QUOTA,
-	LOG_DS_PERM_UPDATE,
-	LOG_DS_PERM_REMOVE,
-	LOG_DS_PERM_WHO_REMOVE,
-	LOG_DS_PROMOTE,
-	LOG_DS_RECEIVE,
-	LOG_DS_RENAME,
-	LOG_DS_RESERVATION,
-	LOG_DS_REPLAY_INC_SYNC,
-	LOG_DS_REPLAY_FULL_SYNC,
-	LOG_DS_ROLLBACK,
-	LOG_DS_SNAPSHOT,
-	LOG_DS_UPGRADE,
-	LOG_DS_REFQUOTA,
-	LOG_DS_REFRESERV,
-	LOG_POOL_SCAN_DONE,
-	LOG_DS_USER_HOLD,
-	LOG_DS_USER_RELEASE,
-	LOG_POOL_SPLIT,
-	LOG_POOL_GUID_CHANGE,
-	LOG_END
-} history_internal_events_t;
 
 #ifdef	__cplusplus
 }

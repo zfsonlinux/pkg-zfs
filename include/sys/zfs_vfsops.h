@@ -60,16 +60,18 @@ typedef struct zfs_sb {
 	struct zfs_fuid_info	*z_fuid_replay; /* fuid info for replay */
 	zilog_t		*z_log;		/* intent log pointer */
 	uint_t		z_acl_inherit;	/* acl inheritance behavior */
+	uint_t		z_acl_type;	/* type of ACL usable on this FS */
 	zfs_case_t	z_case;		/* case-sense */
 	boolean_t	z_utf8;		/* utf8-only */
 	int		z_norm;		/* normalization flags */
 	boolean_t	z_atime;	/* enable atimes mount option */
+	boolean_t	z_relatime;	/* enable relatime mount option */
 	boolean_t	z_unmounted;	/* unmounted */
 	rrwlock_t	z_teardown_lock;
 	krwlock_t	z_teardown_inactive_lock;
 	list_t		z_all_znodes;	/* all znodes in the fs */
 	uint64_t	z_nr_znodes;	/* number of znodes in the fs */
-	unsigned long	z_rollback_time;/* last online rollback time */
+	unsigned long	z_rollback_time; /* last online rollback time */
 	kmutex_t	z_znodes_lock;	/* lock for z_all_znodes */
 	struct inode	*z_ctldir;	/* .zfs directory inode */
 	avl_tree_t	z_ctldir_snaps;	/* .zfs/snapshot entries */
@@ -101,7 +103,7 @@ typedef struct zfs_sb {
  * this the inode->i_nlink member is defined as an unsigned int.  To be
  * safe we use 2^31-1 as the limit.
  */
-#define ZFS_LINK_MAX		((1U << 31) - 1U)
+#define	ZFS_LINK_MAX		((1U << 31) - 1U)
 
 /*
  * Normal filesystems (those not under .zfs/snapshot) have a total

@@ -25,6 +25,7 @@ libzpool_la_SOURCES = \
 	$(top_srcdir)/module/zfs/bpobj.c \
 	$(top_srcdir)/module/zfs/bptree.c \
 	$(top_srcdir)/module/zfs/dbuf.c \
+	$(top_srcdir)/module/zfs/dbuf_stats.c \
 	$(top_srcdir)/module/zfs/ddt.c \
 	$(top_srcdir)/module/zfs/ddt_zap.c \
 	$(top_srcdir)/module/zfs/dmu.c \
@@ -45,6 +46,8 @@ libzpool_la_SOURCES = \
 	$(top_srcdir)/module/zfs/dsl_prop.c \
 	$(top_srcdir)/module/zfs/dsl_scan.c \
 	$(top_srcdir)/module/zfs/dsl_synctask.c \
+	$(top_srcdir)/module/zfs/dsl_destroy.c \
+	$(top_srcdir)/module/zfs/dsl_userhold.c \
 	$(top_srcdir)/module/zfs/fm.c \
 	$(top_srcdir)/module/zfs/gzip.c \
 	$(top_srcdir)/module/zfs/lzjb.c \
@@ -60,6 +63,7 @@ libzpool_la_SOURCES = \
 	$(top_srcdir)/module/zfs/spa_errlog.c \
 	$(top_srcdir)/module/zfs/spa_history.c \
 	$(top_srcdir)/module/zfs/spa_misc.c \
+	$(top_srcdir)/module/zfs/spa_stats.c \
 	$(top_srcdir)/module/zfs/space_map.c \
 	$(top_srcdir)/module/zfs/txg.c \
 	$(top_srcdir)/module/zfs/uberblock.c \
@@ -97,7 +101,8 @@ libzpool_la_LIBADD = \
 	$(top_builddir)/lib/libuutil/libuutil.la \
 	$(top_builddir)/lib/libnvpair/libnvpair.la
 
-libzpool_la_LDFLAGS = -pthread -version-info 1:1:0
+libzpool_la_LIBADD += $(ZLIB)
+libzpool_la_LDFLAGS = -version-info 2:0:0
 
 EXTRA_DIST = \
 	$(top_srcdir)/module/zfs/vdev_disk.c \

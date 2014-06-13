@@ -18,9 +18,11 @@
  *
  * CDDL HEADER END
  */
+
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2012 Pawel Jakub Dawidek <pawel@dawidek.net>.
+ * Copyright 2013 Nexenta Systems, Inc. All rights reserved.
  */
 
 #include <libintl.h>
@@ -108,7 +110,8 @@ zfs_callback(zfs_handle_t *zhp, void *data)
 					    cb->cb_props_table);
 
 				if (zfs_expand_proplist(zhp, cb->cb_proplist,
-				    (cb->cb_flags & ZFS_ITER_RECVD_PROPS))
+				    (cb->cb_flags & ZFS_ITER_RECVD_PROPS),
+				    (cb->cb_flags & ZFS_ITER_LITERAL_PROPS))
 				    != 0) {
 					free(node);
 					return (-1);
@@ -310,8 +313,8 @@ zfs_sort(const void *larg, const void *rarg, void *data)
 		} else if (psc->sc_prop == ZFS_PROP_NAME) {
 			lvalid = rvalid = B_TRUE;
 
-			(void) strlcpy(lbuf, zfs_get_name(l), sizeof(lbuf));
-			(void) strlcpy(rbuf, zfs_get_name(r), sizeof(rbuf));
+			(void) strlcpy(lbuf, zfs_get_name(l), sizeof (lbuf));
+			(void) strlcpy(rbuf, zfs_get_name(r), sizeof (rbuf));
 
 			lstr = lbuf;
 			rstr = rbuf;
@@ -325,9 +328,9 @@ zfs_sort(const void *larg, const void *rarg, void *data)
 			rstr = rbuf;
 		} else {
 			lvalid = zfs_prop_valid_for_type(psc->sc_prop,
-			    zfs_get_type(l));
+			    zfs_get_type(l), B_FALSE);
 			rvalid = zfs_prop_valid_for_type(psc->sc_prop,
-			    zfs_get_type(r));
+			    zfs_get_type(r), B_FALSE);
 
 			if (lvalid)
 				(void) zfs_prop_get_numeric(l, psc->sc_prop,
