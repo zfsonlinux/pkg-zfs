@@ -334,7 +334,11 @@ vn_remove(const char *path, uio_seg_t seg, int flags)
 		if (inode)
 			ihold(inode);
 
+#ifdef HAVE_2ARGS_VFS_UNLINK
 		rc = vfs_unlink(parent.dentry->d_inode, dentry);
+#else
+		rc = vfs_unlink(parent.dentry->d_inode, dentry, NULL);
+#endif /* HAVE_2ARGS_VFS_UNLINK */
 exit1:
 		dput(dentry);
 	} else {
@@ -410,13 +414,16 @@ vn_rename(const char *oldname, const char *newname, int x1)
 			SGOTO(exit4, rc);
 	}
 
-#ifdef HAVE_4ARGS_VFS_RENAME
+#if defined(HAVE_4ARGS_VFS_RENAME)
 	rc = vfs_rename(old_dir->d_inode, old_dentry,
-			new_dir->d_inode, new_dentry);
+	    new_dir->d_inode, new_dentry);
+#elif defined(HAVE_5ARGS_VFS_RENAME)
+	rc = vfs_rename(old_dir->d_inode, old_dentry,
+	    new_dir->d_inode, new_dentry, NULL);
 #else
-	rc = vfs_rename(old_dir->d_inode, old_dentry, oldnd.nd_mnt,
-			new_dir->d_inode, new_dentry, newnd.nd_mnt);
-#endif /* HAVE_4ARGS_VFS_RENAME */
+	rc = vfs_rename(old_dir->d_inode, old_dentry,
+	    new_dir->d_inode, new_dentry, NULL, 0);
+#endif
 exit4:
 	unlock_rename(new_dir, old_dir);
 exit3:
@@ -478,9 +485,9 @@ vn_remove(const char *path, uio_seg_t seg, int flags)
                 if (inode)
                         atomic_inc(&inode->i_count);
 #ifdef HAVE_2ARGS_VFS_UNLINK
-                rc = vfs_unlink(nd.nd_dentry->d_inode, dentry);
+		rc = vfs_unlink(nd.nd_dentry->d_inode, dentry);
 #else
-                rc = vfs_unlink(nd.nd_dentry->d_inode, dentry, nd.nd_mnt);
+		rc = vfs_unlink(nd.nd_dentry->d_inode, dentry, NULL);
 #endif /* HAVE_2ARGS_VFS_UNLINK */
 exit2:
                 dput(dentry);
@@ -570,13 +577,16 @@ vn_rename(const char *oldname, const char *newname, int x1)
         if (new_dentry == trap)
                 SGOTO(exit5, rc);
 
-#ifdef HAVE_4ARGS_VFS_RENAME
-        rc = vfs_rename(old_dir->d_inode, old_dentry,
-                        new_dir->d_inode, new_dentry);
+#if defined(HAVE_4ARGS_VFS_RENAME)
+	rc = vfs_rename(old_dir->d_inode, old_dentry,
+	    new_dir->d_inode, new_dentry);
+#elif defined(HAVE_5ARGS_VFS_RENAME)
+	rc = vfs_rename(old_dir->d_inode, old_dentry,
+	    new_dir->d_inode, new_dentry, NULL);
 #else
-        rc = vfs_rename(old_dir->d_inode, old_dentry, oldnd.nd_mnt,
-                        new_dir->d_inode, new_dentry, newnd.nd_mnt);
-#endif /* HAVE_4ARGS_VFS_RENAME */
+	rc = vfs_rename(old_dir->d_inode, old_dentry,
+	    new_dir->d_inode, new_dentry, NULL, 0);
+#endif
 exit5:
         dput(new_dentry);
 exit4:

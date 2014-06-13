@@ -34,17 +34,61 @@
 #define SS_DEBUG_SUBSYS SS_KMEM
 
 /*
+ * Within the scope of spl-kmem.c file the kmem_cache_* definitions
+ * are removed to allow access to the real Linux slab allocator.
+ */
+#undef kmem_cache_destroy
+#undef kmem_cache_create
+#undef kmem_cache_alloc
+#undef kmem_cache_free
+
+
+/*
  * Cache expiration was implemented because it was part of the default Solaris
  * kmem_cache behavior.  The idea is that per-cpu objects which haven't been
  * accessed in several seconds should be returned to the cache.  On the other
  * hand Linux slabs never move objects back to the slabs unless there is
- * memory pressure on the system.  By default both methods are disabled, but
- * may be enabled by setting KMC_EXPIRE_AGE or KMC_EXPIRE_MEM.
+ * memory pressure on the system.  By default the Linux method is enabled
+ * because it has been shown to improve responsiveness on low memory systems.
+ * This policy may be changed by setting KMC_EXPIRE_AGE or KMC_EXPIRE_MEM.
  */
-unsigned int spl_kmem_cache_expire = 0;
+unsigned int spl_kmem_cache_expire = KMC_EXPIRE_MEM;
 EXPORT_SYMBOL(spl_kmem_cache_expire);
 module_param(spl_kmem_cache_expire, uint, 0644);
 MODULE_PARM_DESC(spl_kmem_cache_expire, "By age (0x1) or low memory (0x2)");
+
+/*
+ * KMC_RECLAIM_ONCE is set as the default until zfsonlinux/spl#268 is
+ * definitively resolved.  Depending on the system configuration and
+ * workload this may increase the likelihood of out of memory events.
+ * For those cases it is advised that this option be set to zero.
+ */
+unsigned int spl_kmem_cache_reclaim = KMC_RECLAIM_ONCE;
+module_param(spl_kmem_cache_reclaim, uint, 0644);
+MODULE_PARM_DESC(spl_kmem_cache_reclaim, "Single reclaim pass (0x1)");
+
+unsigned int spl_kmem_cache_obj_per_slab = SPL_KMEM_CACHE_OBJ_PER_SLAB;
+module_param(spl_kmem_cache_obj_per_slab, uint, 0644);
+MODULE_PARM_DESC(spl_kmem_cache_obj_per_slab, "Number of objects per slab");
+
+unsigned int spl_kmem_cache_obj_per_slab_min = SPL_KMEM_CACHE_OBJ_PER_SLAB_MIN;
+module_param(spl_kmem_cache_obj_per_slab_min, uint, 0644);
+MODULE_PARM_DESC(spl_kmem_cache_obj_per_slab_min,
+    "Minimal number of objects per slab");
+
+unsigned int spl_kmem_cache_max_size = 32;
+module_param(spl_kmem_cache_max_size, uint, 0644);
+MODULE_PARM_DESC(spl_kmem_cache_max_size, "Maximum size of slab in MB");
+
+unsigned int spl_kmem_cache_slab_limit = 0;
+module_param(spl_kmem_cache_slab_limit, uint, 0644);
+MODULE_PARM_DESC(spl_kmem_cache_slab_limit,
+    "Objects less than N bytes use the Linux slab");
+
+unsigned int spl_kmem_cache_kmem_limit = (PAGE_SIZE / 4);
+module_param(spl_kmem_cache_kmem_limit, uint, 0644);
+MODULE_PARM_DESC(spl_kmem_cache_kmem_limit,
+    "Objects less than N bytes use the kmalloc");
 
 /*
  * The minimum amount of memory measured in pages to be free at all
@@ -850,7 +894,8 @@ kv_alloc(spl_kmem_cache_t *skc, int size, int flags)
 	ASSERT(ISP2(size));
 
 	if (skc->skc_flags & KMC_KMEM)
-		ptr = (void *)__get_free_pages(flags, get_order(size));
+		ptr = (void *)__get_free_pages(flags | __GFP_COMP,
+		    get_order(size));
 	else
 		ptr = __vmalloc(size, flags | __GFP_HIGHMEM, PAGE_KERNEL);
 
@@ -1333,7 +1378,10 @@ spl_cache_age(void *data)
 		return;
 
 	atomic_inc(&skc->skc_ref);
-	spl_on_each_cpu(spl_magazine_age, skc, 1);
+
+	if (!(skc->skc_flags & KMC_NOMAGAZINE))
+		spl_on_each_cpu(spl_magazine_age, skc, 1);
+
 	spl_slab_reclaim(skc, skc->skc_reap, 0);
 
 	while (!test_bit(KMC_BIT_DESTROY, &skc->skc_flags) && !id) {
@@ -1355,10 +1403,10 @@ spl_cache_age(void *data)
 
 /*
  * Size a slab based on the size of each aligned object plus spl_kmem_obj_t.
- * When on-slab we want to target SPL_KMEM_CACHE_OBJ_PER_SLAB.  However,
+ * When on-slab we want to target spl_kmem_cache_obj_per_slab.  However,
  * for very small objects we may end up with more than this so as not
  * to waste space in the minimal allocation of a single page.  Also for
- * very large objects we may use as few as SPL_KMEM_CACHE_OBJ_PER_SLAB_MIN,
+ * very large objects we may use as few as spl_kmem_cache_obj_per_slab_min,
  * lower than this and we will fail.
  */
 static int
@@ -1367,7 +1415,7 @@ spl_slab_size(spl_kmem_cache_t *skc, uint32_t *objs, uint32_t *size)
 	uint32_t sks_size, obj_size, max_size;
 
 	if (skc->skc_flags & KMC_OFFSLAB) {
-		*objs = SPL_KMEM_CACHE_OBJ_PER_SLAB;
+		*objs = spl_kmem_cache_obj_per_slab;
 		*size = P2ROUNDUP(sizeof(spl_kmem_slab_t), PAGE_SIZE);
 		SRETURN(0);
 	} else {
@@ -1377,12 +1425,12 @@ spl_slab_size(spl_kmem_cache_t *skc, uint32_t *objs, uint32_t *size)
 		if (skc->skc_flags & KMC_KMEM)
 			max_size = ((uint32_t)1 << (MAX_ORDER-3)) * PAGE_SIZE;
 		else
-			max_size = (32 * 1024 * 1024);
+			max_size = (spl_kmem_cache_max_size * 1024 * 1024);
 
 		/* Power of two sized slab */
 		for (*size = PAGE_SIZE; *size <= max_size; *size *= 2) {
 			*objs = (*size - sks_size) / obj_size;
-			if (*objs >= SPL_KMEM_CACHE_OBJ_PER_SLAB)
+			if (*objs >= spl_kmem_cache_obj_per_slab)
 				SRETURN(0);
 		}
 
@@ -1393,7 +1441,7 @@ spl_slab_size(spl_kmem_cache_t *skc, uint32_t *objs, uint32_t *size)
 		 */
 		*size = max_size;
 		*objs = (*size - sks_size) / obj_size;
-		if (*objs >= SPL_KMEM_CACHE_OBJ_PER_SLAB_MIN)
+		if (*objs >= (spl_kmem_cache_obj_per_slab_min))
 			SRETURN(0);
 	}
 
@@ -1478,6 +1526,9 @@ spl_magazine_create(spl_kmem_cache_t *skc)
 	int i;
 	SENTRY;
 
+	if (skc->skc_flags & KMC_NOMAGAZINE)
+		SRETURN(0);
+
 	skc->skc_mag_size = spl_magazine_size(skc);
 	skc->skc_mag_refill = (skc->skc_mag_size + 1) / 2;
 
@@ -1504,6 +1555,11 @@ spl_magazine_destroy(spl_kmem_cache_t *skc)
 	int i;
 	SENTRY;
 
+	if (skc->skc_flags & KMC_NOMAGAZINE) {
+		SEXIT;
+		return;
+	}
+
         for_each_online_cpu(i) {
 		skm = skc->skc_mag[i];
 		spl_cache_flush(skc, skm, skm->skm_avail);
@@ -1526,11 +1582,12 @@ spl_magazine_destroy(spl_kmem_cache_t *skc)
  * flags
  *	KMC_NOTOUCH	Disable cache object aging (unsupported)
  *	KMC_NODEBUG	Disable debugging (unsupported)
- *	KMC_NOMAGAZINE	Disable magazine (unsupported)
  *	KMC_NOHASH      Disable hashing (unsupported)
  *	KMC_QCACHE	Disable qcache (unsupported)
+ *	KMC_NOMAGAZINE	Enabled for kmem/vmem, Disabled for Linux slab
  *	KMC_KMEM	Force kmem backed cache
  *	KMC_VMEM        Force vmem backed cache
+ *	KMC_SLAB        Force Linux slab backed cache
  *	KMC_OFFSLAB	Locate objects off the slab
  */
 spl_kmem_cache_t *
@@ -1576,6 +1633,7 @@ spl_kmem_cache_create(char *name, size_t size, size_t align,
 	skc->skc_reclaim = reclaim;
 	skc->skc_private = priv;
 	skc->skc_vmp = vmp;
+	skc->skc_linux_cache = NULL;
 	skc->skc_flags = flags;
 	skc->skc_obj_size = size;
 	skc->skc_obj_align = SPL_KMEM_CACHE_ALIGN;
@@ -1602,28 +1660,69 @@ spl_kmem_cache_create(char *name, size_t size, size_t align,
 	skc->skc_obj_emergency = 0;
 	skc->skc_obj_emergency_max = 0;
 
+	/*
+	 * Verify the requested alignment restriction is sane.
+	 */
 	if (align) {
 		VERIFY(ISP2(align));
-		VERIFY3U(align, >=, SPL_KMEM_CACHE_ALIGN); /* Min alignment */
-		VERIFY3U(align, <=, PAGE_SIZE);            /* Max alignment */
+		VERIFY3U(align, >=, SPL_KMEM_CACHE_ALIGN);
+		VERIFY3U(align, <=, PAGE_SIZE);
 		skc->skc_obj_align = align;
 	}
 
-	/* If none passed select a cache type based on object size */
-	if (!(skc->skc_flags & (KMC_KMEM | KMC_VMEM))) {
-		if (spl_obj_size(skc) < (PAGE_SIZE / 8))
+	/*
+	 * When no specific type of slab is requested (kmem, vmem, or
+	 * linuxslab) then select a cache type based on the object size
+	 * and default tunables.
+	 */
+	if (!(skc->skc_flags & (KMC_KMEM | KMC_VMEM | KMC_SLAB))) {
+
+		/*
+		 * Objects smaller than spl_kmem_cache_slab_limit can
+		 * use the Linux slab for better space-efficiency.  By
+		 * default this functionality is disabled until its
+		 * performance characters are fully understood.
+		 */
+		if (spl_kmem_cache_slab_limit &&
+		    size <= (size_t)spl_kmem_cache_slab_limit)
+			skc->skc_flags |= KMC_SLAB;
+
+		/*
+		 * Small objects, less than spl_kmem_cache_kmem_limit per
+		 * object should use kmem because their slabs are small.
+		 */
+		else if (spl_obj_size(skc) <= spl_kmem_cache_kmem_limit)
 			skc->skc_flags |= KMC_KMEM;
+
+		/*
+		 * All other objects are considered large and are placed
+		 * on vmem backed slabs.
+		 */
 		else
 			skc->skc_flags |= KMC_VMEM;
 	}
 
-	rc = spl_slab_size(skc, &skc->skc_slab_objs, &skc->skc_slab_size);
-	if (rc)
-		SGOTO(out, rc);
+	/*
+	 * Given the type of slab allocate the required resources.
+	 */
+	if (skc->skc_flags & (KMC_KMEM | KMC_VMEM)) {
+		rc = spl_slab_size(skc,
+		    &skc->skc_slab_objs, &skc->skc_slab_size);
+		if (rc)
+			SGOTO(out, rc);
 
-	rc = spl_magazine_create(skc);
-	if (rc)
-		SGOTO(out, rc);
+		rc = spl_magazine_create(skc);
+		if (rc)
+			SGOTO(out, rc);
+	} else {
+		skc->skc_linux_cache = kmem_cache_create(
+		    skc->skc_name, size, align, 0, NULL);
+		if (skc->skc_linux_cache == NULL)
+			SGOTO(out, rc = ENOMEM);
+
+		kmem_cache_set_allocflags(skc, __GFP_COMP);
+		skc->skc_flags |= KMC_NOMAGAZINE;
+	}
 
 	if (spl_kmem_cache_expire & KMC_EXPIRE_AGE)
 		skc->skc_taskqid = taskq_dispatch_delay(spl_kmem_cache_taskq,
@@ -1665,6 +1764,7 @@ spl_kmem_cache_destroy(spl_kmem_cache_t *skc)
 	SENTRY;
 
 	ASSERT(skc->skc_magic == SKC_MAGIC);
+	ASSERT(skc->skc_flags & (KMC_KMEM | KMC_VMEM | KMC_SLAB));
 
 	down_write(&spl_kmem_cache_sem);
 	list_del_init(&skc->skc_list);
@@ -1684,8 +1784,14 @@ spl_kmem_cache_destroy(spl_kmem_cache_t *skc)
 	 * cache reaping action which races with this destroy. */
 	wait_event(wq, atomic_read(&skc->skc_ref) == 0);
 
-	spl_magazine_destroy(skc);
-	spl_slab_reclaim(skc, 0, 1);
+	if (skc->skc_flags & (KMC_KMEM | KMC_VMEM)) {
+		spl_magazine_destroy(skc);
+		spl_slab_reclaim(skc, 0, 1);
+	} else {
+		ASSERT(skc->skc_flags & KMC_SLAB);
+		kmem_cache_destroy(skc->skc_linux_cache);
+	}
+
 	spin_lock(&skc->skc_lock);
 
 	/* Validate there are no objects in use and free all the
@@ -1791,7 +1897,9 @@ spl_cache_reclaim_wait(void *word)
 }
 
 /*
- * No available objects on any slabs, create a new slab.
+ * No available objects on any slabs, create a new slab.  Note that this
+ * functionality is disabled for KMC_SLAB caches which are backed by the
+ * Linux slab.
  */
 static int
 spl_cache_grow(spl_kmem_cache_t *skc, int flags, void **obj)
@@ -1800,6 +1908,7 @@ spl_cache_grow(spl_kmem_cache_t *skc, int flags, void **obj)
 	SENTRY;
 
 	ASSERT(skc->skc_magic == SKC_MAGIC);
+	ASSERT((skc->skc_flags & KMC_SLAB) == 0);
 	might_sleep();
 	*obj = NULL;
 
@@ -1995,15 +2104,35 @@ void *
 spl_kmem_cache_alloc(spl_kmem_cache_t *skc, int flags)
 {
 	spl_kmem_magazine_t *skm;
-	unsigned long irq_flags;
 	void *obj = NULL;
 	SENTRY;
 
 	ASSERT(skc->skc_magic == SKC_MAGIC);
 	ASSERT(!test_bit(KMC_BIT_DESTROY, &skc->skc_flags));
 	ASSERT(flags & KM_SLEEP);
+
 	atomic_inc(&skc->skc_ref);
-	local_irq_save(irq_flags);
+
+	/*
+	 * Allocate directly from a Linux slab.  All optimizations are left
+	 * to the underlying cache we only need to guarantee that KM_SLEEP
+	 * callers will never fail.
+	 */
+	if (skc->skc_flags & KMC_SLAB) {
+		struct kmem_cache *slc = skc->skc_linux_cache;
+
+		do {
+			obj = kmem_cache_alloc(slc, flags | __GFP_COMP);
+			if (obj && skc->skc_ctor)
+				skc->skc_ctor(obj, skc->skc_private, flags);
+
+		} while ((obj == NULL) && !(flags & KM_NOSLEEP));
+
+		atomic_dec(&skc->skc_ref);
+		SRETURN(obj);
+	}
+
+	local_irq_disable();
 
 restart:
 	/* Safe to update per-cpu structure without lock, but
@@ -2025,7 +2154,7 @@ restart:
 			SGOTO(restart, obj = NULL);
 	}
 
-	local_irq_restore(irq_flags);
+	local_irq_enable();
 	ASSERT(obj);
 	ASSERT(IS_P2ALIGNED(obj, skc->skc_obj_align));
 
@@ -2053,6 +2182,17 @@ spl_kmem_cache_free(spl_kmem_cache_t *skc, void *obj)
 	ASSERT(skc->skc_magic == SKC_MAGIC);
 	ASSERT(!test_bit(KMC_BIT_DESTROY, &skc->skc_flags));
 	atomic_inc(&skc->skc_ref);
+
+	/*
+	 * Free the object from the Linux underlying Linux slab.
+	 */
+	if (skc->skc_flags & KMC_SLAB) {
+		if (skc->skc_dtor)
+			skc->skc_dtor(obj, skc->skc_private);
+
+		kmem_cache_free(skc->skc_linux_cache, obj);
+		goto out;
+	}
 
 	/*
 	 * Only virtual slabs may have emergency objects and these objects
@@ -2105,7 +2245,7 @@ __spl_kmem_cache_generic_shrinker(struct shrinker *shrink,
     struct shrink_control *sc)
 {
 	spl_kmem_cache_t *skc;
-	int unused = 0;
+	int alloc = 0;
 
 	down_read(&spl_kmem_cache_sem);
 	list_for_each_entry(skc, &spl_kmem_cache_list, skc_list) {
@@ -2114,24 +2254,25 @@ __spl_kmem_cache_generic_shrinker(struct shrinker *shrink,
 			   MAX(sc->nr_to_scan >> fls64(skc->skc_slab_objs), 1));
 
 		/*
-		 * Presume everything alloc'ed in reclaimable, this ensures
+		 * Presume everything alloc'ed is reclaimable, this ensures
 		 * we are called again with nr_to_scan > 0 so can try and
 		 * reclaim.  The exact number is not important either so
 		 * we forgo taking this already highly contented lock.
 		 */
-		unused += skc->skc_obj_alloc;
+		alloc += skc->skc_obj_alloc;
 	}
 	up_read(&spl_kmem_cache_sem);
 
 	/*
-	 * After performing reclaim always return -1 to indicate we cannot
-	 * perform additional reclaim.  This prevents shrink_slabs() from
-	 * repeatedly invoking this generic shrinker and potentially spinning.
+	 * When KMC_RECLAIM_ONCE is set allow only a single reclaim pass.
+	 * This functionality only exists to work around a rare issue where
+	 * shrink_slabs() is repeatedly invoked by many cores causing the
+	 * system to thrash.
 	 */
-	if (sc->nr_to_scan)
-		return -1;
+	if ((spl_kmem_cache_reclaim & KMC_RECLAIM_ONCE) && sc->nr_to_scan)
+		return (-1);
 
-	return unused;
+	return MAX((alloc * sysctl_vfs_cache_pressure) / 100, 0);
 }
 
 SPL_SHRINKER_CALLBACK_WRAPPER(spl_kmem_cache_generic_shrinker);
@@ -2152,13 +2293,27 @@ spl_kmem_cache_reap_now(spl_kmem_cache_t *skc, int count)
 	ASSERT(skc->skc_magic == SKC_MAGIC);
 	ASSERT(!test_bit(KMC_BIT_DESTROY, &skc->skc_flags));
 
-	/* Prevent concurrent cache reaping when contended */
-	if (test_and_set_bit(KMC_BIT_REAPING, &skc->skc_flags)) {
-		SEXIT;
-		return;
+	atomic_inc(&skc->skc_ref);
+
+	/*
+	 * Execute the registered reclaim callback if it exists.  The
+	 * per-cpu caches will be drained when is set KMC_EXPIRE_MEM.
+	 */
+	if (skc->skc_flags & KMC_SLAB) {
+		if (skc->skc_reclaim)
+			skc->skc_reclaim(skc->skc_private);
+
+		if (spl_kmem_cache_expire & KMC_EXPIRE_MEM)
+			kmem_cache_shrink(skc->skc_linux_cache);
+
+		SGOTO(out, 0);
 	}
 
-	atomic_inc(&skc->skc_ref);
+	/*
+	 * Prevent concurrent cache reaping when contended.
+	 */
+	if (test_and_set_bit(KMC_BIT_REAPING, &skc->skc_flags))
+		SGOTO(out, 0);
 
 	/*
 	 * When a reclaim function is available it may be invoked repeatedly
@@ -2208,7 +2363,7 @@ spl_kmem_cache_reap_now(spl_kmem_cache_t *skc, int count)
 	clear_bit(KMC_BIT_REAPING, &skc->skc_flags);
 	smp_mb__after_clear_bit();
 	wake_up_bit(&skc->skc_flags, KMC_BIT_REAPING);
-
+out:
 	atomic_dec(&skc->skc_ref);
 
 	SEXIT;

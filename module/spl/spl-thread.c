@@ -126,7 +126,7 @@ __thread_create(caddr_t stk, size_t  stksize, thread_func_t func,
 	tp->tp_state = state;
 	tp->tp_pri   = pri;
 
-	tsk = kthread_create(thread_generic_wrapper, (void *)tp,
+	tsk = spl_kthread_create(thread_generic_wrapper, (void *)tp,
 			     "%s", tp->tp_name);
 	if (IS_ERR(tsk)) {
 		SERROR("Failed to create thread: %ld\n", PTR_ERR(tsk));
@@ -137,3 +137,34 @@ __thread_create(caddr_t stk, size_t  stksize, thread_func_t func,
 	SRETURN((kthread_t *)tsk);
 }
 EXPORT_SYMBOL(__thread_create);
+
+/*
+ * spl_kthread_create - Wrapper providing pre-3.13 semantics for
+ * kthread_create() in which it is not killable and less likely
+ * to return -ENOMEM.
+ */
+struct task_struct *
+spl_kthread_create(int (*func)(void *), void *data, const char namefmt[], ...)
+{
+	struct task_struct *tsk;
+	va_list args;
+	char name[TASK_COMM_LEN];
+
+	va_start(args, namefmt);
+	vsnprintf(name, sizeof(name), namefmt, args);
+	va_end(args);
+	do {
+		tsk = kthread_create(func, data, "%s", name);
+		if (IS_ERR(tsk)) {
+			if (signal_pending(current)) {
+				clear_thread_flag(TIF_SIGPENDING);
+				continue;
+			}
+			if (PTR_ERR(tsk) == -ENOMEM)
+				continue;
+			return (NULL);
+		} else
+			return (tsk);
+	} while (1);
+}
+EXPORT_SYMBOL(spl_kthread_create);

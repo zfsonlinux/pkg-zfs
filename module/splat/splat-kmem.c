@@ -244,7 +244,7 @@ splat_kmem_test4(struct file *file, void *arg)
 #define SPLAT_KMEM_TEST_MAGIC		0x004488CCUL
 #define SPLAT_KMEM_CACHE_NAME		"kmem_test"
 #define SPLAT_KMEM_OBJ_COUNT		1024
-#define SPLAT_KMEM_OBJ_RECLAIM		1000 /* objects */
+#define SPLAT_KMEM_OBJ_RECLAIM		32 /* objects */
 #define SPLAT_KMEM_THREADS		32
 
 #define KCP_FLAG_READY			0x01
@@ -394,18 +394,25 @@ splat_kmem_cache_test_debug(struct file *file, char *name,
 {
 	int j;
 
-	splat_vprint(file, name,
-		     "%s cache objects %d, slabs %u/%u objs %u/%u mags ",
-		     kcp->kcp_cache->skc_name, kcp->kcp_count,
+	splat_vprint(file, name, "%s cache objects %d",
+	     kcp->kcp_cache->skc_name, kcp->kcp_count);
+
+	if (kcp->kcp_cache->skc_flags & (KMC_KMEM | KMC_VMEM)) {
+		splat_vprint(file, name, ", slabs %u/%u objs %u/%u",
 		     (unsigned)kcp->kcp_cache->skc_slab_alloc,
 		     (unsigned)kcp->kcp_cache->skc_slab_total,
 		     (unsigned)kcp->kcp_cache->skc_obj_alloc,
 		     (unsigned)kcp->kcp_cache->skc_obj_total);
 
-	for_each_online_cpu(j)
-		splat_print(file, "%u/%u ",
-			     kcp->kcp_cache->skc_mag[j]->skm_avail,
-			     kcp->kcp_cache->skc_mag[j]->skm_size);
+		if (!(kcp->kcp_cache->skc_flags & KMC_NOMAGAZINE)) {
+			splat_vprint(file, name, "%s", "mags");
+
+			for_each_online_cpu(j)
+				splat_print(file, "%u/%u ",
+				     kcp->kcp_cache->skc_mag[j]->skm_avail,
+				     kcp->kcp_cache->skc_mag[j]->skm_size);
+		}
+	}
 
 	splat_print(file, "%s\n", "");
 }
@@ -682,7 +689,7 @@ splat_kmem_cache_thread_test(struct file *file, void *arg, char *name,
 		goto out_kcp;
 	}
 
-	start = current_kernel_time();
+	getnstimeofday(&start);
 
 	for (i = 0; i < SPLAT_KMEM_THREADS; i++) {
 		thr = thread_create(NULL, 0,
@@ -707,7 +714,7 @@ splat_kmem_cache_thread_test(struct file *file, void *arg, char *name,
 	/* Sleep until all thread have finished */
 	wait_event(kcp->kcp_ctl_waitq, splat_kmem_cache_test_threads(kcp, 0));
 
-	stop = current_kernel_time();
+	getnstimeofday(&stop);
 	delta = timespec_sub(stop, start);
 
 	splat_vprint(file, name,
@@ -895,18 +902,19 @@ splat_kmem_test8(struct file *file, void *arg)
 		goto out_kct;
 	}
 
-	for (i = 0; i < 60; i++) {
+	/* Force reclaim every 1/10 a second for 60 seconds. */
+	for (i = 0; i < 600; i++) {
 		kmem_cache_reap_now(kcp->kcp_cache);
 		splat_kmem_cache_test_debug(file, SPLAT_KMEM_TEST8_NAME, kcp);
 
-		if (kcp->kcp_cache->skc_obj_total == 0)
+		if (kcp->kcp_count == 0)
 			break;
 
 		set_current_state(TASK_INTERRUPTIBLE);
-		schedule_timeout(HZ);
+		schedule_timeout(HZ / 10);
 	}
 
-	if (kcp->kcp_cache->skc_obj_total == 0) {
+	if (kcp->kcp_count == 0) {
 		splat_vprint(file, SPLAT_KMEM_TEST8_NAME,
 			"Successfully created %d objects "
 			"in cache %s and reclaimed them\n",
@@ -914,7 +922,7 @@ splat_kmem_test8(struct file *file, void *arg)
 	} else {
 		splat_vprint(file, SPLAT_KMEM_TEST8_NAME,
 			"Failed to reclaim %u/%d objects from cache %s\n",
-			(unsigned)kcp->kcp_cache->skc_obj_total,
+			(unsigned)kcp->kcp_count,
 			SPLAT_KMEM_OBJ_COUNT, SPLAT_KMEM_CACHE_NAME);
 		rc = -ENOMEM;
 	}
@@ -994,14 +1002,14 @@ splat_kmem_test9(struct file *file, void *arg)
 	for (i = 0; i < 60; i++) {
 		splat_kmem_cache_test_debug(file, SPLAT_KMEM_TEST9_NAME, kcp);
 
-		if (kcp->kcp_cache->skc_obj_total == 0)
+		if (kcp->kcp_count == 0)
 			break;
 
 		set_current_state(TASK_INTERRUPTIBLE);
 		schedule_timeout(HZ);
 	}
 
-	if (kcp->kcp_cache->skc_obj_total == 0) {
+	if (kcp->kcp_count == 0) {
 		splat_vprint(file, SPLAT_KMEM_TEST9_NAME,
 			"Successfully created %d objects "
 			"in cache %s and reclaimed them\n",
@@ -1009,7 +1017,7 @@ splat_kmem_test9(struct file *file, void *arg)
 	} else {
 		splat_vprint(file, SPLAT_KMEM_TEST9_NAME,
 			"Failed to reclaim %u/%d objects from cache %s\n",
-			(unsigned)kcp->kcp_cache->skc_obj_total, count,
+			(unsigned)kcp->kcp_count, count,
 			SPLAT_KMEM_CACHE_NAME);
 		rc = -ENOMEM;
 	}
@@ -1203,7 +1211,7 @@ splat_kmem_test13(struct file *file, void *arg)
 	kmem_cache_thread_t *kct;
 	dummy_page_t *dp;
 	struct list_head list;
-	struct timespec start, delta = { 0, 0 };
+	struct timespec start, stop, delta = { 0, 0 };
 	int size, count, slabs, fails = 0;
 	int i, rc = 0, max_time = 10;
 
@@ -1250,7 +1258,7 @@ splat_kmem_test13(struct file *file, void *arg)
 	i = 0;
 	slabs = kcp->kcp_cache->skc_slab_total;
 	INIT_LIST_HEAD(&list);
-	start = current_kernel_time();
+	getnstimeofday(&start);
 
 	/* Apply memory pressure */
 	while (kcp->kcp_cache->skc_slab_total > (slabs >> 2)) {
@@ -1259,7 +1267,8 @@ splat_kmem_test13(struct file *file, void *arg)
 			splat_kmem_cache_test_debug(
 			    file, SPLAT_KMEM_TEST13_NAME, kcp);
 
-		delta = timespec_sub(current_kernel_time(), start);
+		getnstimeofday(&stop);
+		delta = timespec_sub(stop, start);
 		if (delta.tv_sec >= max_time) {
 			splat_vprint(file, SPLAT_KMEM_TEST13_NAME,
 				     "Failed to reclaim 3/4 of cache in %ds, "
@@ -1270,7 +1279,7 @@ splat_kmem_test13(struct file *file, void *arg)
 			break;
 		}
 
-		dp = (dummy_page_t *)__get_free_page(GFP_KERNEL | __GFP_NORETRY);
+		dp = (dummy_page_t *)__get_free_page(GFP_KERNEL);
 		if (!dp) {
 			fails++;
 			splat_vprint(file, SPLAT_KMEM_TEST13_NAME,
