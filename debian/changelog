@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-3~wheezy) wheezy; urgency=low
+
+    * Build-depend on libblkid-dev.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 16 Jul 2014 22:28:19 +0200
+
 zfs-linux (0.6.3-2~wheezy) wheezy; urgency=low
 
     * Fallback to using cache file for import if /dev/disk/by-id fails..
