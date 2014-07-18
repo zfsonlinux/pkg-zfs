@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-4~wheezy) wheezy; urgency=low
+
+    * Update zfs-mount: Try a cache file import if cache file exist AND (not OR) pool not imported.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 19 Jul 2014 00:27:00 +0200
+
 zfs-linux (0.6.3-3~wheezy) wheezy; urgency=low
 
     * Build-depend on libblkid-dev.

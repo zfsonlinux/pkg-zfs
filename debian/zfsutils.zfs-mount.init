@@ -44,7 +44,7 @@ do_import()
 		$log_end_msg $RET
 	fi
 
-	if [ -f "$ZPOOL_CACHE" -o "$POOL_IMPORTED" == '0' ] ; then
+	if [ -f "$ZPOOL_CACHE" -a "$POOL_IMPORTED" == '0' ] ; then
 		$log_begin_msg "Importing ZFS pools (using cache file)"
 		"$ZPOOL" import -c "$ZPOOL_CACHE" -aN 2>/dev/null || true # stupid zpool will fail if all pools are already imported
 		RET=$?
