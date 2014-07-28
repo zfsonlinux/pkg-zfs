@@ -4,8 +4,10 @@ zfs-linux (0.6.3-5~wheezy) wheezy; urgency=low
       Get a list of all pools already imported. If USE_DISK_BY_ID, then
       try to use each /dev/disk/by-* dir for import. BUT, only try to import
       pools that isn't already imported.
+    * Support mounting additional filesystems (such as /var and /usr etc)
+      in the initrd using ZFS_INITRD_ADDITIONAL_DATASETS set in /etc/defaults/zfs.
 
- -- Turbo Fredriksson <turbo@debian.org>  Sat, 19 Jul 2014 00:27:00 +0200
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 28 Jul 2014 12:46:53 +0200
 
 zfs-linux (0.6.3-4~wheezy) wheezy; urgency=low
 

@@ -55,5 +55,12 @@ ZFS_INITRD_PRE_MOUNTROOT_SLEEP='0'
 # a USB disk that takes just a little longer to be available
 ZFS_INITRD_POST_MODPROBE_SLEEP='0'
 
+# List of additional datasets to mount after the root                    
+# dataset is mounted.
+# The init script will use the mountpoint specified in
+# the 'mountpoint' property value in the dataset to
+# determine where it should be mounted.
+#ZFS_INITRD_ADDITIONAL_DATASETS="rpool/ROOT/usr_local"
+
 # Location of the lockfile.
 LOCKDIR=/run/lock

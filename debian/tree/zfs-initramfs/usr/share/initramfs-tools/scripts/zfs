@@ -470,6 +470,34 @@ mountroot()
 		/bin/sh
 	fi
 
+	# ----------------------------------------------------------------
+	# M O U N T   A D D I T I O N A L   F I L E S Y S T E M S   R E Q U I R E D
+	if [ -n "$ZFS_INITRD_ADDITIONAL_DATASETS" ]
+	then
+		ZFS_CMD="mount -o zfsutil -t zfs"
+
+		for fs in $ZFS_INITRD_ADDITIONAL_DATASETS
+		do
+			mountpoint=`zfs get -H -o value mountpoint $fs`
+			ZFS_STDERR=$($ZFS_CMD ${fs} ${rootmnt}/${mountpoint} 2>&1)
+			ZFS_ERROR=$?
+			[ "$quiet" != "y" ] && $log_end_msg
+
+			if [ "$ZFS_ERROR" != 0 ]
+			then
+				disable_plymouth
+				echo ""
+				echo "Command: ${ZFS_CMD} ${fs} ${rootmnt}/${mountpoint}"
+				echo "Message: $ZFS_STDERR"
+				echo "Error: $ZFS_ERROR"
+				echo ""
+				echo "Manually mount the filesystem on $rootmnt/$mountpoint and then exit."
+				/bin/sh
+			fi
+		done
+	fi
+
+	# ----------------------------------------------------------------
 	if type run_scripts > /dev/null 2>&1 && [ -f "/scripts/local-bottom" -o -d "/scripts/local-bottom" ]
 	then
 		[ "$quiet" != "y" ] && $log_begin_msg "Running /scripts/local-bottom"
