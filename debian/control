@@ -15,7 +15,8 @@ Build-Depends: autoconf,
                lsb-release,
                po-debconf,
                uuid-dev,
-               zlib1g-dev
+               zlib1g-dev,
+               libblkid-dev
 Standards-Version: 3.9.4
 Homepage: http://www.zfsonlinux.org/
 Vcs-Git: git://anonscm.debian.org/pkg-zfsonlinux/zfs.git
