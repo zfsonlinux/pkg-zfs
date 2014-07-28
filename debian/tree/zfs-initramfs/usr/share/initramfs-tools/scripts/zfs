@@ -42,6 +42,13 @@ mountroot()
 {
 	pre_mountroot
 
+	# Support debug option
+	if grep -qiE '(^|[^\\](\\\\)* )(zfs_debug|zfs\.debug|zfsdebug)=(on|yes|1)( |$)' /proc/cmdline
+	then
+		ZPOOL_DEBUG=1
+		set -x
+	fi
+
 	if type run_scripts > /dev/null 2>&1 && [ -f "/scripts/local-premount" -o -d "/scripts/local-premount" ]
 	then
 		[ "$quiet" != "y" ] && $log_begin_msg "Running /scripts/local-premount"
@@ -63,6 +70,13 @@ mountroot()
 	# Load the module, without importing any pools - we want manual
 	# control over that part!
 	modprobe zfs zfs_autoimport_disable=1
+
+	# ERROR: 'zfs_autoimport_disable=1' don't seem to be working in >= 0.6.3.
+	# Export every pool we find!
+	for pool in $(zpool list -H -oname)
+	do
+		zpool export $pool
+	done
 
 	if [ "$ZFS_INITRD_POST_MODPROBE_SLEEP" -gt '0' ]
 	then
@@ -188,13 +202,6 @@ mountroot()
 
 				[ "$quiet" != "y" ] && $log_begin_msg "Attempting to import additional pools."
 
-				if [ -n "$ZPOOL_CACHE" ]
-				then
-					ZFS_CMD="zpool import -c ${ZPOOL_CACHE}  -f -N"
-				else
-					ZFS_CMD="zpool import -d /dev/disk/by-id -f -N"
-				fi
-
 				# Get a list of pools available for import
 				if [ -n "$ZFS_RPOOL" ]
 				then
@@ -206,17 +213,49 @@ mountroot()
 
 				for pool in $POOLS
 				do
-					ZFS_STDERR=$($ZFS_CMD $pool 2>&1)
-					ZFS_ERROR=$?
-
- 					ZFS_BOOTFS=$(zpool list -H -o bootfs $pool)
-					if [ -n "$ZFS_BOOTFS" -a "$ZFS_BOOTFS" != "-" ]
+					if [ -n "$ZFS_POOL_EXCEPTIONS" ]
 					then
-						# Keep it mounted
-						POOL_MOUNTED=1
-						break
-					else
-						zpool export $pool
+						for exception in $ZFS_POOL_EXCEPTIONS
+						do
+							[ "$pool" == "$exception" ] && continue 2
+						done
+					fi
+
+					if [ "$USE_DISK_BY_ID" == 'yes' ]
+					then
+						# First try all the by-* dirs
+						for dir in /dev/disk/by-*
+						do
+							ZFS_STDERR=$(zpool import -d $dir -f -N  $pool 2>&1)
+							ZFS_ERROR=$?
+
+		 					ZFS_BOOTFS=$(zpool list -H -o bootfs $pool)
+							if [ -n "$ZFS_BOOTFS" -a "$ZFS_BOOTFS" != "-" ]
+							then
+								# Keep it mounted
+								POOL_MOUNTED=1
+								break 3
+							else
+								zpool export $pool
+							fi
+						done
+					fi
+
+					# If by-* fails, try using the cache file (if it exists)
+					if [ -n "$ZPOOL_CACHE" -a -z "$POOL_MOUNTED" ]
+					then
+						ZFS_STDERR=$(zpool import -c ${ZPOOL_CACHE} -f -N)
+						ZFS_ERROR=$?
+
+	 					ZFS_BOOTFS=$(zpool list -H -o bootfs $pool)
+						if [ -n "$ZFS_BOOTFS" -a "$ZFS_BOOTFS" != "-" ]
+						then
+							# Keep it mounted
+							POOL_MOUNTED=1
+							break 2
+						else
+							zpool export $pool
+						fi
 					fi
 				done
 
@@ -243,43 +282,59 @@ mountroot()
 	if [ -z "$POOL_MOUNTED" ]
 	then
 		[ "$quiet" != "y" ] && $log_begin_msg "Importing ZFS root pool $ZFS_RPOOL"
-		# Attempt 1: Try the correct/proper way.
-		if [ "$ZFS_ERROR" != 0 -a -n "$ZPOOL_CACHE" ]
+
+		if [ "$USE_DISK_BY_ID" == 'yes' ]
 		then
-		    ZFS_CMD="zpool import -c ${ZPOOL_CACHE} -N ${ZFS_RPOOL} ${ZPOOL_FORCE}"
+			# Attempt 1: Try using /dev/disk/by-*.
+			for dir in /dev/disk/by-*
+			do
+				ZFS_CMD="zpool import -N -d $dir ${ZFS_RPOOL} ${ZPOOL_FORCE}"
+				ZFS_STDERR=$($ZFS_CMD 2>&1)
+				ZFS_ERROR=$?
 
-		    ZFS_STDERR=$($ZFS_CMD 2>&1)
-		    ZFS_ERROR=$?
-
-		    [ "$ZFS_ERROR" != 0 ] && echo "FAIL: $ZFS_CMD. Retrying..."
+				if [ "$ZFS_ERROR" == 0 ]
+				then
+					POOL_MOUNTED=1
+					break
+				else
+					echo "FAIL: $ZFS_CMD. Retrying..."
+				fi
+			done
 		fi
 
-		# Attempt 2: Try using /dev/disk/by-id if it exists.
-		# NOTE: This should really be attempt 1!
-		[ -d /dev/disk/by-id ] && DISK_BY_ID="-d /dev/disk/by-id"
-		if [ "$ZFS_ERROR" != 0 -o -z "$ZPOOL_CACHE" ]
+		# Attempt 2: Try using the cache file
+		if [ -n "$ZPOOL_CACHE" -a -z "$POOL_MOUNTED" ]
 		then
-			ZFS_CMD="zpool import -N ${DISK_BY_ID} ${ZFS_RPOOL} ${ZPOOL_FORCE}"
-
+			ZFS_CMD="zpool import -c ${ZPOOL_CACHE} -N ${ZFS_RPOOL} ${ZPOOL_FORCE}"
 			ZFS_STDERR=$($ZFS_CMD 2>&1)
 			ZFS_ERROR=$?
 
-			[ "$ZFS_ERROR" != 0 ] && echo "FAIL: $ZFS_CMD. Retrying..."
+			if [ "$ZFS_ERROR" == 0 ]
+			then
+				POOL_MOUNTED=1
+			else
+				echo "FAIL: $ZFS_CMD. Retrying..."
+			fi
 		fi
 
-		# Attempt 3: Last ditch attempt. If DISK_BY_ID is set, we've already tried...
-		if [ "$ZFS_ERROR" != 0 -a -z "$DISK_BY_ID" ]
+		# Attempt 3: Last ditch attempt.
+		if [ -z "$POOL_MOUNTED" ]
 		then
 			ZFS_CMD="zpool import -N ${ZFS_RPOOL} ${ZPOOL_FORCE}"
-
 			ZFS_STDERR=$($ZFS_CMD 2>&1)
 			ZFS_ERROR=$?
 
-			[ "$ZFS_ERROR" != 0 ] && echo "FAIL: $ZFS_CMD. Retrying..."
+			if [ "$ZFS_ERROR" == 0 ]
+			then
+				POOL_MOUNTED=1
+				break
+			else
+				echo "FAIL: $ZFS_CMD. Retrying..."
+			fi
 		fi
 		[ "$quiet" != "y" ] && $log_end_msg
 
-		if [ "$ZFS_ERROR" != 0 ]
+		if [ -z "$POOL_MOUNTED" -a "$ZFS_ERROR" != 0 ]
 		then
 			# Unable to import pool -- let the user sort this out
 			disable_plymouth
@@ -495,6 +550,22 @@ mountroot()
 				/bin/sh
 			fi
 		done
+	fi
+
+	if [ -n "$ZPOOL_DEBUG" ]
+	then
+		set +x
+
+		echo "DEBUG: imported pools:"
+		zpool list -H
+		echo
+
+		echo "DEBUG: mounted ZFS filesystems:"
+		mount | grep zfs
+		echo
+
+		echo -n "=> waiting for ENTER before continuing because of 'zfsdebug=1': "
+		read b
 	fi
 
 	# ----------------------------------------------------------------

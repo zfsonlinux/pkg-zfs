@@ -1,8 +1,17 @@
 zfs-linux (0.6.3-6~wheezy) wheezy; urgency=low
 
-    * Add exceptions to pool imports
+    * Add exceptions to pool imports.
+      + Both for init and initrd script.
+    * Make sure that the zpool.cache file is actually copied onto the initrd!!
+    * Include /etc/modprobe.d/{zfs,spl}.conf in the initrd if they exist.
+    * Export all pools found after the modprobe - zfs_autoimport_disable=1'
+      don't seem to be working in >= 0.6.3.
+      + This snippet will go away as soon as I can figure out why it doesn't,
+        it's ugly!!
+    * Only try /dev/disk/by-* in the initrd if USE_DISK_BY_ID is set.
+      + Try this first, then fallback to using the cache file if that exist.
 
- -- Turbo Fredriksson <turbo@debian.org>  Mon, 28 Jul 2014 13:16:10 +0200
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 28 Jul 2014 23:54:57 +0200
 
 zfs-linux (0.6.3-5~wheezy) wheezy; urgency=low
 
