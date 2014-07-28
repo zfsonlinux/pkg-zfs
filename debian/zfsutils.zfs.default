@@ -1,7 +1,8 @@
 # ZoL userland configuration.
 
 # Run `zfs mount -a` during system start?
-# This should be 'no' if zfs-mountall or a systemd generator is available.
+# This should be 'no' if zfs-mountall or a systemd generator
+# is available.
 ZFS_MOUNT='yes'
 
 # Run `zfs unmount -a` during system stop?
@@ -15,9 +16,12 @@ ZFS_SHARE='yes'
 # Run `zfs unshare -a` during system stop?
 ZFS_UNSHARE='yes'
 
-# Sould we use '-d /dev/disk/by-id' when importing pool.
+# Sould we use '-d /dev/disk/by-*' when importing pool.
 # This is recomended, but the default 'no' uses the cache
-# file
+# file.
+# Variable is somewhat missleading. Previously the code
+# tried _only_ '/dev/disk/by-id', but will now try any
+# '/dev/disk/by-*' directory.
 USE_DISK_BY_ID='yes'
 
 # Should the datasets be mounted verbosly (a mount counter

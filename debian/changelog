@@ -1,3 +1,12 @@
+zfs-linux (0.6.3-5~wheezy) wheezy; urgency=low
+
+    * Slight rewrite of the zfs-mount:do_import() part.
+      Get a list of all pools already imported. If USE_DISK_BY_ID, then
+      try to use each /dev/disk/by-* dir for import. BUT, only try to import
+      pools that isn't already imported.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 19 Jul 2014 00:27:00 +0200
+
 zfs-linux (0.6.3-4~wheezy) wheezy; urgency=low
 
     * Update zfs-mount: Try a cache file import if cache file exist AND (not OR) pool not imported.
