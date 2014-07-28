@@ -37,6 +37,12 @@ do_import()
 		available_pools=$(zpool import | grep pool: | sed 's@.*: @@')
 
 		for pool in $available_pools; do
+			if [ -n "$ZFS_POOL_EXCEPTIONS" ]; then
+				for exception in $ZFS_POOL_EXCEPTIONS; do
+					[ "$pool" == "$exception" ] && continue 2
+				done
+			fi
+
 			for dir in /dev/disk/by-*; do
 				$log_begin_msg "Importing ZFS pool $pool (using $dir)"
 				"$ZPOOL" import -d $dir -N $pool 2>/dev/null

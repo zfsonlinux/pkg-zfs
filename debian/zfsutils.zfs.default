@@ -62,5 +62,8 @@ ZFS_INITRD_POST_MODPROBE_SLEEP='0'
 # determine where it should be mounted.
 #ZFS_INITRD_ADDITIONAL_DATASETS="rpool/ROOT/usr_local"
 
+# List of pools that should NOT be imported at boot
+#ZFS_POOL_EXCEPTIONS="test2"
+
 # Location of the lockfile.
 LOCKDIR=/run/lock
