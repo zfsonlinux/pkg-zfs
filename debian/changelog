@@ -1,3 +1,10 @@
+zfs-linux (0.6.3-7~wheezy) wheezy; urgency=low
+
+    * Modify the behavior of zfs-mount:do_import(). POOL_IMPORTED might be NULL,
+      so use '... -a -z $POOL_IMPORTED' instead of '... -a POOL_IMPORTED == 0'.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 29 Jul 2014 02:13:58 +0200
+
 zfs-linux (0.6.3-6~wheezy) wheezy; urgency=low
 
     * Add exceptions to pool imports.
