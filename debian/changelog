@@ -1,3 +1,9 @@
+spl-linux (0.6.3-8~2bf35f~wheezy) wheezy; urgency=low
+
+  * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 31 Jul 2014 12:03:12 +0200
+
 spl-linux (0.6.3-7~wheezy) wheezy; urgency=low
 
   * New upstream release.
