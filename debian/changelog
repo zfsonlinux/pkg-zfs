@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-9~672692~wheezy) wheezy; urgency=low
+
+    * Build with .nogitrelease to get the _exact_ pkg version in the module as well.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 31 Jul 2014 12:49:18 +0200
+
 zfs-linux (0.6.3-8~672692~wheezy) wheezy; urgency=low
 
     * New upstream GIT tag.
