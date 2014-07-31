@@ -20,7 +20,7 @@
  */
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2013 by Delphix. All rights reserved.
+ * Copyright (c) 2011, 2014 by Delphix. All rights reserved.
  * Copyright (c) 2011 Nexenta Systems, Inc. All rights reserved.
  */
 
@@ -36,6 +36,7 @@
 #include <sys/dmu_objset.h>
 #include <sys/arc.h>
 #include <sys/ddt.h>
+#include <sys/zfeature.h>
 
 /*
  * ==========================================================================
@@ -58,8 +59,6 @@ kmem_cache_t *zio_buf_cache[SPA_MAXBLOCKSIZE >> SPA_MINBLOCKSHIFT];
 kmem_cache_t *zio_data_buf_cache[SPA_MAXBLOCKSIZE >> SPA_MINBLOCKSHIFT];
 int zio_bulk_flags = 0;
 int zio_delay_max = ZIO_DELAY_MAX;
-
-extern int zfs_mg_alloc_failures;
 
 /*
  * The following actions directly effect the spa's sync-to-convergence logic.
@@ -191,13 +190,6 @@ zio_init(void)
 		if (zio_data_buf_cache[c - 1] == NULL)
 			zio_data_buf_cache[c - 1] = zio_data_buf_cache[c];
 	}
-
-	/*
-	 * The zio write taskqs have 1 thread per cpu, allow 1/2 of the taskqs
-	 * to fail 3 times per txg or 8 failures, whichever is greater.
-	 */
-	if (zfs_mg_alloc_failures == 0)
-		zfs_mg_alloc_failures = MAX((3 * max_ncpus / 2), 8);
 
 	zio_inject_init();
 
@@ -1096,7 +1088,7 @@ zio_write_bp_init(zio_t *zio)
 		BP_ZERO(bp);
 	}
 
-	if (bp->blk_birth == zio->io_txg) {
+	if (!BP_IS_HOLE(bp) && bp->blk_birth == zio->io_txg) {
 		/*
 		 * We're rewriting an existing block, which means we're
 		 * working on behalf of spa_sync().  For spa_sync() to
@@ -1140,7 +1132,8 @@ zio_write_bp_init(zio_t *zio)
 	 * spa_sync() to allocate new blocks, but force rewrites after that.
 	 * There should only be a handful of blocks after pass 1 in any case.
 	 */
-	if (bp->blk_birth == zio->io_txg && BP_GET_PSIZE(bp) == psize &&
+	if (!BP_IS_HOLE(bp) && bp->blk_birth == zio->io_txg &&
+	    BP_GET_PSIZE(bp) == psize &&
 	    pass >= zfs_sync_pass_rewrite) {
 		enum zio_stage gang_stages = zio->io_pipeline & ZIO_GANG_STAGES;
 		ASSERT(psize != 0);
@@ -1152,15 +1145,22 @@ zio_write_bp_init(zio_t *zio)
 	}
 
 	if (psize == 0) {
+		if (zio->io_bp_orig.blk_birth != 0 &&
+		    spa_feature_is_active(spa, SPA_FEATURE_HOLE_BIRTH)) {
+			BP_SET_LSIZE(bp, lsize);
+			BP_SET_TYPE(bp, zp->zp_type);
+			BP_SET_LEVEL(bp, zp->zp_level);
+			BP_SET_BIRTH(bp, zio->io_txg, 0);
+		}
 		zio->io_pipeline = ZIO_INTERLOCK_PIPELINE;
 	} else {
 		ASSERT(zp->zp_checksum != ZIO_CHECKSUM_GANG_HEADER);
 		BP_SET_LSIZE(bp, lsize);
+		BP_SET_TYPE(bp, zp->zp_type);
+		BP_SET_LEVEL(bp, zp->zp_level);
 		BP_SET_PSIZE(bp, psize);
 		BP_SET_COMPRESS(bp, compress);
 		BP_SET_CHECKSUM(bp, zp->zp_checksum);
-		BP_SET_TYPE(bp, zp->zp_type);
-		BP_SET_LEVEL(bp, zp->zp_level);
 		BP_SET_DEDUP(bp, zp->zp_dedup);
 		BP_SET_BYTEORDER(bp, ZFS_HOST_BYTEORDER);
 		if (zp->zp_dedup) {
@@ -1358,7 +1358,7 @@ __zio_execute(zio_t *zio)
 		}
 
 		zio->io_stage = stage;
-		rv = zio_pipeline[highbit(stage) - 1](zio);
+		rv = zio_pipeline[highbit64(stage) - 1](zio);
 
 		if (rv == ZIO_PIPELINE_STOP)
 			return;
@@ -2613,7 +2613,7 @@ zio_vdev_io_start(zio_t *zio)
 	if (vd->vdev_ops->vdev_op_leaf &&
 	    (zio->io_type == ZIO_TYPE_READ || zio->io_type == ZIO_TYPE_WRITE)) {
 
-		if (zio->io_type == ZIO_TYPE_READ && vdev_cache_read(zio) == 0)
+		if (zio->io_type == ZIO_TYPE_READ && vdev_cache_read(zio))
 			return (ZIO_PIPELINE_CONTINUE);
 
 		if ((zio = vdev_queue_io(zio)) == NULL)
