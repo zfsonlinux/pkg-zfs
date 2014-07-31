@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-8~672692~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 31 Jul 2014 12:08:22 +0200
+
 zfs-linux (0.6.3-7~wheezy) wheezy; urgency=low
 
     * Modify the behavior of zfs-mount:do_import(). POOL_IMPORTED might be NULL,
