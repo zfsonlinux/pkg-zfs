@@ -43,7 +43,8 @@ do_import()
 				done
 			fi
 
-			for dir in /dev/disk/by-*; do
+			# Last ditch attempt, try /dev!
+			for dir in /dev/disk/by-* /dev; do
 				$log_begin_msg "Importing ZFS pool $pool (using $dir)"
 				"$ZPOOL" import -d $dir -N $pool 2>/dev/null
 				RET=$?

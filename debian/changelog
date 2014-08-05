@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-10~672692~wheezy) wheezy; urgency=low
+
+    * When trying /dev/disk/by-*, add /dev as a last ditch attempt.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 05 Aug 2014 12:44:04 +0200
+
 zfs-linux (0.6.3-9~672692~wheezy) wheezy; urgency=low
 
     * Build with .nogitrelease to get the _exact_ pkg version in the module as well.

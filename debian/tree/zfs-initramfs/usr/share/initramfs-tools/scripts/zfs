@@ -224,7 +224,8 @@ mountroot()
 					if [ "$USE_DISK_BY_ID" == 'yes' ]
 					then
 						# First try all the by-* dirs
-						for dir in /dev/disk/by-*
+						# Last ditch attempt, try /dev!
+						for dir in /dev/disk/by-* /dev
 						do
 							ZFS_STDERR=$(zpool import -d $dir -f -N  $pool 2>&1)
 							ZFS_ERROR=$?
@@ -286,7 +287,8 @@ mountroot()
 		if [ "$USE_DISK_BY_ID" == 'yes' ]
 		then
 			# Attempt 1: Try using /dev/disk/by-*.
-			for dir in /dev/disk/by-*
+			# Last ditch attempt, try /dev!
+			for dir in /dev/disk/by-* /dev
 			do
 				ZFS_CMD="zpool import -N -d $dir ${ZFS_RPOOL} ${ZPOOL_FORCE}"
 				ZFS_STDERR=$($ZFS_CMD 2>&1)
