@@ -58,12 +58,13 @@ module_param(spl_kmem_cache_expire, uint, 0644);
 MODULE_PARM_DESC(spl_kmem_cache_expire, "By age (0x1) or low memory (0x2)");
 
 /*
- * KMC_RECLAIM_ONCE is set as the default until zfsonlinux/spl#268 is
- * definitively resolved.  Depending on the system configuration and
- * workload this may increase the likelihood of out of memory events.
- * For those cases it is advised that this option be set to zero.
+ * The default behavior is to report the number of objects remaining in the
+ * cache.  This allows the Linux VM to repeatedly reclaim objects from the
+ * cache when memory is low satisfy other memory allocations.  Alternately,
+ * setting this value to KMC_RECLAIM_ONCE limits how aggressively the cache
+ * is reclaimed.  This may increase the likelihood of out of memory events.
  */
-unsigned int spl_kmem_cache_reclaim = KMC_RECLAIM_ONCE;
+unsigned int spl_kmem_cache_reclaim = 0;
 module_param(spl_kmem_cache_reclaim, uint, 0644);
 MODULE_PARM_DESC(spl_kmem_cache_reclaim, "Single reclaim pass (0x1)");
 
@@ -80,7 +81,17 @@ unsigned int spl_kmem_cache_max_size = 32;
 module_param(spl_kmem_cache_max_size, uint, 0644);
 MODULE_PARM_DESC(spl_kmem_cache_max_size, "Maximum size of slab in MB");
 
+/*
+ * For small objects the Linux slab allocator should be used to make the most
+ * efficient use of the memory.  However, large objects are not supported by
+ * the Linux slab and therefore the SPL implementation is preferred.  A cutoff
+ * of 16K was determined to be optimal for architectures using 4K pages.
+ */
+#if PAGE_SIZE == 4096
+unsigned int spl_kmem_cache_slab_limit = 16384;
+#else
 unsigned int spl_kmem_cache_slab_limit = 0;
+#endif
 module_param(spl_kmem_cache_slab_limit, uint, 0644);
 MODULE_PARM_DESC(spl_kmem_cache_slab_limit,
     "Objects less than N bytes use the Linux slab");
@@ -1889,13 +1900,6 @@ spl_cache_grow_wait(spl_kmem_cache_t *skc)
 	return !test_bit(KMC_BIT_GROWING, &skc->skc_flags);
 }
 
-static int
-spl_cache_reclaim_wait(void *word)
-{
-	schedule();
-	return 0;
-}
-
 /*
  * No available objects on any slabs, create a new slab.  Note that this
  * functionality is disabled for KMC_SLAB caches which are backed by the
@@ -1917,8 +1921,8 @@ spl_cache_grow(spl_kmem_cache_t *skc, int flags, void **obj)
 	 * then return so the local magazine can be rechecked for new objects.
 	 */
 	if (test_bit(KMC_BIT_REAPING, &skc->skc_flags)) {
-		rc = wait_on_bit(&skc->skc_flags, KMC_BIT_REAPING,
-		    spl_cache_reclaim_wait, TASK_UNINTERRUPTIBLE);
+		rc = spl_wait_on_bit(&skc->skc_flags, KMC_BIT_REAPING,
+		    TASK_UNINTERRUPTIBLE);
 		SRETURN(rc ? rc : -EAGAIN);
 	}
 
