@@ -1525,7 +1525,7 @@ dsl_dataset_space(dsl_dataset_t *ds,
 		else
 			*availbytesp = 0;
 	}
-	*usedobjsp = ds->ds_phys->ds_bp.blk_fill;
+	*usedobjsp = BP_GET_FILL(&ds->ds_phys->ds_bp);
 	*availobjsp = DN_MAX_OBJECT - *usedobjsp;
 }
 
@@ -1763,9 +1763,9 @@ dsl_dataset_rollback_check(void *arg, dmu_tx_t *tx)
 	}
 
 	/* must not have any bookmarks after the most recent snapshot */
-	proprequest = fnvlist_alloc();
+	VERIFY0(nvlist_alloc(&proprequest, NV_UNIQUE_NAME, KM_PUSHPAGE));
 	fnvlist_add_boolean(proprequest, zfs_prop_to_name(ZFS_PROP_CREATETXG));
-	bookmarks = fnvlist_alloc();
+	VERIFY0(nvlist_alloc(&bookmarks, NV_UNIQUE_NAME, KM_PUSHPAGE));
 	error = dsl_get_bookmarks_impl(ds, proprequest, bookmarks);
 	fnvlist_free(proprequest);
 	if (error != 0)
