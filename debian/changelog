@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-11~194e56~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 15 Aug 2014 12:08:56 +0200
+
 zfs-linux (0.6.3-10~672692~wheezy) wheezy; urgency=low
 
     * When trying /dev/disk/by-*, add /dev as a last ditch attempt.
