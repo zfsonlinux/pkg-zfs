@@ -1,3 +1,11 @@
+zfs-linux (0.6.3-13~cd3939~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+    * Fix zfs-mount description.
+      Closes: zfsonlinux/pkg-zfs/#121
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 06 Sep 2014 20:25:50 +0200
+
 zfs-linux (0.6.3-12~194e56~wheezy) wheezy; urgency=low
 
     * Dramatically improve the speed of snapshot listing in zfs_completion.bash.
