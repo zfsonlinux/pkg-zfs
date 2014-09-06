@@ -137,6 +137,18 @@ Default value: \fB8,388,608\fR.
 .sp
 .ne 2
 .na
+\fBmetaslab_bias_enabled\fR (int)
+.ad
+.RS 12n
+Enable metaslab group biasing based on its vdev's over- or under-utilization
+relative to the pool.
+.sp
+Use \fB1\fR for yes (default) and \fB0\fR for no.
+.RE
+
+.sp
+.ne 2
+.na
 \fBmetaslab_debug_load\fR (int)
 .ad
 .RS 12n
@@ -154,6 +166,41 @@ Use \fB1\fR for yes and \fB0\fR for no (default).
 Prevent metaslabs from being unloaded.
 .sp
 Use \fB1\fR for yes and \fB0\fR for no (default).
+.RE
+
+.sp
+.ne 2
+.na
+\fBmetaslab_fragmentation_factor_enabled\fR (int)
+.ad
+.RS 12n
+Enable use of the fragmentation metric in computing metaslab weights.
+.sp
+Use \fB1\fR for yes (default) and \fB0\fR for no.
+.RE
+
+.sp
+.ne 2
+.na
+\fBmetaslab_preload_enabled\fR (int)
+.ad
+.RS 12n
+Enable metaslab group preloading.
+.sp
+Use \fB1\fR for yes (default) and \fB0\fR for no.
+.RE
+
+.sp
+.ne 2
+.na
+\fBmetaslab_lba_weighting_enabled\fR (int)
+.ad
+.RS 12n
+Give more weight to metaslabs with lower LBAs, assuming they have
+greater bandwidth as is typically the case on a modern constant
+angular velocity disk drive.
+.sp
+Use \fB1\fR for yes (default) and \fB0\fR for no.
 .RE
 
 .sp
@@ -181,6 +228,52 @@ may wish to specify a more realistic inflation factor, particularly if
 they operate close to quota or capacity limits.
 .sp
 Default value: 24
+.RE
+
+.sp
+.ne 2
+.na
+\fBspa_load_verify_data\fR (int)
+.ad
+.RS 12n
+Whether to traverse data blocks during an "extreme rewind" (\fB-X\fR)
+import.  Use 0 to disable and 1 to enable.
+
+An extreme rewind import normally performs a full traversal of all
+blocks in the pool for verification.  If this parameter is set to 0,
+the traversal skips non-metadata blocks.  It can be toggled once the
+import has started to stop or start the traversal of non-metadata blocks.
+.sp
+Default value: 1
+.RE
+
+.sp
+.ne 2
+.na
+\fBspa_load_verify_metadata\fR (int)
+.ad
+.RS 12n
+Whether to traverse blocks during an "extreme rewind" (\fB-X\fR)
+pool import.  Use 0 to disable and 1 to enable.
+
+An extreme rewind import normally performs a full traversal of all
+blocks in the pool for verification.  If this parameter is set to 1,
+the traversal is not performed.  It can be toggled once the import has
+started to stop or start the traversal.
+.sp
+Default value: 1
+.RE
+
+.sp
+.ne 2
+.na
+\fBspa_load_verify_maxinflight\fR (int)
+.ad
+.RS 12n
+Maximum concurrent I/Os during the traversal performed during an "extreme
+rewind" (\fB-X\fR) pool import.
+.sp
+Default value: 10000
 .RE
 
 .sp
@@ -225,6 +318,22 @@ Default value: \fB8\fR.
 Min time before an active prefetch stream can be reclaimed
 .sp
 Default value: \fB2\fR.
+.RE
+
+.sp
+.ne 2
+.na
+\fBzfs_arc_average_blocksize\fR (int)
+.ad
+.RS 12n
+The ARC's buffer hash table is sized based on the assumption of an average
+block size of \fBzfs_arc_average_blocksize\fR (default 8K).  This works out
+to roughly 1MB of hash table per 1GB of physical memory with 8-byte pointers.
+For configurations with a known larger average block size this value can be
+increased to reduce the memory footprint.
+
+.sp
+Default value: \fB8192\fR.
 .RE
 
 .sp
@@ -394,7 +503,7 @@ Default value: \fB1,000,000\fR.
 .RS 12n
 Enable prefetching dedup-ed blks
 .sp
-Use \fB1\fR for yes (default) and \fB0\fR to disable.
+Use \fB1\fR for yes and \fB0\fR to disable (default).
 .RE
 
 .sp
@@ -764,6 +873,35 @@ Default value: \fB32,768\fR.
 Disable meta data compression
 .sp
 Use \fB1\fR for yes and \fB0\fR for no (default).
+.RE
+
+.sp
+.ne 2
+.na
+\fBzfs_metaslab_fragmentation_threshold\fR (int)
+.ad
+.RS 12n
+Allow metaslabs to keep their active state as long as their fragmentation
+percentage is less than or equal to this value. An active metaslab that
+exceeds this threshold will no longer keep its active status allowing
+better metaslabs to be selected.
+.sp
+Default value: \fB70\fR.
+.RE
+
+.sp
+.ne 2
+.na
+\fBzfs_mg_fragmentation_threshold\fR (int)
+.ad
+.RS 12n
+Metaslab groups are considered eligible for allocations if their
+fragmenation metric (measured as a percentage) is less than or equal to
+this value. If a metaslab group exceeds this threshold then it will be
+skipped unless all metaslab groups within the metaslab class have also
+crossed this threshold.
+.sp
+Default value: \fB85\fR.
 .RE
 
 .sp

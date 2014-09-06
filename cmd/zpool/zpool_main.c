@@ -22,7 +22,7 @@
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2011 Nexenta Systems, Inc. All rights reserved.
- * Copyright (c) 2013 by Delphix. All rights reserved.
+ * Copyright (c) 2011, 2014 by Delphix. All rights reserved.
  * Copyright (c) 2012 by Frederik Wessels. All rights reserved.
  * Copyright (c) 2012 by Cyril Plisko. All rights reserved.
  */
@@ -2082,7 +2082,7 @@ zpool_do_import(int argc, char **argv)
 
 		case 'T':
 			errno = 0;
-			txg = strtoull(optarg, &endptr, 10);
+			txg = strtoull(optarg, &endptr, 0);
 			if (errno != 0 || *endptr != '\0') {
 				(void) fprintf(stderr,
 				    gettext("invalid txg value\n"));
@@ -2998,10 +2998,16 @@ print_one_column(zpool_prop_t prop, uint64_t value, boolean_t scripted)
 	boolean_t fixed;
 	size_t width = zprop_width(prop, &fixed, ZFS_TYPE_POOL);
 
-	zfs_nicenum(value, propval, sizeof (propval));
 
 	if (prop == ZPOOL_PROP_EXPANDSZ && value == 0)
 		(void) strlcpy(propval, "-", sizeof (propval));
+	else if (prop == ZPOOL_PROP_FRAGMENTATION && value == ZFS_FRAG_INVALID)
+		(void) strlcpy(propval, "-", sizeof (propval));
+	else if (prop == ZPOOL_PROP_FRAGMENTATION)
+		(void) snprintf(propval, sizeof (propval), "%llu%%",
+		    (unsigned long long)value);
+	else
+		zfs_nicenum(value, propval, sizeof (propval));
 
 	if (scripted)
 		(void) printf("\t%s", propval);
@@ -3034,9 +3040,9 @@ print_list_stats(zpool_handle_t *zhp, const char *name, nvlist_t *nv,
 		/* only toplevel vdevs have capacity stats */
 		if (vs->vs_space == 0) {
 			if (scripted)
-				(void) printf("\t-\t-\t-");
+				(void) printf("\t-\t-\t-\t-");
 			else
-				(void) printf("      -      -      -");
+				(void) printf("      -      -      -      -");
 		} else {
 			print_one_column(ZPOOL_PROP_SIZE, vs->vs_space,
 			    scripted);
@@ -3044,6 +3050,8 @@ print_list_stats(zpool_handle_t *zhp, const char *name, nvlist_t *nv,
 			    scripted);
 			print_one_column(ZPOOL_PROP_FREE,
 			    vs->vs_space - vs->vs_alloc, scripted);
+			print_one_column(ZPOOL_PROP_FRAGMENTATION,
+			    vs->vs_fragmentation, scripted);
 		}
 		print_one_column(ZPOOL_PROP_EXPANDSZ, vs->vs_esize,
 		    scripted);
@@ -3128,8 +3136,8 @@ zpool_do_list(int argc, char **argv)
 	int ret = 0;
 	list_cbdata_t cb = { 0 };
 	static char default_props[] =
-	    "name,size,allocated,free,capacity,dedupratio,"
-	    "health,altroot";
+	    "name,size,allocated,free,fragmentation,capacity,"
+	    "dedupratio,health,altroot";
 	char *props = default_props;
 	unsigned long interval = 0, count = 0;
 	zpool_list_t *list;
@@ -4594,11 +4602,32 @@ typedef struct upgrade_cbdata {
 } upgrade_cbdata_t;
 
 static int
+check_unsupp_fs(zfs_handle_t *zhp, void *unsupp_fs)
+{
+	int zfs_version = (int) zfs_prop_get_int(zhp, ZFS_PROP_VERSION);
+	int *count = (int *)unsupp_fs;
+
+	if (zfs_version > ZPL_VERSION) {
+		(void) printf(gettext("%s (v%d) is not supported by this "
+		    "implementation of ZFS.\n"),
+		    zfs_get_name(zhp), zfs_version);
+		(*count)++;
+	}
+
+	zfs_iter_filesystems(zhp, check_unsupp_fs, unsupp_fs);
+
+	zfs_close(zhp);
+
+	return (0);
+}
+
+static int
 upgrade_version(zpool_handle_t *zhp, uint64_t version)
 {
 	int ret;
 	nvlist_t *config;
 	uint64_t oldversion;
+	int unsupp_fs = 0;
 
 	config = zpool_get_config(zhp, NULL);
 	verify(nvlist_lookup_uint64(config, ZPOOL_CONFIG_VERSION,
@@ -4606,6 +4635,17 @@ upgrade_version(zpool_handle_t *zhp, uint64_t version)
 
 	assert(SPA_VERSION_IS_SUPPORTED(oldversion));
 	assert(oldversion < version);
+
+	ret = zfs_iter_root(zpool_get_handle(zhp), check_unsupp_fs, &unsupp_fs);
+	if (ret != 0)
+		return (ret);
+
+	if (unsupp_fs) {
+		(void) printf(gettext("Upgrade not performed due to %d "
+		    "unsupported filesystems (max v%d).\n"),
+		    unsupp_fs, (int) ZPL_VERSION);
+		return (1);
+	}
 
 	ret = zpool_upgrade(zhp, version);
 	if (ret != 0)
