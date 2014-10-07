@@ -101,6 +101,18 @@ Description: Native ZFS filesystem kernel modules for Linux
  .
  This DKMS package includes the SPA, DMU, ZVOL, and ZPL components of ZFS.
 
+Package: zfs-dracut
+Section: utils
+Architecture: linux-any
+Depends: dracut, zfs-modules | zfs-dkms, zfsutils, ${misc:Depends}
+Description: Native ZFS root filesystem capabilities for Linux
+ The Z file system is a pooled filesystem designed for maximum data
+ integrity, supporting data snapshots, multiple copies, and data
+ checksums.
+ .
+ This package adds ZFS to the system initramfs with a hook
+ for the dracut infrastructure.
+
 Package: zfs-initramfs
 Architecture: linux-any
 Depends: initramfs-tools, zfs-modules | zfs-dkms, zfsutils, ${misc:Depends}
