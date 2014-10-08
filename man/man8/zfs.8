@@ -3707,6 +3707,26 @@ M       F       /tank/test/modified
 .in -2
 .sp
 
+.LP
+\fBExample 24\fR Creating a bookmark
+.sp
+.LP
+The following example create a bookmark to a snapshot. This bookmark can then
+be used instead of snapshot in send streams.
+
+.sp
+.in +2
+.nf
+# zfs bookmark rpool@snapshot rpool#bookmark
+.fi
+.in -2
+.sp
+
+.SH "ENVIRONMENT VARIABLES"
+.TP
+.B "ZFS_ABORT
+Cause \fBzfs\fR to dump core on exit for the purposes of running \fB::findleaks\fR.
+
 .SH EXIT STATUS
 .LP
 The following exit values are returned:
