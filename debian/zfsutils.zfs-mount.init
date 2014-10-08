@@ -19,8 +19,8 @@
 # Default-Start:  2 3 4 5
 # Default-Stop:   0 1 6
 # Short-Description: Import and mount ZFS pools, filesystems and volumes
-# Description: Run the `zfs import`, `zfs mount -a`, `zfs umount -a` or
-#              `zfs export` command.
+# Description: Run the `zpool import`, `zfs mount -a`, `zfs umount -a` or
+#              `zpool export` command.
 ### END INIT INFO
 
 # Source the common init script
@@ -193,7 +193,14 @@ stop()
 	fi
 
 	do_unmount
-	do_export
+
+	set -- `mount | grep ' on / '`
+	if [ "$5" != "zfs" ]; then
+	    # Only export the pool if we're not running a zfs root.
+	    # Won't work, because the filesystem (and therefor pool)
+	    # is busy (being mounted :).
+	    do_export
+	fi
 
 	rm -f "$LOCKDIR/$servicename"
 }
