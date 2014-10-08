@@ -1,3 +1,10 @@
+zfs-linux (0.6.3-14~e66597~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+    * Don't export pool if running a zfs root.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 08 Oct 2014 19:38:51 +0200
+
 zfs-linux (0.6.3-13~cd3939~wheezy) wheezy; urgency=low
 
     * New upstream GIT tag.
