@@ -1,3 +1,11 @@
+zfs-linux (0.6.3-15~e66597~wheezy) wheezy; urgency=low
+
+    * Use /sbin/modprobe instead of built-in (BusyBox) modprobe.
+      This gets rid of the message "modprobe: can't load module zcommon".
+      Thanx to pcoultha for finding this.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 11 Oct 2014 20:41:57 +0200
+
 zfs-linux (0.6.3-14~e66597~wheezy) wheezy; urgency=low
 
     * New upstream GIT tag.

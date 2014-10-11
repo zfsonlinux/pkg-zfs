@@ -69,7 +69,7 @@ mountroot()
 
 	# Load the module, without importing any pools - we want manual
 	# control over that part!
-	modprobe zfs zfs_autoimport_disable=1
+	/sbin/modprobe zfs zfs_autoimport_disable=1
 
 	# ERROR: 'zfs_autoimport_disable=1' don't seem to be working in >= 0.6.3.
 	# Export every pool we find!
@@ -467,7 +467,7 @@ mountroot()
 			# Simplest just to load all...
 			for mod in sun-ccm sun-gcm sun-ctr
 			do
-				modprobe $mod
+				/sbin/modprobe $mod
 			done
 
 			# If the key isn't availible, then this will fail!
