@@ -54,31 +54,13 @@ override_dh_auto_install:
 	@# Install the /etc/default/zfs options file.
 	dh_installinit --name=zfs
 
-	@# Install the /etc/init.d/zfs-mount script.
-ifeq ($(LSB_DISTRIBUTOR),Debian)
-	@# Debian runs local mounts at sysv sequences [10..12] [08..09].
-	dh_installinit --name=zfs-mount \
-	  --no-restart-on-upgrade --no-start -- defaults 13 07
-else
 	dh_installinit --name=zfs-mount \
 	  --no-restart-on-upgrade --no-start
-endif
 
-	@# Install the /etc/init.d/zfs-share script.
-ifeq ($(LSB_DISTRIBUTOR),Debian)
-	@# Debian runs nfs-kernel-server at sysv sequence 17 01,
-	@# iscsitarget at 02 01, and samba at 01 02.
-	dh_installinit --name=zfs-share \
-	  --no-restart-on-upgrade --no-start -- defaults 18 00
-else ifeq ($(LSB_DISTRIBUTOR),Ubuntu)
 	@# Ubuntu runs nfs-kernel-server at sysv sequence 20 80,
 	@# iscsitarget at 20 20, and samba through upstart.
 	dh_installinit --name=zfs-share \
 	  --no-restart-on-upgrade --no-start -- defaults 25 15
-else
-		dh_installinit --name=zfs-share \
-		  --no-restart-on-upgrade --no-start
-endif
 
 	@# Ensure that /etc/zfs is in the zfsutils package.
 	@# This is required until the zdev.conf conversion is complete.
