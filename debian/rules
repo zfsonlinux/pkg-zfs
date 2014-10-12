@@ -54,9 +54,6 @@ override_dh_auto_install:
 	@# Install the /etc/default/zfs options file.
 	dh_installinit --name=zfs
 
-	dh_installinit --name=zfs-mount \
-	  --no-restart-on-upgrade --no-start
-
 	@# Ubuntu runs nfs-kernel-server at sysv sequence 20 80,
 	@# iscsitarget at 20 20, and samba through upstart.
 	dh_installinit --name=zfs-share \

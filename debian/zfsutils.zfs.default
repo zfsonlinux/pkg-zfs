@@ -1,13 +1,5 @@
 # ZoL userland configuration.
 
-# Run `zfs mount -a` during system start?
-# This should be 'no' if zfs-mountall or a systemd generator is available.
-ZFS_MOUNT='no'
-
-# Run `zfs unmount -a` during system stop?
-# This should be 'no' on most systems.
-ZFS_UNMOUNT='no'
-
 # Run `zfs share -a` during system start?
 # nb: The shareiscsi, sharenfs, and sharesmb dataset properties.
 ZFS_SHARE='no'
