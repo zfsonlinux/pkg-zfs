@@ -1,0 +1,144 @@
+# zpool-import.conf for Upstart
+#
+# Block mountall, wait for member devices to appear, and import ZFS pools.
+#
+# This is a naive indirect /etc/zfs/zpool.cache parser that assumes the output
+# of zdb is stable. It runs in dash before /usr is guaranteed to be available,
+# so it is limited to posix bourne syntax and the /bin utilities.
+#
+# Parsing will break if disk nodes ever become non-leaf nodes, in which case
+# creating a helper that directly calls libnvpair or moving the timeout logic
+# into `zpool` itself would be a better solution.
+
+task
+start on ( starting mountall )
+description "Automatically import ZFS pools before mountall starts."
+
+pre-start script
+	# This argument becomes the default in ZoL 0.6.4
+	modprobe zfs zfs_autoimport_disable=1
+end script
+
+script
+	# Source the ZoL userland configuration.
+	if [ -f '/etc/default/zfs' ]
+	then
+		. '/etc/default/zfs'
+	fi
+
+	# Use the arithmetic operator to sanitize the timeout variable.
+	if [ ! "$((ZFS_AUTOIMPORT_TIMEOUT))" -gt '0' ]
+	then
+		# Set a default if the timeout is undefined or malformed.
+		ZFS_AUTOIMPORT_TIMEOUT='30'
+	fi
+
+	# Initialize slack local variables.
+	PREVIOUS_INDENT=
+	ZPOOL_CHILD_NOT_PRESENT=
+	ZPOOL_CHILD_OFFLINE=
+	ZPOOL_CHILD_PATH=
+	ZPOOL_CHILD_TYPE=
+	ZPOOL_NAME=
+	ZPOOL_VDEVS=
+
+	IFS=':'
+	while read NAME VALUE
+	do
+		# Determine the number of spaces prefixing an nvpair line.
+		INDENT=''
+		while [ "$NAME" != "${NAME#$INDENT }" ]
+		do
+			INDENT="$INDENT "
+		done
+
+		# Arrays of nvpairs are delimited by indentation.
+		if [ "$INDENT" != "$PREVIOUS_INDENT" ]
+		then
+			# Check whether the previous paragraph had details about a pool
+			# member. File-backed pools are omitted because nothing outside of the
+			# system root has been processed when we get here.
+
+			if [ -z "$ZPOOL_CHILD_NOT_PRESENT" \
+			  -a -z "$ZPOOL_CHILD_OFFLINE" \
+			  -a -n "$ZPOOL_CHILD_PATH" \
+			  -a "$ZPOOL_CHILD_TYPE" = 'disk' ]
+			then
+				ZPOOL_VDEVS="$ZPOOL_VDEVS $ZPOOL_CHILD_PATH"
+			fi
+
+			PREVIOUS_INDENT="$INDENT"
+			ZPOOL_CHILD_NOT_PRESENT=''
+			ZPOOL_CHILD_OFFLINE=''
+			ZPOOL_CHILD_PATH=''
+			ZPOOL_CHILD_TYPE=''
+		fi
+
+		# Do imports and reset loop variables at the top of a new stanza.
+		if [ -z "$INDENT" ]
+		then
+			if [ -n "$ZPOOL_NAME" -a -n "$ZPOOL_VDEVS" ]
+			then
+				# Run a background subshell to do the import.
+				(
+					IFS=' '
+					ZPOOL_VDEVS_EXPRESSION='-e /dev/zfs'
+					for ii in $ZPOOL_VDEVS
+					do
+						ZPOOL_VDEVS_EXPRESSION="$ZPOOL_VDEVS_EXPRESSION -a -e $ii"
+					done
+
+					while [ "$ZFS_AUTOIMPORT_TIMEOUT" -gt '0' -a ! \( $ZPOOL_VDEVS_EXPRESSION \) ]
+					do
+						ZFS_AUTOIMPORT_TIMEOUT=$((ZFS_AUTOIMPORT_TIMEOUT -1))
+						sleep 1
+					done
+
+					# This is tried unconditionally to accomodate storage changes
+					# and failures between power-off and power-on.
+					exec zpool import -N "$ZPOOL_NAME"
+				)&
+			fi
+			ZPOOL_NAME=''
+			ZPOOL_VDEVS=''
+		fi
+
+		# Trim field whitespace.
+		NAME="${NAME#$INDENT}"
+		VALUE="${VALUE# }"
+
+		# Trim string quoting.
+		if [ "$VALUE" != "${VALUE#\'}" -a "$VALUE" != "${VALUE%\'}"  ]
+		then
+			VALUE="${VALUE#\'}"
+			VALUE="${VALUE%\'}"
+		fi
+
+		case "$NAME" in
+			(name)
+				if [ ${#INDENT} -eq '4' ]
+				then
+					ZPOOL_NAME="$VALUE"
+				fi
+				;;
+			(not_present)
+				ZPOOL_CHILD_NOT_PRESENT="$VALUE"
+				;;
+			(offline)
+				ZPOOL_CHILD_OFFLINE="$VALUE"
+				;;
+			(path)
+				ZPOOL_CHILD_PATH="$VALUE"
+				;;
+			(type)
+				ZPOOL_CHILD_TYPE="$VALUE"
+				;;
+		esac
+
+		# The colon appended to the zdb output below is required by the parsing logic.
+	done <<-HERE
+		$(zdb -C 2>/dev/.initramfs/zdb.stderr)
+		:
+	HERE
+	wait
+end script

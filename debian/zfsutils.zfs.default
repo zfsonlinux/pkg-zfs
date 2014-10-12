@@ -1,5 +1,9 @@
 # ZoL userland configuration.
 
+# Wait this many seconds during system start for pool member devices to appear
+# before attempting import and starting mountall.
+ZFS_AUTOIMPORT_TIMEOUT='30'
+
 # Run `zfs share -a` during system start?
 # nb: The shareiscsi, sharenfs, and sharesmb dataset properties.
 ZFS_SHARE='no'
