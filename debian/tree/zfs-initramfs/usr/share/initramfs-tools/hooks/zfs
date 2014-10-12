@@ -68,6 +68,8 @@ else
 	hostname >"$DESTDIR/etc/hostname"
 fi
 
-# The spl package ensures that the /etc/hostid file exists.
-# NB: Commentary in the spl.postinst script.
-cp -p "/etc/hostid" "$DESTDIR/etc/hostid"
+# ZoL 0.6.3 deprecated the hostid check.
+if [ -f /etc/hostid ]
+then
+	cp -p /etc/hostid "$DESTDIR/etc/hostid"
+fi
