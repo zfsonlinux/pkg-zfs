@@ -71,7 +71,6 @@ the latest code for Ubuntu 14.04 Trusty Tahr is:
 
 1. Now compile the software:
   ```
-  $ ./autogen.sh
   $ git-buildpackage -uc -us --source-option=--auto-commit
   ```
 
