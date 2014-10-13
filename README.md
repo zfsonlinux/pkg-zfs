@@ -45,20 +45,39 @@ This requires a corresponding `deb-src` line for each `deb` line in the
   $ git tag --list 'master/*'
   ```
 
-1. Checkout the branch name or tag name that you want to build.  For example,
-the latest code for Ubuntu 12.04 Precise Pangolin is:
+1. Optionally pull the latest upstream code:
   ```
-  $ git checkout master/ubuntu/precise
+  $ git checkout upstream
+  $ git pull git://github.com/zfsonlinux/zfs.git master
+  ```
+(Use `git remote add` and `git remote set-branches` if you do this frequently.)
+
+1. Checkout the branch name or tag name that you want to build.  For example,
+the latest code for Ubuntu 14.04 Trusty Tahr is:
+  ```
+  $ git checkout master/ubuntu/trusty
+  ```
+  
+1. Optionally merge the upstream code.
+  ```
+  $ git merge upstream
+  ```
+(Don't ignore merge conflicts. Learn how to use a `git mergetool` if this happens.)
+
+1. Optionally update the `debian/changelog` file.
+  ```
+  $ git-dch --auto --commit
   ```
 
-1. Now compile it:
+1. Now compile the software:
   ```
   $ ./autogen.sh
-  $ git-buildpackage -uc -us
+  $ git-buildpackage -uc -us --source-option=--auto-commit
   ```
 
 1. And clean the working tree afterwards by doing this:
   ```
+  $ rm .gitignore
   $ git clean -df
   $ git reset --hard
   ```
@@ -85,8 +104,8 @@ build.)
   $ reprepro include wheezy /tmp/zfs-linux_${version}_amd64.changes
   ```
 
-1. Do a local installation in a clean sandbox to ensure that the Release and
-Sources are sensible.
+1. Do a local installation in a clean sandbox to ensure that the `Release` and
+`Sources` files are sensible.
 
 1. Give notice that you're touching the release bucket, and synchronize the new
 packages:
