@@ -71,7 +71,7 @@ the latest code for Ubuntu 12.04 Precise Pangolin is:
   ```
 (The `-sa` switch means "upload a new upstream tarball" for an out-series
 build. The `-sd` switch means "only upload the new overlay" for an in-series
-builds.)
+build.)
 
 1. Synchronize the release bucket to your working copy.
   ```
