@@ -1,3 +1,12 @@
+zfs-linux (0.6.3-5~utopic) utopic; urgency=low
+
+  * Remove Debian support in the Ubuntu trunk.
+  * Remove /etc/init.d/zfs-mount in the Ubuntu branches.
+  * Add /etc/init/zpool-import.conf for Upstart.
+  * Relax the /etc/hostid copy in the initramfs hook.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 13 Oct 2014 13:06:47 -0500
+
 zfs-linux (0.6.3-2~utopic) utopic; urgency=low
 
   * Update gbp.conf for generic trunk builds.
