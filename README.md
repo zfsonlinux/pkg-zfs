@@ -1,3 +1,11 @@
+# Help and Documentation
+
+* Email Support: http://zfsonlinux.org/lists.html
+* FAQs and Tutorials: https://github.com/zfsonlinux/pkg-zfs/wiki
+
+Direct wiki edits for most things are welcome, but if you want to make a major change, then please create a new page or fork the wiki repo and submit a pull request.
+
+
 # Packaging for ZFS on Linux
 
 The home for this git repository is:
