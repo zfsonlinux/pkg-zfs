@@ -1,4 +1,5 @@
-0002-Prevent-manual-builds-in-the-DKMS-source.patch
-0003-Remove-all-upstream-init.d-components.patch
-0004-Remove-the-upstream-dracut-component.patch
-0005-Remove-userland-dist-rules.patch
+0001-Prevent-manual-builds-in-the-DKMS-source.patch
+0002-Remove-all-upstream-init.d-components.patch
+0003-Remove-the-upstream-dracut-component.patch
+0004-Remove-userland-dist-rules.patch
+0005-Remove-the-upstream-udev-component.patch
