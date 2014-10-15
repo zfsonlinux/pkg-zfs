@@ -1,3 +1,21 @@
+zfs-linux (0.6.3-17~e82cdc~wheezy) wheezy; urgency=low
+
+    * Install systemd files.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 15 Oct 2014 21:47:50 +0200
+
+zfs-linux (0.6.3-16~e82cdc~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+    * Fix a problem with zfs-mount not mounting filesystems because
+      pool was not known to have been imported. This happens when
+      USE_DISK_BY_ID is unset AND there's no cache file.
+      + Don't create the lock file unless we know that pool is imported and
+        filesystems mounted.
+      Thanx to effgeee on #zfsonlinux for the help in tracking this down.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 15 Oct 2014 20:38:29 +0200
+
 zfs-linux (0.6.3-15~e66597~wheezy) wheezy; urgency=low
 
     * Use /sbin/modprobe instead of built-in (BusyBox) modprobe.

@@ -123,6 +123,9 @@ override_dh_auto_install:
 	mv $(CURDIR)/debian/tmp/bin/*.py $(CURDIR)/debian/tmp/usr/sbin/
 
 override_dh_installinit:
+	@# Install systemd files
+	dh_systemd_enable -pzfsutils etc/systemd/system/zfs.target
+
 	@# Install the /etc/default/zfs options file.
 	dh_installinit --name=zfs
 
@@ -153,6 +156,9 @@ endif
 
 	@# Install the ZED init file.
 	dh_installinit --name=zed
+
+	@# Add systemd snippets to post/pre inst/rm files
+	dh_systemd_start -pzfsutils etc/systemd/system/zfs.target
 
 override_dh_dkms:
 	dh_dkms -V $(VERSION)

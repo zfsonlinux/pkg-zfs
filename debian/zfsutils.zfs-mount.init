@@ -32,18 +32,21 @@ servicename=zfs-mount
 # Import all pools
 do_import()
 {
-	if [ "$USE_DISK_BY_ID" == 'yes' ]; then
-		already_imported=$(zpool list -H -oname)
-		available_pools=$(zpool import | grep pool: | sed 's@.*: @@')
+	already_imported=$(zpool list -H -oname)
+	available_pools=$(zpool import | grep pool: | sed 's@.*: @@')
 
-		for pool in $available_pools; do
-			if [ -n "$ZFS_POOL_EXCEPTIONS" ]; then
-				for exception in $ZFS_POOL_EXCEPTIONS; do
-					[ "$pool" == "$exception" ] && continue 2
-				done
-			fi
+	for pool in $available_pools; do
+		# We have pools that haven't been imported - import them
+		if [ -n "$ZFS_POOL_EXCEPTIONS" ]; then
+			for exception in $ZFS_POOL_EXCEPTIONS; do
+				# ... unless we've specified them as NOT
+				# to import.
+				[ "$pool" == "$exception" ] && continue 2
+			done
+		fi
 
-			# Last ditch attempt, try /dev!
+		if [ "$USE_DISK_BY_ID" == 'yes' ]; then
+			# Really the default/prefered way.
 			for dir in /dev/disk/by-* /dev; do
 				$log_begin_msg "Importing ZFS pool $pool (using $dir)"
 				"$ZPOOL" import -d $dir -N $pool 2>/dev/null
@@ -54,19 +57,35 @@ do_import()
 					continue 2
 				fi
 			done
-		done
-	fi
+		elif [ -f "$ZPOOL_CACHE" ] ; then
+			# Fallback - use a cache file
+			$log_begin_msg "Importing ZFS pools (using cache file)"
+			"$ZPOOL" import -c "$ZPOOL_CACHE" -N $pool 2>/dev/null
+			RET=$?
+			if [ "$RET" -eq 0 ]; then
+				POOL_IMPORTED=1
+				$log_end_msg $RET
+				continue 2
+			fi
+		else
+			# Last ditch attempt, try /dev!
+			$log_begin_msg "Importing ZFS pools"
+			"$ZPOOL" import -N $pool 2>/dev/null
+			RET=$?
+			if [ "$RET" -eq 0 ]; then
+				POOL_IMPORTED=1
+				$log_end_msg $RET
+				continue 2
+			fi
 
-	if [ -f "$ZPOOL_CACHE" -a -z "$POOL_IMPORTED" ] ; then
-		$log_begin_msg "Importing ZFS pools (using cache file)"
-		"$ZPOOL" import -c "$ZPOOL_CACHE" -aN 2>/dev/null || true # stupid zpool will fail if all pools are already imported
-		RET=$?
-
-		if [ "$RET" -eq 0 ]; then
-			POOL_IMPORTED=1
+			$log_end_msg $ret
 		fi
+	done
 
-		$log_end_msg $ret
+	if [ -n "$already_imported" -a -z "$available_pools" ]; then
+		# All pools imported
+		POOL_IMPORTED=1
+		$log_end_msg $RET
 	fi
 }
 
@@ -92,12 +111,13 @@ do_mount()
 		$log_begin_msg "Mounting ZFS filesystems not yet mounted"
 		$ZFS mount -a$verbose$overlay $MOUNT_EXTRA_OPTIONS
 		RET=$?
-
 		if [ $RET != 0 ] ; then
 			$log_end_msg $RET
 			exit $RET
 		fi
 		$log_end_msg 0
+
+		FS_MOUNTED=1
 
 		read_mtab  "^/dev/(zd|zvol)"
 		read_fstab "^/dev/(zd|zvol)"
@@ -169,7 +189,8 @@ start()
 		do_import
 		do_mount
 
-		touch "$LOCKDIR/$servicename"
+		[ -n "$POOL_IMPORTED" -a -n "$FS_MOUNTED"] && \
+			touch "$LOCKDIR/$servicename"
 	}
 }
 
