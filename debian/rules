@@ -57,6 +57,10 @@ override_dh_auto_install:
 	@# Install the /etc/init/zpool-import.conf file.
 	dh_installinit --name=zpool-import --no-restart-on-upgrade --no-start 
 
+	@# These udev rules are bundled in the overlay, not upstream.
+	dh_installudev --name=zvol --priority=60
+	dh_installudev --name=vdev --priority=69
+
 	@# Ubuntu runs nfs-kernel-server at sysv sequence 20 80,
 	@# iscsitarget at 20 20, and samba through upstart.
 	dh_installinit --name=zfs-share \
