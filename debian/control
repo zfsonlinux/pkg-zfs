@@ -13,7 +13,7 @@ Build-Depends: autotools-dev,
  libtool,
  uuid-dev,
  zlib1g-dev,
-Standards-Version: 3.9.3
+Standards-Version: 3.9.5
 Vcs-Git: git://github.com/dajhorn/pkg-zfs.git
 Vcs-Browser: http://github.com/dajhorn/pkg-zfs
 
