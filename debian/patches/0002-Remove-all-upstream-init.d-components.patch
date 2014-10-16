@@ -5,31 +5,55 @@ Subject: Remove all upstream init.d components.
 The etc/init.d/ components are redundant because the debian/ overlay
 bundles init files according to Debian packaging policy.
 ---
- configure.ac             |    1 -
- etc/Makefile.am          |    2 +-
- etc/init.d/.gitignore    |    1 -
- etc/init.d/Makefile.am   |   22 -----
- etc/init.d/zfs.arch.in   |   62 ------------
- etc/init.d/zfs.fedora.in |  244 ----------------------------------------------
- etc/init.d/zfs.gentoo.in |  111 ---------------------
- etc/init.d/zfs.lsb.in    |  130 ------------------------
- etc/init.d/zfs.lunar.in  |   95 ------------------
- etc/init.d/zfs.redhat.in |  176 ---------------------------------
- 10 files changed, 1 insertion(+), 843 deletions(-)
+ configure.ac                                   |   4 -
+ etc/Makefile.am                                |   4 +-
+ etc/init.d/.gitignore                          |   1 -
+ etc/init.d/Makefile.am                         |  21 ---
+ etc/init.d/zfs.fedora.in                       | 243 -------------------------
+ etc/init.d/zfs.gentoo.in                       | 124 -------------
+ etc/init.d/zfs.lsb.in                          | 153 ----------------
+ etc/init.d/zfs.lunar.in                        | 100 ----------
+ etc/init.d/zfs.redhat.in                       | 175 ------------------
+ etc/modules-load.d/.gitignore                  |   1 -
+ etc/modules-load.d/Makefile.am                 |  13 --
+ etc/modules-load.d/zfs.conf.in                 |   1 -
+ etc/systemd/Makefile.am                        |   1 -
+ etc/systemd/system/.gitignore                  |   3 -
+ etc/systemd/system/50-zfs.preset.in            |   2 -
+ etc/systemd/system/Makefile.am                 |  35 ----
+ etc/systemd/system/zed.service.in              |  13 --
+ etc/systemd/system/zfs-import-cache.service.in |  11 --
+ etc/systemd/system/zfs-import-scan.service.in  |  11 --
+ etc/systemd/system/zfs-mount.service.in        |  15 --
+ etc/systemd/system/zfs-share.service.in        |  11 --
+ etc/systemd/system/zfs.target.in               |   8 -
+ 22 files changed, 2 insertions(+), 948 deletions(-)
  delete mode 100644 etc/init.d/.gitignore
  delete mode 100644 etc/init.d/Makefile.am
- delete mode 100644 etc/init.d/zfs.arch.in
  delete mode 100644 etc/init.d/zfs.fedora.in
  delete mode 100644 etc/init.d/zfs.gentoo.in
  delete mode 100644 etc/init.d/zfs.lsb.in
  delete mode 100644 etc/init.d/zfs.lunar.in
  delete mode 100644 etc/init.d/zfs.redhat.in
+ delete mode 100644 etc/modules-load.d/.gitignore
+ delete mode 100644 etc/modules-load.d/Makefile.am
+ delete mode 100644 etc/modules-load.d/zfs.conf.in
+ delete mode 100644 etc/systemd/Makefile.am
+ delete mode 100644 etc/systemd/system/.gitignore
+ delete mode 100644 etc/systemd/system/50-zfs.preset.in
+ delete mode 100644 etc/systemd/system/Makefile.am
+ delete mode 100644 etc/systemd/system/zed.service.in
+ delete mode 100644 etc/systemd/system/zfs-import-cache.service.in
+ delete mode 100644 etc/systemd/system/zfs-import-scan.service.in
+ delete mode 100644 etc/systemd/system/zfs-mount.service.in
+ delete mode 100644 etc/systemd/system/zfs-share.service.in
+ delete mode 100644 etc/systemd/system/zfs.target.in
 
-Index: b/configure.ac
-===================================================================
+diff --git a/configure.ac b/configure.ac
+index 66272fd..7ed7512 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -62,11 +62,7 @@
+@@ -62,11 +62,7 @@ AC_CONFIG_FILES([
  	udev/Makefile
  	udev/rules.d/Makefile
  	etc/Makefile
@@ -41,8 +65,8 @@ Index: b/configure.ac
  	man/Makefile
  	man/man1/Makefile
  	man/man5/Makefile
-Index: b/etc/Makefile.am
-===================================================================
+diff --git a/etc/Makefile.am b/etc/Makefile.am
+index a62678b..d69da68 100644
 --- a/etc/Makefile.am
 +++ b/etc/Makefile.am
 @@ -1,2 +1,2 @@
@@ -50,14 +74,16 @@ Index: b/etc/Makefile.am
 -DIST_SUBDIRS = init.d zfs systemd modules-load.d
 +SUBDIRS = zfs
 +DIST_SUBDIRS = zfs
-Index: b/etc/init.d/.gitignore
-===================================================================
+diff --git a/etc/init.d/.gitignore b/etc/init.d/.gitignore
+deleted file mode 100644
+index 73304bc..0000000
 --- a/etc/init.d/.gitignore
 +++ /dev/null
 @@ -1 +0,0 @@
 -zfs
-Index: b/etc/init.d/Makefile.am
-===================================================================
+diff --git a/etc/init.d/Makefile.am b/etc/init.d/Makefile.am
+deleted file mode 100644
+index 7209348..0000000
 --- a/etc/init.d/Makefile.am
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -82,8 +108,9 @@ Index: b/etc/init.d/Makefile.am
 -
 -distclean-local::
 -	-$(RM) $(init_SCRIPTS)
-Index: b/etc/init.d/zfs.fedora.in
-===================================================================
+diff --git a/etc/init.d/zfs.fedora.in b/etc/init.d/zfs.fedora.in
+deleted file mode 100644
+index 86f430d..0000000
 --- a/etc/init.d/zfs.fedora.in
 +++ /dev/null
 @@ -1,243 +0,0 @@
@@ -330,8 +357,9 @@ Index: b/etc/init.d/zfs.fedora.in
 -esac
 -
 -exit $RETVAL
-Index: b/etc/init.d/zfs.gentoo.in
-===================================================================
+diff --git a/etc/init.d/zfs.gentoo.in b/etc/init.d/zfs.gentoo.in
+deleted file mode 100644
+index 07fce01..0000000
 --- a/etc/init.d/zfs.gentoo.in
 +++ /dev/null
 @@ -1,124 +0,0 @@
@@ -459,8 +487,9 @@ Index: b/etc/init.d/zfs.gentoo.in
 -	# show pool status and list
 -	$ZPOOL status && echo && $ZPOOL list
 -}
-Index: b/etc/init.d/zfs.lsb.in
-===================================================================
+diff --git a/etc/init.d/zfs.lsb.in b/etc/init.d/zfs.lsb.in
+deleted file mode 100644
+index 05e815e..0000000
 --- a/etc/init.d/zfs.lsb.in
 +++ /dev/null
 @@ -1,153 +0,0 @@
@@ -617,8 +646,9 @@ Index: b/etc/init.d/zfs.lsb.in
 -esac
 -
 -exit $RETVAL
-Index: b/etc/init.d/zfs.lunar.in
-===================================================================
+diff --git a/etc/init.d/zfs.lunar.in b/etc/init.d/zfs.lunar.in
+deleted file mode 100644
+index 7a51104..0000000
 --- a/etc/init.d/zfs.lunar.in
 +++ /dev/null
 @@ -1,100 +0,0 @@
@@ -722,8 +752,9 @@ Index: b/etc/init.d/zfs.lunar.in
 -  ;;
 -
 -esac
-Index: b/etc/init.d/zfs.redhat.in
-===================================================================
+diff --git a/etc/init.d/zfs.redhat.in b/etc/init.d/zfs.redhat.in
+deleted file mode 100644
+index 5fa3275..0000000
 --- a/etc/init.d/zfs.redhat.in
 +++ /dev/null
 @@ -1,175 +0,0 @@
@@ -902,14 +933,16 @@ Index: b/etc/init.d/zfs.redhat.in
 -esac
 -
 -exit $RETVAL
-Index: b/etc/modules-load.d/.gitignore
-===================================================================
+diff --git a/etc/modules-load.d/.gitignore b/etc/modules-load.d/.gitignore
+deleted file mode 100644
+index fee9217..0000000
 --- a/etc/modules-load.d/.gitignore
 +++ /dev/null
 @@ -1 +0,0 @@
 -*.conf
-Index: b/etc/modules-load.d/Makefile.am
-===================================================================
+diff --git a/etc/modules-load.d/Makefile.am b/etc/modules-load.d/Makefile.am
+deleted file mode 100644
+index 980cb85..0000000
 --- a/etc/modules-load.d/Makefile.am
 +++ /dev/null
 @@ -1,13 +0,0 @@
@@ -926,35 +959,40 @@ Index: b/etc/modules-load.d/Makefile.am
 -
 -distclean-local::
 -	-$(RM) $(modulesload_DATA)
-Index: b/etc/modules-load.d/zfs.conf.in
-===================================================================
+diff --git a/etc/modules-load.d/zfs.conf.in b/etc/modules-load.d/zfs.conf.in
+deleted file mode 100644
+index 73304bc..0000000
 --- a/etc/modules-load.d/zfs.conf.in
 +++ /dev/null
 @@ -1 +0,0 @@
 -zfs
-Index: b/etc/systemd/Makefile.am
-===================================================================
+diff --git a/etc/systemd/Makefile.am b/etc/systemd/Makefile.am
+deleted file mode 100644
+index d4008c0..0000000
 --- a/etc/systemd/Makefile.am
 +++ /dev/null
 @@ -1 +0,0 @@
 -SUBDIRS = system
-Index: b/etc/systemd/system/.gitignore
-===================================================================
+diff --git a/etc/systemd/system/.gitignore b/etc/systemd/system/.gitignore
+deleted file mode 100644
+index efada54..0000000
 --- a/etc/systemd/system/.gitignore
 +++ /dev/null
 @@ -1,3 +0,0 @@
 -*.service
 -*.target
 -*.preset
-Index: b/etc/systemd/system/50-zfs.preset.in
-===================================================================
+diff --git a/etc/systemd/system/50-zfs.preset.in b/etc/systemd/system/50-zfs.preset.in
+deleted file mode 100644
+index 4efdd72..0000000
 --- a/etc/systemd/system/50-zfs.preset.in
 +++ /dev/null
 @@ -1,2 +0,0 @@
 -# ZFS is enabled by default
 -enable zfs.*
-Index: b/etc/systemd/system/Makefile.am
-===================================================================
+diff --git a/etc/systemd/system/Makefile.am b/etc/systemd/system/Makefile.am
+deleted file mode 100644
+index b7a8db2..0000000
 --- a/etc/systemd/system/Makefile.am
 +++ /dev/null
 @@ -1,35 +0,0 @@
@@ -993,8 +1031,9 @@ Index: b/etc/systemd/system/Makefile.am
 -
 -distclean-local::
 -	-$(RM) $(systemdunit_DATA) $(systemdpreset_DATA)
-Index: b/etc/systemd/system/zed.service.in
-===================================================================
+diff --git a/etc/systemd/system/zed.service.in b/etc/systemd/system/zed.service.in
+deleted file mode 100644
+index 78988ab..0000000
 --- a/etc/systemd/system/zed.service.in
 +++ /dev/null
 @@ -1,13 +0,0 @@
@@ -1011,8 +1050,9 @@ Index: b/etc/systemd/system/zed.service.in
 -User=root
 -Group=root
 -Restart=on-abort
-Index: b/etc/systemd/system/zfs-import-cache.service.in
-===================================================================
+diff --git a/etc/systemd/system/zfs-import-cache.service.in b/etc/systemd/system/zfs-import-cache.service.in
+deleted file mode 100644
+index 918a258..0000000
 --- a/etc/systemd/system/zfs-import-cache.service.in
 +++ /dev/null
 @@ -1,11 +0,0 @@
@@ -1027,8 +1067,9 @@ Index: b/etc/systemd/system/zfs-import-cache.service.in
 -Type=oneshot
 -RemainAfterExit=yes
 -ExecStart=@sbindir@/zpool import -c @sysconfdir@/zfs/zpool.cache -aN
-Index: b/etc/systemd/system/zfs-import-scan.service.in
-===================================================================
+diff --git a/etc/systemd/system/zfs-import-scan.service.in b/etc/systemd/system/zfs-import-scan.service.in
+deleted file mode 100644
+index ab1b0f6..0000000
 --- a/etc/systemd/system/zfs-import-scan.service.in
 +++ /dev/null
 @@ -1,11 +0,0 @@
@@ -1043,8 +1084,9 @@ Index: b/etc/systemd/system/zfs-import-scan.service.in
 -Type=oneshot
 -RemainAfterExit=yes
 -ExecStart=@sbindir@/zpool import -d /dev/disk/by-id -aN
-Index: b/etc/systemd/system/zfs-mount.service.in
-===================================================================
+diff --git a/etc/systemd/system/zfs-mount.service.in b/etc/systemd/system/zfs-mount.service.in
+deleted file mode 100644
+index f1056af..0000000
 --- a/etc/systemd/system/zfs-mount.service.in
 +++ /dev/null
 @@ -1,15 +0,0 @@
@@ -1063,8 +1105,9 @@ Index: b/etc/systemd/system/zfs-mount.service.in
 -Type=oneshot
 -RemainAfterExit=yes
 -ExecStart=@sbindir@/zfs mount -a
-Index: b/etc/systemd/system/zfs-share.service.in
-===================================================================
+diff --git a/etc/systemd/system/zfs-share.service.in b/etc/systemd/system/zfs-share.service.in
+deleted file mode 100644
+index a21c9c6..0000000
 --- a/etc/systemd/system/zfs-share.service.in
 +++ /dev/null
 @@ -1,11 +0,0 @@
@@ -1079,8 +1122,9 @@ Index: b/etc/systemd/system/zfs-share.service.in
 -Type=oneshot
 -RemainAfterExit=yes
 -ExecStart=@sbindir@/zfs share -a
-Index: b/etc/systemd/system/zfs.target.in
-===================================================================
+diff --git a/etc/systemd/system/zfs.target.in b/etc/systemd/system/zfs.target.in
+deleted file mode 100644
+index 3541533..0000000
 --- a/etc/systemd/system/zfs.target.in
 +++ /dev/null
 @@ -1,8 +0,0 @@

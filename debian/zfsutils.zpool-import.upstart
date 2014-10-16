@@ -26,9 +26,11 @@ script
 		. '/etc/default/zfs'
 	fi
 
-	# Use the arithmetic operator to sanitize the timeout variable.
-	if [ ! "$((ZFS_AUTOIMPORT_TIMEOUT))" -gt '0' ]
+	if [ "$ZFS_AUTOIMPORT_TIMEOUT" -ge '0' ]
 	then
+		# A bang expression here is not robust in dash.
+		:
+	else
 		# Set a default if the timeout is undefined or malformed.
 		ZFS_AUTOIMPORT_TIMEOUT='30'
 	fi
