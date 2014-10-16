@@ -34,19 +34,26 @@ override_dh_auto_install:
 	make install DESTDIR='$(CURDIR)/debian/tmp'
 
 	@# Get a bare copy of the source code for DKMS.
-	@# This creates the $(CURDIR)/$(NAME)-$(VERSION)/ tree, which does not
-	@# contain the userland sources. NB: Remove-userland-dist-rules.patch
+	@# This creates the $(CURDIR)/$(NAME)-$(VERSION)/ tree.
 	make distdir
 
-	@# This shunt allows DKMS to install the Module.symvers and zfs_config.h
-	@# files to the ${dkms_tree} area through the POST_INSTALL directive.
-	echo '#!/bin/sh'  >'$(CURDIR)/$(NAME)-$(VERSION)/cp'
-	echo 'cp "$$@"'  >>'$(CURDIR)/$(NAME)-$(VERSION)/cp'
+	@# Delete components that are not required to build the kernel modules.
+	@# This prevents several lintian complaints, discourages users from
+	@# running `make install` in /usr/src, and reduces the installation
+	@# size by one third. The printf creates a dummy automake file.
+	cd '$(CURDIR)/$(NAME)-$(VERSION)' && \
+	for ii in $$(find cmd dracut etc lib man rpm scripts udev -type f); do \
+	  test "$$ii" != "$${ii%.in}" && printf '%%:\n\t:\n' >"$$ii" || rm "$$ii"; \
+	done
+
+	@# This shunt allows DKMS to copy the Module.symvers and zfs_config.h
+	@# files into the ${dkms_tree} area through the POST_INSTALL directive.
+	printf '#!/bin/sh\ncp "$$@"\n' >'$(CURDIR)/$(NAME)-$(VERSION)/cp'
 	chmod 755 '$(CURDIR)/$(NAME)-$(VERSION)/cp'
 
 	@# Install the DKMS source.
-	mkdir -p '$(CURDIR)/debian/tmp/usr/src/'
-	mv '$(CURDIR)/$(NAME)-$(VERSION)' '$(CURDIR)/debian/tmp/usr/src/'
+	mkdir -p '$(CURDIR)/debian/zfs-dkms/usr/src/'
+	mv '$(CURDIR)/$(NAME)-$(VERSION)' '$(CURDIR)/debian/zfs-dkms/usr/src/'
 
 override_dh_dkms:
 	dh_dkms -V $(VERSION)
