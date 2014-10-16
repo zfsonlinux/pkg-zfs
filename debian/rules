@@ -8,7 +8,7 @@ REVISION := $(shell dpkg-parsechangelog \
   | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f2-)
 
 %:
-	dh $@ --with autoreconf
+	dh $@ --with autoreconf,dkms
 
 override_dh_auto_configure:
 	@# Embed the downstream version in the module.
@@ -48,9 +48,6 @@ override_dh_auto_install:
 	mkdir -p '$(CURDIR)/debian/tmp/usr/src/'
 	mv '$(CURDIR)/$(NAME)-$(VERSION)' '$(CURDIR)/debian/tmp/usr/src/'
 
-	@# Process templates and install the dkms.conf file.
-	dh_dkms -V $(VERSION)
-
 	@# Install the /etc/default/zfs options file.
 	dh_installinit --name=zfs
 
@@ -73,6 +70,9 @@ override_dh_auto_install:
 	@# Ensure that the initramfs-tools hooks are executable.
 	chmod 0755 '$(CURDIR)'/debian/tree/zfsutils/usr/share/initramfs-tools/hooks/*
 	chmod 0755 '$(CURDIR)'/debian/tree/zfs-initramfs/usr/share/initramfs-tools/hooks/*
+
+override_dh_dkms:
+	dh_dkms -V $(VERSION)
 
 override_dh_fixperms:
 	@# Prevent execute bits from being stripped for Launchpad builds.
