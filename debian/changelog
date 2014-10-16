@@ -1,3 +1,13 @@
+zfs-linux (0.6.3-6~utopic) utopic; urgency=low
+
+  * Remove the upstream udev component.
+  * Update debian/patches through gbp-pq.
+  * Bundle udev rules in the overlay.
+  * Improve dash syntax in the zpool-import upstart task.
+  * Cease zvol compatibility symlinking.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 15 Oct 2014 19:05:35 -0500
+
 zfs-linux (0.6.3-5~utopic) utopic; urgency=low
 
   * Remove Debian support in the Ubuntu trunk.
