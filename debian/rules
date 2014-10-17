@@ -72,12 +72,23 @@ override_dh_fixperms:
 	$(CHMOD) a+x '$(CURDIR)'/debian/zfs-initramfs/usr/share/initramfs-tools/hooks/*
 
 override_dh_install:
+	@# Exclude the upstream /usr/lib/udev/rules.d files.
+	dh_install -X/rules.d/
+
 	@# Ensure that /etc/zfs is in the zfsutils package
 	@# because git has difficulty tracking empty directories.
 	$(INSTALL) -d '$(CURDIR)/debian/zfsutils/etc/zfs/'
 
-	@# Exclude the upstream /usr/lib/udev/rules.d files.
-	dh_install -X/rules.d/
+	@# Resolve lintian errors regarding Debian Policy Manual Section 8.4
+	@# by moving unversioned library links from /lib to /usr/lib in the
+	@# development package. Look at libc6-dev for a packaging example if
+	@# multiarch support ever becomes a concern here.
+	$(INSTALL) -d '$(CURDIR)/debian/libzfs-dev/usr/lib/'
+	cd '$(CURDIR)/debian/libzfs-dev/lib' && \
+	for ii in $$(find -type l); do \
+	  ln -s "../../lib/$$(readlink "$$ii")" "../usr/lib/$$(basename "$$ii")" \
+	  && rm "$$ii"; \
+	done
 
 override_dh_installinit:
 	@# Install debian/zfsutils.zfs.default as /etc/default/zfs.
