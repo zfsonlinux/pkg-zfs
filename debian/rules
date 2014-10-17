@@ -45,9 +45,11 @@ override_dh_auto_install:
 	@# This prevents several lintian complaints, discourages users from
 	@# running `make install` in /usr/src, and reduces the installation
 	@# size by one third. The printf creates a dummy automake file.
+	umask 0111 && \
 	cd '$(CURDIR)/$(NAME)-$(VERSION)' && \
 	for ii in $$(find cmd dracut etc lib man rpm scripts udev -type f); do \
-	  test "$$ii" != "$${ii%.in}" && printf '%%:\n\t:\n' >"$$ii" || rm "$$ii"; \
+	  rm "$$ii"; \
+	  test "$$ii" != "$${ii%.in}" && printf '%%:\n\t#\n' >"$$ii"; \
 	done
 
 	@# This shunt allows DKMS to copy the Module.symvers and zfs_config.h
