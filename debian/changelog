@@ -1,3 +1,19 @@
+zfs-linux (0.6.3-7~utopic) utopic; urgency=low
+
+  [ Andreas Cadhalpun ]
+  * Review of debian/copyright for zfs-linux.
+
+  [ Darik Horn ]
+  * Enable the dkms addon for debhelper.
+  * Normalize the override_dh_auto_install rule.
+  * Drop upstream component removal patches.
+  * Prune unnecessary components in the DKMS distdir.
+  * Add expat license to the debian/copyright file.
+  * Update packaging to standards version 3.9.5
+  * Reindent descriptions in the debian/control file.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 16 Oct 2014 19:45:42 -0500
+
 zfs-linux (0.6.3-6~utopic) utopic; urgency=low
 
   * Remove the upstream udev component.
