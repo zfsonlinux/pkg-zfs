@@ -1,5 +1,9 @@
 #!/usr/bin/make -f
 
+CHMOD ?= chmod
+INSTALL ?= install
+MAKE ?= make
+
 LSB_DISTRIBUTOR := $(shell lsb_release -is)
 NAME := $(shell awk '$$1 == "Name:" { print $$2; }' META)
 VERSION := $(shell dpkg-parsechangelog \
@@ -31,28 +35,30 @@ override_dh_auto_test:
 
 override_dh_auto_install:
 	@# Install the utilities.
-	make install DESTDIR='$(CURDIR)/debian/tmp'
+	$(MAKE) install DESTDIR='$(CURDIR)/debian/tmp'
 
 	@# Get a bare copy of the source code for DKMS.
 	@# This creates the $(CURDIR)/$(NAME)-$(VERSION)/ tree.
-	make distdir
+	$(MAKE) distdir
 
 	@# Delete components that are not required to build the kernel modules.
 	@# This prevents several lintian complaints, discourages users from
 	@# running `make install` in /usr/src, and reduces the installation
 	@# size by one third. The printf creates a dummy automake file.
+	umask 0111 && \
 	cd '$(CURDIR)/$(NAME)-$(VERSION)' && \
 	for ii in $$(find cmd dracut etc lib man rpm scripts udev -type f); do \
-	  test "$$ii" != "$${ii%.in}" && printf '%%:\n\t:\n' >"$$ii" || rm "$$ii"; \
+	  rm "$$ii"; \
+	  test "$$ii" != "$${ii%.in}" && printf '%%:\n\t#\n' >"$$ii"; \
 	done
 
 	@# This shunt allows DKMS to copy the Module.symvers and zfs_config.h
 	@# files into the ${dkms_tree} area through the POST_INSTALL directive.
 	printf '#!/bin/sh\ncp "$$@"\n' >'$(CURDIR)/$(NAME)-$(VERSION)/cp'
-	chmod 755 '$(CURDIR)/$(NAME)-$(VERSION)/cp'
+	$(CHMOD) 755 '$(CURDIR)/$(NAME)-$(VERSION)/cp'
 
 	@# Install the DKMS source.
-	mkdir -p '$(CURDIR)/debian/zfs-dkms/usr/src/'
+	$(INSTALL) -d '$(CURDIR)/debian/zfs-dkms/usr/src/'
 	mv '$(CURDIR)/$(NAME)-$(VERSION)' '$(CURDIR)/debian/zfs-dkms/usr/src/'
 
 override_dh_dkms:
@@ -62,16 +68,27 @@ override_dh_fixperms:
 	dh_fixperms
 
 	@# Prevent execute bits from being stripped by the Launchpad pbuilder.
-	chmod a+x '$(CURDIR)'/debian/zfsutils/usr/share/initramfs-tools/hooks/*
-	chmod a+x '$(CURDIR)'/debian/zfs-initramfs/usr/share/initramfs-tools/hooks/*
+	$(CHMOD) a+x '$(CURDIR)'/debian/zfsutils/usr/share/initramfs-tools/hooks/*
+	$(CHMOD) a+x '$(CURDIR)'/debian/zfs-initramfs/usr/share/initramfs-tools/hooks/*
 
 override_dh_install:
-	@# Ensure that /etc/zfs is in the zfsutils package
-	@# because git has difficulty tracking empty directories.
-	mkdir -p '$(CURDIR)/debian/zfsutils/etc/zfs/'
-
 	@# Exclude the upstream /usr/lib/udev/rules.d files.
 	dh_install -X/rules.d/
+
+	@# Ensure that /etc/zfs is in the zfsutils package
+	@# because git has difficulty tracking empty directories.
+	$(INSTALL) -d '$(CURDIR)/debian/zfsutils/etc/zfs/'
+
+	@# Resolve lintian errors regarding Debian Policy Manual Section 8.4
+	@# by moving unversioned library links from /lib to /usr/lib in the
+	@# development package. Look at libc6-dev for a packaging example if
+	@# multiarch support ever becomes a concern here.
+	$(INSTALL) -d '$(CURDIR)/debian/libzfs-dev/usr/lib/'
+	cd '$(CURDIR)/debian/libzfs-dev/lib' && \
+	for ii in $$(find -type l); do \
+	  ln -s "../../lib/$$(readlink "$$ii")" "../usr/lib/$$(basename "$$ii")" \
+	  && rm "$$ii"; \
+	done
 
 override_dh_installinit:
 	@# Install debian/zfsutils.zfs.default as /etc/default/zfs.
