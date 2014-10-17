@@ -46,12 +46,14 @@ Depends: ${misc:Depends}, ${shlibs:Depends}
 Replaces: libuutil0
 Description: Solaris userland utility library for Linux
  This library provides a variety of glue functions for ZFS on Linux:
- * libspl: The Solaris Porting Layer library, which provides APIs that make it
-   possible to run Solaris user code in a Linux environment with relatively
-   minimal modification.
- * libavl: The Adelson-Velskii Landis balanced binary tree manipulation library.
- * libefi: The Extensible Firmware Interface library for GUID disk partitioning.
- * libshare: NFS and SMB service integration for ZFS.
+  * libspl: The Solaris Porting Layer library, which provides APIs that make it
+ possible to run Solaris user code in a Linux environment with relatively
+ minimal modification.
+  * libavl: The Adelson-Velskii Landis balanced binary tree manipulation
+ library.
+  * libefi: The Extensible Firmware Interface library for GUID disk
+ partitioning.
+  * libshare: NFS and SMB service integration for ZFS.
 
 Package: libuutil1-dbg
 Section: debug
@@ -60,14 +62,16 @@ Depends: ${misc:Depends}, libuutil1 (= ${binary:Version})
 Replaces: libuutil0-dbg
 Description: Debugging symbols for libuutil1
  This library provides a variety of glue functions for ZFS on Linux:
- * libspl: The Solaris Porting Layer library, which provides APIs that make it
-   possible to run Solaris user code in a Linux environment with relatively
-   minimal modification.
- * libavl: The Adelson-Velskii Landis balanced binary tree manipulation library.
- * libefi: The Extensible Firmware Interface library for GUID disk partitioning.
- * libshare: NFS and SMB service integration for ZFS.
+  * libspl: The Solaris Porting Layer library, which provides APIs that make it
+ possible to run Solaris user code in a Linux environment with relatively
+ minimal modification.
+  * libavl: The Adelson-Velskii Landis balanced binary tree manipulation
+ library.
+  * libefi: The Extensible Firmware Interface library for GUID disk
+ partitioning.
+  * libshare: NFS and SMB service integration for ZFS.
  .
- This package contains the debugging symbols for libuutil1.
+ This package contains debugging symbols for libuutil1.
 
 Package: libzfs-dev
 Section: libdevel
