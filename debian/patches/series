@@ -1,1 +1,2 @@
 0001-Prevent-manual-builds-in-the-DKMS-source.patch
+0002-Check-for-META-and-DCH-consistency-in-autoconf.patch
