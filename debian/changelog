@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-10~utopic) utopic; urgency=low
+
+  * Kludge a Launchpad pbuilder quirk.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 17 Oct 2014 21:00:13 -0500
+
 zfs-linux (0.6.3-8~utopic) utopic; urgency=low
 
   * Improve compliance with GNUCS chapter 7.2.2.
