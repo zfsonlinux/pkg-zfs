@@ -50,6 +50,7 @@ override_dh_auto_install:
 	for ii in $$(find cmd dracut etc lib man rpm scripts udev -type f); do \
 	  rm "$$ii"; \
 	  test "$$ii" != "$${ii%.in}" && printf '%%:\n\t#\n' >"$$ii"; \
+	  true; \
 	done
 
 	@# This shunt allows DKMS to copy the Module.symvers and zfs_config.h
