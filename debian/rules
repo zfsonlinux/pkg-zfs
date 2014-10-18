@@ -4,23 +4,15 @@ CHMOD ?= chmod
 INSTALL ?= install
 MAKE ?= make
 
-LSB_DISTRIBUTOR := $(shell lsb_release -is)
-NAME := $(shell awk '$$1 == "Name:" { print $$2; }' META)
-VERSION := $(shell dpkg-parsechangelog \
+META_NAME := $(shell awk '$$1 == "Name:" { print $$2; }' META)
+META_VERSION := $(shell dpkg-parsechangelog \
   | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f1)
-REVISION := $(shell dpkg-parsechangelog \
-  | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f2-)
+META_DISTDIR := $(CURDIR)/$(META_NAME)-$(META_VERSION)/
 
 %:
 	dh $@ --with autoreconf,dkms
 
 override_dh_auto_configure:
-	@# Embed the downstream version in the module.
-	@sed \
-	  -e 's/^Version:.*/Version:      $(VERSION)/' \
-	  -e 's/^Release:.*/Release:      $(REVISION)/' \
-	  -i.orig META
-
 	@# Build the userland, but don't build the kernel modules.
 	dh_auto_configure -- \
 	  --bindir=/bin \
@@ -38,7 +30,7 @@ override_dh_auto_install:
 	$(MAKE) install DESTDIR='$(CURDIR)/debian/tmp'
 
 	@# Get a bare copy of the source code for DKMS.
-	@# This creates the $(CURDIR)/$(NAME)-$(VERSION)/ tree.
+	@# This creates the $(META_DISTDIR)/ tree.
 	$(MAKE) distdir
 
 	@# Delete components that are not required to build the kernel modules.
@@ -46,7 +38,7 @@ override_dh_auto_install:
 	@# running `make install` in /usr/src, and reduces the installation
 	@# size by one third. The printf creates a dummy automake file.
 	umask 0111 && \
-	cd '$(CURDIR)/$(NAME)-$(VERSION)' && \
+	cd '$(META_DISTDIR)' && \
 	for ii in $$(find cmd dracut etc lib man rpm scripts udev -type f); do \
 	  rm "$$ii"; \
 	  test "$$ii" != "$${ii%.in}" && printf '%%:\n\t#\n' >"$$ii"; \
@@ -55,15 +47,15 @@ override_dh_auto_install:
 
 	@# This shunt allows DKMS to copy the Module.symvers and zfs_config.h
 	@# files into the ${dkms_tree} area through the POST_INSTALL directive.
-	printf '#!/bin/sh\ncp "$$@"\n' >'$(CURDIR)/$(NAME)-$(VERSION)/cp'
-	$(CHMOD) 755 '$(CURDIR)/$(NAME)-$(VERSION)/cp'
+	printf '#!/bin/sh\ncp "$$@"\n' >'$(META_DISTDIR)/cp'
+	$(CHMOD) 755 '$(META_DISTDIR)/cp'
 
-	@# Install the DKMS source.
+	@# Install the DKMS source directly, avoiding dh_install.
 	$(INSTALL) -d '$(CURDIR)/debian/zfs-dkms/usr/src/'
-	mv '$(CURDIR)/$(NAME)-$(VERSION)' '$(CURDIR)/debian/zfs-dkms/usr/src/'
+	mv '$(META_DISTDIR)' '$(CURDIR)/debian/zfs-dkms/usr/src/'
 
 override_dh_dkms:
-	dh_dkms -V $(VERSION)
+	dh_dkms -V
 
 override_dh_fixperms:
 	dh_fixperms
@@ -91,12 +83,15 @@ override_dh_install:
 	  && rm "$$ii"; \
 	done
 
+override_dh_installdocs:
+	dh_installdocs --link-doc=zfs-doc
+
 override_dh_installinit:
 	@# Install debian/zfsutils.zfs.default as /etc/default/zfs.
 	dh_installinit --name=zfs
 
 	@# Install debian/zfsutils.zpool-import.upstart as /etc/init/zpool-import.conf.
-	dh_installinit --name=zpool-import --no-restart-on-upgrade --no-start 
+	dh_installinit --name=zpool-import --no-restart-on-upgrade --no-start
 
 	@# Ubuntu runs nfs-kernel-server at sysv sequence 20 80 and iscsitarget at 20 20.
 	dh_installinit --name=zfs-share --no-restart-on-upgrade --no-start -- defaults 25 15
@@ -117,7 +112,3 @@ override_dh_strip:
 	dh_strip -plibzfs2 --dbg-package=libzfs2-dbg
 	dh_strip -plibzpool2 --dbg-package=libzpool2-dbg
 	dh_strip -pzfsutils --dbg-package=zfsutils-dbg
-
-override_dh_auto_clean:
-	dh_auto_clean
-	@if test -e META.orig; then mv META.orig META; fi

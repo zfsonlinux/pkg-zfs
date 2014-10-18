@@ -150,6 +150,13 @@ Description: Native ZFS filesystem kernel modules for Linux
 # This package adds ZFS to the system initramfs with a hook
 # for the dracut infrastructure.
 
+Package: zfs-doc
+Section: doc
+Architecture: linux-any
+Depends: ${misc:Depends}
+Description: Native ZFS filesystem documentation and examples.
+ Shared boilerplate files for ZFS on Linux that are not required at runtime.
+
 Package: zfs-initramfs
 Section: kernel
 Architecture: linux-any
