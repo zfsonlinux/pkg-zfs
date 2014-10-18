@@ -83,6 +83,9 @@ override_dh_install:
 	  && rm "$$ii"; \
 	done
 
+override_dh_installdocs:
+	dh_installdocs --link-doc=zfs-doc
+
 override_dh_installinit:
 	@# Install debian/zfsutils.zfs.default as /etc/default/zfs.
 	dh_installinit --name=zfs
