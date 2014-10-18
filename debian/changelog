@@ -1,3 +1,12 @@
+zfs-linux (0.6.3-19~d94fd5~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+    * Include https://github.com/FransUrbo/zfs/tree/iscsi
+    * Include https://github.com/FransUrbo/zfs/tree/smbfs_registry-shares
+    * Include https://github.com/FransUrbo/zfs/tree/sharenfs_rewrite
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 18 Oct 2014 17:57:53 +0200
+
 zfs-linux (0.6.3-18~e82cdc~wheezy) wheezy; urgency=low
 
     * Build source packages and fix so that git-buildpackage works.
