@@ -1,3 +1,11 @@
+zfs-linux (0.6.3-12~utopic) utopic; urgency=low
+
+  * Check for META and DCH consistency in autoconf.
+  * Move META handling from debian/rules to autoconf.
+  * Create a zfs-doc package for shared files.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 18 Oct 2014 17:58:32 -0500
+
 zfs-linux (0.6.3-10~utopic) utopic; urgency=low
 
   * Kludge a Launchpad pbuilder quirk.
