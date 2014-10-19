@@ -1,3 +1,11 @@
+zfs-linux (0.6.3-13~utopic) utopic; urgency=low
+
+  * Add libuutil to LIBADD for libzfs and libzfs_core
+  * Resume dh_shlibdeps reporting.
+  * Add patch: Fix zil_commit() NULL dereference
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 19 Oct 2014 14:42:01 -0500
+
 zfs-linux (0.6.3-12~utopic) utopic; urgency=low
 
   * Check for META and DCH consistency in autoconf.
