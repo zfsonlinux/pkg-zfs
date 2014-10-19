@@ -1,0 +1,6 @@
+## /etc/dpkg/dpkg.cfg.d/zfs-doc
+##
+## DPKG overrides that prevent the installation of ZoL documentation.
+
+## Enable this line to reduce installation size.
+#path-exclude /usr/share/doc/zfs-doc/*

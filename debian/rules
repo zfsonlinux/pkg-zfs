@@ -1,22 +1,18 @@
 #!/usr/bin/make -f
 
-LSB_DISTRIBUTOR := $(shell lsb_release -is)
-NAME := $(shell awk '$$1 == "Name:" { print $$2; }' META)
-VERSION := $(shell dpkg-parsechangelog \
+CHMOD ?= chmod
+INSTALL ?= install
+MAKE ?= make
+
+META_NAME := $(shell awk '$$1 == "Name:" { print $$2; }' META)
+META_VERSION := $(shell dpkg-parsechangelog \
   | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f1)
-REVISION := $(shell dpkg-parsechangelog \
-  | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f2-)
+META_DISTDIR := $(CURDIR)/$(META_NAME)-$(META_VERSION)/
 
 %:
-	dh $@ --with autoreconf
+	dh $@ --with autoreconf,dkms
 
 override_dh_auto_configure:
-	@# Embed the downstream version in the module.
-	@sed \
-	  -e 's/^Version:.*/Version:      $(VERSION)/' \
-	  -e 's/^Release:.*/Release:      $(REVISION)/' \
-	  -i.orig META
-
 	@# Build the userland, but don't build the kernel modules.
 	dh_auto_configure -- \
 	  --bindir=/bin \
@@ -31,72 +27,78 @@ override_dh_auto_test:
 
 override_dh_auto_install:
 	@# Install the utilities.
-	make install DESTDIR='$(CURDIR)/debian/tmp'
+	$(MAKE) install DESTDIR='$(CURDIR)/debian/tmp'
 
 	@# Get a bare copy of the source code for DKMS.
-	@# This creates the $(CURDIR)/$(NAME)-$(VERSION)/ tree, which does not
-	@# contain the userland sources. NB: Remove-userland-dist-rules.patch
-	make distdir
+	@# This creates the $(META_DISTDIR)/ tree.
+	$(MAKE) distdir
 
-	@# This shunt allows DKMS to install the Module.symvers and zfs_config.h
-	@# files to the ${dkms_tree} area through the POST_INSTALL directive.
-	echo '#!/bin/sh'  >'$(CURDIR)/$(NAME)-$(VERSION)/cp'
-	echo 'cp "$$@"'  >>'$(CURDIR)/$(NAME)-$(VERSION)/cp'
-	chmod 755 '$(CURDIR)/$(NAME)-$(VERSION)/cp'
+	@# Delete components that are not required to build the kernel modules.
+	@# This prevents several lintian complaints, discourages users from
+	@# running `make install` in /usr/src, and reduces the installation
+	@# size by one third. The printf creates a dummy automake file.
+	umask 0111 && \
+	cd '$(META_DISTDIR)' && \
+	for ii in $$(find cmd dracut etc lib man rpm scripts udev -type f); do \
+	  rm "$$ii"; \
+	  test "$$ii" != "$${ii%.in}" && printf '%%:\n\t#\n' >"$$ii"; \
+	  true; \
+	done
 
-	@# Install the DKMS source.
-	mkdir -p '$(CURDIR)/debian/tmp/usr/src/'
-	mv '$(CURDIR)/$(NAME)-$(VERSION)' '$(CURDIR)/debian/tmp/usr/src/'
+	@# This shunt allows DKMS to copy the Module.symvers and zfs_config.h
+	@# files into the ${dkms_tree} area through the POST_INSTALL directive.
+	printf '#!/bin/sh\ncp "$$@"\n' >'$(META_DISTDIR)/cp'
+	$(CHMOD) 755 '$(META_DISTDIR)/cp'
 
-	@# Process templates and install the dkms.conf file.
-	dh_dkms -V $(VERSION)
+	@# Install the DKMS source directly, avoiding dh_install.
+	$(INSTALL) -d '$(CURDIR)/debian/zfs-dkms/usr/src/'
+	mv '$(META_DISTDIR)' '$(CURDIR)/debian/zfs-dkms/usr/src/'
 
-	@# Install the /etc/default/zfs options file.
-	dh_installinit --name=zfs
-
-	@# Install the /etc/init.d/zfs-mount script.
-ifeq ($(LSB_DISTRIBUTOR),Debian)
-	@# Debian runs local mounts at sysv sequences [10..12] [08..09].
-	dh_installinit --name=zfs-mount \
-	  --no-restart-on-upgrade --no-start -- defaults 13 07
-else
-	dh_installinit --name=zfs-mount \
-	  --no-restart-on-upgrade --no-start
-endif
-
-	@# Install the /etc/init.d/zfs-share script.
-ifeq ($(LSB_DISTRIBUTOR),Debian)
-	@# Debian runs nfs-kernel-server at sysv sequence 17 01,
-	@# iscsitarget at 02 01, and samba at 01 02.
-	dh_installinit --name=zfs-share \
-	  --no-restart-on-upgrade --no-start -- defaults 18 00
-else ifeq ($(LSB_DISTRIBUTOR),Ubuntu)
-	@# Ubuntu runs nfs-kernel-server at sysv sequence 20 80,
-	@# iscsitarget at 20 20, and samba through upstart.
-	dh_installinit --name=zfs-share \
-	  --no-restart-on-upgrade --no-start -- defaults 25 15
-else
-		dh_installinit --name=zfs-share \
-		  --no-restart-on-upgrade --no-start
-endif
-
-	@# Ensure that /etc/zfs is in the zfsutils package.
-	@# This is required until the zdev.conf conversion is complete.
-	mkdir -p '$(CURDIR)/debian/tree/zfsutils/etc/zfs/'
-
-	@# Ensure that the initramfs-tools hooks are executable.
-	chmod 0755 '$(CURDIR)'/debian/tree/zfsutils/usr/share/initramfs-tools/hooks/*
-	chmod 0755 '$(CURDIR)'/debian/tree/zfs-initramfs/usr/share/initramfs-tools/hooks/*
+override_dh_dkms:
+	dh_dkms -V
 
 override_dh_fixperms:
-	@# Prevent execute bits from being stripped for Launchpad builds.
-	dh_fixperms -X/hooks/
+	dh_fixperms
 
-override_dh_shlibdeps:
-	@# Suppress libtool dependency_libs warnings that are caused by
-	@# inter-library dependencies.  (eg: zfs -> libzfs -> libuuid)
-	@# @TODO: Add pkgconfig support instead.
-	dh_shlibdeps -- --warnings=0
+	@# Prevent execute bits from being stripped by the Launchpad pbuilder.
+	$(CHMOD) a+x '$(CURDIR)'/debian/zfsutils/usr/share/initramfs-tools/hooks/*
+	$(CHMOD) a+x '$(CURDIR)'/debian/zfs-initramfs/usr/share/initramfs-tools/hooks/*
+
+override_dh_install:
+	@# Exclude the upstream /usr/lib/udev/rules.d files.
+	dh_install -X/rules.d/
+
+	@# Ensure that /etc/zfs is in the zfsutils package
+	@# because git has difficulty tracking empty directories.
+	$(INSTALL) -d '$(CURDIR)/debian/zfsutils/etc/zfs/'
+
+	@# Resolve lintian errors regarding Debian Policy Manual Section 8.4
+	@# by moving unversioned library links from /lib to /usr/lib in the
+	@# development package. Look at libc6-dev for a packaging example if
+	@# multiarch support ever becomes a concern here.
+	$(INSTALL) -d '$(CURDIR)/debian/libzfs-dev/usr/lib/'
+	cd '$(CURDIR)/debian/libzfs-dev/lib' && \
+	for ii in $$(find -type l); do \
+	  ln -s "../../lib/$$(readlink "$$ii")" "../usr/lib/$$(basename "$$ii")" \
+	  && rm "$$ii"; \
+	done
+
+override_dh_installdocs:
+	dh_installdocs --link-doc=zfs-doc
+
+override_dh_installinit:
+	@# Install debian/zfsutils.zfs.default as /etc/default/zfs.
+	dh_installinit --name=zfs
+
+	@# Install debian/zfsutils.zpool-import.upstart as /etc/init/zpool-import.conf.
+	dh_installinit --name=zpool-import --no-restart-on-upgrade --no-start
+
+	@# Ubuntu runs nfs-kernel-server at sysv sequence 20 80 and iscsitarget at 20 20.
+	dh_installinit --name=zfs-share --no-restart-on-upgrade --no-start -- defaults 25 15
+
+override_dh_installudev:
+	dh_installudev --name=zvol --priority=60
+	dh_installudev --name=vdev --priority=69
 
 override_dh_strip:
 	dh_strip -plibnvpair1 --dbg-package=libnvpair1-dbg
@@ -104,7 +106,3 @@ override_dh_strip:
 	dh_strip -plibzfs2 --dbg-package=libzfs2-dbg
 	dh_strip -plibzpool2 --dbg-package=libzpool2-dbg
 	dh_strip -pzfsutils --dbg-package=zfsutils-dbg
-
-override_dh_auto_clean:
-	dh_auto_clean
-	@if test -e META.orig; then mv META.orig META; fi

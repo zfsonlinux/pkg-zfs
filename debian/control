@@ -13,7 +13,7 @@ Build-Depends: autotools-dev,
  libtool,
  uuid-dev,
  zlib1g-dev,
-Standards-Version: 3.9.3
+Standards-Version: 3.9.5
 Vcs-Git: git://github.com/dajhorn/pkg-zfs.git
 Vcs-Browser: http://github.com/dajhorn/pkg-zfs
 
@@ -46,12 +46,14 @@ Depends: ${misc:Depends}, ${shlibs:Depends}
 Replaces: libuutil0
 Description: Solaris userland utility library for Linux
  This library provides a variety of glue functions for ZFS on Linux:
- * libspl: The Solaris Porting Layer library, which provides APIs that make it
-   possible to run Solaris user code in a Linux environment with relatively
-   minimal modification.
- * libavl: The Adelson-Velskii Landis balanced binary tree manipulation library.
- * libefi: The Extensible Firmware Interface library for GUID disk partitioning.
- * libshare: NFS and SMB service integration for ZFS.
+  * libspl: The Solaris Porting Layer library, which provides APIs that make it
+ possible to run Solaris user code in a Linux environment with relatively
+ minimal modification.
+  * libavl: The Adelson-Velskii Landis balanced binary tree manipulation
+ library.
+  * libefi: The Extensible Firmware Interface library for GUID disk
+ partitioning.
+  * libshare: NFS and SMB service integration for ZFS.
 
 Package: libuutil1-dbg
 Section: debug
@@ -60,14 +62,16 @@ Depends: ${misc:Depends}, libuutil1 (= ${binary:Version})
 Replaces: libuutil0-dbg
 Description: Debugging symbols for libuutil1
  This library provides a variety of glue functions for ZFS on Linux:
- * libspl: The Solaris Porting Layer library, which provides APIs that make it
-   possible to run Solaris user code in a Linux environment with relatively
-   minimal modification.
- * libavl: The Adelson-Velskii Landis balanced binary tree manipulation library.
- * libefi: The Extensible Firmware Interface library for GUID disk partitioning.
- * libshare: NFS and SMB service integration for ZFS.
+  * libspl: The Solaris Porting Layer library, which provides APIs that make it
+ possible to run Solaris user code in a Linux environment with relatively
+ minimal modification.
+  * libavl: The Adelson-Velskii Landis balanced binary tree manipulation
+ library.
+  * libefi: The Extensible Firmware Interface library for GUID disk
+ partitioning.
+  * libshare: NFS and SMB service integration for ZFS.
  .
- This package contains the debugging symbols for libuutil1.
+ This package contains debugging symbols for libuutil1.
 
 Package: libzfs-dev
 Section: libdevel
@@ -145,6 +149,13 @@ Description: Native ZFS filesystem kernel modules for Linux
 #Description: Native ZFS root filesystem capabilities for Linux
 # This package adds ZFS to the system initramfs with a hook
 # for the dracut infrastructure.
+
+Package: zfs-doc
+Section: doc
+Architecture: linux-any
+Depends: ${misc:Depends}
+Description: Native ZFS filesystem documentation and examples.
+ Shared boilerplate files for ZFS on Linux that are not required at runtime.
 
 Package: zfs-initramfs
 Section: kernel

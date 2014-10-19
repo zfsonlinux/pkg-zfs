@@ -1,0 +1,1 @@
+KERNEL=="zd*" SUBSYSTEM=="block" ACTION=="add|change" PROGRAM="/lib/udev/zvol_id $tempnode" SYMLINK+="zvol/%c"
