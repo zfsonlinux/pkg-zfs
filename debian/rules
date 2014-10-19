@@ -100,12 +100,6 @@ override_dh_installudev:
 	dh_installudev --name=zvol --priority=60
 	dh_installudev --name=vdev --priority=69
 
-override_dh_shlibdeps:
-	@# Suppress libtool dependency_libs warnings that are caused by
-	@# inter-library dependencies.  (eg: zfs -> libzfs -> libuuid)
-	@# @TODO: Add pkgconfig support instead.
-	dh_shlibdeps -- --warnings=0
-
 override_dh_strip:
 	dh_strip -plibnvpair1 --dbg-package=libnvpair1-dbg
 	dh_strip -plibuutil1 --dbg-package=libuutil1-dbg

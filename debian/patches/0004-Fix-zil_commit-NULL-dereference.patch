@@ -1,0 +1,127 @@
+From: Brian Behlendorf <behlendorf1@llnl.gov>
+Date: Tue, 15 Jul 2014 13:29:57 -0700
+Subject: Fix zil_commit() NULL dereference
+
+Update the current code to ensure inodes are never dirtied if they are
+part of a read-only file system or snapshot.  If they do somehow get
+dirtied an attempt will make made to write them to disk.  In the case
+of snapshots, which don't have a ZIL, this will result in a NULL
+dereference in zil_commit().
+
+Signed-off-by: Richard Yao <ryao@gentoo.org>
+Signed-off-by: Brian Behlendorf <behlendorf1@llnl.gov>
+Closes #2405
+---
+ include/sys/zfs_znode.h |  1 +
+ module/zfs/zfs_vnops.c  |  3 ++-
+ module/zfs/zfs_znode.c  | 15 +++++++++++++++
+ module/zfs/zpl_file.c   |  5 +++--
+ module/zfs/zpl_xattr.c  |  6 +++---
+ 5 files changed, 24 insertions(+), 6 deletions(-)
+
+diff --git a/include/sys/zfs_znode.h b/include/sys/zfs_znode.h
+index a020068..4bb8a77 100644
+--- a/include/sys/zfs_znode.h
++++ b/include/sys/zfs_znode.h
+@@ -337,6 +337,7 @@ extern void	zfs_znode_dmu_fini(znode_t *);
+ extern int	zfs_inode_alloc(struct super_block *, struct inode **ip);
+ extern void	zfs_inode_destroy(struct inode *);
+ extern void	zfs_inode_update(znode_t *);
++extern void	zfs_mark_inode_dirty(struct inode *);
+ 
+ extern void zfs_log_create(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
+     znode_t *dzp, znode_t *zp, char *name, vsecattr_t *, zfs_fuid_info_t *,
+diff --git a/module/zfs/zfs_vnops.c b/module/zfs/zfs_vnops.c
+index 91f743a..4f53173 100644
+--- a/module/zfs/zfs_vnops.c
++++ b/module/zfs/zfs_vnops.c
+@@ -3965,7 +3965,8 @@ zfs_putpage(struct inode *ip, struct page *pp, struct writeback_control *wbc)
+ 		 * writepages() normally handles the entire commit for
+ 		 * performance reasons.
+ 		 */
+-		zil_commit(zsb->z_log, zp->z_id);
++		if (zsb->z_log != NULL)
++			zil_commit(zsb->z_log, zp->z_id);
+ 	}
+ 
+ 	ZFS_EXIT(zsb);
+diff --git a/module/zfs/zfs_znode.c b/module/zfs/zfs_znode.c
+index 8cd0d83..23e0907 100644
+--- a/module/zfs/zfs_znode.c
++++ b/module/zfs/zfs_znode.c
+@@ -511,6 +511,21 @@ zfs_inode_update(znode_t *zp)
+ 	spin_unlock(&ip->i_lock);
+ }
+ 
++/*
++ * Safely mark an inode dirty.  Inodes which are part of a read-only
++ * file system or snapshot may not be dirtied.
++ */
++void
++zfs_mark_inode_dirty(struct inode *ip)
++{
++	zfs_sb_t *zsb = ITOZSB(ip);
++
++	if (zfs_is_readonly(zsb) || dmu_objset_is_snapshot(zsb->z_os))
++		return;
++
++	mark_inode_dirty(ip);
++}
++
+ static uint64_t empty_xattr;
+ static uint64_t pad[4];
+ static zfs_acl_phys_t acl_phys;
+diff --git a/module/zfs/zpl_file.c b/module/zfs/zpl_file.c
+index 2a7bcb9..d37cf07 100644
+--- a/module/zfs/zpl_file.c
++++ b/module/zfs/zpl_file.c
+@@ -55,7 +55,7 @@ zpl_release(struct inode *ip, struct file *filp)
+ 	int error;
+ 
+ 	if (ITOZ(ip)->z_atime_dirty)
+-		mark_inode_dirty(ip);
++		zfs_mark_inode_dirty(ip);
+ 
+ 	crhold(cr);
+ 	error = -zfs_close(ip, filp->f_flags, cr);
+@@ -445,7 +445,8 @@ zpl_writepages(struct address_space *mapping, struct writeback_control *wbc)
+ 	if (sync_mode != wbc->sync_mode) {
+ 		ZFS_ENTER(zsb);
+ 		ZFS_VERIFY_ZP(zp);
+-		zil_commit(zsb->z_log, zp->z_id);
++		if (zsb->z_log != NULL)
++			zil_commit(zsb->z_log, zp->z_id);
+ 		ZFS_EXIT(zsb);
+ 
+ 		/*
+diff --git a/module/zfs/zpl_xattr.c b/module/zfs/zpl_xattr.c
+index c5c15a2..107b803 100644
+--- a/module/zfs/zpl_xattr.c
++++ b/module/zfs/zpl_xattr.c
+@@ -751,7 +751,7 @@ zpl_set_acl(struct inode *ip, int type, struct posix_acl *acl)
+ 				if (ip->i_mode != mode) {
+ 					ip->i_mode = mode;
+ 					ip->i_ctime = current_fs_time(sb);
+-					mark_inode_dirty(ip);
++					zfs_mark_inode_dirty(ip);
+ 				}
+ 
+ 				if (error == 0)
+@@ -909,7 +909,7 @@ zpl_init_acl(struct inode *ip, struct inode *dir)
+ 		if (!acl) {
+ 			ip->i_mode &= ~current_umask();
+ 			ip->i_ctime = current_fs_time(ITOZSB(ip)->z_sb);
+-			mark_inode_dirty(ip);
++			zfs_mark_inode_dirty(ip);
+ 			return (0);
+ 		}
+ 	}
+@@ -927,7 +927,7 @@ zpl_init_acl(struct inode *ip, struct inode *dir)
+ 		error = __posix_acl_create(&acl, GFP_KERNEL, &mode);
+ 		if (error >= 0) {
+ 			ip->i_mode = mode;
+-			mark_inode_dirty(ip);
++			zfs_mark_inode_dirty(ip);
+ 			if (error > 0)
+ 				error = zpl_set_acl(ip, ACL_TYPE_ACCESS, acl);
+ 		}
