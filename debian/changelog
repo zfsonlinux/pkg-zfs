@@ -1,3 +1,44 @@
+zfs-linux (0.6.3-3~trusty~1.gbped4a81) trusty; urgency=low
+
+  ** SNAPSHOT build @ed4a81bee17a1c005e6627091ae3ab4f853b1716 **
+
+  [ Darik Horn ]
+  * Update gbp.conf for generic trunk builds.
+  * Remove Debian support in the Ubuntu trunk.
+  * Remove /etc/init.d/zfs-mount in the Ubuntu branches.
+  * Add /etc/init/zpool-import.conf for Upstart.
+  * Relax the /etc/hostid copy in the initramfs hook.
+  * Update debian/patches through gbp-pq.
+  * Bundle udev rules in the overlay.
+  * Improve dash syntax in the zpool-import upstart task.
+  * Cease zvol compatibility symlinking.
+
+  [ Andreas Cadhalpun ]
+  * Review of debian/copyright for zfs-linux.
+
+  [ Darik Horn ]
+  * Enable the dkms addon for debhelper.
+  * Normalize the override_dh_auto_install rule.
+  * Drop upstream component removal patches.
+  * Prune unnecessary components in the DKMS distdir.
+  * Add expat license to the debian/copyright file.
+  * Update packaging to standards version 3.9.5
+  * Reindent descriptions in the debian/control file.
+  * Improve compliance with GNUCS chapter 7.2.2.
+  * Ensure that DKMS automake stubs are not executable.
+  * Move libzfs-dev symlinks from /lib to /usr/lib.
+  * Kludge a Launchpad pbuilder quirk.
+  * Check for META and DCH consistency in autoconf.
+  * Move META handling from debian/rules to autoconf.
+  * Create a zfs-doc package for shared files.
+  * Add libuutil to LIBADD for libzfs and libzfs_core
+  * Resume dh_shlibdeps reporting.
+  * Add patch: Fix zil_commit() NULL dereference
+  * Revert "Update gbp.conf for generic trunk builds."
+  * Update debian/gbp.conf for snapshot builds.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 19 Oct 2014 16:09:07 -0500
+
 zfs-linux (0.6.3-2~trusty) trusty; urgency=low
 
   * Refresh the init.d patch for Launchpad building.
