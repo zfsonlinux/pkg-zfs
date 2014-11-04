@@ -10,26 +10,27 @@ VERSION := $(shell dpkg-parsechangelog \
 REVISION := $(shell dpkg-parsechangelog \
   | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f2-)
 
-DKMSFILES := module include config zfs.release.in autogen.sh META AUTHORS \
+DKMSFILES := module include config zfs.release.in META AUTHORS \
 		DISCLAIMER COPYRIGHT OPENSOLARIS.LICENSE README.markdown
 
 export SHLIB_MAJOR = 2
-
-ifndef BUILD_UDEB
-BUILD_UDEB=false
-endif
 
 ifndef DEB_HOST_ARCH
 DEB_HOST_ARCH = $(shell dpkg-architecture -qDEB_HOST_ARCH)
 endif
 
 ifndef KVERS
-KVERS=$(shell uname -r)
+KVERS=$(shell uname -r | sed 's/-$(DEB_HOST_ARCH)//')
 endif
 
 ifndef SPL
-SPL=/usr/src/spl-$(VERSION)
+SPLSRC=/usr/src/spl-$(VERSION)
 endif
+
+CFG_OPTS=--without-selinux \
+	 --with-linux=$(KSRC) \
+	 --with-linux-obj=$(KOBJ) \
+	 --with-spl=$(SPLSRC)
 
 non_epoch_version=$(shell echo $(KVERS) | perl -pe 's/^\d+://')
 PACKAGE=zfs
@@ -37,21 +38,28 @@ pmodules = $(PACKAGE)-modules-$(non_epoch_version)
 
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
-KIMGVER=$(shell dpkg -s linux-image-$(KVERS) | grep ^Version | sed 's/.*: //')
+KIMGVER=$(shell dpkg -s linux-image-$(KVERS)-$(DEB_HOST_ARCH) | grep ^Version | sed 's/.*: //')
 
 %:
 	dh $@ --with dkms --parallel
 
 override_dh_prep-base-deb-files:
-ifeq ($(BUILD_UDEB), true)
-	sed -e 's/##SHLIB_MAJOR##/$(SHLIB_MAJOR)/g' \
-	< debian/control.udeb.in > debian/control
-else
-	sed -e 's/##SHLIB_MAJOR##/$(SHLIB_MAJOR)/g' \
+	sed -e 's/##SHLIB_MAJOR##/$(SHLIB_MAJOR)/g ; s/##MODULES_BUILD_DEPENDS##/linux-headers-$(KVERS)-common, linux-headers-$(KVERS)-$(DEB_HOST_ARCH), spl-dkms/g' \
 	< debian/control.in > debian/control
-endif
+
+	sed -e 's/##SHLIB_MAJOR##/$(SHLIB_MAJOR)/g' \
+	< debian/control.udeb.in >> debian/control
+
+	sed -e 's/##KVERS##/$(KVERS)/g ; s/#KVERS#/$(KVERS)/g ; s/_KVERS_/$(KVERS)/g ; s/##KDREV##/$(KDREV)/g ; s/#KDREV#/$(KDREV)/g ; s/_KDREV_/$(KDREV)/g ; s/_ARCH_/$(DEB_HOST_ARCH)/g ; s/_IMGVER_/$(KIMGVER)/g' \
+	< debian/control.modules.in >> debian/control
+
 	for templ in $(wildcard $(CURDIR)/debian/*_SHLIB_MAJOR_*.in); do \
 		cat $$templ > `echo $$templ | sed -e 's/_SHLIB_MAJOR_/$(SHLIB_MAJOR)/g ; s/\.in$$//'`; \
+	done
+
+	for templ in $(wildcard $(CURDIR)/debian/*_KVERS_*.in); do \
+		sed -e 's/##KVERS##/$(KVERS)/g ; s/#KVERS#/$(KVERS)/g ; s/_KVERS_/$(KVERS)/g ; s/##KDREV##/$(KDREV)/g ; s/#KDREV#/$(KDREV)/g ; s/_KDREV_/$(KDREV)/g ; s/_ARCH_/$(DEB_HOST_ARCH)/' \
+		< $$templ > `echo $$templ | sed -e 's/_KVERS_/$(KVERS)/g ; s/_ARCH_/$(DEB_HOST_ARCH)/g ; s/\.in$$//'` ; \
 	done
 
 override_dh_auto_configure: override_dh_prep-base-deb-files
@@ -65,13 +73,13 @@ override_dh_auto_configure: override_dh_prep-base-deb-files
 	@# Create the makefiles and configure script.
 	./autogen.sh
 
-	@# Build the userland, but don't build the kernel modules.
+	@# Build the userland and the modules
 	dh_auto_configure -- \
 	  --bindir=/bin \
 	  --sbindir=/sbin \
 	  --libdir=/lib \
 	  --with-udevdir=/lib/udev \
-	  --with-config=user
+	  $(CFG_OPTS)
 
 override_dh_auto_test:
 	# The dh_auto_test rule is disabled because
@@ -90,7 +98,10 @@ override_dh_auto_install:
 	@# We only want the files needed to build the modules
 	mkdir -p '$(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)'
 	touch '$(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)/.nogitrelease'
-	cp '$(CURDIR)/autogen.sh' '$(CURDIR)/$(NAME)-$(VERSION)/'
+	cp '$(CURDIR)/autogen.sh' '$(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)/'
+	( for d in include module config; do \
+	     rm -Rf $(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)/$$d; \
+	done)
 	$(foreach file,$(DKMSFILES),mv '$(CURDIR)/$(NAME)-$(VERSION)/$(file)' '$(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)' || exit 1;)
 	@# Hellish awk line:
 	@#  * Deletes from configure.ac the parts not needed for building the kernel module
@@ -122,6 +133,8 @@ override_dh_auto_install:
 
 	mkdir -p $(CURDIR)/debian/tmp/usr/sbin
 	mv $(CURDIR)/debian/tmp/bin/*.py $(CURDIR)/debian/tmp/usr/sbin/
+
+	find '$(CURDIR)/debian/tmp' -name '*~' | xargs rm
 
 override_dh_installinit:
 	@# Install systemd files
@@ -166,23 +179,19 @@ override_dh_dkms:
 
 override_dh_makeshlibs:
 	dh_makeshlibs -a
-ifeq ($(BUILD_UDEB), true)
 	dh_makeshlibs -plibnvpair1 --add-udeb=libnvpair1-udeb
 	dh_makeshlibs -plibuutil1 --add-udeb=libuutil1-udeb
 	dh_makeshlibs -plibzfs$(SHLIB_MAJOR) --add-udeb=libzfs$(SHLIB_MAJOR)-udeb
 	dh_makeshlibs -plibzpool$(SHLIB_MAJOR) --add-udeb=libzpool$(SHLIB_MAJOR)-udeb
 	dh_makeshlibs -pzfsutils --add-udeb=zfsutils-udeb
-   endif
 
 override_dh_strip:
 	dh_strip --dbg-package=zfs-dbg
-ifeq ($(BUILD_UDEB), true)
 	dh_strip -plibnvpair-udeb
 	dh_strip -plibuutil1-udeb
 	dh_strip -plibzfs$(SHLIB_MAJOR)-udeb
 	dh_strip -plibzpool$(SHLIB_MAJOR)-udeb
 	dh_strip -pzfsutils-udeb
-endif
 
 override_dh_auto_clean:
 	@dh_auto_clean
@@ -193,36 +202,9 @@ override_dh_install: override_dh_installinit
 	find . -name lib*.la -delete
 	dh_install
 
-# ------------
+# ------------ UDEBS
 
-override_dh_prep-module-deb-files:
-	for templ in $(wildcard $(CURDIR)/debian/*_KVERS_*.in); do \
-		sed -e 's/##KVERS##/$(KVERS)/g ; s/#KVERS#/$(KVERS)/g ; s/_KVERS_/$(KVERS)/g ; s/##KDREV##/$(KDREV)/g ; s/#KDREV#/$(KDREV)/g ; s/_KDREV_/$(KDREV)/g ; s/_ARCH_/$(DEB_HOST_ARCH)/' \
-		< $$templ > `echo $$templ | sed -e 's/_KVERS_/$(KVERS)/g ; s/_ARCH_/$(DEB_HOST_ARCH)/g ; s/\.in$$//'` ; \
-	done
-	sed -e 's/##KVERS##/$(KVERS)/g ; s/#KVERS#/$(KVERS)/g ; s/_KVERS_/$(KVERS)/g ; s/##KDREV##/$(KDREV)/g ; s/#KDREV#/$(KDREV)/g ; s/_KDREV_/$(KDREV)/g ; s/_ARCH_/$(DEB_HOST_ARCH)/g ; s/_IMGVER_/$(KIMGVER)/g' \
-	< debian/control.modules.in > debian/control
-
-override_dh_configure_modules_udeb: override_dh_configure_modules_udeb_stamp
-override_dh_configure_modules_udeb_stamp:
-	dh_auto_configure -- \
-		--without-selinux \
-		--with-config=kernel \
-		--with-linux=$(KSRC) \
-		--with-linux-obj=$(KOBJ) \
-		--with-spl=$(SPL)
-	touch override_dh_configure_modules_udeb_stamp
-
-override_dh_configure_modules: override_dh_configure_modules_stamp
-override_dh_configure_modules_stamp:
-	dh_auto_configure -- \
-		--with-config=kernel \
-		--with-linux=$(KSRC) \
-		--with-linux-obj=$(KOBJ) \
-		--with-spl=$(SPL)
-	touch override_dh_configure_modules_stamp
-
-override_dh_binary-modules-udeb: override_dh_prep-module-deb-files override_dh_configure_modules_udeb
+override_dh_binary-modules-udeb: override_dh_configure_modules_udeb
 	dh_testdir
 	dh_testroot
 	dh_prep
@@ -235,7 +217,9 @@ override_dh_binary-modules-udeb: override_dh_prep-module-deb-files override_dh_c
 
 	dh_builddeb -p${pmodules}-di
 
-override_dh_binary-modules: override_dh_prep-module-deb-files override_dh_configure_modules
+# ------------ MODULES
+
+override_dh_binary-modules:
 	dh_testdir
 	dh_testroot
 	dh_prep

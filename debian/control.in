@@ -3,7 +3,8 @@ Section: kernel
 Priority: optional
 Maintainer: Debian ZFS on Linux maintainers <pkg-zfsonlinux-devel@lists.alioth.debian.org>
 Uploaders: Aron Xu <aron@debian.org>,
-           Carlos Alberto Lopez Perez <clopez@igalia.com>
+           Carlos Alberto Lopez Perez <clopez@igalia.com>,
+           Turbo Fredriksson <turbo@bayour.com>
 Build-Depends: autoconf,
                autogen,
                automake,
@@ -16,7 +17,8 @@ Build-Depends: autoconf,
                po-debconf,
                uuid-dev,
                zlib1g-dev,
-               libblkid-dev
+               libblkid-dev,
+               ##MODULES_BUILD_DEPENDS##
 Standards-Version: 3.9.4
 Homepage: http://www.zfsonlinux.org/
 Vcs-Git: git://anonscm.debian.org/pkg-zfsonlinux/zfs.git
