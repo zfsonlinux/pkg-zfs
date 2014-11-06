@@ -1,3 +1,10 @@
+zfs-linux (0.6.3-17~e82cdc~squeeze) wheezy; urgency=low
+
+    * Build for Squeeze.
+      Downgrade build depends on debhelper from 8 to 9.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 06 Nov 2014 22:29:00 +0100
+
 zfs-linux (0.6.3-17~e82cdc~wheezy) wheezy; urgency=low
 
     * Install systemd files.
