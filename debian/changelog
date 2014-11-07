@@ -1,3 +1,10 @@
+zfs-linux (0.6.3-1~squeeze) wheezy; urgency=low
+
+    * Build for Squeeze.
+      Lower build depend on debhelper from 9 to 8.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 07 Nov 2014 14:44:08 +0100
+
 zfs-linux (0.6.3-1~wheezy) wheezy; urgency=low
 
     * New upstream release.
