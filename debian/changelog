@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-1~jessie) jessie; urgency=low
+
+    * Build for jessie.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 07 Nov 2014 23:13:22 +0100
+
 zfs-linux (0.6.3-1~wheezy) wheezy; urgency=low
 
     * New upstream release.
