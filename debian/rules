@@ -10,7 +10,7 @@ VERSION := $(shell dpkg-parsechangelog \
 REVISION := $(shell dpkg-parsechangelog \
   | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f2-)
 
-DKMSFILES := module include config zfs.release.in autogen.sh META AUTHORS \
+DKMSFILES := module include config zfs.release.in META AUTHORS \
 		DISCLAIMER COPYRIGHT OPENSOLARIS.LICENSE README.markdown
 
 export SHLIB_MAJOR = 2
@@ -88,6 +88,10 @@ override_dh_auto_install:
 	@# Install the DKMS source.
 	@# We only want the files needed to build the modules
 	mkdir -p '$(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)'
+	cp '$(CURDIR)/autogen.sh' '$(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)/'
+	( for d in include module config; do \
+	        rm -Rf $(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)/$$d; \
+	done)
 	$(foreach file,$(DKMSFILES),mv '$(CURDIR)/$(NAME)-$(VERSION)/$(file)' '$(CURDIR)/debian/tmp/usr/src/$(NAME)-$(VERSION)' || exit 1;)
 	@# Hellish awk line:
 	@#  * Deletes from configure.ac the parts not needed for building the kernel module
