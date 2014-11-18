@@ -1,0 +1,41 @@
+From: Darik Horn <dajhorn@vanadac.com>
+Date: Sat, 18 Oct 2014 19:48:46 -0500
+Subject: Add libuutil to LIBADD for libzfs and libzfs_core
+
+Resolve spurious dpkg-shlibdeps warnings like this:
+
+	warning: symbol strlcpy used by libzfs_core.so found in none of the libraries
+
+This happens because dpkg-shlibdeps does not recursively search for symbols.
+
+Signed-off-by: Darik Horn <dajhorn@vanadac.com>
+---
+ lib/libzfs/Makefile.am      | 1 +
+ lib/libzfs_core/Makefile.am | 3 ++-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/lib/libzfs/Makefile.am b/lib/libzfs/Makefile.am
+index 8b1f517..efdf84b 100644
+--- a/lib/libzfs/Makefile.am
++++ b/lib/libzfs/Makefile.am
+@@ -23,6 +23,7 @@ libzfs_la_SOURCES = \
+ 
+ libzfs_la_LIBADD = \
+ 	$(top_builddir)/lib/libzfs_core/libzfs_core.la \
++	$(top_builddir)/lib/libuutil/libuutil.la \
+ 	$(top_builddir)/lib/libshare/libshare.la \
+ 	$(top_builddir)/lib/libnvpair/libnvpair.la \
+ 	$(top_builddir)/lib/libzpool/libzpool.la
+diff --git a/lib/libzfs_core/Makefile.am b/lib/libzfs_core/Makefile.am
+index 0ecd208..6f0be5f 100644
+--- a/lib/libzfs_core/Makefile.am
++++ b/lib/libzfs_core/Makefile.am
+@@ -10,6 +10,7 @@ libzfs_core_la_SOURCES = \
+ 	$(top_srcdir)/lib/libzfs_core/libzfs_core.c
+ 
+ libzfs_core_la_LIBADD = \
+-	$(top_builddir)/lib/libnvpair/libnvpair.la
++	$(top_builddir)/lib/libnvpair/libnvpair.la \
++	$(top_builddir)/lib/libuutil/libuutil.la
+ 
+ libzfs_core_la_LDFLAGS = -version-info 1:0:0

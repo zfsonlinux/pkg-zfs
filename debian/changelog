@@ -607,6 +607,12 @@ zfs-linux (0.6.3-1~precise) precise; urgency=low
   [ Brian Behlendorf ]
   * Make zimport.sh bash dependency explicit
 
+<<<<<<< HEAD
+=======
+  [ Darik Horn ]
+  * Update changelog for 0.6.2-2~trusty release
+
+>>>>>>> master/ubuntu/TRUNK
   [ Chunwei Chen ]
   * Use ddi_time_after and friends to compare time
 
@@ -730,6 +736,7 @@ zfs-linux (0.6.3-1~precise) precise; urgency=low
   * Integrate libzfs_core changes.
   * Ensure the correct mode for zfs-initramfs hooks.
   * Move zfs_completion.bash into the DEB overlay.
+<<<<<<< HEAD
   * Refresh debian/patches after upstream merge.
 
  -- Darik Horn <dajhorn@vanadac.com>  Thu, 12 Jun 2014 21:36:31 -0400
@@ -1037,3 +1044,16 @@ zfs-linux (0.6.1-1~precise) precise; urgency=low
   * Initial release.
 
  -- Darik Horn <dajhorn@vanadac.com>  Tue, 26 Mar 2013 21:18:10 -0500
+=======
+  * Revert "Backport Linux 3.13 compatibility patches."
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 12 Jun 2014 21:17:33 -0400
+
+zfs-linux (0.6.2-2~trusty) trusty; urgency=low
+
+  * Update gbp.conf for Ubuntu 14.04 Trusty Tahr.
+  * Backport Linux 3.13 compatibility patches.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 08 Apr 2014 20:55:43 -0400
+>>>>>>> master/ubuntu/TRUNK
