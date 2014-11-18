@@ -145,6 +145,7 @@
 #include <sys/kstat.h>
 #include <sys/dmu_tx.h>
 #include <zfs_fletcher.h>
+#include <sys/arc_impl.h>
 
 #ifndef _KERNEL
 /* set with ZFS_DEBUG=watch, to enable watchpoints on frozen buffers */
@@ -217,46 +218,6 @@ static boolean_t arc_warm;
 unsigned long zfs_arc_max = 0;
 unsigned long zfs_arc_min = 0;
 unsigned long zfs_arc_meta_limit = 0;
-
-/*
- * Note that buffers can be in one of 6 states:
- *	ARC_anon	- anonymous (discussed below)
- *	ARC_mru		- recently used, currently cached
- *	ARC_mru_ghost	- recentely used, no longer in cache
- *	ARC_mfu		- frequently used, currently cached
- *	ARC_mfu_ghost	- frequently used, no longer in cache
- *	ARC_l2c_only	- exists in L2ARC but not other states
- * When there are no active references to the buffer, they are
- * are linked onto a list in one of these arc states.  These are
- * the only buffers that can be evicted or deleted.  Within each
- * state there are multiple lists, one for meta-data and one for
- * non-meta-data.  Meta-data (indirect blocks, blocks of dnodes,
- * etc.) is tracked separately so that it can be managed more
- * explicitly: favored over data, limited explicitly.
- *
- * Anonymous buffers are buffers that are not associated with
- * a DVA.  These are buffers that hold dirty block copies
- * before they are written to stable storage.  By definition,
- * they are "ref'd" and are considered part of arc_mru
- * that cannot be freed.  Generally, they will aquire a DVA
- * as they are written and migrate onto the arc_mru list.
- *
- * The ARC_l2c_only state is for buffers that are in the second
- * level ARC but no longer in any of the ARC_m* lists.  The second
- * level ARC itself may also contain buffers that are in any of
- * the ARC_m* states - meaning that a buffer can exist in two
- * places.  The reason for the ARC_l2c_only state is to keep the
- * buffer header in the hash table, so that reads that hit the
- * second level ARC benefit from these fast lookups.
- */
-
-typedef struct arc_state {
-	list_t	arcs_list[ARC_BUFC_NUMTYPES];	/* list of evictable buffers */
-	uint64_t arcs_lsize[ARC_BUFC_NUMTYPES];	/* amount of evictable data */
-	uint64_t arcs_size;	/* total amount of data in this state */
-	kmutex_t arcs_mtx;
-	arc_state_type_t arcs_state;
-} arc_state_t;
 
 /* The 6 states: */
 static arc_state_t ARC_anon;
@@ -522,69 +483,6 @@ static arc_state_t	*arc_l2c_only;
 #define	L2ARC_IS_VALID_COMPRESS(_c_) \
 	((_c_) == ZIO_COMPRESS_LZ4 || (_c_) == ZIO_COMPRESS_EMPTY)
 
-typedef struct l2arc_buf_hdr l2arc_buf_hdr_t;
-
-typedef struct arc_callback arc_callback_t;
-
-struct arc_callback {
-	void			*acb_private;
-	arc_done_func_t		*acb_done;
-	arc_buf_t		*acb_buf;
-	zio_t			*acb_zio_dummy;
-	arc_callback_t		*acb_next;
-};
-
-typedef struct arc_write_callback arc_write_callback_t;
-
-struct arc_write_callback {
-	void		*awcb_private;
-	arc_done_func_t	*awcb_ready;
-	arc_done_func_t	*awcb_physdone;
-	arc_done_func_t	*awcb_done;
-	arc_buf_t	*awcb_buf;
-};
-
-struct arc_buf_hdr {
-	/* protected by hash lock */
-	dva_t			b_dva;
-	uint64_t		b_birth;
-	uint64_t		b_cksum0;
-
-	kmutex_t		b_freeze_lock;
-	zio_cksum_t		*b_freeze_cksum;
-
-	arc_buf_hdr_t		*b_hash_next;
-	arc_buf_t		*b_buf;
-	uint32_t		b_flags;
-	uint32_t		b_datacnt;
-
-	arc_callback_t		*b_acb;
-	kcondvar_t		b_cv;
-
-	/* immutable */
-	arc_buf_contents_t	b_type;
-	uint64_t		b_size;
-	uint64_t		b_spa;
-
-	/* protected by arc state mutex */
-	arc_state_t		*b_state;
-	list_node_t		b_arc_node;
-
-	/* updated atomically */
-	clock_t			b_arc_access;
-	uint32_t		b_mru_hits;
-	uint32_t		b_mru_ghost_hits;
-	uint32_t		b_mfu_hits;
-	uint32_t		b_mfu_ghost_hits;
-	uint32_t		b_l2_hits;
-
-	/* self protecting */
-	refcount_t		b_refcnt;
-
-	l2arc_buf_hdr_t		*b_l2hdr;
-	list_node_t		b_l2node;
-};
-
 static list_t arc_prune_list;
 static kmutex_t arc_prune_mtx;
 static arc_buf_t *arc_eviction_list;
@@ -657,7 +555,7 @@ struct ht_lock {
 #endif
 };
 
-#define	BUF_LOCKS 256
+#define	BUF_LOCKS 8192
 typedef struct buf_hash_table {
 	uint64_t ht_mask;
 	arc_buf_hdr_t **ht_table;
@@ -707,19 +605,6 @@ int l2arc_norw = B_FALSE;			/* no reads during writes */
 /*
  * L2ARC Internals
  */
-typedef struct l2arc_dev {
-	vdev_t			*l2ad_vdev;	/* vdev */
-	spa_t			*l2ad_spa;	/* spa */
-	uint64_t		l2ad_hand;	/* next write location */
-	uint64_t		l2ad_start;	/* first addr on device */
-	uint64_t		l2ad_end;	/* last addr on device */
-	uint64_t		l2ad_evict;	/* last addr eviction reached */
-	boolean_t		l2ad_first;	/* first sweep through */
-	boolean_t		l2ad_writing;	/* currently writing */
-	list_t			*l2ad_buflist;	/* buffer list */
-	list_node_t		l2ad_node;	/* device list node */
-} l2arc_dev_t;
-
 static list_t L2ARC_dev_list;			/* device list */
 static list_t *l2arc_dev_list;			/* device list pointer */
 static kmutex_t l2arc_dev_mtx;			/* device list mutex */
@@ -1434,12 +1319,12 @@ arc_space_return(uint64_t space, arc_space_type_t type)
 }
 
 arc_buf_t *
-arc_buf_alloc(spa_t *spa, int size, void *tag, arc_buf_contents_t type)
+arc_buf_alloc(spa_t *spa, uint64_t size, void *tag, arc_buf_contents_t type)
 {
 	arc_buf_hdr_t *hdr;
 	arc_buf_t *buf;
 
-	ASSERT3U(size, >, 0);
+	VERIFY3U(size, <=, SPA_MAXBLOCKSIZE);
 	hdr = kmem_cache_alloc(hdr_cache, KM_PUSHPAGE);
 	ASSERT(BUF_EMPTY(hdr));
 	hdr->b_size = size;
@@ -1477,7 +1362,7 @@ static char *arc_onloan_tag = "onloan";
  * freed.
  */
 arc_buf_t *
-arc_loan_buf(spa_t *spa, int size)
+arc_loan_buf(spa_t *spa, uint64_t size)
 {
 	arc_buf_t *buf;
 
@@ -1837,7 +1722,7 @@ arc_buf_remove_ref(arc_buf_t *buf, void* tag)
 	return (no_callback);
 }
 
-int
+uint64_t
 arc_buf_size(arc_buf_t *buf)
 {
 	return (buf->b_hdr->b_size);
@@ -2043,7 +1928,7 @@ top:
 
 	if (bytes_evicted < bytes)
 		dprintf("only evicted %lld bytes from %x\n",
-		    (longlong_t)bytes_evicted, state);
+		    (longlong_t)bytes_evicted, state->arcs_state);
 
 	if (skipped)
 		ARCSTAT_INCR(arcstat_evict_skip, skipped);
@@ -2604,27 +2489,39 @@ arc_evictable_memory(void) {
 	return (ghost_clean + MAX((int64_t)arc_size - (int64_t)arc_c_min, 0));
 }
 
-static int
+/*
+ * If sc->nr_to_scan is zero, the caller is requesting a query of the
+ * number of objects which can potentially be freed.  If it is nonzero,
+ * the request is to free that many objects.
+ *
+ * Linux kernels >= 3.12 have the count_objects and scan_objects callbacks
+ * in struct shrinker and also require the shrinker to return the number
+ * of objects freed.
+ *
+ * Older kernels require the shrinker to return the number of freeable
+ * objects following the freeing of nr_to_free.
+ */
+static spl_shrinker_t
 __arc_shrinker_func(struct shrinker *shrink, struct shrink_control *sc)
 {
-	uint64_t pages;
+	int64_t pages;
 
 	/* The arc is considered warm once reclaim has occurred */
 	if (unlikely(arc_warm == B_FALSE))
 		arc_warm = B_TRUE;
 
 	/* Return the potential number of reclaimable pages */
-	pages = btop(arc_evictable_memory());
+	pages = btop((int64_t)arc_evictable_memory());
 	if (sc->nr_to_scan == 0)
 		return (pages);
 
 	/* Not allowed to perform filesystem reclaim */
 	if (!(sc->gfp_mask & __GFP_FS))
-		return (-1);
+		return (SHRINK_STOP);
 
 	/* Reclaim in progress */
 	if (mutex_tryenter(&arc_reclaim_thr_lock) == 0)
-		return (-1);
+		return (SHRINK_STOP);
 
 	/*
 	 * Evict the requested number of pages by shrinking arc_c the
@@ -2633,10 +2530,15 @@ __arc_shrinker_func(struct shrinker *shrink, struct shrink_control *sc)
 	 */
 	if (pages > 0) {
 		arc_kmem_reap_now(ARC_RECLAIM_AGGR, ptob(sc->nr_to_scan));
+
+#ifdef HAVE_SPLIT_SHRINKER_CALLBACK
+		pages = MAX(pages - btop(arc_evictable_memory()), 0);
+#else
 		pages = btop(arc_evictable_memory());
+#endif
 	} else {
 		arc_kmem_reap_now(ARC_RECLAIM_CONS, ptob(sc->nr_to_scan));
-		pages = -1;
+		pages = SHRINK_STOP;
 	}
 
 	/*
@@ -3306,6 +3208,22 @@ top:
 		boolean_t devw = B_FALSE;
 		enum zio_compress b_compress = ZIO_COMPRESS_OFF;
 		uint64_t b_asize = 0;
+
+		/*
+		 * Gracefully handle a damaged logical block size as a
+		 * checksum error by passing a dummy zio to the done callback.
+		 */
+		if (size > SPA_MAXBLOCKSIZE) {
+			if (done) {
+				rzio = zio_null(pio, spa, NULL,
+				    NULL, NULL, zio_flags);
+				rzio->io_error = ECKSUM;
+				done(rzio, buf, private);
+				zio_nowait(rzio);
+			}
+			rc = ECKSUM;
+			goto out;
+		}
 
 		if (hdr == NULL) {
 			/* this block is not in the cache */
@@ -5627,6 +5545,8 @@ l2arc_stop(void)
 }
 
 #if defined(_KERNEL) && defined(HAVE_SPL)
+EXPORT_SYMBOL(arc_buf_size);
+EXPORT_SYMBOL(arc_write);
 EXPORT_SYMBOL(arc_read);
 EXPORT_SYMBOL(arc_buf_remove_ref);
 EXPORT_SYMBOL(arc_buf_info);

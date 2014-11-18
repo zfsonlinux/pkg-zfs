@@ -571,12 +571,13 @@ dbuf_read_done(zio_t *zio, arc_buf_t *buf, void *vdb)
 	dbuf_rele_and_unlock(db, NULL);
 }
 
-static void
+static int
 dbuf_read_impl(dmu_buf_impl_t *db, zio_t *zio, uint32_t *flags)
 {
 	dnode_t *dn;
 	zbookmark_phys_t zb;
 	uint32_t aflags = ARC_NOWAIT;
+	int err;
 
 	DB_DNODE_ENTER(db);
 	dn = DB_DNODE(db);
@@ -601,7 +602,7 @@ dbuf_read_impl(dmu_buf_impl_t *db, zio_t *zio, uint32_t *flags)
 		dbuf_update_data(db);
 		db->db_state = DB_CACHED;
 		mutex_exit(&db->db_mtx);
-		return;
+		return (0);
 	}
 
 	/*
@@ -621,7 +622,7 @@ dbuf_read_impl(dmu_buf_impl_t *db, zio_t *zio, uint32_t *flags)
 		db->db_state = DB_CACHED;
 		*flags |= DB_RF_CACHED;
 		mutex_exit(&db->db_mtx);
-		return;
+		return (0);
 	}
 
 	DB_DNODE_EXIT(db);
@@ -640,12 +641,14 @@ dbuf_read_impl(dmu_buf_impl_t *db, zio_t *zio, uint32_t *flags)
 
 	dbuf_add_ref(db, NULL);
 
-	(void) arc_read(zio, db->db_objset->os_spa, db->db_blkptr,
+	err = arc_read(zio, db->db_objset->os_spa, db->db_blkptr,
 	    dbuf_read_done, db, ZIO_PRIORITY_SYNC_READ,
 	    (*flags & DB_RF_CANFAIL) ? ZIO_FLAG_CANFAIL : ZIO_FLAG_MUSTSUCCEED,
 	    &aflags, &zb);
 	if (aflags & ARC_CACHED)
 		*flags |= DB_RF_CACHED;
+
+	return (SET_ERROR(err));
 }
 
 int
@@ -688,11 +691,12 @@ dbuf_read(dmu_buf_impl_t *db, zio_t *zio, uint32_t flags)
 
 		if (zio == NULL)
 			zio = zio_root(spa, NULL, NULL, ZIO_FLAG_CANFAIL);
-		dbuf_read_impl(db, zio, &flags);
+
+		err = dbuf_read_impl(db, zio, &flags);
 
 		/* dbuf_read_impl has dropped db_mtx for us */
 
-		if (prefetch)
+		if (!err && prefetch)
 			dmu_zfetch(&dn->dn_zfetch, db->db.db_offset,
 			    db->db.db_size, flags & DB_RF_CACHED);
 
@@ -700,7 +704,7 @@ dbuf_read(dmu_buf_impl_t *db, zio_t *zio, uint32_t flags)
 			rw_exit(&dn->dn_struct_rwlock);
 		DB_DNODE_EXIT(db);
 
-		if (!havepzio)
+		if (!err && !havepzio)
 			err = zio_wait(zio);
 	} else {
 		/*
@@ -865,13 +869,16 @@ dbuf_free_range(dnode_t *dn, uint64_t start, uint64_t end, dmu_tx_t *tx)
 {
 	dmu_buf_impl_t *db, *db_next;
 	uint64_t txg = tx->tx_txg;
+	boolean_t freespill =
+	    (start == DMU_SPILL_BLKID || end == DMU_SPILL_BLKID);
 
-	if (end > dn->dn_maxblkid && (end != DMU_SPILL_BLKID))
+	if (end > dn->dn_maxblkid && !freespill)
 		end = dn->dn_maxblkid;
 	dprintf_dnode(dn, "start=%llu end=%llu\n", start, end);
 
 	mutex_enter(&dn->dn_dbufs_mtx);
-	if (start >= dn->dn_unlisted_l0_blkid * dn->dn_datablksz) {
+	if (start >= dn->dn_unlisted_l0_blkid * dn->dn_datablksz &&
+	    !freespill) {
 		/* There can't be any dbufs in this range; no need to search. */
 		mutex_exit(&dn->dn_dbufs_mtx);
 		return;
@@ -892,7 +899,7 @@ dbuf_free_range(dnode_t *dn, uint64_t start, uint64_t end, dmu_tx_t *tx)
 
 		if (db->db_level != 0)
 			continue;
-		if (db->db_blkid < start || db->db_blkid > end)
+		if ((db->db_blkid < start || db->db_blkid > end) && !freespill)
 			continue;
 
 		/* found a level 0 buffer in the range */
@@ -2992,4 +2999,5 @@ EXPORT_SYMBOL(dmu_buf_set_user_ie);
 EXPORT_SYMBOL(dmu_buf_update_user);
 EXPORT_SYMBOL(dmu_buf_get_user);
 EXPORT_SYMBOL(dmu_buf_freeable);
+EXPORT_SYMBOL(dmu_buf_get_blkptr);
 #endif
