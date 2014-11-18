@@ -1,6 +1,6 @@
 # zpool-import.conf for Upstart
 #
-# Block mountall, wait for member devices to appear, and import ZFS pools.
+# Block mountall, wait for member devices to appear, and import OpenZFS pools.
 #
 # This is a naive indirect /etc/zfs/zpool.cache parser that assumes the output
 # of zdb is stable. It runs in dash before /usr is guaranteed to be available,
@@ -12,7 +12,7 @@
 
 task
 start on ( starting mountall )
-description "Automatically import ZFS pools before mountall starts."
+description "Automatically import OpenZFS pools before mountall starts."
 
 pre-start script
 	# This argument becomes the default in ZoL 0.6.4

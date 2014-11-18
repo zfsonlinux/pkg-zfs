@@ -8,7 +8,7 @@
 # Default-Stop: 0 1 6
 # Should-Start: iscsi iscsitarget istgt nfs-kernel-server samba
 # Should-Stop: iscsi iscsitarget istgt nfs-kernel-server samba
-# Short-Description: Network share ZFS datasets.
+# Short-Description: Network share OpenZFS datasets.
 # Description: Run the `zfs share -a` or `zfs unmount -a` commands
 #	for controlling iSCSI, NFS, or CIFS network shares.
 ### END INIT INFO
@@ -22,7 +22,7 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin
 
 do_start()
 {
-	log_begin_msg "Sharing ZFS filesystems"
+	log_begin_msg "Sharing OpenZFS filesystems"
 	log_progress_msg "filesystems"
 	zfs share -a
 	RET=$?
@@ -37,12 +37,12 @@ do_start()
 
 do_stop()
 {
-	log_begin_msg "Unsharing ZFS filesystems"
+	log_begin_msg "Unsharing OpenZFS filesystems"
 	log_progress_msg "filesystems"
 	zfs unshare -a
 	RET=$?
 
-	# Ignore a non-zero `zfs` result so that a busy ZFS instance
+	# Ignore a non-zero `zfs` result so that a busy OpenZFS instance
 	# does not hang the system during shutdown.
 	if [ $RET != 0 ] ; then
 		log_end_msg $RET
