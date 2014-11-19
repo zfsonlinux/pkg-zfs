@@ -3,6 +3,6 @@ lib/udev
 sbin
 usr/share/man
 etc/zfs/zed.d
-usr/lib/x86_64-linux-gnu/zfs/zed.d
+usr/lib/zfs-linux/zfs/zed.d
 usr/sbin/*
 usr/lib/systemd/system
