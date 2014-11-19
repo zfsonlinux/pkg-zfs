@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-21~7b2d78~squeeze) squeeze; urgency=low
+
+    * Build for squeeze
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 19 Nov 2014 20:30:35 +0100
+
 zfs-linux (0.6.3-21~7b2d78~wheezy) wheezy; urgency=low
 
     * New upstream GIT tag.
