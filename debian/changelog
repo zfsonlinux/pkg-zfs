@@ -1,3 +1,11 @@
+zfs-linux (0.6.3-20~7b2d78a) unstable; urgency=low
+
+  * Working on some patches to the Debian packaging system so that we can
+    build more recent git versions of ZFS on Linux.
+    See Also: https://github.com/zfsonlinux/zfs/issues/2863
+
+ -- Brian Kroth <bpkroth@gmail.com>  Wed, 19 Nov 2014 15:02:55 -0600
+
 zfs-linux (0.6.1-1~wheezy) wheezy; urgency=low
 
   * Initial release.

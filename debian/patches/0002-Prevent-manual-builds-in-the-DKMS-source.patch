@@ -19,8 +19,6 @@ ZFS has a DKMS registration.
  3 files changed, 18 insertions(+), 3 deletions(-)
  create mode 100644 config/dkms.m4
 
-Index: b/config/dkms.m4
-===================================================================
 --- /dev/null
 +++ b/config/dkms.m4
 @@ -0,0 +1,14 @@
@@ -38,8 +36,6 @@ Index: b/config/dkms.m4
 +		AC_MSG_RESULT([not found])
 +        ])
 +])
-Index: b/config/user.m4
-===================================================================
 --- a/config/user.m4
 +++ b/config/user.m4
 @@ -2,6 +2,7 @@
@@ -47,11 +43,9 @@ Index: b/config/user.m4
  dnl #
  AC_DEFUN([ZFS_AC_CONFIG_USER], [
 +	ZFS_AC_DKMS_INHIBIT
+ 	ZFS_AC_CONFIG_USER_MOUNT_HELPER
  	ZFS_AC_CONFIG_USER_UDEV
- 	ZFS_AC_CONFIG_USER_DRACUT
- 	ZFS_AC_CONFIG_USER_ARCH
-Index: b/config/zfs-build.m4
-===================================================================
+ 	ZFS_AC_CONFIG_USER_SYSTEMD
 --- a/config/zfs-build.m4
 +++ b/config/zfs-build.m4
 @@ -86,10 +86,10 @@

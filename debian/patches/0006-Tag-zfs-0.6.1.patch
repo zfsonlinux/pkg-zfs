@@ -14,70 +14,14 @@ Signed-off-by: Brian Behlendorf <behlendorf1@llnl.gov>
  rpm/generic/zfs.spec.in      |    4 ++--
  5 files changed, 10 insertions(+), 11 deletions(-)
 
-diff --git a/META b/META
-index b380123..a65dc29 100644
 --- a/META
 +++ b/META
-@@ -1,8 +1,8 @@
- Meta:         1
+@@ -2,7 +2,7 @@
  Name:         zfs
  Branch:       1.0
--Version:      0.6.0
--Release:      rc14
-+Version:      0.6.1
-+Release:      1
+ Version:      0.6.3
+-Release:      1
++Release:      20
  Release-Tags: relext
  License:      CDDL
- Author:       Sun Microsystems/Oracle, Lawrence Livermore National Laboratory
-diff --git a/rpm/fedora/zfs-kmod.spec.in b/rpm/fedora/zfs-kmod.spec.in
-index 323b99f..6a8e570 100644
---- a/rpm/fedora/zfs-kmod.spec.in
-+++ b/rpm/fedora/zfs-kmod.spec.in
-@@ -114,5 +114,5 @@ chmod u+x ${RPM_BUILD_ROOT}%{kmodinstdir_prefix}/*/extra/*/*/*
- rm -rf $RPM_BUILD_ROOT
- 
- %changelog
--* Tue Mar 12 2013 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.0-1
--- Initial kmods2 packaging.
-+* Fri Mar 22 2013 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.1-1
-+- First official stable release.
-diff --git a/rpm/generic/zfs-dkms.spec.in b/rpm/generic/zfs-dkms.spec.in
-index 07a9f6d..7d871cb 100644
---- a/rpm/generic/zfs-dkms.spec.in
-+++ b/rpm/generic/zfs-dkms.spec.in
-@@ -62,6 +62,5 @@ dkms remove -m %{module} -v %{version} --all --rpm_safe_upgrade
- exit 0
- 
- %changelog
--* Tue Mar 12 2013 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.0-1
--- Initial dkms packaging.
--
-+* Fri Mar 22 2013 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.1-1
-+- First official stable release.
-diff --git a/rpm/generic/zfs-kmod.spec.in b/rpm/generic/zfs-kmod.spec.in
-index d99446b..6f478f3 100644
---- a/rpm/generic/zfs-kmod.spec.in
-+++ b/rpm/generic/zfs-kmod.spec.in
-@@ -127,5 +127,5 @@ chmod u+x ${RPM_BUILD_ROOT}%{kmodinstdir_prefix}/*/extra/*/*/*
- rm -rf $RPM_BUILD_ROOT
- 
- %changelog
--* Tue Mar 12 2013 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.0-1
--- Initial kmods2 packaging.
-+* Fri Mar 22 2013 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.1-1
-+- First official stable release.
-diff --git a/rpm/generic/zfs.spec.in b/rpm/generic/zfs.spec.in
-index 5331265..7ee4ca0 100644
---- a/rpm/generic/zfs.spec.in
-+++ b/rpm/generic/zfs.spec.in
-@@ -145,5 +145,5 @@ find %{?buildroot}%{_libdir} -name '*.la' -exec rm -f {} \;
- %{_dracutdir}/modules.d/*
- 
- %changelog
--* Tue Mar 12 2013 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.0-1
--- Refreshed RPM packaging.
-+* Fri Mar 22 2013 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.1-1
-+- First official stable release.
--- 
-1.7.10.4
-
+ Author:       OpenZFS on Linux
