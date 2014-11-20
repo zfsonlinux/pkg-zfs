@@ -71,7 +71,7 @@ Description: Debugging symbols for libuutil1
 Package: libzfs-dev
 Section: libdevel
 Architecture: linux-any
-Depends: ${misc:Depends}, libzfs1 (= ${binary:Version})
+Depends: ${misc:Depends}, libzfs2 (= ${binary:Version})
 Provides: libnvpair-dev, libuutil-dev
 Replaces: libefi1,
  libnvpair1,
@@ -80,13 +80,13 @@ Replaces: libefi1,
  libunicode1,
  libuutil1,
  libzavl1,
- libzfs1,
- libzpool1,
+ libzfs2,
+ libzpool2,
 Description: Native ZFS filesystem development files for Linux
  Header files and static libraries for compiling software
  against libzfs.
 
-Package: libzfs1
+Package: libzfs2
 Section: libs
 Architecture: linux-any
 Depends: ${misc:Depends}, ${shlibs:Depends}
@@ -94,17 +94,17 @@ Replaces: libzfs0
 Description: Native ZFS filesystem library for Linux
  The zfs management library.
 
-Package: libzfs1-dbg
+Package: libzfs2-dbg
 Section: debug
 Architecture: linux-any
-Depends: ${misc:Depends}, libzfs1 (= ${binary:Version})
+Depends: ${misc:Depends}, libzfs2 (= ${binary:Version})
 Replaces: libzfs0-dbg
-Description: Debugging symbols for libzfs1
+Description: Debugging symbols for libzfs2
  The zfs management library.
  .
- This package contains the debugging symbols for libzfs1.
+ This package contains the debugging symbols for libzfs2.
 
-Package: libzpool1
+Package: libzpool2
 Section: libs
 Architecture: linux-any
 Depends: ${misc:Depends}, ${shlibs:Depends}
@@ -112,15 +112,15 @@ Replaces: libzpool0
 Description: Native ZFS pool library for Linux
  The zpool management library.
 
-Package: libzpool1-dbg
+Package: libzpool2-dbg
 Section: debug
 Architecture: linux-any
-Depends: ${misc:Depends}, libzpool1 (= ${binary:Version})
+Depends: ${misc:Depends}, libzpool2 (= ${binary:Version})
 Replaces: libzpool0-dbg
-Description: Debugging symbols for libzpool1
+Description: Debugging symbols for libzpool2
  The zpool management library.
  .
- This package contains the debugging symbols for libzpool1.
+ This package contains the debugging symbols for libzpool2.
 
 Package: zfs-dkms
 Section: kernel

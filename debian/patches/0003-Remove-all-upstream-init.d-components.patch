@@ -25,36 +25,23 @@ bundles init files according to Debian packaging policy.
  delete mode 100644 etc/init.d/zfs.lunar.in
  delete mode 100644 etc/init.d/zfs.redhat.in
 
-Index: b/configure.ac
-===================================================================
 --- a/configure.ac
 +++ b/configure.ac
-@@ -61,7 +61,6 @@
+@@ -62,7 +62,6 @@
  	udev/Makefile
  	udev/rules.d/Makefile
  	etc/Makefile
 -	etc/init.d/Makefile
  	etc/zfs/Makefile
- 	man/Makefile
- 	man/man1/Makefile
-Index: b/etc/Makefile.am
-===================================================================
---- a/etc/Makefile.am
-+++ b/etc/Makefile.am
-@@ -1 +1 @@
--SUBDIRS = init.d zfs
-+SUBDIRS = zfs
-Index: b/etc/init.d/.gitignore
-===================================================================
+ 	etc/systemd/Makefile
+ 	etc/systemd/system/Makefile
 --- a/etc/init.d/.gitignore
 +++ /dev/null
 @@ -1 +0,0 @@
 -zfs
-Index: b/etc/init.d/zfs.fedora.in
-===================================================================
 --- a/etc/init.d/zfs.fedora.in
 +++ /dev/null
-@@ -1,244 +0,0 @@
+@@ -1,243 +0,0 @@
 -#!/bin/bash
 -#
 -# zfs           This script will mount/umount the zfs filesystems.
@@ -81,6 +68,11 @@ Index: b/etc/init.d/zfs.fedora.in
 -### END INIT INFO
 -
 -export PATH=/usr/local/sbin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
+-
+-if [ -z "$init" ]; then
+-    # Not interactive
+-    grep -qE '(^|[^\\](\\\\)* )zfs=(off|no)( |$)' /proc/cmdline && exit 3
+-fi
 -
 -# Source function library & LSB routines
 -. /etc/rc.d/init.d/functions
@@ -177,12 +169,6 @@ Index: b/etc/init.d/zfs.fedora.in
 -		action $"Checking if ZFS is installed: not installed" /bin/false
 -		return 5
 -	}
--
--        # Requires selinux policy which has not been written.
--        if [ -r "/selinux/enforce" ] &&
--           [ "$(cat /selinux/enforce)" = "1" ]; then
--                action $"SELinux ZFS policy required: " /bin/false || return 6
--        fi
 -
 -	# Delay until all required block devices are present.
 -	udevadm settle
@@ -299,21 +285,32 @@ Index: b/etc/init.d/zfs.fedora.in
 -esac
 -
 -exit $RETVAL
-Index: b/etc/init.d/zfs.gentoo.in
-===================================================================
 --- a/etc/init.d/zfs.gentoo.in
 +++ /dev/null
-@@ -1,111 +0,0 @@
+@@ -1,124 +0,0 @@
 -#!/sbin/runscript
 -# Copyright 1999-2011 Gentoo Foundation
 -# Released under the 2-clause BSD license.
 -# $Header: /var/cvsroot/gentoo-x86/sys-fs/zfs/files/zfs,v 0.9 2011/04/30 10:13:43 devsk Exp $
 -
+-if [ -z "$init" ]; then
+-    # Not interactive
+-    grep -qE '(^|[^\\](\\\\)* )zfs=(off|no)( |$)' /proc/cmdline && exit 3
+-fi
+-
 -depend()
 -{
+-	# Try to allow people to mix and match fstab with ZFS in a way that makes sense.
+-	if [ "$(mountinfo -s /)" = 'zfs' ]
+-	then
+-		before localmount
+-	else
+-		after localmount
+-	fi
+-
 -	# bootmisc will log to /var which may be a different zfs than root.
--	before net bootmisc
--	after udev localmount
+-	before bootmisc logger
+-	use mtab
 -	keyword -lxc -openvz -prefix -vserver
 -}
 -
@@ -415,11 +412,9 @@ Index: b/etc/init.d/zfs.gentoo.in
 -	# show pool status and list
 -	$ZPOOL status && echo && $ZPOOL list
 -}
-Index: b/etc/init.d/zfs.lsb.in
-===================================================================
 --- a/etc/init.d/zfs.lsb.in
 +++ /dev/null
-@@ -1,130 +0,0 @@
+@@ -1,153 +0,0 @@
 -#!/bin/bash
 -#
 -# zfs           This script will mount/umount the zfs filesystems.
@@ -451,6 +446,10 @@ Index: b/etc/init.d/zfs.lsb.in
 -ZFS="@sbindir@/zfs"
 -ZPOOL="@sbindir@/zpool"
 -ZPOOL_CACHE="@sysconfdir@/zfs/zpool.cache"
+-USE_DISK_BY_ID=0
+-VERBOSE_MOUNT=0
+-DO_OVERLAY_MOUNTS=0
+-MOUNT_EXTRA_OPTIONS=""
 -
 -# Source zfs configuration.
 -[ -r '/etc/default/zfs' ] &&  . /etc/default/zfs
@@ -458,17 +457,14 @@ Index: b/etc/init.d/zfs.lsb.in
 -[ -x "$ZPOOL" ] || exit 1
 -[ -x "$ZFS" ] || exit 2
 -
+-if [ -z "$init" ]; then
+-    # Not interactive
+-    grep -qE '(^|[^\\](\\\\)* )zfs=(off|no)( |$)' /proc/cmdline && exit 3
+-fi
+-
 -start()
 -{
 -	[ -f "$LOCKFILE" ] && return 3
--
--	# Requires selinux policy which has not been written.
--	if [ -r "/selinux/enforce" ] &&
--	   [ "$(cat /selinux/enforce)" = "1" ]; then
--
--		log_failure_msg "SELinux ZFS policy required"
--		return 4
--	fi
 -
 -	# Delay until all required block devices are present.
 -	udevadm settle
@@ -486,13 +482,31 @@ Index: b/etc/init.d/zfs.lsb.in
 -
 -	# Import all pools described by the cache file, and then mount
 -	# all filesystem based on their properties.
--	if [ -f "$ZPOOL_CACHE" ] ; then
+-	if [ "$USE_DISK_BY_ID" -eq 1 ]; then
+-		log_begin_msg "Importing ZFS pools"
+-		"$ZPOOL" import -d /dev/disk/by-id -aN 2>/dev/null
+-		ret=$?
+-		log_end_msg $ret
+-		[ "$ret" -eq 0 ] && POOL_IMPORTED=1
+-	elif [ -f "$ZPOOL_CACHE" ] ; then
 -		log_begin_msg "Importing ZFS pools"
 -		"$ZPOOL" import -c "$ZPOOL_CACHE" -aN 2>/dev/null
--		log_end_msg $?
+-		ret=$?
+-		log_end_msg $ret
+-		[ "$ret" -eq 0 ] && POOL_IMPORTED=1
+-	fi
+-
+-	if [ -n "$POOL_IMPORTED" ]; then
+-		if [ "$VERBOSE_MOUNT" -eq 1 ]; then
+-			verbose=v
+-		fi
+-
+-		if [ "$DO_OVERLAY_MOUNTS" -eq 1 ]; then
+-			overlay=O
+-		fi
 -
 -		log_begin_msg "Mounting ZFS filesystems"
--		"$ZFS" mount -a
+-		"$ZFS" mount -a$verbose$overlay$MOUNT_EXTRA_OPTIONS
 -		log_end_msg $?
 -
 -		log_begin_msg "Exporting ZFS filesystems"
@@ -506,6 +520,10 @@ Index: b/etc/init.d/zfs.lsb.in
 -stop()
 -{
 -	[ ! -f "$LOCKFILE" ] && return 3
+-
+-	log_begin_msg "Unsharing ZFS filesystems"
+-	"$ZFS" unshare -a
+-	log_end_msg $?
 -
 -	log_begin_msg "Unmounting ZFS filesystems"
 -	"$ZFS" umount -a
@@ -550,11 +568,9 @@ Index: b/etc/init.d/zfs.lsb.in
 -esac
 -
 -exit $RETVAL
-Index: b/etc/init.d/zfs.lunar.in
-===================================================================
 --- a/etc/init.d/zfs.lunar.in
 +++ /dev/null
-@@ -1,95 +0,0 @@
+@@ -1,100 +0,0 @@
 -#!/bin/bash
 -#
 -# zfs           This shell script takes care of starting (mount) and
@@ -570,6 +586,11 @@ Index: b/etc/init.d/zfs.lunar.in
 -ZFS="@sbindir@/zfs"
 -ZPOOL="@sbindir@/zpool"
 -ZPOOL_CACHE="@sysconfdir@/zfs/zpool.cache"
+-
+-if [ -z "$init" ]; then
+-    # Not interactive
+-    grep -qE '(^|[^\\](\\\\)* )zfs=(off|no)( |$)' /proc/cmdline && exit 3
+-fi
 -
 -case $1 in
 -  start)  echo "$1ing ZFS filesystems"
@@ -650,11 +671,9 @@ Index: b/etc/init.d/zfs.lunar.in
 -  ;;
 -
 -esac
-Index: b/etc/init.d/zfs.redhat.in
-===================================================================
 --- a/etc/init.d/zfs.redhat.in
 +++ /dev/null
-@@ -1,176 +0,0 @@
+@@ -1,175 +0,0 @@
 -#!/bin/bash
 -#
 -# zfs           This script will mount/umount the zfs filesystems.
@@ -681,6 +700,11 @@ Index: b/etc/init.d/zfs.redhat.in
 -### END INIT INFO
 -
 -export PATH=/usr/local/sbin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
+-
+-if [ -z "$init" ]; then
+-    # Not interactive
+-    grep -qE '(^|[^\\](\\\\)* )zfs=(off|no)( |$)' /proc/cmdline && exit 3
+-fi
 -
 -# Source function library & LSB routines
 -. /etc/rc.d/init.d/functions
@@ -727,12 +751,6 @@ Index: b/etc/init.d/zfs.redhat.in
 -		action $"Checking if ZFS is installed: not installed" /bin/false
 -		return 5
 -	}
--
--        # Requires selinux policy which has not been written.
--        if [ -r "/selinux/enforce" ] &&
--           [ "$(cat /selinux/enforce)" = "1" ]; then
--                action $"SELinux ZFS policy required: " /bin/false || return 6
--        fi
 -
 -	# Delay until all required block devices are present.
 -	if [ -x /sbin/udevadm ]; then
@@ -831,8 +849,6 @@ Index: b/etc/init.d/zfs.redhat.in
 -esac
 -
 -exit $RETVAL
-Index: b/etc/init.d/Makefile.am
-===================================================================
 --- a/etc/init.d/Makefile.am
 +++ /dev/null
 @@ -1,21 +0,0 @@
@@ -857,3 +873,10 @@ Index: b/etc/init.d/Makefile.am
 -
 -distclean-local::
 -	-$(RM) $(init_SCRIPTS)
+--- a/etc/Makefile.am
++++ b/etc/Makefile.am
+@@ -1,2 +1,2 @@
+-SUBDIRS = zfs $(ZFS_INIT_SYSTEMD) $(ZFS_INIT_SYSV) $(ZFS_MODULE_LOAD)
+-DIST_SUBDIRS = init.d zfs systemd modules-load.d
++SUBDIRS = zfs $(ZFS_INIT_SYSTEMD) $(ZFS_MODULE_LOAD)
++DIST_SUBDIRS = zfs systemd modules-load.d

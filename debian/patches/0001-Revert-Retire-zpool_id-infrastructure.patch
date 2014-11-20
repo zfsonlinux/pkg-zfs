@@ -50,22 +50,10 @@ This reverts commit dbf763b39b232996f0d6bb0022e4446643c18e05.
  create mode 100644 scripts/zpool-layout/dragon.llnl.conf
  create mode 100644 udev/rules.d/60-zpool.rules.in
 
-Index: b/cmd/Makefile.am
-===================================================================
---- a/cmd/Makefile.am
-+++ b/cmd/Makefile.am
-@@ -1,2 +1,2 @@
- SUBDIRS  = zfs zpool zdb zhack zinject zstreamdump ztest zpios
--SUBDIRS += mount_zfs fsck_zfs zvol_id vdev_id
-+SUBDIRS += mount_zfs fsck_zfs zpool_layout zvol_id zpool_id vdev_id
-Index: b/cmd/zpool_id/Makefile.am
-===================================================================
 --- /dev/null
 +++ b/cmd/zpool_id/Makefile.am
 @@ -0,0 +1 @@
 +dist_udev_SCRIPTS = zpool_id
-Index: b/cmd/zpool_id/zpool_id
-===================================================================
 --- /dev/null
 +++ b/cmd/zpool_id/zpool_id
 @@ -0,0 +1,86 @@
@@ -155,14 +143,10 @@ Index: b/cmd/zpool_id/zpool_id
 +fi
 +
 +exit 0
-Index: b/cmd/zpool_layout/Makefile.am
-===================================================================
 --- /dev/null
 +++ b/cmd/zpool_layout/Makefile.am
 @@ -0,0 +1 @@
 +dist_bin_SCRIPTS = zpool_layout
-Index: b/cmd/zpool_layout/zpool_layout
-===================================================================
 --- /dev/null
 +++ b/cmd/zpool_layout/zpool_layout
 @@ -0,0 +1,281 @@
@@ -447,11 +431,9 @@ Index: b/cmd/zpool_layout/zpool_layout
 +fi
 +
 +exit 0
-Index: b/configure.ac
-===================================================================
 --- a/configure.ac
 +++ b/configure.ac
-@@ -99,7 +99,9 @@
+@@ -106,7 +106,9 @@
  	cmd/zpios/Makefile
  	cmd/mount_zfs/Makefile
  	cmd/fsck_zfs/Makefile
@@ -459,9 +441,9 @@ Index: b/configure.ac
  	cmd/zvol_id/Makefile
 +	cmd/zpool_id/Makefile
  	cmd/vdev_id/Makefile
- 	module/Makefile
- 	module/avl/Makefile
-@@ -118,6 +120,7 @@
+ 	cmd/arcstat/Makefile
+ 	cmd/dbufstat/Makefile
+@@ -130,6 +132,7 @@
  	scripts/zpios-profile/Makefile
  	scripts/zpios-test/Makefile
  	scripts/zpool-config/Makefile
@@ -469,8 +451,6 @@ Index: b/configure.ac
  	scripts/common.sh
  	rpm/Makefile
  	rpm/fedora/Makefile
-Index: b/etc/zfs/Makefile.am
-===================================================================
 --- a/etc/zfs/Makefile.am
 +++ b/etc/zfs/Makefile.am
 @@ -4,6 +4,10 @@
@@ -485,8 +465,6 @@ Index: b/etc/zfs/Makefile.am
 +	zdev.conf.x4550.example
  
  EXTRA_DIST = $(pkgsysconf_DATA)
-Index: b/etc/zfs/zdev.conf
-===================================================================
 --- /dev/null
 +++ b/etc/zfs/zdev.conf
 @@ -0,0 +1,9 @@
@@ -499,8 +477,6 @@ Index: b/etc/zfs/zdev.conf
 +#<ID>	<by-path name>
 +#disk1	pci-0000:61:06.1-scsi-0:0:0:0
 +#disk2	pci-0000:61:06.1-scsi-0:0:0:1
-Index: b/etc/zfs/zdev.conf.dragon.example
-===================================================================
 --- /dev/null
 +++ b/etc/zfs/zdev.conf.dragon.example
 @@ -0,0 +1,176 @@
@@ -680,8 +656,6 @@ Index: b/etc/zfs/zdev.conf.dragon.example
 +j13	pci-0000:83:00.0-sas-0x5000155359dba33f-12
 +j14	pci-0000:83:00.0-sas-0x5000155359dba33f-13
 +j15	pci-0000:83:00.0-sas-0x5000155359dba33f-14
-Index: b/etc/zfs/zdev.conf.supermicro.example
-===================================================================
 --- /dev/null
 +++ b/etc/zfs/zdev.conf.supermicro.example
 @@ -0,0 +1,30 @@
@@ -715,8 +689,6 @@ Index: b/etc/zfs/zdev.conf.supermicro.example
 +d2	pci-0000:07:00.0-sas-0x500304800027367f-13
 +d3	pci-0000:07:00.0-sas-0x500304800027367f-14
 +d4	pci-0000:07:00.0-sas-0x500304800027367f-15
-Index: b/etc/zfs/zdev.conf.x4550.example
-===================================================================
 --- /dev/null
 +++ b/etc/zfs/zdev.conf.x4550.example
 @@ -0,0 +1,66 @@
@@ -786,24 +758,20 @@ Index: b/etc/zfs/zdev.conf.x4550.example
 +f6	pci-0000:43:00.0-sas-0x50062b000000000b:1:5-0xd5885781dee7de92:5
 +f7	pci-0000:43:00.0-sas-0x50062b000000000c:1:6-0xd3827481d804e192:6
 +f8	pci-0000:43:00.0-sas-0x50062b000000000d:1:7-0xd6806863d6f8bf92:7
-Index: b/include/libzfs.h
-===================================================================
 --- a/include/libzfs.h
 +++ b/include/libzfs.h
-@@ -57,7 +57,7 @@
- #define	DISK_ROOT		"/dev"
- #define	UDISK_ROOT		"/dev/disk"
+@@ -64,7 +64,7 @@
+  */
+ #define	DISK_LABEL_WAIT		(30 * 1000)  /* 30 seconds */
  
 -#define	DEFAULT_IMPORT_PATH_SIZE	7
 +#define	DEFAULT_IMPORT_PATH_SIZE	8
  extern char *zpool_default_import_path[DEFAULT_IMPORT_PATH_SIZE];
  
  /*
-Index: b/lib/libzfs/libzfs_import.c
-===================================================================
 --- a/lib/libzfs/libzfs_import.c
 +++ b/lib/libzfs/libzfs_import.c
-@@ -980,6 +980,7 @@
+@@ -1006,6 +1006,7 @@
  char *
  zpool_default_import_path[DEFAULT_IMPORT_PATH_SIZE] = {
  	"/dev/disk/by-vdev",	/* Custom rules, use first if they exist */
@@ -811,22 +779,18 @@ Index: b/lib/libzfs/libzfs_import.c
  	"/dev/mapper",		/* Use multipath devices before components */
  	"/dev/disk/by-uuid",	/* Single unique entry and persistent */
  	"/dev/disk/by-id",	/* May be multiple entries and persistent */
-Index: b/scripts/Makefile.am
-===================================================================
 --- a/scripts/Makefile.am
 +++ b/scripts/Makefile.am
 @@ -1,4 +1,4 @@
 -SUBDIRS = zpool-config zpios-test zpios-profile
 +SUBDIRS = zpool-config zpool-layout zpios-test zpios-profile
  
- EXTRA_DIST = dkms.mkconf dkms.postinst kmodtool
+ EXTRA_DIST = dkms.mkconf dkms.postbuild kmodtool zfs2zol-patch.sed cstyle.pl
  
-Index: b/scripts/common.sh.in
-===================================================================
 --- a/scripts/common.sh.in
 +++ b/scripts/common.sh.in
-@@ -40,7 +40,7 @@
- sysconfdir=@sysconfdir@
+@@ -41,7 +41,7 @@
+ localstatedir=@localstatedir@
  
  ETCDIR=${ETCDIR:-/etc}
 -DEVDIR=${DEVDIR:-/dev/disk/by-vdev}
@@ -834,7 +798,7 @@ Index: b/scripts/common.sh.in
  ZPOOLDIR=${ZPOOLDIR:-${pkgdatadir}/zpool-config}
  ZPIOSDIR=${ZPIOSDIR:-${pkgdatadir}/zpios-test}
  ZPIOSPROFILEDIR=${ZPIOSPROFILEDIR:-${pkgdatadir}/zpios-profile}
-@@ -49,6 +49,7 @@
+@@ -50,6 +50,7 @@
  ZFS=${ZFS:-${sbindir}/zfs}
  ZINJECT=${ZINJECT:-${sbindir}/zinject}
  ZPOOL=${ZPOOL:-${sbindir}/zpool}
@@ -842,7 +806,7 @@ Index: b/scripts/common.sh.in
  ZTEST=${ZTEST:-${sbindir}/ztest}
  ZPIOS=${ZPIOS:-${sbindir}/zpios}
  
-@@ -523,7 +524,7 @@
+@@ -558,7 +559,7 @@
  
  #
  # The following udev helper functions assume that the provided
@@ -851,8 +815,6 @@ Index: b/scripts/common.sh.in
  # disk mapping.  In this mapping each CHANNEL is represented by
  # the letters a-z, and the RANK is represented by the numbers
  # 1-n.  A CHANNEL should identify a group of RANKS which are all
-Index: b/scripts/zpool-config/zpool-raid0.sh
-===================================================================
 --- a/scripts/zpool-config/zpool-raid0.sh
 +++ b/scripts/zpool-config/zpool-raid0.sh
 @@ -2,9 +2,10 @@
@@ -869,8 +831,6 @@ Index: b/scripts/zpool-config/zpool-raid0.sh
  #
  # You can then use either the zpool-create.sh or the zpios.sh test script to
  # test various Raid-0 configurations by adjusting the following tunables.
-Index: b/scripts/zpool-config/zpool-raid10.sh
-===================================================================
 --- a/scripts/zpool-config/zpool-raid10.sh
 +++ b/scripts/zpool-config/zpool-raid10.sh
 @@ -2,9 +2,10 @@
@@ -887,8 +847,6 @@ Index: b/scripts/zpool-config/zpool-raid10.sh
  #
  # You can then use either the zpool-create.sh or the zpios.sh test script to
  # test various Raid-10 configurations by adjusting the following tunables.
-Index: b/scripts/zpool-config/zpool-raidz.sh
-===================================================================
 --- a/scripts/zpool-config/zpool-raidz.sh
 +++ b/scripts/zpool-config/zpool-raidz.sh
 @@ -2,9 +2,10 @@
@@ -905,8 +863,6 @@ Index: b/scripts/zpool-config/zpool-raidz.sh
  #
  # You can then use either the zpool-create.sh or the zpios.sh test script to
  # test various Raid-Z configurations by adjusting the following tunables.
-Index: b/scripts/zpool-layout/Makefile.am
-===================================================================
 --- /dev/null
 +++ b/scripts/zpool-layout/Makefile.am
 @@ -0,0 +1,22 @@
@@ -932,8 +888,6 @@ Index: b/scripts/zpool-layout/Makefile.am
 +			$(RM) $$link; \
 +		fi \
 +	done
-Index: b/scripts/zpool-layout/dragon.ddn.conf
-===================================================================
 --- /dev/null
 +++ b/scripts/zpool-layout/dragon.ddn.conf
 @@ -0,0 +1,67 @@
@@ -1004,8 +958,6 @@ Index: b/scripts/zpool-layout/dragon.ddn.conf
 +58	36
 +59	48
 +60	60
-Index: b/scripts/zpool-layout/dragon.llnl.conf
-===================================================================
 --- /dev/null
 +++ b/scripts/zpool-layout/dragon.llnl.conf
 @@ -0,0 +1,67 @@
@@ -1076,8 +1028,6 @@ Index: b/scripts/zpool-layout/dragon.llnl.conf
 +58	43
 +59	37
 +60	31
-Index: b/udev/rules.d/60-zpool.rules.in
-===================================================================
 --- /dev/null
 +++ b/udev/rules.d/60-zpool.rules.in
 @@ -0,0 +1,9 @@
@@ -1090,8 +1040,6 @@ Index: b/udev/rules.d/60-zpool.rules.in
 +KERNEL=="*[!0-9]", ENV{SUBSYSTEM}=="block", ENV{ID_ZPOOL}=="?*", SYMLINK+="$env{ID_ZPOOL_PATH}"
 +KERNEL=="*[0-9]", ENV{SUBSYSTEM}=="block", ENV{DEVTYPE}=="partition", ENV{ID_ZPOOL}=="?*", SYMLINK+="$env{ID_ZPOOL_PATH}-part%n"
 +KERNEL=="dm-[0-9]*", ENV{SUBSYSTEM}=="block", ENV{ID_ZPOOL}=="?*", SYMLINK+="$env{ID_ZPOOL_PATH}"
-Index: b/udev/rules.d/Makefile.am
-===================================================================
 --- a/udev/rules.d/Makefile.am
 +++ b/udev/rules.d/Makefile.am
 @@ -1,10 +1,12 @@
@@ -1107,8 +1055,6 @@ Index: b/udev/rules.d/Makefile.am
  	$(top_srcdir)/udev/rules.d/60-zvol.rules.in \
  	$(top_srcdir)/udev/rules.d/90-zfs.rules.in
  
-Index: b/zfs-script-config.sh.in
-===================================================================
 --- a/zfs-script-config.sh.in
 +++ b/zfs-script-config.sh.in
 @@ -24,6 +24,7 @@
@@ -1119,3 +1065,9 @@ Index: b/zfs-script-config.sh.in
  ZTEST=${CMDDIR}/ztest/ztest
  ZPIOS=${CMDDIR}/zpios/zpios
  
+--- a/cmd/Makefile.am
++++ b/cmd/Makefile.am
+@@ -1,2 +1,2 @@
+ SUBDIRS  = zfs zpool zdb zhack zinject zstreamdump ztest zpios
+-SUBDIRS += mount_zfs fsck_zfs zvol_id vdev_id arcstat dbufstat zed
++SUBDIRS += mount_zfs fsck_zfs zpool_layout zvol_id zpool_id vdev_id arcstat dbufstat zed
