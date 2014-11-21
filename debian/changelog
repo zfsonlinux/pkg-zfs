@@ -1,8 +1,9 @@
 zfs-linux (0.6.3-22~7b2d78~wheezy) wheezy; urgency=low
 
     * Add dh-systemd to build depends.
+    * Add space before a ] in the zfs-mount initscript.
 
- -- Turbo Fredriksson <turbo@debian.org>  Wed, 19 Nov 2014 20:57:05 +0100
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 21 Nov 2014 22:46:35 +0100
 
 zfs-linux (0.6.3-21~7b2d78~wheezy) wheezy; urgency=low
 
