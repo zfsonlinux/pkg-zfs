@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-23~7b2d78~wheezy) wheezy; urgency=low
+
+    * Add ZoL udev rules to zfsutils udeb.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 23 Nov 2014 23:31:07 +0100
+
 zfs-linux (0.6.3-22~7b2d78~wheezy) wheezy; urgency=low
 
     * Add dh-systemd to build depends.
