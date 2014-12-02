@@ -1,3 +1,12 @@
+zfs-linux (0.6.3-24~7b2d78~wheezy) wheezy; urgency=low
+
+    * Merge latest version of initrd scripts
+      + Use /dev/disk/by-vdev before /dev/disk/by-*
+    * Note that ZFS_INITRD_ADDITIONAL_DATASETS and ZFS_POOL_EXCEPTIONS
+      is space separated.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 23 Nov 2014 23:31:07 +0100
+
 zfs-linux (0.6.3-23~7b2d78~wheezy) wheezy; urgency=low
 
     * Add ZoL udev rules to zfsutils udeb.

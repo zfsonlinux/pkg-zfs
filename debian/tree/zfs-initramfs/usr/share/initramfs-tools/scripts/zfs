@@ -225,7 +225,7 @@ mountroot()
 					then
 						# First try all the by-* dirs
 						# Last ditch attempt, try /dev!
-						for dir in /dev/disk/by-* /dev
+						for dir in /dev/disk/by-vdev /dev/disk/by-* /dev
 						do
 							ZFS_STDERR=$(zpool import -d $dir -f -N  $pool 2>&1)
 							ZFS_ERROR=$?
@@ -288,7 +288,7 @@ mountroot()
 		then
 			# Attempt 1: Try using /dev/disk/by-*.
 			# Last ditch attempt, try /dev!
-			for dir in /dev/disk/by-* /dev
+			for dir in /dev/disk/by-vdev /dev/disk/by-* /dev
 			do
 				ZFS_CMD="zpool import -N -d $dir ${ZFS_RPOOL} ${ZPOOL_FORCE}"
 				ZFS_STDERR=$($ZFS_CMD 2>&1)
