@@ -98,4 +98,9 @@ if [ ! -x "$DESTDIR/usr/bin/net" ]; then
     chmod +x "$DESTDIR/usr/bin/net"
 fi
 
+# Copy the udev vdev rule
+[ ! -d "$DESTDIR/etc/zfs" ] && mkdir -p $DESTDIR/etc/zfs
+cp /lib/udev/rules.d/69-vdev.rules $DESTDIR/lib/udev/rules.d
+cp /etc/zfs/vdev_id.conf $DESTDIR/etc/zfs/vdev_id.conf
+
 exit 0
