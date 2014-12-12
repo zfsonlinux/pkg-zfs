@@ -1,3 +1,3 @@
-scripts/zfs-initramfs/conf-hooks.d/zfs	/usr/share/initramfs-tools/conf-hooks.d/zfs
-scripts/zfs-initramfs/scripts/zfs	/usr/share/initramfs-tools/scripts/zfs
-scripts/zfs-initramfs/hooks/zfs		/usr/share/initramfs-tools/hooks/zfs
+scripts/zfs-initramfs/conf-hooks.d/zfs	/usr/share/initramfs-tools/conf-hooks.d/
+scripts/zfs-initramfs/scripts/zfs	/usr/share/initramfs-tools/scripts/
+scripts/zfs-initramfs/hooks/zfs		/usr/share/initramfs-tools/hooks/
