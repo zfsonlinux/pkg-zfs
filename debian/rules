@@ -5,8 +5,7 @@ INSTALL ?= install
 MAKE ?= make
 
 META_NAME := $(shell awk '$$1 == "Name:" { print $$2; }' META)
-META_VERSION := $(shell dpkg-parsechangelog \
-  | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f1)
+META_VERSION := $(shell awk '$$1 == "Version:" { print $$2; }' META)
 META_DISTDIR := $(CURDIR)/$(META_NAME)-$(META_VERSION)/
 
 %:

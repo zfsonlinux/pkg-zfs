@@ -1,0 +1,31 @@
+From: Ned Bass <bass6@llnl.gov>
+Date: Wed, 17 Dec 2014 11:01:42 -0800
+Subject: vdev_id: use mawk-compatible regular expression
+
+Slot mapping in vdev_id doesn't work on systems using mawk as the 'awk'
+alternative. A regular expression in map_slot() contains an unquoted
+empty string following the alternation (|) operator, which results in an
+"missing operand" error with mawk. The solution is to rearrange the
+expression so the alternation has two operands.
+
+Signed-off-by: Ned Bass <bass6@llnl.gov>
+Signed-off-by: Brian Behlendorf <behlendorf1@llnl.gov>
+Closes zfsonlinux/pkg-zfs#136
+Closes zfsonlinux/zfs#2965
+---
+ cmd/vdev_id/vdev_id | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/cmd/vdev_id/vdev_id b/cmd/vdev_id/vdev_id
+index b6752ba..6fddd12 100755
+--- a/cmd/vdev_id/vdev_id
++++ b/cmd/vdev_id/vdev_id
+@@ -116,7 +116,7 @@ map_slot() {
+ 	local MAPPED_SLOT=
+ 
+ 	MAPPED_SLOT=`awk "\\$1 == \"slot\" && \\$2 == ${LINUX_SLOT} && \
+-			\\$4 ~ /^(${CHANNEL}|)$/ { print \\$3; exit }" $CONFIG`
++			\\$4 ~ /^${CHANNEL}$|^$/ { print \\$3; exit }" $CONFIG`
+ 	if [ -z "$MAPPED_SLOT" ] ; then
+ 		MAPPED_SLOT=$LINUX_SLOT
+ 	fi
