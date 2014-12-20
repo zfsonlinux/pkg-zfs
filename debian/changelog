@@ -1,3 +1,11 @@
+zfs-linux (0.6.3-14~utopic) utopic; urgency=low
+
+  * Tighten the META_VERSION variable assignment.
+  * OpenZFS branding update.
+  * Backport: vdev_id-use-mawk-compatible-regular-expression.patch
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 19 Dec 2014 21:02:44 -0600
+
 zfs-linux (0.6.3-13~utopic) utopic; urgency=low
 
   * Add libuutil to LIBADD for libzfs and libzfs_core
