@@ -1,3 +1,13 @@
+zfs-linux (0.6.3-22~2d9d57~jessie) jessie; urgency=low
+
+    * New upstream GIT tag.
+    * Merge PR 2087 (Initramfs scripts for ZoL).
+    * Merge PR 2106 (Complete rewrite of init script(s)).
+    * Merge PR 1099 (iSCSI support for ZoL).
+    * Merge PR 2790 (Rewrite of nfs.c to keep options per host separated).
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 20 Dec 2014 13:26:53 +0100
+
 zfs-linux (0.6.3-21~7b2d78~jessie) jessie; urgency=low
 
     * Build for jessie
