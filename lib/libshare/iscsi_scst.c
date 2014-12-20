@@ -38,115 +38,6 @@
  * Support functions
  */
 
-static iscsi_dirs_t *
-iscsi_dirs_list_alloc(void)
-{
-	static iscsi_dirs_t *entries;
-
-	entries = (iscsi_dirs_t *) malloc(sizeof (iscsi_dirs_t));
-	if (entries == NULL)
-		return (NULL);
-
-	list_link_init(&entries->next);
-
-	return (entries);
-}
-
-list_t *
-iscsi_look_for_stuff(char *path, const char *needle, boolean_t match_dir,
-		int check_len)
-{
-	int ret;
-	char path2[PATH_MAX], *path3;
-	DIR *dir;
-	struct dirent *directory;
-	struct stat eStat;
-	iscsi_dirs_t *entry;
-	list_t *entries = malloc(sizeof (list_t));
-
-#if DEBUG >= 2
-	fprintf(stderr, "iscsi_look_for_stuff: '%s' (needle='%s') - %s/%d\n",
-		path, needle ? needle : "", match_dir ? "Y" : "N",
-		check_len);
-#endif
-
-	/* Make sure that path is set */
-	assert(path != NULL);
-
-	list_create(entries, sizeof (iscsi_dirs_t),
-		    offsetof(iscsi_dirs_t, next));
-
-	if ((dir = opendir(path))) {
-		while ((directory = readdir(dir))) {
-			if (directory->d_name[0] == '.')
-				continue;
-
-			path3 = NULL;
-			ret = snprintf(path2, sizeof (path2),
-					"%s/%s", path, directory->d_name);
-			if (ret < 0 || ret >= sizeof (path2))
-				/* Error or not enough space in string */
-				/* TODO: Decide to continue or break */
-				continue;
-
-			if (stat(path2, &eStat) == -1)
-				goto look_out;
-
-			if (match_dir && !S_ISDIR(eStat.st_mode))
-				continue;
-
-			if (needle != NULL) {
-				if (check_len) {
-					if (strncmp(directory->d_name,
-						    needle, check_len) == 0)
-						path3 = strdup(path2);
-				} else {
-					if (strcmp(directory->d_name, needle)
-					    == 0)
-						path3 = strdup(path2);
-				}
-			} else {
-				/* Ignore for SCST */
-				if (strcmp(directory->d_name, "mgmt") == 0)
-					continue;
-
-				/* Ignore for LIO */
-				if (strcmp(directory->d_name, "alua") == 0)
-					continue;
-
-				path3 = strdup(path2);
-			}
-
-			if (path3) {
-				entry = iscsi_dirs_list_alloc();
-				if (entry == NULL) {
-					free(path3);
-					goto look_out;
-				}
-
-				strncpy(entry->path, path3,
-					sizeof (entry->path));
-				strncpy(entry->entry, directory->d_name,
-					sizeof (entry->entry));
-				entry->stats = eStat;
-
-#if DEBUG >= 2
-				fprintf(stderr, "  iscsi_look_for_stuff: %s\n",
-					entry->path);
-#endif
-				list_insert_tail(entries, entry);
-
-				free(path3);
-			}
-		}
-
-look_out:
-		closedir(dir);
-	}
-
-	return (entries);
-}
-
 /*
  * Preferably we should use the dataset name here, but there's a limit
  * of 16 characters...
@@ -844,11 +735,8 @@ iscsi_enable_share_one_scst(sa_share_impl_t impl_share, int tid)
 		fprintf(stderr, "\n");
 #endif
 
-		rc = libzfs_run_process(argv[0], argv, STDERR_VERBOSE);
-		if (rc != 0) {
-			free(opts);
-			return (SA_SYSTEM_ERR);
-		}
+		/* Ignore any error from script - "fire and forget" */
+		libzfs_run_process(argv[0], argv, STDERR_VERBOSE);
 	}
 
 	free(opts);

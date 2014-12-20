@@ -21,6 +21,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stddef.h>
+#include <sys/types.h>
+#include <dirent.h>
 #include <sys/stat.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -107,6 +109,20 @@ iscsi_retrieve_sessions_lio(void)
 
 	list_create(target_sessions, sizeof (iscsi_session_t),
 		    offsetof(iscsi_session_t, next));
+
+// $SYSFS/iscsi/IQN/tpgt_TID/acls/INITIATOR/info
+// => No active iSCSI Session for Initiator Endpoint: INITIATOR
+// OR:
+// => InitiatorName: INITIATOR
+//    InitiatorAlias: 
+//    LIO Session ID: 2   ISID: 0x80 12 34 56 dd 65  TSIH: 2  SessionType: Normal
+//    Session State: TARG_SESS_STATE_LOGGED_IN
+//    ---------------------[iSCSI Session Values]-----------------------
+//      CmdSN/WR  :  CmdSN/WC  :  ExpCmdSN  :  MaxCmdSN  :     ITT    :     TTT
+//     0x00000010   0x00000010   0x00001f53   0x00001f62   0x531f0000   0x00000d81
+//    ----------------------[iSCSI Connections]-------------------------
+//    CID: 1  Connection State: TARG_CONN_STATE_LOGGED_IN
+//       Address 192.168.69.3 TCP  StatSN: 0x1a00d3e6
 
 	return (target_sessions);
 }
@@ -765,11 +781,8 @@ iscsi_enable_share_one_lio(sa_share_impl_t impl_share, int tid)
 		fprintf(stderr, "\n");
 #endif
 
-		rc = libzfs_run_process(argv[0], argv, STDERR_VERBOSE);
-		if (rc != 0) {
-			free(opts);
-			return (SA_SYSTEM_ERR);
-		}
+		/* Ignore any error from script - "fire and forget" */
+		libzfs_run_process(argv[0], argv, STDERR_VERBOSE);
 	}
 
 	free(opts);
@@ -779,8 +792,10 @@ iscsi_enable_share_one_lio(sa_share_impl_t impl_share, int tid)
 int
 iscsi_disable_share_one_lio(int tid)
 {
-	int ret, rc;
-	char *argv[3], params[255];
+	int ret;
+	char path1[PATH_MAX], path2[PATH_MAX], buffer[255];
+	list_t *entries1, *entries2, *entries3;
+	iscsi_dirs_t *entry1, *entry2, *entry3;
 	iscsi_target_t *target;
 
 	for (target = list_head(&all_iscsi_targets_list);
@@ -799,63 +814,204 @@ iscsi_disable_share_one_lio(int tid)
 
 	/*
 	 * ======
-	 * Delete device target iqn
-	 * CMD: LIO_CMD_PATH --deliqn=$iqn:$name
-	 *
+	 * PART 1 - Disable target
+	 * CMD: echo 0 > $SYSFS/iscsi/IQN/tpgt_TID/enable
 	 */
-
-	ret = snprintf(params, sizeof (params), "--deliqn=%s:%s",
-			target->iqn, target->name);
-	if (ret < 0 || ret >= sizeof (params))
-		return (SA_NO_MEMORY);
-
-	argv[0] = LIO_CMD_PATH;
-	argv[1] = params;
-	argv[2] = NULL;
-
-#ifdef DEBUG
-	{
-		int i;
-		fprintf(stderr, "CMD: ");
-		for (i = 0; i < 2; i++)
-			fprintf(stderr, "%s ", argv[i]);
-		fprintf(stderr, "\n");
-	}
-#endif
-
-	rc = libzfs_run_process(argv[0], argv, STDERR_VERBOSE);
-	if (rc != 0)
+	ret = snprintf(path1, sizeof (path1), "%s/iscsi/%s:%s/tpgt_%d/enable",
+			SYSFS_LIO, target->iqn, target->name, target->tid);
+	if (ret < 0 || ret >= sizeof (path1))
 		return (SA_SYSTEM_ERR);
+	strcpy(buffer, "0");
+	if (iscsi_write_sysfs_value(path1, buffer) != SA_OK)
+		return (SA_NO_MEMORY);
 
 	/*
 	 * ======
-	 * Delete device backstore
-	 * CMD: TCM_CMD_PATH --delhba={iblock,fileio}_1
-	 *
+	 * PART 2 - Recursivly delete IQN directory.
 	 */
 
-	ret = snprintf(params, sizeof (params), "--delhba=%s_%d",
-			target->iotype, tid);
-	if (ret < 0 || ret >= sizeof (params))
-		return (SA_NO_MEMORY);
+	/* CMD: rmdir $SYSFS/iscsi/IQN/tpgt_TID/np/IP:PORT */
+	ret = snprintf(path1, sizeof (path1), "%s/iscsi/%s:%s/tpgt_%d/np",
+			SYSFS_LIO, target->iqn, target->name, target->tid);
+	if (ret < 0 || ret >= sizeof (path1))
+		return (SA_SYSTEM_ERR);
 
-	argv[0] = TCM_CMD_PATH;
-	argv[1] = params;
-	argv[2] = NULL;
+	entries1 = iscsi_look_for_stuff(path1, NULL, B_TRUE, 0);
+	for (entry1 = list_head(entries1);
+		entry1 != NULL;
+		entry1 = list_next(entries1, entry1)) {
+#ifdef DEBUG
+		fprintf(stderr, "CMD: rmdir(%s)\n", entry1->path);
+#endif
+		ret = rmdir(entry1->path);
+		if (ret < 0) {
+			fprintf(stderr, "ERR: Failed to remove %s\n",
+				entry1->path);
+			return (SA_SYSTEM_ERR);
+		}
+	}
+
+	/* CMD: rm    $SYSFS/iscsi/IQN/tpgt_TID/acls/INITIATOR/lun_LUN/LINK */
+	/* CMD: rmdir $SYSFS/iscsi/IQN/tpgt_TID/acls/INITIATOR/lun_LUN */
+	/* CMD: rmdir $SYSFS/iscsi/IQN/tpgt_TID/acls/INITIATOR */
+	ret = snprintf(path1, sizeof (path1), "%s/iscsi/%s:%s/tpgt_%d/acls",
+			SYSFS_LIO, target->iqn, target->name, target->tid);
+	if (ret < 0 || ret >= sizeof (path1))
+		return (SA_SYSTEM_ERR);
+
+	entries1 = iscsi_look_for_stuff(path1, "iqn.", B_TRUE, 4);
+	for (entry1 = list_head(entries1);
+		entry1 != NULL;
+		entry1 = list_next(entries1, entry1)) {
+		entries2 = iscsi_look_for_stuff(entry1->path, "lun_",
+						B_TRUE, 4);
+		for (entry2 = list_head(entries2);
+			entry2 != NULL;
+			entry2 = list_next(entries2, entry2)) {
+			entries3 = iscsi_look_for_stuff(entry2->path, NULL,
+							B_FALSE, 0);
+			for (entry3 = list_head(entries3);
+				entry3 != NULL;
+				entry3 = list_next(entries3, entry3)) {
+#ifdef DEBUG
+				fprintf(stderr, "CMD: unlink(%s)\n",
+					entry3->path);
+#endif
+				ret = unlink(entry3->path);
+				if (ret < 0) {
+					fprintf(stderr, "ERR: Failed to remove "
+						"%s\n", entry3->path);
+					return (SA_SYSTEM_ERR);
+				}
+			}
 
 #ifdef DEBUG
-	{
-		int i;
-		fprintf(stderr, "CMD: ");
-		for (i = 0; i < 2; i++)
-			fprintf(stderr, "%s ", argv[i]);
-		fprintf(stderr, "\n");
-	}
+			fprintf(stderr, "CMD: rmdir(%s)\n", entry2->path);
 #endif
+			ret = rmdir(entry2->path);
+			if (ret < 0) {
+				fprintf(stderr, "ERR: Failed to remove %s\n",
+					entry2->path);
+				return (SA_SYSTEM_ERR);
+			}
+		}
 
-	rc = libzfs_run_process(argv[0], argv, STDERR_VERBOSE);
-	if (rc != 0)
+#ifdef DEBUG
+		fprintf(stderr, "CMD: rmdir(%s)\n", entry1->path);
+#endif
+		ret = rmdir(entry1->path);
+		if (ret < 0) {
+			fprintf(stderr, "ERR: Failed to remove %s\n",
+				entry1->path);
+			return (SA_SYSTEM_ERR);
+		}
+	}
+
+	/* CMD: rm    $SYSFS/iscsi/IQN/tpgt_TID/lun/lun_LUN/LINK */
+	/* CMD: rmdir $SYSFS/iscsi/IQN/tpgt_TID/lun/lun_LUN */
+	ret = snprintf(path1, sizeof (path1), "%s/iscsi/%s:%s/tpgt_%d/lun",
+			SYSFS_LIO, target->iqn, target->name, target->tid);
+	if (ret < 0 || ret >= sizeof (path1))
 		return (SA_SYSTEM_ERR);
+
+	entries1 = iscsi_look_for_stuff(path1, "lun_", B_TRUE, 4);
+	for (entry1 = list_head(entries1);
+		entry1 != NULL;
+		entry1 = list_next(entries1, entry1)) {
+		ret = snprintf(path2, sizeof (path2),
+				"%s/iscsi/%s:%s/tpgt_%d/lun/%s",
+				SYSFS_LIO, target->iqn, target->name,
+				target->tid, entry1->entry);
+		if (ret < 0 || ret >= sizeof (path1))
+			return (SA_SYSTEM_ERR);
+
+		entries2 = iscsi_look_for_stuff(path2, NULL, B_FALSE, 0);
+		for (entry2 = list_head(entries2);
+			entry2 != NULL;
+			entry2 = list_next(entries2, entry2)) {
+#ifdef DEBUG
+			fprintf(stderr, "CMD: unlink(%s)\n", entry2->path);
+#endif
+			ret = unlink(entry2->path);
+			if (ret < 0) {
+				fprintf(stderr, "ERR: Failed to remove %s\n",
+					entry2->path);
+				return (SA_SYSTEM_ERR);
+			}
+		}
+
+#ifdef DEBUG
+		fprintf(stderr, "CMD: rmdir(%s)\n", entry1->path);
+#endif
+		ret = rmdir(entry1->path);
+		if (ret < 0) {
+			fprintf(stderr, "ERR: Failed to remove %s\n",
+				entry1->path);
+			return (SA_SYSTEM_ERR);
+		}
+	}
+
+	/* CMD: rmdir $SYSFS/iscsi/IQN/tpgt_TID */
+	ret = snprintf(path1, sizeof (path1), "%s/iscsi/%s:%s/tpgt_%d",
+			SYSFS_LIO, target->iqn, target->name, target->tid);
+	if (ret < 0 || ret >= sizeof (path1))
+		return (SA_SYSTEM_ERR);
+#ifdef DEBUG
+		fprintf(stderr, "CMD: rmdir(%s)\n", path1);
+#endif
+	ret = rmdir(path1);
+	if (ret < 0) {
+		fprintf(stderr, "ERR: Failed to remove %s\n", path1);
+		return (SA_SYSTEM_ERR);
+	}
+
+	/* CMD: rmdir $SYSFS/iscsi/IQN:NAME */
+	ret = snprintf(path1, sizeof (path1), "%s/iscsi/%s:%s",
+			SYSFS_LIO, target->iqn, target->name);
+	if (ret < 0 || ret >= sizeof (path1))
+		return (SA_SYSTEM_ERR);
+#ifdef DEBUG
+		fprintf(stderr, "CMD: rmdir(%s)\n", path1);
+#endif
+	ret = rmdir(path1);
+	if (ret < 0) {
+		fprintf(stderr, "ERR: Failed to remove %s\n", path1);
+		return (SA_SYSTEM_ERR);
+	}
+
+	/*
+	 * ======
+	 * PART 3 - Delete device backstore
+	 */
+
+	/* CMD: rmdir $SYSFS/core/iblock_TID/IQN:NAME */
+	ret = snprintf(path1, sizeof (path1), "%s/core/%s_%d/%s:%s",
+			SYSFS_LIO, target->iotype, target->tid,
+			target->iqn, target->name);
+	if (ret < 0 || ret >= sizeof (path1))
+		return (SA_SYSTEM_ERR);
+#ifdef DEBUG
+		fprintf(stderr, "CMD: rmdir(%s)\n", path1);
+#endif
+	ret = rmdir(path1);
+	if (ret < 0) {
+		fprintf(stderr, "ERR: Failed to remove %s\n", path1);
+		return (SA_SYSTEM_ERR);
+	}
+
+	/* CMD: rmdir $SYSFS/core/iblock_TID */
+	ret = snprintf(path1, sizeof (path1), "%s/core/%s_%d",
+			SYSFS_LIO, target->iotype, target->tid);
+	if (ret < 0 || ret >= sizeof (path1))
+		return (SA_SYSTEM_ERR);
+#ifdef DEBUG
+		fprintf(stderr, "CMD: rmdir(%s)\n", path1);
+#endif
+	ret = rmdir(path1);
+	if (ret < 0) {
+		fprintf(stderr, "ERR: Failed to remove %s\n", path1);
+		return (SA_SYSTEM_ERR);
+	}
 
 	return (SA_OK);
 }

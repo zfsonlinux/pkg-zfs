@@ -560,11 +560,8 @@ iscsi_enable_share_one_iet(sa_share_impl_t impl_share, int tid)
 		fprintf(stderr, "\n");
 #endif
 
-		rc = libzfs_run_process(argv[0], argv, STDERR_VERBOSE);
-		if (rc != 0) {
-			free(opts);
-			return (SA_SYSTEM_ERR);
-		}
+		/* Ignore any error from script - "fire and forget" */
+		libzfs_run_process(argv[0], argv, STDERR_VERBOSE);
 	}
 
 	free(opts);
