@@ -1,3 +1,10 @@
+zfs-linux (0.6.3-4~trusty) trusty; urgency=low
+
+  * OpenZFS branding update.
+  * Backport: vdev_id-use-mawk-compatible-regular-expression.patch
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 19 Dec 2014 21:05:10 -0600
+
 zfs-linux (0.6.3-3~trusty) trusty; urgency=low
 
   [ Darik Horn ]
