@@ -189,7 +189,7 @@ start()
 		do_import
 		do_mount
 
-		[ -n "$POOL_IMPORTED" -a -n "$FS_MOUNTED"] && \
+		[ -n "$POOL_IMPORTED" -a -n "$FS_MOUNTED" ] && \
 			touch "$LOCKDIR/$servicename"
 	}
 }
