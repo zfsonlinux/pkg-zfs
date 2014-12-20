@@ -40,3 +40,5 @@ target_mod MaxOutstandingR2T 1
 target_mod HeaderDigest "CRC32C,None"
 target_mod DataDigest "CRC32C,None"
 target_mod QueuedCommands 32
+
+exit 0

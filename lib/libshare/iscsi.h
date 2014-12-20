@@ -35,8 +35,6 @@
 
 #define	IETM_CMD_PATH			"/usr/sbin/ietadm"
 #define	STGT_CMD_PATH			"/usr/sbin/tgtadm"
-#define	LIO_CMD_PATH			"/usr/sbin/lio_node"
-#define	TCM_CMD_PATH			"/usr/sbin/tcm_node"
 
 #define	DOMAINNAME_FILE			"/etc/domainname"
 #define	TARGET_NAME_FILE		"/etc/iscsi_target_id"
@@ -139,4 +137,5 @@ int iscsi_get_shareopts(sa_share_impl_t, const char *, iscsi_shareopts_t **);
 int iscsi_generate_target(const char *, char *, size_t);
 int iscsi_read_sysfs_value(char *, char **);
 int iscsi_write_sysfs_value(char *, char *);
+list_t *iscsi_look_for_stuff(char *, const char *, boolean_t, int);
 list_t *iscsi_parse_initiator(iscsi_shareopts_t *);

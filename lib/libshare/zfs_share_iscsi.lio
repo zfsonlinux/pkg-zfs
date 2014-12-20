@@ -24,7 +24,8 @@ find_iqn() {
 find_iblock() {
     tid=$1
 
-    find $SYSFS/core/{iblock,fileio}_$tid/iqn.* -maxdepth 0 -type d
+    find $SYSFS/core/{iblock,fileio}_$tid/iqn.* -maxdepth 0 -type d \
+	2> /dev/null
 }
 
 
@@ -63,50 +64,55 @@ TCM_DIR=$(find_iblock $1)
 
 # Only edit this after this point.
 
-lio_mod InitialR2T Yes
-lio_mod ImmediateData Yes
+lio_mod InitialR2T			Yes
+lio_mod ImmediateData			Yes
 
-lio_mod MaxRecvDataSegmentLength 8192
-lio_mod MaxXmitDataSegmentLength 262144
+lio_mod MaxRecvDataSegmentLength	262144
+lio_mod MaxXmitDataSegmentLength	65536
 
-lio_mod MaxBurstLength 262144
-lio_mod FirstBurstLength 65536
-lio_mod MaxOutstandingR2T 1
-lio_mod QueuedCommands 32
+lio_mod MaxBurstLength			1048512
+lio_mod FirstBurstLength		262144
+lio_mod MaxOutstandingR2T		30
+lio_mod QueuedCommands			32
 
-lio_mod HeaderDigest "CRC32C,None"
-lio_mod DataDigest "CRC32C,None"
-lio_mod AuthMethod "CHAP,None"
+lio_mod HeaderDigest			"None"
+lio_mod DataDigest			"None"
+lio_mod AuthMethod			"None"
 
-lio_mod MaxConnections 1
+lio_mod MaxConnections			10
 
-lio_mod prod_mode_write_protect 0
-lio_mod demo_mode_write_protect 0
-lio_mod cache_dynamic_acls 1
-lio_mod default_cmdsn_depth 16
-lio_mod generate_node_acls 1
-lio_mod netif_timeout 2
-lio_mod login_timeout 15
+lio_mod prod_mode_write_protect		0
+lio_mod demo_mode_write_protect		0
+lio_mod cache_dynamic_acls		1
+lio_mod default_cmdsn_depth		16
+lio_mod generate_node_acls		1
+lio_mod netif_timeout			2
+lio_mod login_timeout			15
 
-lio_mod OFMarkInt "2048~65535"
-lio_mod IFMarkInt "2048~65535"
-lio_mod OFMarker No
-lio_mod IFMarker No
-lio_mod ErrorRecoveryLevel 0
-lio_mod DataSequenceInOrder Yes
-lio_mod DataPDUInOrder Yes
-lio_mod DefaultTime2Retain 20
-lio_mod DefaultTime2Wait 2
-lio_mod TargetAlias "LIO Target"
+lio_mod OFMarkInt			"2048~65535"
+lio_mod IFMarkInt			"2048~65535"
+lio_mod OFMarker			No
+lio_mod IFMarker			No
+lio_mod ErrorRecoveryLevel		0
+lio_mod DataSequenceInOrder		Yes
+lio_mod DataPDUInOrder			Yes
+lio_mod DefaultTime2Retain		20
+lio_mod DefaultTime2Wait		2
+lio_mod TargetAlias			"LIO Target"
 
 
-tcm_mod queue_depth 128
-tcm_mod emulate_tpws 0
-tcm_mod emulate_tpu 0
-tcm_mod emulate_tas 1
-tcm_mod emulate_ua_intlck_ctrl 0
-tcm_mod emulate_write_cache 0
-tcm_mod emulate_fua_read 0
-tcm_mod emulate_fua_write 1
-tcm_mod emulate_dpo 0
-tcm_mod emulate_model_alias 0
+#tcm_mod queue_depth			128
+
+tcm_mod emulate_3pc			1
+tcm_mod emulate_caw			1
+tcm_mod emulate_tpws			0
+tcm_mod emulate_tpu			1
+#tcm_mod emulate_tas			1
+#tcm_mod emulate_ua_intlck_ctrl		0
+tcm_mod emulate_write_cache		0
+tcm_mod emulate_fua_read		0
+tcm_mod emulate_fua_write		1
+tcm_mod emulate_dpo			0
+#tcm_mod emulate_model_alias		0
+
+exit 0

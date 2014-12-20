@@ -44,16 +44,18 @@ name=$1
 #iscsi_mgmt $name OutgoingUser  jim1 12charpasswd
 #iscsi_mgmt $name allowed_portal 10.170.77.2
 
-target_mod InitialR2T	No
-target_mod ImmediateData Yes
+target_mod InitialR2T			Yes
+target_mod ImmediateData		Yes
 
-target_mod MaxRecvDataSegmentLength 262144
-target_mod MaxXmitDataSegmentLength 65536
+target_mod MaxRecvDataSegmentLength	262144
+target_mod MaxXmitDataSegmentLength	65536
 
-target_mod MaxBurstLength 131072
-target_mod FirstBurstLength 32768
-target_mod MaxOutstandingR2T 1
+target_mod MaxBurstLength		1048512
+target_mod FirstBurstLength		262144
+target_mod MaxOutstandingR2T		30
+target_mod QueuedCommands		32
 
-target_mod HeaderDigest "CRC32C,None"
-target_mod DataDigest "CRC32C,None"
-target_mod QueuedCommands 32
+target_mod HeaderDigest			None
+target_mod DataDigest			None
+
+exit 0

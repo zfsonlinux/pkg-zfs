@@ -601,21 +601,21 @@ iscsi_enable_share_one_stgt(sa_share_impl_t impl_share, int tid)
 			argv[4]  = (char *)"bind";
 			argv[6]  = (char *)"target";
 			argv[9]  = (char *)"--initiator-address";
-			argv[10] = opts->initiator;
+			argv[10] = initiator->initiator;
 			argv[11] = NULL;
-		}
 
 #ifdef DEBUG
-		fprintf(stderr, "CMD: ");
-		for (i = 0; i < 11; i++)
-			fprintf(stderr, "%s ", argv[i]);
-		fprintf(stderr, "\n");
+			fprintf(stderr, "CMD: ");
+			for (i = 0; i < 11; i++)
+				fprintf(stderr, "%s ", argv[i]);
+			fprintf(stderr, "\n");
 #endif
 
-		rc = libzfs_run_process(argv[0], argv, STDERR_VERBOSE);
-		if (rc != 0) {
-			free(opts);
-			return (SA_SYSTEM_ERR);
+			rc = libzfs_run_process(argv[0], argv, STDERR_VERBOSE);
+			if (rc != 0) {
+				free(opts);
+				return (SA_SYSTEM_ERR);
+			}
 		}
 	} else {
 		/*
@@ -713,11 +713,8 @@ iscsi_enable_share_one_stgt(sa_share_impl_t impl_share, int tid)
 		fprintf(stderr, "\n");
 #endif
 
-		rc = libzfs_run_process(argv[0], argv, STDERR_VERBOSE);
-		if (rc != 0) {
-			free(opts);
-			return (SA_SYSTEM_ERR);
-		}
+		/* Ignore any error from script - "fire and forget" */
+		libzfs_run_process(argv[0], argv, STDERR_VERBOSE);
 	}
 
 	return (SA_OK);

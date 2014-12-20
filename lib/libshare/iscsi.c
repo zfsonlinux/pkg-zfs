@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <strings.h>
+#include <ctype.h>
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <sys/types.h>
@@ -191,14 +192,130 @@ iscsi_write_sysfs_value(char *path, char *value)
 	return (rc);
 }
 
+static iscsi_dirs_t *
+iscsi_dirs_list_alloc(void)
+{
+	static iscsi_dirs_t *entries;
+
+	entries = (iscsi_dirs_t *) malloc(sizeof (iscsi_dirs_t));
+	if (entries == NULL)
+		return (NULL);
+
+	list_link_init(&entries->next);
+
+	return (entries);
+}
+
+list_t *
+iscsi_look_for_stuff(char *path, const char *needle, boolean_t match_dir,
+		int check_len)
+{
+	int ret;
+	char path2[PATH_MAX], *path3;
+	DIR *dir;
+	struct dirent *directory;
+	struct stat eStat;
+	iscsi_dirs_t *entry;
+	list_t *entries = malloc(sizeof (list_t));
+
+#if DEBUG >= 2
+	fprintf(stderr, "iscsi_look_for_stuff: '%s' (needle='%s') - %s/%d\n",
+		path, needle ? needle : "", match_dir ? "Y" : "N",
+		check_len);
+#endif
+
+	/* Make sure that path is set */
+	assert(path != NULL);
+
+	list_create(entries, sizeof (iscsi_dirs_t),
+		    offsetof(iscsi_dirs_t, next));
+
+	if ((dir = opendir(path))) {
+		while ((directory = readdir(dir))) {
+			if (directory->d_name[0] == '.')
+				continue;
+
+			path3 = NULL;
+			ret = snprintf(path2, sizeof (path2),
+					"%s/%s", path, directory->d_name);
+			if (ret < 0 || ret >= sizeof (path2))
+				/* Error or not enough space in string */
+				/* TODO: Decide to continue or break */
+				continue;
+
+			if (stat(path2, &eStat) == -1)
+				goto look_out;
+
+			if (match_dir && !S_ISDIR(eStat.st_mode))
+				continue;
+
+			if (needle != NULL) {
+				if (check_len) {
+					if (strncmp(directory->d_name,
+						    needle, check_len) == 0)
+						path3 = strdup(path2);
+				} else {
+					if (strcmp(directory->d_name, needle)
+					    == 0)
+						path3 = strdup(path2);
+				}
+			} else {
+				/* Ignore for SCST */
+				if (strcmp(directory->d_name, "mgmt") == 0)
+					continue;
+
+				/* Ignore for LIO */
+				if ((strncmp(directory->d_name, "alua", 4)
+				    == 0) ||
+				    (strcmp(directory->d_name, "statistics")
+				    == 0) ||
+				    (strcmp(directory->d_name, "write_protect")
+				    == 0))
+					continue;
+
+				path3 = strdup(path2);
+			}
+
+			if (path3) {
+				entry = iscsi_dirs_list_alloc();
+				if (entry == NULL) {
+					free(path3);
+					goto look_out;
+				}
+
+				strncpy(entry->path, path3,
+					sizeof (entry->path));
+				strncpy(entry->entry, directory->d_name,
+					sizeof (entry->entry));
+				entry->stats = eStat;
+
+#if DEBUG >= 2
+				fprintf(stderr, "  %s\n",
+					entry->path);
+#endif
+				list_insert_tail(entries, entry);
+
+				free(path3);
+			}
+		}
+
+look_out:
+		closedir(dir);
+	}
+
+	return (entries);
+}
+
 /*
  * Generate a target name using the current year and month,
  * the domain name and the path.
  *
+ * http://en.wikipedia.org/wiki/ISCSI#Addressing
+ *
  * OR: Use information from /etc/iscsi_target_id:
  *     Example: iqn.2012-11.com.bayour
  *
- * => iqn.yyyy-mm.tld.domain:dataset (with . instead of /)
+ * => iqn.yyyy-mm.tld.domain:dataset (with . instead of / and _)
  */
 int
 iscsi_generate_target(const char *dataset, char *iqn, size_t iqn_len)
@@ -206,7 +323,7 @@ iscsi_generate_target(const char *dataset, char *iqn, size_t iqn_len)
 	char tsbuf[8]; /* YYYY-MM */
 	char domain[256], revname[256], name[256],
 		tmpdom[256], *p, tmp[20][256], *pos,
-		buffer[256], file_iqn[255];
+		buffer[256], file_iqn[223];  /* RFC3720: Max 223 bytes */
 	time_t now;
 	struct tm *now_local;
 	int i, ret;
@@ -326,16 +443,25 @@ iscsi_generate_target(const char *dataset, char *iqn, size_t iqn_len)
 		fclose(iscsi_target_name_fp);
 	}
 
-	/* Take the dataset name, replace / with . */
+	/* Take the dataset name, replace invalid chars with . */
 	strncpy(name, dataset, sizeof (name));
 	pos = name;
 	while (*pos != '\0') {
 		switch (*pos) {
 		case '/':
 		case '-':
+		case '_':
 		case ':':
 		case ' ':
 			*pos = '.';
+		default:
+			/*
+			 * Apparently there's initiator out in the
+			 * wild that can't handle mixed case targets.
+			 * Set all lower case - violates RFC3720
+			 * though..
+			 */
+			*pos = tolower(*pos);
 		}
 		++pos;
 	}
@@ -679,7 +805,7 @@ int
 iscsi_get_shareopts(sa_share_impl_t impl_share, const char *shareopts,
 		    iscsi_shareopts_t **opts)
 {
-	char iqn[255];
+	char iqn[223]; /* RFC3720: Max 223 bytes */
 	int rc;
 	iscsi_shareopts_t *new_opts;
 	uint64_t blocksize;
@@ -921,7 +1047,8 @@ iscsi_update_shareopts(sa_share_impl_t impl_share, const char *resource,
     const char *shareopts)
 {
 	int ret;
-	char *shareopts_dup, *old_shareopts, tmp_opts[255], iqn[255];
+	char iqn[223]; /* RFC3720: Max 223 bytes */
+	char *shareopts_dup, *old_shareopts, tmp_opts[255];
 	boolean_t needs_reshare = B_FALSE, have_active_sessions = B_FALSE;
 	iscsi_target_t *target;
 	iscsi_shareopts_t *opts;
@@ -1066,7 +1193,8 @@ iscsi_available(void)
 #ifdef DEBUG
 		fprintf(stderr, "iSCSI implementation: scst\n");
 #endif
-	} else if (access(LIO_CMD_PATH, X_OK) == 0) {
+	} else if (stat(SYSFS_LIO, &eStat) == 0 &&
+		    S_ISDIR(eStat.st_mode)) {
 		iscsi_implementation = ISCSI_IMPL_LIO;
 #ifdef DEBUG
 		fprintf(stderr, "iSCSI implementation: lio\n");
