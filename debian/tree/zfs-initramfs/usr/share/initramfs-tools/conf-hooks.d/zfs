@@ -1,2 +1,0 @@
-# Force the inclusion of Busybox in the initramfs.
-BUSYBOX=y

@@ -57,12 +57,19 @@ ZFS_INITRD_POST_MODPROBE_SLEEP='0'
 
 # List of additional datasets to mount after the root                    
 # dataset is mounted.
+#
 # The init script will use the mountpoint specified in
 # the 'mountpoint' property value in the dataset to
 # determine where it should be mounted.
-#ZFS_INITRD_ADDITIONAL_DATASETS="rpool/ROOT/usr_local"
+#
+# This is a space separated list, and will be mounted
+# in the order specified, so if one filesystem depends
+# on a previous mountpoint, make sure to put them in
+# the right order.
+#ZFS_INITRD_ADDITIONAL_DATASETS="rpool/ROOT/usr rpool/ROOT/var"
 
 # List of pools that should NOT be imported at boot
+# This is a space separated list.
 #ZFS_POOL_EXCEPTIONS="test2"
 
 # Location of the lockfile.
