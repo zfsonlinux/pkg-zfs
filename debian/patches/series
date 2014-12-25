@@ -1,5 +1,4 @@
 0001-Prevent-manual-builds-in-the-DKMS-source.patch
 0002-Check-for-META-and-DCH-consistency-in-autoconf.patch
 0003-Add-libuutil-to-LIBADD-for-libzfs-and-libzfs_core.patch
-0004-Fix-zil_commit-NULL-dereference.patch
 0005-vdev_id-use-mawk-compatible-regular-expression.patch
