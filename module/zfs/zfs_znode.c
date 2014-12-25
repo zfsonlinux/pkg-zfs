@@ -511,6 +511,21 @@ zfs_inode_update(znode_t *zp)
 	spin_unlock(&ip->i_lock);
 }
 
+/*
+ * Safely mark an inode dirty.  Inodes which are part of a read-only
+ * file system or snapshot may not be dirtied.
+ */
+void
+zfs_mark_inode_dirty(struct inode *ip)
+{
+	zfs_sb_t *zsb = ITOZSB(ip);
+
+	if (zfs_is_readonly(zsb) || dmu_objset_is_snapshot(zsb->z_os))
+		return;
+
+	mark_inode_dirty(ip);
+}
+
 static uint64_t empty_xattr;
 static uint64_t pad[4];
 static zfs_acl_phys_t acl_phys;
@@ -1456,7 +1471,6 @@ top:
 int
 zfs_freesp(znode_t *zp, uint64_t off, uint64_t len, int flag, boolean_t log)
 {
-	struct inode *ip = ZTOI(zp);
 	dmu_tx_t *tx;
 	zfs_sb_t *zsb = ZTOZSB(zp);
 	zilog_t *zilog = zsb->z_log;
@@ -1476,15 +1490,6 @@ zfs_freesp(znode_t *zp, uint64_t off, uint64_t len, int flag, boolean_t log)
 			goto log;
 		else
 			return (error);
-	}
-
-	/*
-	 * Check for any locks in the region to be freed.
-	 */
-	if (ip->i_flock && mandatory_lock(ip)) {
-		uint64_t length = (len ? len : zp->z_size - off);
-		if (!lock_may_write(ip, off, length))
-			return (SET_ERROR(EAGAIN));
 	}
 
 	if (len == 0) {
