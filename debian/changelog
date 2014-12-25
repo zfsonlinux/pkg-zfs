@@ -1,3 +1,37 @@
+zfs-linux (0.6.3-15~utopic) utopic; urgency=low
+
+  [ Tom Prince ]
+  * Install header during post-build rather than post-install.
+  * Point dkms build at installed source tree, rather than build directory.
+
+  [ Brian Behlendorf ]
+  * Fix zil_commit() NULL dereference
+  * Tag zfs-0.6.3-1.1
+
+  [ Tim Chase ]
+  * Linux 3.12 compat: shrinker semantics
+
+  [ Ned Bass ]
+  * Remove checks for mandatory locks
+
+  [ Alex Zhuravlev ]
+  * Export symbols for ZIL interface
+
+  [ Tim Chase ]
+  * Undirty freed spill blocks.
+  * Don't perform ACL-to-mode translation on empty ACL
+
+  [ Andy Bakun ]
+  * Fix typo in %post scriptlet lines
+
+  [ Brian Behlendorf ]
+  * Tag zfs-0.6.3-1.2
+
+  [ Darik Horn ]
+  * Revert "Add patch: Fix zil_commit() NULL dereference"
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 24 Dec 2014 22:32:05 -0600
+
 zfs-linux (0.6.3-14~utopic) utopic; urgency=low
 
   * Tighten the META_VERSION variable assignment.
