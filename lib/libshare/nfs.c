@@ -34,7 +34,6 @@
 #include <libzfs.h>
 #include <libshare.h>
 #include "libshare_impl.h"
-#include <stddef.h>
 
 #if !defined(offsetof)
 #define	offsetof(s, m)  ((size_t)(&(((s *)0)->m)))
@@ -51,21 +50,80 @@ static sa_fstype_t *nfs_fstype;
  */
 static int nfs_exportfs_temp_fd = -1;
 
-typedef int (*nfs_host_callback_t)(const char *sharepath, const char *host,
-    const char *security, const char *access, void *cookie);
+typedef int (*nfs_shareopt_callback_t)(const char *opt, const char *value,
+    void *cookie);
 
-typedef struct nfs_host_cookie_s {
-	nfs_host_callback_t callback;
-	const char *sharepath;
-	void *cookie;
-	const char *security;
-} nfs_host_cookie_t;
+/* List of hosts and their options */
+/* NOTE: share path is stored elsewhere */
+typedef struct nfs_share_list_s {
+	char	host[255];
+	char	opts[255];
+
+	list_node_t next;
+} nfs_share_list_t;
+
+/* Global list of shares */
+list_t all_nfs_shares_list;
 
 /*
- * Helper function for foreach_nfs_host. This function checks whether the
- * current share option is a host specification and invokes a callback
- * function with information about the host.
+ * Invokes the specified callback function for each Solaris share option
+ * listed in the specified string.
  */
+static int
+foreach_nfs_shareopt(const char *shareopts,
+    nfs_shareopt_callback_t callback, void *cookie)
+{
+	char *shareopts_dup, *opt, *cur, *value;
+	int was_nul, rc;
+
+	if (shareopts == NULL)
+		return (SA_OK);
+
+	shareopts_dup = strdup(shareopts);
+	if (shareopts_dup == NULL)
+		return (SA_NO_MEMORY);
+
+	opt = shareopts_dup;
+	was_nul = 0;
+
+	while (1) {
+		cur = opt;
+
+		while (*cur != ',' && *cur != '\0')
+			cur++;
+
+		if (*cur == '\0')
+			was_nul = 1;
+
+		*cur = '\0';
+
+		if (cur > opt) {
+			value = strchr(opt, '=');
+
+			if (value != NULL) {
+				*value = '\0';
+				value++;
+			}
+
+			rc = callback(opt, value, cookie);
+
+			if (rc != SA_OK) {
+				free(shareopts_dup);
+				return (rc);
+			}
+		}
+
+		opt = cur + 1;
+
+		if (was_nul)
+			break;
+	}
+
+	free(shareopts_dup);
+
+	return (SA_OK);
+}
+
 static int
 find_option(char *opt, const char *needle)
 {
@@ -81,28 +139,7 @@ find_option(char *opt, const char *needle)
 		token = strtok(NULL, ",");
 	}
 
-	return (SA_OK);
-}
-
-/*
- * Invokes a callback function for all NFS hosts that are set for a share.
- */
-static int
-foreach_nfs_host(sa_share_impl_t impl_share, nfs_host_callback_t callback,
-    void *cookie)
-{
-	nfs_host_cookie_t udata;
-	char *shareopts;
-
-	udata.callback = callback;
-	udata.sharepath = impl_share->sharepath;
-	udata.cookie = cookie;
-	udata.security = "sys";
-
-	shareopts = FSINFO(impl_share, nfs_fstype)->shareopts;
-
-	return foreach_shareopt(shareopts, foreach_nfs_host_cb,
-	    &udata);
+	return (0);
 }
 
 /*
@@ -140,7 +177,7 @@ nfs_enable_share_one(const char *sharepath, const char *host, char *opts)
 	char *hostpath;
 	char *argv[6];
 
-	/* exportfs -i -o <opts> <host>:<sharepath> */
+	/* exportfs -i -o sec=XX,<opts> <host>:<sharepath> */
 
 	hostpath = malloc(strlen(host) + 1 +
 	    strlen(sharepath) + 1);
@@ -256,40 +293,42 @@ get_linux_shareopts_cb(const char *key, const char *value, void *cookie)
 
 	if (strcmp(key, "ro") == 0 || strcmp(key, "rw") == 0 ||
 	    strcmp(key, "sec") == 0) {
-		int rc;
-		char *host;
+		if (value[0] == '@') {
+			int rc;
+			char *host;
 
-		rc = get_linux_hostspec(value, &host);
-		if (rc < 0)
-			return (rc);
+			rc = get_linux_hostspec(value, &host);
+			if (rc < 0)
+				return (rc);
 
-		opts = (nfs_share_list_t *)
-			malloc(sizeof (nfs_share_list_t));
-		if (opts == NULL)
-			return (SA_NO_MEMORY);
+			opts = (nfs_share_list_t *)
+				malloc(sizeof (nfs_share_list_t));
+			if (opts == NULL)
+				return (SA_NO_MEMORY);
 
-		list_link_init(&opts->next);
+			list_link_init(&opts->next);
 
-		if (*plinux_opts != NULL) {
-			/*
-			 * We're in a new host list, so update the
-			 * previous host definition
-			 */
-			update_host_list(cookie);
+			if (*plinux_opts != NULL) {
+				/*
+				 * We're in a new host list, so update the
+				 * previous host definition
+				 */
+				update_host_list(cookie);
 
-			/*
-			 * Zero the current list of options
-			 * so that the next host definition
-			 * starts with an empty option list
-			 */
-			*plinux_opts = NULL;
+				/*
+				 * Zero the current list of options
+				 * so that the next host definition
+				 * starts with an empty option list
+				 */
+				*plinux_opts = NULL;
+			}
+
+			/* Start a new host opts definition */
+			strncpy(opts->host, host, sizeof (opts->host));
+			opts->opts[0] = '\0';
+
+			list_insert_tail(&all_nfs_shares_list, opts);
 		}
-
-		/* Start a new host opts definition */
-		strncpy(opts->host, host, sizeof (opts->host));
-		opts->opts[0] = '\0';
-
-		list_insert_tail(&all_nfs_shares_list, opts);
 
 		(void) add_linux_shareopt(plinux_opts, key, NULL);
 		return (SA_OK);
@@ -358,8 +397,8 @@ get_linux_shareopts(const char *shareopts, char **plinux_opts)
 		(void) add_linux_shareopt(plinux_opts, "mountpoint", NULL);
 	}
 
-	rc = foreach_shareopt(shareopts, get_linux_shareopts_cb, plinux_opts);
-
+	rc = foreach_nfs_shareopt(shareopts, get_linux_shareopts_cb,
+	    plinux_opts);
 	if (rc != SA_OK) {
 		free(*plinux_opts);
 		*plinux_opts = NULL;
