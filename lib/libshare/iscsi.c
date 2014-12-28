@@ -363,7 +363,11 @@ iscsi_generate_target(const char *dataset, char *iqn, size_t iqn_len)
 		if (getdomainname(domain, sizeof (domain)) < 0) {
 			/* Could not get domain via getdomainname() */
 #endif
-			domainname_fp = fopen(DOMAINNAME_FILE, "r");
+			if (access(DOMAINNAME_FILE, F_OK) == 0)
+				domainname_fp = fopen(DOMAINNAME_FILE, "r");
+			else if (access(DOMAINNAME_PROC, F_OK) == 0)
+				domainname_fp = fopen(DOMAINNAME_PROC, "r");
+
 			if (domainname_fp == NULL) {
 				fprintf(stderr, "ERROR: Can't open %s: %s\n",
 					DOMAINNAME_FILE, strerror(errno));

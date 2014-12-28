@@ -51,18 +51,21 @@ static sa_fstype_t *nfs_fstype;
  */
 static int nfs_exportfs_temp_fd = -1;
 
-/* List of hosts and their options */
-/* NOTE: share path is stored elsewhere */
-typedef struct nfs_share_list_s {
-	char	host[255];
-	char	opts[255];
+typedef int (*nfs_host_callback_t)(const char *sharepath, const char *host,
+    const char *security, const char *access, void *cookie);
 
-	list_node_t next;
-} nfs_share_list_t;
+typedef struct nfs_host_cookie_s {
+	nfs_host_callback_t callback;
+	const char *sharepath;
+	void *cookie;
+	const char *security;
+} nfs_host_cookie_t;
 
-/* Global list of shares */
-list_t all_nfs_shares_list;
-
+/*
+ * Helper function for foreach_nfs_host. This function checks whether the
+ * current share option is a host specification and invokes a callback
+ * function with information about the host.
+ */
 static int
 find_option(char *opt, const char *needle)
 {
@@ -78,7 +81,28 @@ find_option(char *opt, const char *needle)
 		token = strtok(NULL, ",");
 	}
 
-	return (0);
+	return (SA_OK);
+}
+
+/*
+ * Invokes a callback function for all NFS hosts that are set for a share.
+ */
+static int
+foreach_nfs_host(sa_share_impl_t impl_share, nfs_host_callback_t callback,
+    void *cookie)
+{
+	nfs_host_cookie_t udata;
+	char *shareopts;
+
+	udata.callback = callback;
+	udata.sharepath = impl_share->sharepath;
+	udata.cookie = cookie;
+	udata.security = "sys";
+
+	shareopts = FSINFO(impl_share, nfs_fstype)->shareopts;
+
+	return foreach_shareopt(shareopts, foreach_nfs_host_cb,
+	    &udata);
 }
 
 /*
@@ -334,8 +358,8 @@ get_linux_shareopts(const char *shareopts, char **plinux_opts)
 		(void) add_linux_shareopt(plinux_opts, "mountpoint", NULL);
 	}
 
-	rc = foreach_shareopt(shareopts, get_linux_shareopts_cb,
-	    plinux_opts);
+	rc = foreach_shareopt(shareopts, get_linux_shareopts_cb, plinux_opts);
+
 	if (rc != SA_OK) {
 		free(*plinux_opts);
 		*plinux_opts = NULL;

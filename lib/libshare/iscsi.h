@@ -37,6 +37,7 @@
 #define	STGT_CMD_PATH			"/usr/sbin/tgtadm"
 
 #define	DOMAINNAME_FILE			"/etc/domainname"
+#define	DOMAINNAME_PROC			"/proc/sys/kernel/domainname"
 #define	TARGET_NAME_FILE		"/etc/iscsi_target_id"
 #define	EXTRA_ISCSI_SHARE_SCRIPT	"/sbin/zfs_share_iscsi"
 
