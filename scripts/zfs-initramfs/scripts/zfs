@@ -187,7 +187,7 @@ mountroot()
 	then
 		[ -n "$root" ] && ROOT=${root}
 
-		[ -n "$REAL_ROOT" ] && ROOT=${root}
+		[ -n "$REAL_ROOT" ] && ROOT=${REAL_ROOT}
 	fi
 
 	# ------------
@@ -198,7 +198,7 @@ mountroot()
 	then
 		[ -n "$NEWROOT" ] && rootmnt=${NEWROOT}
 
-		[ -n "$NEW_ROOT" ] && rootmnt=${NEWROOT}
+		[ -n "$NEW_ROOT" ] && rootmnt=${NEW_ROOT}
 	fi
 
 	# ----------------------------------------------------------------
