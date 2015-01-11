@@ -84,10 +84,9 @@ extern hrtime_t __gethrtime(void);
 static __inline__ time_t
 gethrestime_sec(void)
 {
-        timestruc_t now;
-
-        __gethrestime(&now);
-        return now.tv_sec;
+	struct timespec ts;
+	ts = current_kernel_time();
+	return (ts.tv_sec);
 }
 
 #define TIMESPEC_OVERFLOW(ts)		\

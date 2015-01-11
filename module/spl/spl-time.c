@@ -38,14 +38,9 @@ extern unsigned long long monotonic_clock(void);
 #define DEBUG_SUBSYSTEM S_TIME
 
 void
-__gethrestime(timestruc_t *ts)
+__gethrestime(timestruc_t *now)
 {
-	struct timespec tspec;
-
-	getnstimeofday(&tspec);
-
-	ts->tv_sec = tspec.tv_sec;
-	ts->tv_nsec = tspec.tv_nsec;
+	*now = current_kernel_time();
 }
 EXPORT_SYMBOL(__gethrestime);
 
