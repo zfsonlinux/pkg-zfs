@@ -1,3 +1,10 @@
+zfs-linux (0.6.3-28~2c41df~wheezy) wheezy; urgency=low
+
+    * Fix "/usr/bin/deb-systemd-helper: error: unable to read zfs.target"
+    * Include the /etc/default/zfs file in the initrd.
+
+ -- Turbo Fredriksson <turbo@debian.org>  
+
 zfs-linux (0.6.3-27~2c41df~wheezy) wheezy; urgency=low
 
     * New upstream GIT tag.

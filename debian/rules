@@ -134,6 +134,10 @@ override_dh_auto_install:
 	mkdir -p $(CURDIR)/debian/tmp/usr/sbin
 	mv $(CURDIR)/debian/tmp/bin/*.py $(CURDIR)/debian/tmp/usr/sbin/
 
+	mkdir -p $(CURDIR)/debian/tmp/lib/systemd/system
+	mv $(CURDIR)/debian/tmp/usr/lib/systemd/system/* $(CURDIR)/debian/tmp/lib/systemd/system/
+	rmdir $(CURDIR)/debian/tmp/usr/lib/systemd/system
+
 	find '$(CURDIR)/debian/tmp' -name '*~' | xargs rm
 
 override_dh_installinit:

@@ -105,4 +105,8 @@ if [ -f /etc/zfs/vdev_id.conf ]; then
     cp /etc/zfs/vdev_id.conf $DESTDIR/etc/zfs/vdev_id.conf
 fi
 
+# Copy the defaults file
+[ ! -d "$DESTDIR/etc/default" ] && mkdir -p "$DESTDIR/etc/default"
+cp /etc/default/zfs $DESTDIR/etc/default/
+
 exit 0
