@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-27~2c41df~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 31 Jan 2015 20:40:16 +0100
+
 zfs-linux (0.6.3-26~2d9d57~wheezy) wheezy; urgency=low
 
     * New upstream GIT tag.
