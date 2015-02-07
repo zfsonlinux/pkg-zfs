@@ -1,9 +1,11 @@
-zfs-linux (0.6.3-28~2c41df~wheezy) wheezy; urgency=low
+zfs-linux (0.6.3-28~33b4de~wheezy) wheezy; urgency=low
 
+    * New upstream GIT tag.
     * Fix "/usr/bin/deb-systemd-helper: error: unable to read zfs.target"
     * Include the /etc/default/zfs file in the initrd.
+    * Merge PR 3084 to get kernel 3.19 support.
 
- -- Turbo Fredriksson <turbo@debian.org>  
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 07 Feb 2015 22:36:50 +0100
 
 zfs-linux (0.6.3-27~2c41df~wheezy) wheezy; urgency=low
 
