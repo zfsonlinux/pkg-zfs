@@ -1,3 +1,11 @@
+zfs-linux (0.6.3-26~33b4de~jessie) jessie; urgency=low
+
+    * New upstream GIT tag.
+    * Merge latest PR 2087 updates.
+    * Merge PR 3084 to get kernel 3.19 support.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 08 Feb 2015 20:25:21 +0100
+
 zfs-linux (0.6.3-25~2c41df~jessie) jessie; urgency=low
 
     * New upstream GIT tag.

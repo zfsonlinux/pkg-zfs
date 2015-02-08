@@ -6,6 +6,30 @@
 # Enable this by passing boot=zfs on the kernel command line.
 #
 
+# Of course the functions we need is called differently
+# on different distributions - it would be way to easy
+# otherwise!!
+if type log_failure_msg > /dev/null 2>&1 ; then
+	# LSB functions
+	log_begin_msg=log_begin_msg
+	log_failure_msg=log_failure_msg
+	log_progress_msg=log_progress_msg
+elif type success > /dev/null 2>&1 ; then
+	# Fedora/RedHat functions
+	log_begin_msg=success
+	log_failure_msg=failure
+	log_progress_msg="echo -n"
+elif type einfo > /dev/null 2>&1 ; then
+	# Gentoo functions
+	log_begin_msg=einfo
+	log_failure_msg=eerror
+	log_progress_msg="echo -n"
+else
+	log_begin_msg="echo -n"
+	log_failure_msg=echo
+	log_progress_msg="echo -n"
+fi
+
 pre_mountroot()
 {
 	if type run_scripts > /dev/null 2>&1 && [ -f "/scripts/local-top" -o -d "/scripts/local-top" ]
@@ -48,19 +72,29 @@ find_rootfs()
 {
 	local pool=$1
 
-	ZFS_BOOTFS=$(zpool list -H -o bootfs $pool)
+	# If it's already specified, just keep it mounted and exit
+	# User (kernel command line) must be correct.
 	if [ -n "$ZFS_BOOTFS" ]
 	then
-		if [ "$ZFS_BOOTFS" != "-" -a \
-			$(get_fs_value $ZFS_BOOTFS mountpoint | grep '^/$') ]
-		then
-			# Keep it mounted
-			POOL_MOUNTED=1
-			return 0
-		fi
+		POOL_MOUNTED=1
+		return 0
 	fi
 
+	# Not set, try to find it in the 'bootfs' property of the pool.
+	ZFS_BOOTFS=$(zpool list -H -o bootfs $pool)
+
+	# Make sure it's not '-' and that it starts with /.
+	if [ "$ZFS_BOOTFS" != "-" ] && \
+		$(get_fs_value $ZFS_BOOTFS mountpoint | grep -q '^/$')
+	then
+		# Keep it mounted
+		POOL_MOUNTED=1
+		return 0
+	fi
+
+	# Not boot fs here, export it and later try again..
 	zpool export $pool
+
 	return 1
 }
 
@@ -73,14 +107,11 @@ import_pool()
 
 	# Verify that the pool isn't already imported
 	# Make as sure as we can to not require '-f' to import.
-	if zpool status $pool > /dev/null 2>&1
-	then
-		return 0
-	fi
+	zpool status $pool > /dev/null 2>&1 && return 0
 
+	# Attempt 1: First try all the by-* dirs (if asked for).
 	if [ "$USE_DISK_BY_ID" == 'yes' ]
 	then
-		# Attempt 1: First try all the by-* dirs
 		# Last ditch attempt, try /dev!
 		for dir in /dev/disk/by-vdev /dev/disk/by-* /dev
 		do
@@ -97,7 +128,7 @@ import_pool()
 	# Attempt 2: If by-* fails, try using the cache file (if it exists)
 	if [ -z "$POOL_MOUNTED" -a -n "$ZPOOL_CACHE" -a -f "$ZPOOL_CACHE" ]
 	then
-		ZFS_STDERR=$(zpool import -c ${ZPOOL_CACHE} -N ${ZPOOL_FORCE})
+		ZFS_STDERR=$(zpool import -c ${ZPOOL_CACHE} -N ${ZPOOL_FORCE} $pool 2>&1)
 		ZFS_ERROR=$?
 
 		[ "$ZFS_ERROR" == 0 ] && \
@@ -107,8 +138,7 @@ import_pool()
 	# Attempt 3: Last ditch attempt.
 	if [ -z "$POOL_MOUNTED" ]
 	then
-		ZFS_CMD="zpool import -N ${ZFS_RPOOL} ${ZPOOL_FORCE}"
-		ZFS_STDERR=$($ZFS_CMD 2>&1)
+		ZFS_STDERR=$(zpool import -N ${ZFS_RPOOL} ${ZPOOL_FORCE} $pool 2>&1)
 		ZFS_ERROR=$?
 
 		[ "$ZFS_ERROR" == 0 ] && \
@@ -120,7 +150,7 @@ import_pool()
 
 load_module()
 {
-	if [ "$ZFS_INITRD_PRE_MOUNTROOT_SLEEP" -gt '0' ]
+	if [ "$ZFS_INITRD_PRE_MOUNTROOT_SLEEP" > 0 ]
 	then
 		[ "$quiet" != "y" ] && $log_begin_msg "Sleeping for $ZFS_INITRD_PRE_MOUNTROOT_SLEEP seconds..."
 		sleep "$ZFS_INITRD_PRE_MOUNTROOT_SLEEP"
@@ -142,7 +172,7 @@ load_module()
 	# control over that part!
 	/sbin/modprobe zfs zfs_autoimport_disable=1
 
-	if [ "$ZFS_INITRD_POST_MODPROBE_SLEEP" -gt '0' ]
+	if [ "$ZFS_INITRD_POST_MODPROBE_SLEEP" > 0 ]
 	then
 		[ "$quiet" != "y" ] && $log_begin_msg "Sleeping for $ZFS_INITRD_POST_MODPROBE_SLEEP seconds..."
 		sleep "$ZFS_INITRD_POST_MODPROBE_SLEEP"
@@ -191,6 +221,7 @@ mountroot()
 	fi
 
 	# ------------
+	# Where to mount the root fs in the initrd - set outside this script
 	# Compatibility: 'rootmnt' is for Debian GNU/Linux (etc),
 	#		 'NEWROOT' is for RedHat/Fedora (etc),
 	#		 'NEW_ROOT' is for Gentoo
@@ -211,15 +242,15 @@ mountroot()
 	# Supports the following kernel command line argument combinations
 	# (in this order - first match win):
 	#
-	#	rpool=<pool>
-	#	bootfs=<pool>/<dataset>
+	#	rpool=<pool>				(tries to finds bootfs automatically)
+	#	bootfs=<pool>/<dataset>			(uses this for rpool - first part)
 	#	rpool=<pool> bootfs=<pool>/<dataset>
-	#	-B zfs-bootfs=<pool>/<fs>
-	#	rpool=rpool		(default if none of the above is used)
-	#	root=<pool>/<dataset>
-	#	root=ZFS=<pool>/<dataset>
-	#	root=zfs:AUTO
-	#	root=zfs:<pool>/<dataset>
+	#	-B zfs-bootfs=<pool>/<fs>		(uses this for rpool - first part)
+	#	rpool=rpool				(default if none of the above is used)
+	#	root=<pool>/<dataset>			(uses this for rpool - first part)
+	#	root=ZFS=<pool>/<dataset>		(uses this for rpool - first part, without 'ZFS=')
+	#	root=zfs:AUTO				(tries to detect both pool and rootfs
+	#	root=zfs:<pool>/<dataset>		(uses this for rpool - first part, without 'zfs:')
 	#
 	# Option <dataset> could also be <snapshot>
 
@@ -236,12 +267,17 @@ mountroot()
 
 	# ------------
 	# Look for 'rpool' and 'bootfs' parameter
-	ZFS_RPOOL="${rpool#rpool=}"
-	ZFS_BOOTFS="${bootfs#bootfs=}"
+	[ -n "$rpool" ] && ZFS_RPOOL="${rpool#rpool=}"
+	[ -n "$bootfs" ] && ZFS_BOOTFS="${bootfs#bootfs=}"
+
+	# ------------
+	# If we have 'ROOT' (see above), but not 'ZFS_BOOTFS', then use 'ROOT'
+	[ -n "$ROOT" -a -z "$ZFS_BOOTFS" ] && ZFS_BOOTFS="$ROOT"
 
 	# ------------
 	# Check for the `-B zfs-bootfs=%s/%u,...` kind of parameter.
-	# NOTE: Only use the pool name. The rest is not supported by ZoL.
+	# NOTE: Only use the pool name and dataset. The rest is not supported by ZoL
+	#       (whatever it's for).
 	if [ -z "$ZFS_RPOOL" ]
 	then
 		# The ${zfs-bootfs} variable is set at the kernel commmand
@@ -253,92 +289,58 @@ mountroot()
 		# stripping the zfs-bootfs= prefix.  Let the shell handle
 		# quoting through the eval command.
 		eval ZFS_RPOOL=$(set | sed -n -e 's,^zfs-bootfs=,,p')
-
-		# Only the pool name is relevant because the ZFS filesystem on
-		# Linux is extrinsic and the userland cannot resolve a ZFS
-		# object number.
-		#
-		# Strip everything after the first slash character.
-		ZFS_RPOOL=${ZFS_RPOOL%%/*}
 	fi
 
 	# ------------
-	# rpool= but no bootfs=,root=ZFS or root=zfs: options.
-	if [ -n "$ZFS_RPOOL" -a -z "$ZFS_BOOTFS" ] && ! echo "$ROOT" | egrep -q "ZFS=|zfs:"
+	# No root fs or pool specified - do auto detect.
+	if [ -z "$ZFS_RPOOL" -a -z "$ZFS_BOOTFS" ]
 	then
 		# Do auto detect. Do this by 'cheating' - set 'root=zfs:AUTO' which
 		# will be caught later
-		ZFS_BOOTFS=
 		ROOT=zfs:AUTO
-	fi
-
-	# ------------
-	# Support the 'root=<pool>/<dataset>' option.
-	if [ -z "$ZFS_RPOOL" -a -z "$ZFS_BOOTFS" -a -n "$ROOT" ] && ! echo "$ROOT" | egrep -iq "^/|^zfs"
-	then
-		# Strip everything after the first slash character.
-		ZFS_RPOOL=${ROOT%%/*}
-		ZFS_BOOTFS=$ROOT
-	fi
-
-	# ------------
-	# Support the 'root=ZFS=....' parameter (Debian GNU/Linux default)
-	if [ -z "$ZFS_BOOTFS" ] && echo "$ROOT" | grep -q "ZFS="
-	then
-		ZFS_BOOTFS="${ROOT##*=}"
 	fi
 
 	# ----------------------------------------------------------------
 	# F I N D   A N D   I M P O R T   C O R R E C T   P O O L
 
 	# ------------
-	# Special case: Support Fedora/Redhat type argument 'root=zfs:....'
-	if [ -z "$ZFS_BOOTFS" ] && echo "$ROOT" | grep -q "^zfs:"
+	if [ "$ROOT" = "zfs:AUTO" ]
 	then
-		if [ "$ROOT" = "zfs:AUTO" ]
+		# Try to detect both pool and root fs.
+
+		[ "$quiet" != "y" ] && $log_begin_msg "Attempting to import additional pools."
+
+		# Get a list of pools available for import
+		if [ -n "$ZFS_RPOOL" ]
 		then
-			# Not there, so we need to import everything.
-			[ "$quiet" != "y" ] && $log_begin_msg "Attempting to import additional pools."
+			# We've specified a pool - check only that
+			POOLS=$ZFS_RPOOL
+		else
+			POOLS=$(zpool import 2>&1 | grep 'pool: ' | sed 's,.*: ,,')
+		fi
 
-			# Get a list of pools available for import
-			if [ -n "$ZFS_RPOOL" ]
-			then
-				# We've specified a pool - check only that
-				POOLS=$ZFS_RPOOL
-			else
-				POOLS=$(zpool import 2>&1 | grep 'pool: ' | sed 's,.*: ,,')
-			fi
-
-			for pool in $POOLS
+		for pool in $POOLS
+		do
+			for exception in $ZFS_POOL_EXCEPTIONS
 			do
-				for exception in $ZFS_POOL_EXCEPTIONS
-				do
-					# Don't import this pool
-					[ "$pool" == "$exception" ] && continue
-				done
-
-				import_pool $pool
+				# Don't import this pool
+				[ "$pool" == "$exception" ] && continue
 			done
 
-			[ "$quiet" != "y" ] && $log_end_msg $ZFS_ERROR
-		else
-			# No auto - use value from the command line option.
-			ZFS_BOOTFS="${ROOT#zfs:}"
-			ZFS_RPOOL="${ZFS_BOOTFS%%/*}"
-		fi
+			import_pool $pool
+		done
+
+		[ "$quiet" != "y" ] && $log_end_msg $ZFS_ERROR
+	else
+		# No auto - use value from the command line option.
+		ZFS_BOOTFS="${ROOT#*[:=]}"	# Strip 'zfs:' and 'ZFS='.
+		ZFS_RPOOL="${ZFS_BOOTFS%%/*}"	# Stip everything after the first slash.
 	fi
 
-	if [ -z "$ZFS_RPOOL" -a -n "$ZFS_BOOTFS" ]
-	then
-		# We (still) don't have the POOL, but we have a BOOTFS. The
-		# pool is (should be the the first part of the bootfs dataset
-		# path)...
-		ZFS_RPOOL="${ZFS_BOOTFS%%/*}"
-	fi
-
+	# Import the pool (if not already done so in the AUTO check above).
 	if [ -n "$ZFS_RPOOL" -a -z "$POOL_MOUNTED" ]
 	then
-		[ "$quiet" != "y" ] && $log_begin_msg "Importing ZFS root pool $ZFS_RPOOL"
+		[ "$quiet" != "y" ] && $log_begin_msg "Importing ZFS root pool '$ZFS_RPOOL'"
 
 		import_pool ${ZFS_RPOOL}
 
@@ -362,6 +364,7 @@ mountroot()
 	# ----------------------------------------------------------------
 	# M O U N T   R O O T   F I L E S Y S T E M
 
+	# Prepare for the root fs mount (decrypt fs, clone a snapshot etc)
 	if [ -n "$ZFS_BOOTFS" ]
 	then
 		# ------------
@@ -509,14 +512,14 @@ mountroot()
 			fi
 		fi
 	else
-		# Unable to figure out the bootfs -- let the user sort this out
+		#  Unknown root fs -- let the user sort this out.
 		disable_plymouth
 		echo ""
-		echo "Command: zpool list -H -o bootfs $ZFS_RPOOL"
-		echo "Error: $ZFS_ERROR, unable to get the bootfs property."
+		echo "Error: Unknown root filesystem - no 'bootfs' pool property and"
+		echo "       not specified on the kernel command line."
 		echo ""
 		echo "Manually mount the root filesystem on $rootmnt and then exit."
-		echo "Hint: Try:  mount -t zfs -o zfsutil $ZFS_RPOOL/ROOT/system $rootmnt"
+		echo "Hint: Try:  mount -o zfsutil -t zfs ${ZFS_RPOOL-rpool}/ROOT/system $rootmnt"
 		/bin/sh
 	fi
 
@@ -598,6 +601,8 @@ mountroot()
 
 		echo -n "=> waiting for ENTER before continuing because of 'zfsdebug=1': "
 		read b
+
+		set +x
 	fi
 
 	# ------------

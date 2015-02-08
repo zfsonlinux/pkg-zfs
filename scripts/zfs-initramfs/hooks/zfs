@@ -15,7 +15,7 @@ COPY_EXEC_LIST="$COPY_EXEC_LIST /bin/hostname /sbin/blkid"
 
 # Explicitly specify all kernel modules because automatic dependency resolution
 # is unreliable on many systems.
-BASE_MODULES="zlib_deflate spl zavl zcommon znvpair zunicode zpios zfs"
+BASE_MODULES="zlib_deflate spl zavl zcommon znvpair zunicode zfs"
 CRPT_MODULES="sun-ccm sun-gcm sun-ctr"
 MANUAL_ADD_MODULES_LIST="$BASE_MODULES"
 
@@ -70,12 +70,14 @@ else
 	hostname >"$DESTDIR/etc/hostname"
 fi
 
-[ ! -d "$DESTDIR/etc/modprobe.d" ] && \
-	mkdir -p $DESTDIR/etc/modprobe.d
 for ii in zfs zfs.conf spl spl.conf
 do  
-	[ -f "/etc/modprobe.d/$ii" ] && \
+	if [ -f "/etc/modprobe.d/$ii" ]; then
+		if [ ! -d "$DESTDIR/etc/modprobe.d" ]; then
+			mkdir -p $DESTDIR/etc/modprobe.d
+		fi
 		cp -p "/etc/modprobe.d/$ii" $DESTDIR/etc/modprobe.d/
+	fi
 done
 
 # The spl-dkms package ensures that the /etc/hostid file exists.
@@ -92,16 +94,19 @@ done
 # a dummy...
 [ ! -d "$DESTDIR/usr/bin" ] && mkdir -p "$DESTDIR/usr/bin"
 if [ ! -x "$DESTDIR/usr/bin/net" ]; then
-	touch "$DESTDIR/usr/bin/net"
-	chmod +x "$DESTDIR/usr/bin/net"
+    touch "$DESTDIR/usr/bin/net"
+    chmod +x "$DESTDIR/usr/bin/net"
 fi
 
 # Copy the udev vdev rule
 if [ -f /etc/zfs/vdev_id.conf ]; then
-	[ ! -d "$DESTDIR/etc/zfs" ] && mkdir -p $DESTDIR/etc/zfs
-	cp /lib/udev/vdev_id $DESTDIR/lib/udev/
-	cp /lib/udev/rules.d/69-vdev.rules $DESTDIR/lib/udev/rules.d/
-	cp /etc/zfs/vdev_id.conf $DESTDIR/etc/zfs/vdev_id.conf
+    [ ! -d "$DESTDIR/etc/zfs" ] && mkdir -p $DESTDIR/etc/zfs
+    cp /lib/udev/rules.d/69-vdev.rules $DESTDIR/lib/udev/rules.d
+    cp /etc/zfs/vdev_id.conf $DESTDIR/etc/zfs/vdev_id.conf
 fi
+
+# Copy the defaults file
+[ ! -d "$DESTDIR/etc/default" ] && mkdir -p "$DESTDIR/etc/default"
+cp /etc/default/zfs $DESTDIR/etc/default/
 
 exit 0
