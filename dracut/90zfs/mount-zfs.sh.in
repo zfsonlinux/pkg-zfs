@@ -26,6 +26,4 @@ else
         log_progress_msg="echo -n"
 fi
 
-. @datarootdir@/initramfs-tools/scripts/zfs
-
 mountroot
