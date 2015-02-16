@@ -28,11 +28,4 @@
 
 #include <linux/fs.h>
 
-#ifndef HAVE_FILE_INODE
-static inline struct inode *file_inode(const struct file *f)
-{
-    return f->f_dentry->d_inode;
-}
-#endif /* HAVE_FILE_INODE */
-
 #endif /* _ZFS_FS_H */
