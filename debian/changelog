@@ -1,3 +1,10 @@
+zfs-linux (0.6.3-30~7d2868~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+    * Update Debian patches
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 16 Feb 2015 17:36:17 +0100
+
 zfs-linux (0.6.3-29~33b4de~wheezy) wheezy; urgency=low
 
     * Merge latest PR 2087 updates.

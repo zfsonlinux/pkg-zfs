@@ -1,8 +1,8 @@
 Index: pkg-zfs/lib/libzfs/Makefile.am
 ===================================================================
---- pkg-zfs.orig/lib/libzfs/Makefile.am	2014-02-25 02:31:01.000000000 +0100
-+++ pkg-zfs/lib/libzfs/Makefile.am	2014-02-25 08:06:36.324805421 +0100
-@@ -22,9 +22,12 @@
+--- pkg-zfs.orig/lib/libzfs/Makefile.am	2015-02-16 17:53:21.405855340 +0100
++++ pkg-zfs/lib/libzfs/Makefile.am	2015-02-16 17:53:28.557765429 +0100
+@@ -26,9 +26,12 @@
  	$(top_srcdir)/lib/libzfs/libzfs_util.c
  
  libzfs_la_LIBADD = \
@@ -17,8 +17,8 @@ Index: pkg-zfs/lib/libzfs/Makefile.am
  libzfs_la_LIBADD += -lm -ldl $(LIBBLKID)
 Index: pkg-zfs/lib/libzfs_core/Makefile.am
 ===================================================================
---- pkg-zfs.orig/lib/libzfs_core/Makefile.am	2014-02-25 02:31:01.387109117 +0100
-+++ pkg-zfs/lib/libzfs_core/Makefile.am	2014-02-25 08:07:14.516794061 +0100
+--- pkg-zfs.orig/lib/libzfs_core/Makefile.am	2015-02-16 17:53:21.405855340 +0100
++++ pkg-zfs/lib/libzfs_core/Makefile.am	2015-02-16 17:53:28.557765429 +0100
 @@ -10,6 +10,7 @@
  	$(top_srcdir)/lib/libzfs_core/libzfs_core.c
  
