@@ -1,3 +1,13 @@
+zfs-linux (0.6.3-27~1d9663~jessie) jessie; urgency=low
+
+   * New upstream GIT tag.
+   * Fix Vcs lines in control
+     Thanx to rlaager for fix - #139
+   * Reenable dracut 'stuff'
+     Thanx to l1k for fix.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 22 Feb 2015 14:14:35 +0100
+		
 zfs-linux (0.6.3-26~33b4de~jessie) jessie; urgency=low
 
     * New upstream GIT tag.
