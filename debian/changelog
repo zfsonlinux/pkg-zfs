@@ -2,6 +2,8 @@ zfs-linux (0.6.3-31-7d2868-wheezy) wheezy; urgency=low
 
    * Fix Vcs lines in control
      Thanx to rlaager for fix - #139
+   * Reenable dracut 'stuff'
+     Thanx to l1k for fix.
 
  -- Turbo Fredriksson <turbo@debian.org>  Sun, 22 Feb 2015 13:50:26 +0100
 
