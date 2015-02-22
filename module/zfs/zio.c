@@ -57,7 +57,6 @@ kmem_cache_t *zio_cache;
 kmem_cache_t *zio_link_cache;
 kmem_cache_t *zio_buf_cache[SPA_MAXBLOCKSIZE >> SPA_MINBLOCKSHIFT];
 kmem_cache_t *zio_data_buf_cache[SPA_MAXBLOCKSIZE >> SPA_MINBLOCKSHIFT];
-int zio_bulk_flags = 0;
 int zio_delay_max = ZIO_DELAY_MAX;
 
 /*
@@ -92,43 +91,14 @@ int zio_buf_debug_limit = 0;
 
 static inline void __zio_execute(zio_t *zio);
 
-static int
-zio_cons(void *arg, void *unused, int kmflag)
-{
-	zio_t *zio = arg;
-
-	bzero(zio, sizeof (zio_t));
-
-	mutex_init(&zio->io_lock, NULL, MUTEX_DEFAULT, NULL);
-	cv_init(&zio->io_cv, NULL, CV_DEFAULT, NULL);
-
-	list_create(&zio->io_parent_list, sizeof (zio_link_t),
-	    offsetof(zio_link_t, zl_parent_node));
-	list_create(&zio->io_child_list, sizeof (zio_link_t),
-	    offsetof(zio_link_t, zl_child_node));
-
-	return (0);
-}
-
-static void
-zio_dest(void *arg, void *unused)
-{
-	zio_t *zio = arg;
-
-	mutex_destroy(&zio->io_lock);
-	cv_destroy(&zio->io_cv);
-	list_destroy(&zio->io_parent_list);
-	list_destroy(&zio->io_child_list);
-}
-
 void
 zio_init(void)
 {
 	size_t c;
 	vmem_t *data_alloc_arena = NULL;
 
-	zio_cache = kmem_cache_create("zio_cache", sizeof (zio_t), 0,
-	    zio_cons, zio_dest, NULL, NULL, NULL, 0);
+	zio_cache = kmem_cache_create("zio_cache",
+	    sizeof (zio_t), 0, NULL, NULL, NULL, NULL, NULL, 0);
 	zio_link_cache = kmem_cache_create("zio_link_cache",
 	    sizeof (zio_link_t), 0, NULL, NULL, NULL, NULL, NULL, 0);
 
@@ -142,6 +112,7 @@ zio_init(void)
 		size_t size = (c + 1) << SPA_MINBLOCKSHIFT;
 		size_t p2 = size;
 		size_t align = 0;
+		size_t cflags = (size > zio_buf_debug_limit) ? KMC_NODEBUG : 0;
 
 		while (p2 & (p2 - 1))
 			p2 &= p2 - 1;
@@ -166,16 +137,14 @@ zio_init(void)
 
 		if (align != 0) {
 			char name[36];
-			int flags = zio_bulk_flags;
-
 			(void) sprintf(name, "zio_buf_%lu", (ulong_t)size);
 			zio_buf_cache[c] = kmem_cache_create(name, size,
-			    align, NULL, NULL, NULL, NULL, NULL, flags);
+			    align, NULL, NULL, NULL, NULL, NULL, cflags);
 
 			(void) sprintf(name, "zio_data_buf_%lu", (ulong_t)size);
 			zio_data_buf_cache[c] = kmem_cache_create(name, size,
 			    align, NULL, NULL, NULL, NULL,
-			    data_alloc_arena, flags);
+			    data_alloc_arena, cflags);
 		}
 	}
 
@@ -530,6 +499,15 @@ zio_create(zio_t *pio, spa_t *spa, uint64_t txg, const blkptr_t *bp,
 	ASSERT(vd || stage == ZIO_STAGE_OPEN);
 
 	zio = kmem_cache_alloc(zio_cache, KM_SLEEP);
+	bzero(zio, sizeof (zio_t));
+
+	mutex_init(&zio->io_lock, NULL, MUTEX_DEFAULT, NULL);
+	cv_init(&zio->io_cv, NULL, CV_DEFAULT, NULL);
+
+	list_create(&zio->io_parent_list, sizeof (zio_link_t),
+	    offsetof(zio_link_t, zl_parent_node));
+	list_create(&zio->io_child_list, sizeof (zio_link_t),
+	    offsetof(zio_link_t, zl_child_node));
 
 	if (vd != NULL)
 		zio->io_child_type = ZIO_CHILD_VDEV;
@@ -541,7 +519,6 @@ zio_create(zio_t *pio, spa_t *spa, uint64_t txg, const blkptr_t *bp,
 		zio->io_child_type = ZIO_CHILD_LOGICAL;
 
 	if (bp != NULL) {
-		zio->io_logical = NULL;
 		zio->io_bp = (blkptr_t *)bp;
 		zio->io_bp_copy = *bp;
 		zio->io_bp_orig = *bp;
@@ -552,55 +529,21 @@ zio_create(zio_t *pio, spa_t *spa, uint64_t txg, const blkptr_t *bp,
 			zio->io_logical = zio;
 		if (zio->io_child_type > ZIO_CHILD_GANG && BP_IS_GANG(bp))
 			pipeline |= ZIO_GANG_STAGES;
-	} else {
-		zio->io_logical = NULL;
-		zio->io_bp = NULL;
-		bzero(&zio->io_bp_copy, sizeof (blkptr_t));
-		bzero(&zio->io_bp_orig, sizeof (blkptr_t));
 	}
 
 	zio->io_spa = spa;
 	zio->io_txg = txg;
-	zio->io_ready = NULL;
-	zio->io_physdone = NULL;
 	zio->io_done = done;
 	zio->io_private = private;
-	zio->io_prev_space_delta = 0;
 	zio->io_type = type;
 	zio->io_priority = priority;
 	zio->io_vd = vd;
-	zio->io_vsd = NULL;
-	zio->io_vsd_ops = NULL;
 	zio->io_offset = offset;
-	zio->io_timestamp = 0;
-	zio->io_delta = 0;
-	zio->io_delay = 0;
 	zio->io_orig_data = zio->io_data = data;
 	zio->io_orig_size = zio->io_size = size;
 	zio->io_orig_flags = zio->io_flags = flags;
 	zio->io_orig_stage = zio->io_stage = stage;
 	zio->io_orig_pipeline = zio->io_pipeline = pipeline;
-	bzero(&zio->io_prop, sizeof (zio_prop_t));
-	zio->io_cmd = 0;
-	zio->io_reexecute = 0;
-	zio->io_bp_override = NULL;
-	zio->io_walk_link = NULL;
-	zio->io_transform_stack = NULL;
-	zio->io_error = 0;
-	zio->io_child_count = 0;
-	zio->io_phys_children = 0;
-	zio->io_parent_count = 0;
-	zio->io_stall = NULL;
-	zio->io_gang_leader = NULL;
-	zio->io_gang_tree = NULL;
-	zio->io_executor = NULL;
-	zio->io_waiter = NULL;
-	zio->io_cksum_report = NULL;
-	zio->io_ena = 0;
-	bzero(zio->io_child_error, sizeof (int) * ZIO_CHILD_TYPES);
-	bzero(zio->io_children,
-	    sizeof (uint64_t) * ZIO_CHILD_TYPES * ZIO_WAIT_TYPES);
-	bzero(&zio->io_bookmark, sizeof (zbookmark_phys_t));
 
 	zio->io_state[ZIO_WAIT_READY] = (stage >= ZIO_STAGE_READY);
 	zio->io_state[ZIO_WAIT_DONE] = (stage >= ZIO_STAGE_DONE);
@@ -624,6 +567,10 @@ zio_create(zio_t *pio, spa_t *spa, uint64_t txg, const blkptr_t *bp,
 static void
 zio_destroy(zio_t *zio)
 {
+	list_destroy(&zio->io_parent_list);
+	list_destroy(&zio->io_child_list);
+	mutex_destroy(&zio->io_lock);
+	cv_destroy(&zio->io_cv);
 	kmem_cache_free(zio_cache, zio);
 }
 
@@ -3397,9 +3344,6 @@ EXPORT_SYMBOL(zio_buf_alloc);
 EXPORT_SYMBOL(zio_data_buf_alloc);
 EXPORT_SYMBOL(zio_buf_free);
 EXPORT_SYMBOL(zio_data_buf_free);
-
-module_param(zio_bulk_flags, int, 0644);
-MODULE_PARM_DESC(zio_bulk_flags, "Additional flags to pass to bulk buffers");
 
 module_param(zio_delay_max, int, 0644);
 MODULE_PARM_DESC(zio_delay_max, "Max zio millisec delay before posting event");

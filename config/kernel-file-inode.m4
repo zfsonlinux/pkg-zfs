@@ -12,8 +12,7 @@ AC_DEFUN([ZFS_AC_KERNEL_FILE_INODE], [
 		file_inode(f);
 	],[
 		AC_MSG_RESULT(yes)
-		AC_DEFINE(HAVE_FILE_INODE, 1,
-		          [file_inode() is available])
+		AC_DEFINE(HAVE_FILE_INODE, 1, [file_inode() is available])
 	],[
 		AC_MSG_RESULT(no)
 	])
