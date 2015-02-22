@@ -1,4 +1,4 @@
-zfs-linux (0.6.3-31-7d2868-wheezy) wheezy; urgency=low
+zfs-linux (0.6.3-31-1d9663-wheezy) wheezy; urgency=low
 
    * Fix Vcs lines in control
      Thanx to rlaager for fix - #139
