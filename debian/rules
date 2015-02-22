@@ -204,6 +204,8 @@ override_dh_auto_clean:
 
 override_dh_install: override_dh_installinit
 	find . -name lib*.la -delete
+	[ ! -d debian/tmp/usr/lib/dracut -a -d debian/tmp/usr/share/dracut ] && \
+		mv debian/tmp/usr/share/dracut debian/tmp/usr/lib/
 	dh_install
 
 # ------------ UDEBS
