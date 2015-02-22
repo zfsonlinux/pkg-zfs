@@ -22,8 +22,8 @@ Build-Depends: autoconf,
                ##MODULES_BUILD_DEPENDS##
 Standards-Version: 3.9.4
 Homepage: http://www.zfsonlinux.org/
-Vcs-Git: git://anonscm.debian.org/pkg-zfsonlinux/zfs.git
-Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-zfsonlinux/spl.git
+Vcs-Git: git://github.com/zfsonlinux/pkg-zfs.git
+Vcs-Browser: http://github.com/zfsonlinux/pkg-zfs
 
 Package: libnvpair1
 Section: libs
