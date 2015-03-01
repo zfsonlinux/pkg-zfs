@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-32-fdc5d9-wheezy) wheezy; urgency=low
+
+   * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 01 Mar 2015 16:30:16 +0100
+
 zfs-linux (0.6.3-31-1d9663-wheezy) wheezy; urgency=low
 
    * Fix Vcs lines in control
