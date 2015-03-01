@@ -1,10 +1,16 @@
+zfs-linux (0.6.3-29-fdc5d9-jessie) jessie; urgency=low
+
+   * Remove versioned depend on spl-dkms.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 01 Mar 2015 17:34:29 +0100
+
 zfs-linux (0.6.3-28-fdc5d9-jessie) jessie; urgency=low
 
    * New upstream GIT tag.
    * Rename version.
    * Modify gbp.conf
 
- -- Turbo Fredriksson <turbo@debian.org>  Tue, 24 Feb 2015 17:55:43 +0100
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 01 Mar 2015 16:55:43 +0100
 
 zfs-linux (0.6.3-27~1d9663~jessie) jessie; urgency=low
 
