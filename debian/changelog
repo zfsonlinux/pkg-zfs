@@ -1,5 +1,6 @@
-zfs-linux (0.6.3-33-fdc5d9-wheezy) wheezy; urgency=low
+zfs-linux (0.6.3-33-d14cfd-wheezy) wheezy; urgency=low
 
+   * New upstream GIT tag.
    * Include arc_summary.py into zfsutils.deb
    * Add python to zfsutils.deb dependency list.
    * Rename zfs-modules*.in files to include ARCH.
