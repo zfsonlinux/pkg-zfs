@@ -1,3 +1,557 @@
+zfs-linux (0.6.3-16~vivid~1.gbpd49b57) vivid; urgency=low
+
+  ** SNAPSHOT build @d49b57469ad75ab8358b205fc5898830283bc680 **
+
+  [ SenH ]
+  * Fix man zpool property feature_guid
+
+  [ Turbo Fredriksson ]
+  * Add information about the -o option to zpool replace
+
+  [ Brian Behlendorf ]
+  * Improve differing sector size error
+
+  [ Tim Chase ]
+  * Comment the lack of real_LZ4_uncompress()
+
+  [ Dan McDonald ]
+  * Illumos #4936 fix potential overflow in lz4
+
+  [ Tim Chase ]
+  * Return default value on numeric properties failing the "head check.
+  * Document the optional "device" argument for "zpool split"
+
+  [ Garrison Jensen ]
+  * Fix comment spelling errors.
+
+  [ Andrew Barnes ]
+  * Preserve asize when last mirror child promoted to top-level vdev
+
+  [ Matthew Ahrens ]
+  * Illumos #3641 compressed block histograms with zdb
+
+  [ Tim Chase ]
+  * Convert zfs_mg_noalloc_threshold to a module parameter and document
+
+  [ George Wilson ]
+  * Illumos 4168, 4169, 4170: ztest, zdb and zhack fixes
+
+  [ Richard Yao ]
+  * zdb: Introduce -V for verbatim import
+
+  [ Brian Behlendorf ]
+  * Fix zil_commit() NULL dereference
+
+  [ Prakash Surya ]
+  * Move metaslab_group_alloc_update() call
+
+  [ George Wilson ]
+  * Illumos #4101, #4102, #4103, #4105, #4106
+  * Illumos #4730 destroy metaslab group taskq
+  * Illumos #4756 Fix metaslab_group_preload deadlock
+
+  [ Brian Behlendorf ]
+  * zfs_trunc() should use dmu_tx_assign(tx, TXG_WAIT)
+
+  [ Jan Engelhardt ]
+  * Do not attempt access beyond the declared end of the dn_blkptr array
+
+  [ Brian Behlendorf ]
+  * Revert "Disable GCCs aggressive loop optimization"
+  * zpool-create.sh: allow features to be disabled
+
+  [ Turbo Fredriksson ]
+  * Initial attempt to document events and payloads.
+  * Support '-H' (scripted mode) to 'zpool get' (Closes: #2522)
+
+  [ Brian Behlendorf ]
+  * Remove patches directory
+
+  [ Matthew Ahrens ]
+  * Illumos 4171, 4172
+
+  [ Max Grossman ]
+  * Illumos 4370, 4371
+
+  [ Matthew Ahrens ]
+  * Illumos 4368, 4369.
+  * Illumos #4374
+
+  [ George Wilson ]
+  * Illumos 4754, 4755
+
+  [ Tim Chase ]
+  * zed needs libzfs_core
+
+  [ Matthew Ahrens ]
+  * Illumos 3835 zfs need not store 2 copies of all metadata
+  * Illumos 4757, 4913
+  * Illumos 4390 - I/O errors can corrupt space map when deleting fs/vol
+
+  [ Saso Kiselkov ]
+  * Illumos 4897 - Space accounting mismatch in L2ARC/zpool
+
+  [ Matthew Ahrens ]
+  * Illumos 4881 - zfs send performance regression with embedded data
+  * Illumos 4914 - zfs on-disk bookmark structure should be named *_phys_t
+
+  [ Turbo Fredriksson ]
+  * Add bash completions by Aneurin Price.
+
+  [ Brian Behlendorf ]
+  * Use KM_PUSHPAGE in dsl_dataset_rollback_check()
+  * Avoid dynamic allocation of 'search zio'
+  * Avoid 128K kmem allocations in mzap_upgrade()
+  * Add zfs_iput_async() interface
+  * Revert "Revert "Revert "Fix unlink/xattr deadlock"""
+
+  [ Alec Salazar ]
+  * Replace __va_list with va_list
+  * Avoid PAGESIZE redefinition
+
+  [ Evan Susarret ]
+  * Correct autodetection of bootfs property
+
+  [ Richard Yao ]
+  * Include sys/taskq.h in linux/vfs_compat.h
+
+  [ Turbo Fredriksson ]
+  * Create an 'overlay' property (Closes: #2503)
+
+  [ George Wilson ]
+  * Illumos 4976-4984 - metaslab improvements
+
+  [ Tim Chase ]
+  * Don't upgrade a metaslab when the pool is not writable
+
+  [ Richard Yao ]
+  * Drive database update
+
+  [ Matthew Ahrens ]
+  * Illumos 4631 - zvol_get_stats triggering too many reads
+
+  [ Isaac Huang ]
+  * Fixed memory leaks in zevent handling
+
+  [ Andrew Hamilton ]
+  * 2493 change efi_rescan() to wait longer
+
+  [ Matthew Ahrens ]
+  * Illumos 5034 - ARC's buf_hash_table is too small
+  * Illumos 4970-4974 - extreme rewind enhancements
+
+  [ Brian Behlendorf ]
+  * Retire HAVE_IOCTL_* configure checks
+
+  [ Turbo Fredriksson ]
+  * Add a pkgconfig file (Closes: #585)
+
+  [ Brian Behlendorf ]
+  * Add a missing > to AUTHORS
+
+  [ Chris Dunlap ]
+  * Fix race condition with zed pidfile creation
+  * Cleanup zed logging
+
+  [ Ralf Ertzinger ]
+  * Change startup mode of ZED
+
+  [ louwrentius ]
+  * Change delimiter for ZED email scripts
+
+  [ Dan Swartzendruber ]
+  * Improve handling of filesystem versions (Closes: #2616)
+
+  [ Alexey Smirnoff ]
+  * Change the default 'zfs_dedup_prefetch' value to '0'
+
+  [ alteriks ]
+  * Import zfs pools after cryptsetup
+
+  [ Stanislav Seletskiy ]
+  * Fix invalid locking order in rename operation
+
+  [ Alex Reece ]
+  * Illumos 5049 - panic when removing log device
+
+  [ ilovezfs ]
+  * Fragmentation should display as '-' if spacemap_histogram=disabled
+
+  [ Richard Yao ]
+  * Linux AIO Support
+
+  [ Brian Behlendorf ]
+  * Add object type checking to zap_lockdir()
+
+  [ George Wilson ]
+  * Illumos 5117 - spacemap reallocation can cause corruption
+
+  [ Tim Chase ]
+  * Implement fallocate FALLOC_FL_PUNCH_HOLE
+  * Document the "readonly" pool property
+
+  [ Brian Behlendorf ]
+  * Fix z_teardown_inactive_lock deadlock
+
+  [ Turbo Fredriksson ]
+  * Document environment variables for zdb, zfs, zinject and zpool.
+
+  [ Matthew Ahrens ]
+  * Illumos 5140 - message about "%recv could not be opened" is printed when booting after crash
+
+  [ Chris Dunlap ]
+  * Remove reverse indentation from zed comments.
+
+  [ Ned Bass ]
+  * Remove obsolete comment about guard pages
+
+  [ Adam Leventhal ]
+  * Illumos 5174 - add sdt probe for blocked read in dbuf_read()
+
+  [ Matthew Ahrens ]
+  * Illumos 5177 - remove dead code from dsl_scan.c
+  * Illumos 5161 - add tunable for number of metaslabs per vdev
+
+  [ George Wilson ]
+  * Illumos 5147 - zpool list -v should show individual disk capacity
+
+  [ Richard Yao ]
+  * Properly NULL terminate string in zfs_strcmp_pathname
+  * Fix function call with uninitialized value in vdev_inuse
+  * lib/libzpool/kernel.c: Assert no owners in rw_destroy()
+
+  [ Matthew Ahrens ]
+  * Illumos 5139 - SEEK_HOLE failed to report a hole at end of file
+  * Illumos 5135 - zpool_find_import_cached() can use fnvlist_*
+  * Illumos 5116 - zpool history -i goes into infinite loop
+
+  [ Alex Reece ]
+  * Illumos 4753 - increase number of outstanding async writes when sync task is waiting
+
+  [ Max Grossman ]
+  * Illumos 5138 - add tunable for maximum number of blocks freed in one txg
+
+  [ Chris Dunlap ]
+  * Fix zed io-spare.sh dash incompatibility
+  * Replace zed's use of malloc with calloc
+  * Refer to ZED's scripts as ZEDLETs
+
+  [ Tim Chase ]
+  * Perform whole-page page truncation for hole-punching under a range lock
+
+  [ Brian Behlendorf ]
+  * Make user stack limit configurable
+
+  [ Richard Yao ]
+  * Add add_prop_list_default helper
+  * zpool import -t should not update cachefile
+  * Implement -t option to zpool create for temporary pool names
+
+  [ smh ]
+  * FreeBSD PR kern/172259: Fixes zfs receive errors
+
+  [ Andriy Gapon ]
+  * zfs send -p send properties only for snapshots that are actually sent
+
+  [ Chris Dunlap ]
+  * Obtain advisory lock on ZED PID file
+  * Cleanup struct zed_conf vars in zed_conf_destroy
+
+  [ Lukas Wunner ]
+  * Amend Dracut module to export ZFS root on shutdown
+
+  [ Matthew Ahrens ]
+  * Illumos 5176 - lock contention on godfather zio
+
+  [ Turbo Fredriksson ]
+  * Add an example for 'zfs bookmark' to the Example section.
+
+  [ Brian Behlendorf ]
+  * Fix CPU_SEQID use in preemptible context
+  * Improve VERIFY() error in dmu_write()
+
+  [ Turbo Fredriksson ]
+  * Add a stern warning about dedup
+
+  [ Tom Prince ]
+  * Install header during post-build rather than post-install.
+  * Point dkms build at installed source tree, rather than build directory.
+
+  [ Brian Behlendorf ]
+  * Fix source_tree variable in dkms build
+
+  [ Ned Bass ]
+  * ztest: print backtrace on SIGSEGV and SIGABRT
+
+  [ Brian Behlendorf ]
+  * Make license compatibility checks consistent
+  * Update code to use misc_register()/misc_deregister()
+  * Remove shrink_dcache_memory() and shrink_icache_memory()
+  * Update utsname support
+  * Handle NULL mirror child vdev
+
+  [ Darik Horn ]
+  * Let `zpool import` ignore a missing hostid record.
+
+  [ Brian Behlendorf ]
+  * Suppress AIO kmem warnings
+
+  [ Daniil Lunev ]
+  * Illumos 4924 - LZ4 Compression for metadata
+
+  [ Tim Chase ]
+  * Don't perform ACL-to-mode translation on empty ACL
+
+  [ Matthew Ahrens ]
+  * Illumos 3693 - restore_object uses at least two transactions to restore an object
+  * Illumos 5150 - zfs clone of a defer_destroy snapshot causes strangeness
+  * Illumos 5162 - zfs recv should use loaned arc buffer to avoid copy
+
+  [ Ned Bass ]
+  * Remove checks for mandatory locks
+
+  [ Brian Behlendorf ]
+  * Handle block pointers with a corrupt logical size
+
+  [ ilovezfs ]
+  * Fix zpool create -t ENOENT bug.
+
+  [ Matthew Ahrens ]
+  * Illumos 5178 - zdb -vvvvv on old-format pool fails in dump_deadlist()
+  * Illumos 5169-5171 - zdb fixes
+
+  [ Brian Behlendorf ]
+  * Fix zdb segfault
+
+  [ Alex Reece ]
+  * Illumos 4958 zdb trips assert on pools with ashift >= 0xe
+
+  [ Matthew Ahrens ]
+  * Illumos 5164-5165 - space map fixes
+
+  [ Tim Chase ]
+  * Linux 3.12 compat: shrinker semantics
+
+  [ Richard Yao ]
+  * Kernel header installation should respect --prefix
+  * Search /usr/local/src for SPL Object Directory
+  * Make directory into which mount.zfs is installed configurable
+  * Make systemd-modules-load.service file directory configurable
+
+  [ Alexander Pyhalov ]
+  * Fix modules installation directory
+
+  [ Marcel Wysocki ]
+  * Add config/compile to config/.gitignore
+
+  [ Dan Swartzendruber ]
+  * Improve zvol symlink handling.
+
+  [ Alex Zhuravlev ]
+  * Export symbols for ZIL interface
+
+  [ Chris Wedgwood ]
+  * Reduce buf/dbuf mutex contention
+
+  [ Isaac Huang ]
+  * Fix inaccurate field descriptions
+  * Print header properly when terminal resizes
+
+  [ Prakash Surya ]
+  * Illumos 5213 - panic in metaslab_init due to space_map_open returning ENXIO
+
+  [ Randall Mason ]
+  * Fix small spelling mistake
+
+  [ Ned Bass ]
+  * Move a few internal ARC strucutres to arc_impl.h
+  * Fix dprintf format specifiers
+  * cstyle: allow right paren on its own line
+
+  [ Prakash Surya ]
+  * Swap DTRACE_PROBE* with Linux tracepoints
+
+  [ Tim Chase ]
+  * Undirty freed spill blocks.
+
+  [ smh ]
+  * Prevent ZFS leaking pool free space
+
+  [ Ned Bass ]
+  * Fix improper null-byte termination handling
+  * Explicitly include SPL compat headers
+
+  [ Isaac Huang ]
+  * bio_alloc() with __GFP_WAIT never returns NULL
+
+  [ Dan Swartzendruber ]
+  * Fix systemd config for zfs-share.service
+
+  [ Brian Behlendorf ]
+  * Fix snapshots with dirty inodes
+
+  [ Dan Swartzendruber ]
+  * Improve systemd script to not leave stale sharetab
+
+  [ Jacek Fefliński ]
+  * zpool upgrade return errors to stderr instead of stdout
+
+  [ Andy Bakun ]
+  * Fix typo in %post scriptlet lines
+
+  [ Boris Protopopov ]
+  * Correct error returns to unify cross-pool operation error handling
+
+  [ Brian Behlendorf ]
+  * Fix cstyle issue from c66989b
+
+  [ Ned Bass ]
+  * vdev_id: use mawk-compatible regular expression
+
+  [ Brian Behlendorf ]
+  * Fix zfs_putpage() lock inversion
+
+  [ Ned Bass ]
+  * Remove duplicate typedefs from trace.h
+  * Don't use AC_LANG_SOURCE for conftest.h source
+  * Document zfs_flags module parameter
+
+  [ Brian Behlendorf ]
+  * Fix zfs_putpage() lock inversion (again)
+  * Mark IO pipeline with PF_FSTRANS
+
+  [ Richard Yao ]
+  * Use is_vmalloc_addr() in vdev_disk.c
+
+  [ Brian Behlendorf ]
+  * Retire KM_NODEBUG
+  * Change KM_PUSHPAGE -> KM_SLEEP
+  * Add kmem_cache.h include to default context
+  * Revert "Pre-allocate vdev I/O buffers"
+  * Revert "SA spill block cache"
+
+  [ Tim Chase ]
+  * Linux 3.12 compat: split shrinker has s_shrink
+
+  [ Richard Yao ]
+  * Use kmem_vasprintf() in log_internal()
+
+  [ Tim Chase ]
+  * Fix removal of SA in sa_modify_attrs()
+
+  [ cburroughs ]
+  * Add arc_summary.py from FreeNAS
+  * Modified arc_summary.py to run on linux
+
+  [ Kyle Blatter ]
+  * Refactor arc_summary to simplify -p processing
+  * Add a help option with usage information
+  * Force all lines to be 80 columns
+  * Replace sysctl summary with tunables summary.
+
+  [ Brian Behlendorf ]
+  * Make `zpool import -d|-c` behave consistently
+
+  [ Richard Yao ]
+  * Use (void) memcpy(), not (void *) memcpy()
+
+  [ Brian Behlendorf ]
+  * Add zvol_open() error handling for readonly property
+  * Handle closing an unopened ZVOL
+
+  [ Chris Dunlap ]
+  * Protect against adding duplicate strings in ZED
+  * Cleanup _zed_event_add_nvpair()
+
+  [ Brian Behlendorf ]
+  * Use zio buffers in zil_itx_create()
+
+  [ avg ]
+  * fix l2arc compression buffers leak
+
+  [ Tim Chase ]
+  * Spurious ENOMEM returns when reading dbufs kstat
+
+  [ Chunwei Chen ]
+  * Read spl_hostid module parameter before gethostid()
+  * Fix build error when make deb
+
+  [ Brian Behlendorf ]
+  * Skip evicting dbufs when walking the dbuf hash
+
+  [ Ned Bass ]
+  * Fix SA header size accounting
+
+  [ Justin T. Gibbs ]
+  * Illumos 5311 - traverse_dnode may report success when it should not
+
+  [ Lukas Wunner ]
+  * Fix loop in Dracut shutdown script
+  * Fix Dracut scripts to allow for blanks in pool and dataset names
+
+  [ Brian Behlendorf ]
+  * Don't read space maps during import for readonly pools
+
+  [ Tim Chase ]
+  * Produce a full snapshot list for zfs send -p
+
+  [ Brian Behlendorf ]
+  * Revert "Don't read space maps during import for readonly pools"
+  * Use vmem_alloc() for nvlists
+
+  [ Jörg Thalheim ]
+  * Linux 3.19 compat: file_inode was added
+
+  [ Brian Behlendorf ]
+  * Retire zio_bulk_flags
+  * Retire zio_cons()/zio_dest()
+
+  [ Andrey Vesnovaty ]
+  * Fix readdir for .zfs/snapshot directory
+
+  [ Brian Behlendorf ]
+  * Change VERIFY to ASSERT in mutex_destroy()
+
+  [ Tim Chase ]
+  * Enhancements to zpool dry run mode.
+
+  [ Sören Tempel ]
+  * Use test(1) in a proper way
+  * Write directly to $initdir
+
+  [ Brian Behlendorf ]
+  * Skip bad DVAs during free by setting zfs_recover=1
+
+  [ Dan Swartzendruber ]
+  * Set zfs_autoimport_disable default value to 1
+
+  [ Steffen Müthing ]
+  * Add required files to initramfs
+  * Fix error in dracut script if not using ZFS root
+
+  [ Brian Behlendorf ]
+  * Fix O_APPEND open(2) flag
+  * Retire spl_module_init()/spl_module_fini()
+
+  [ Christer Ekholm ]
+  * Fix possible future overflow in zfs_nicenum
+
+  [ Tim Chase ]
+  * Avoid dladdr() in ztest
+
+  [ Brian Behlendorf ]
+  * Prevent "zpool destroy|export" when suspended
+
+  [ Isaac Huang ]
+  * Fix deadlock between zpool export and zfs list
+
+  [ Darik Horn ]
+  * Update gbp.conf for snapshot builds.
+  * Refresh debian/patches after upstream merge.
+  * Package zed separately.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 03 Mar 2015 18:40:34 -0500
+
 zfs-linux (0.6.3-15~vivid) vivid; urgency=low
 
   [ Brian Behlendorf ]
