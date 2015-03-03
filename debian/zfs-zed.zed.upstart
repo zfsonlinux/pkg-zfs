@@ -1,0 +1,8 @@
+description     "OpenZFS Event Daemon (zed)"
+
+start on local-filesystems
+
+expect daemon
+#respawn
+
+exec /usr/sbin/zed
