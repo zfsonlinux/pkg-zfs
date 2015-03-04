@@ -1,3 +1,21 @@
+zfs-linux (0.6.3-16~vivid~2.gbp1c1369) vivid; urgency=low
+
+  ** SNAPSHOT build @1c1369e54cac73ac9160474072d8e5b8b8180724 **
+
+  [ Brian Behlendorf ]
+  * Use MUTEX_FSTRANS mutex type
+  * Linux 4.0 compat: bdi_setup_and_register()
+  * Change ASSERT(!"...") to  cmn_err(CE_PANIC, ...)
+
+  [ Turbo Fredriksson ]
+  * Install arc_summary.py
+
+  [ Darik Horn ]
+  * Revert "Tag zfs-0.6.3-1.2"
+  * Revert "Tag zfs-0.6.3-1.1"
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 03 Mar 2015 21:01:51 -0500
+
 zfs-linux (0.6.3-16~vivid~1.gbpd49b57) vivid; urgency=low
 
   ** SNAPSHOT build @d49b57469ad75ab8358b205fc5898830283bc680 **
