@@ -130,7 +130,8 @@ Description: Debugging symbols for libzpool2
 Package: zfs-dkms
 Section: kernel
 Architecture: linux-any
-Pre-Depends: spl-dkms (>= ${source:Upstream-Version})
+#Pre-Depends: spl-dkms (>= ${source:Upstream-Version})
+Pre-Depends: spl-dkms (>= 0.6.3-15~vivid~2.gbp61c8ef)
 Depends: ${misc:Depends}, dkms (>= 2.2.0.2)
 Replaces: lzfs, lzfs-dkms
 Provides: lustre-backend-fs, lzfs, lzfs-dkms

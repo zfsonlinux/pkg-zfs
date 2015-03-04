@@ -1,3 +1,9 @@
+zfs-linux (0.6.3.0-16~vivid~3.gbp1c1369) vivid; urgency=low
+
+  * Subvert Launchpad orig versioning.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 03 Mar 2015 21:19:14 -0500
+
 zfs-linux (0.6.3-16~vivid~2.gbp1c1369) vivid; urgency=low
 
   ** SNAPSHOT build @1c1369e54cac73ac9160474072d8e5b8b8180724 **
