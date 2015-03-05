@@ -1,8 +1,19 @@
-description     "OpenZFS Event Daemon (zed)"
+description	"OpenZFS Event Daemon (zed)"
 
 start on local-filesystems
 
 expect daemon
 #respawn
+
+pre-start script
+	# Prevent automatic modprobing of the zfs driver. If this happens
+	# during a ZoL upgrade before the new modules are ready, then APT
+	# might fail the upgrade and leave the zfs-zed package unconfigured.
+	if ! grep -q '^zfs ' /proc/modules
+	then
+		stop
+		exit 0
+	fi
+end script
 
 exec /usr/sbin/zed
