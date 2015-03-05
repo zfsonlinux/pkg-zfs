@@ -1,3 +1,11 @@
+zfs-linux (0.6.3.0-16~vivid~4.gbp517f17) vivid; urgency=low
+
+  ** SNAPSHOT build @517f17e9cd014fe98dc32ae4694dbfb29e736a2d **
+
+  * Prevent driver modprobe in the zed upstart job.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 04 Mar 2015 20:22:03 -0500
+
 zfs-linux (0.6.3.0-16~vivid~3.gbp1c1369) vivid; urgency=low
 
   * Subvert Launchpad orig versioning.
