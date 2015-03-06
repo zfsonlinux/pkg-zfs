@@ -1,3 +1,18 @@
+zfs-linux (0.6.3.0-16~vivid~5.gbp00f435) vivid; urgency=low
+
+  ** SNAPSHOT build @00f435fc7da015c2d4d6e7af2b329ffe41c78bf0 **
+
+  [ Brian Behlendorf ]
+  * Replace zfs.redhat.in with zfs.lsb.in init script
+
+  [ Chris Dunlap ]
+  * Add ZED to zfs.redhat.in script
+
+  [ Ned Bass ]
+  * Use cached feature info in spa_add_feature_stats()
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 06 Mar 2015 09:40:57 -0500
+
 zfs-linux (0.6.3.0-16~vivid~4.gbp517f17) vivid; urgency=low
 
   ** SNAPSHOT build @517f17e9cd014fe98dc32ae4694dbfb29e736a2d **
