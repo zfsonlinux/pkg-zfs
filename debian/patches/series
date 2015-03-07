@@ -1,4 +1,3 @@
-0001-install-arc_summary.py.patch
 0002-Prevent-manual-builds-in-the-DKMS-source.patch
 0003-Remove-all-upstream-init.d-components.patch
 0005-Remove-userland-dist-rules.patch
