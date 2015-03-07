@@ -13,8 +13,8 @@ $(init_SCRIPTS):
 		-e 's,@udevruledir\@,$(udevruledir),g' \
 		-e 's,@sysconfdir\@,$(sysconfdir),g' \
 		-e 's,@initdir\@,$(initdir),g' \
-		-e "s,@NFS_SRV\@,$$NFS_SRV,g" \
-		'$@.in' >'$@')
+		-e 's,@runstatedir\@,$(runstatedir),g' \
+		'$@.$(DEFAULT_INIT_SCRIPT).in' >'$@'
 
 distclean-local::
 	-$(RM) $(init_SCRIPTS)
