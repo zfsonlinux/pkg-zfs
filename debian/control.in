@@ -18,6 +18,7 @@ Build-Depends: autoconf,
                uuid-dev,
                zlib1g-dev,
                libblkid-dev,
+               dh-systemd,
                ##MODULES_BUILD_DEPENDS##
 Standards-Version: 3.9.4
 Homepage: http://www.zfsonlinux.org/

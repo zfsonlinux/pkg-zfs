@@ -1,3 +1,11 @@
+zfs-linux (0.6.3-33-4c7b7e-jessie) jessie; urgency=low
+
+   * build-depend on dh-systemd.
+     Thanx to Yaroslav Halchenko for patch in
+     https://github.com/zfsonlinux/pkg-zfs/issues/142
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 13 Mar 2015 23:17:21 +0100
+
 zfs-linux (0.6.3-32-4c7b7e-jessie) jessie; urgency=low
 
    * New upstream GIT tag.
