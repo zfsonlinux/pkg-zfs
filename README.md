@@ -12,6 +12,11 @@ The home for this git repository is:
 
 * https://github.com/zfsonlinux/pkg-zfs
 
+and it assumes having upstream ZOL ZFS repository as a remote:
+```
+git remote add zol http://github.com/zfsonlinux/zfs.git
+```
+
 ZoL packages at https://launchpad.net/~zfs-native (the PPA) and
 http://archive.zfsonlinux.org/debian/ are built from this repository using the
 git-buildpackage tool.
