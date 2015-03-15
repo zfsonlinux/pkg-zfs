@@ -12,7 +12,7 @@ The home for this git repository is:
 
 * https://github.com/zfsonlinux/pkg-zfs
 
-The Debian GNU/Linux Wheezy and Jessie tags assumes having upstream ZOL
+The Debian GNU/Linux Wheezy and Jessie tags assume having upstream ZOL
 ZFS repository as a remote:
 ```
 git remote add zol http://github.com/zfsonlinux/zfs.git
