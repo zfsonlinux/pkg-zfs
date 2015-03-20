@@ -1,3 +1,10 @@
+zfs-linux (0.6.3-36-5c3f61-wheezy) wheezy; urgency=low
+
+   * New upstream GIT tag.
+   * Merge in PR 1867 - Adds support for property overrides (WIP)
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 20 Mar 2015 18:22:45 +0100
+
 zfs-linux (0.6.3-35-4c7b7e-wheezy) wheezy; urgency=low
 
    * New upstream GIT tag.
