@@ -1,3 +1,10 @@
+zfs-linux (0.6.3-37-bc8886-wheezy) wheezy; urgency=low
+
+   * New upstream GIT tag.
+   * Debian patch to look in ../pkg-spl for spl first of all.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 22 Mar 2015 12:39:13 +0100
+
 zfs-linux (0.6.3-36-5c3f61-wheezy) wheezy; urgency=low
 
    * New upstream GIT tag.
