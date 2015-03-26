@@ -1,3 +1,11 @@
+zfs-linux (0.6.3-35-7d90f5-jessie) jessie; urgency=low
+
+   * New upstream GIT tag.
+   * Rewrite the initrd script to better support recursive
+     snapshotting of root fs with separate children.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 26 Mar 2015 20:27:45 +0100
+
 zfs-linux (0.6.3-34-bc8886-jessie) jessie; urgency=low
 
    * New upstream GIT tag.

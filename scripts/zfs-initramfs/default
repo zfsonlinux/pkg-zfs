@@ -66,7 +66,22 @@ ZFS_INITRD_POST_MODPROBE_SLEEP='0'
 # in the order specified, so if one filesystem depends
 # on a previous mountpoint, make sure to put them in
 # the right order.
-#ZFS_INITRD_ADDITIONAL_DATASETS="rpool/ROOT/usr rpool/ROOT/var"
+#
+# NOTE: These are filesystem that are NOT located below
+#       the root filesystem! Those will be mounted
+#       automatically anyway.
+#
+# Example: If your root fs is 'rpool/ROOT/system',
+#          then you do NOT need to add the following:
+#            rpool/ROOT/system/usr
+#            rpool/ROOT/system/home
+#            rpool/ROOT/system/var
+#          These will be mounted automatically.
+#
+# Instead, consider that your 'rpool/local' dataset mounts
+# under /usr/local and 'rpool/opt' on /opt. Since they are
+# not located under your root fs, they need to be put here.
+#ZFS_INITRD_ADDITIONAL_DATASETS="rpool/local rpool/opt"
 
 # List of pools that should NOT be imported at boot
 # This is a space separated list.
