@@ -104,6 +104,7 @@ find_rootfs()
 import_pool()
 {
 	local pool=$1
+	local dir ZFS_STDERR ZFS_ERROR
 
 	# Verify that the pool isn't already imported
 	# Make as sure as we can to not require '-f' to import.
@@ -180,13 +181,200 @@ load_module()
 	fi
 }
 
+mount_fs()
+{
+	local fs=$1
+	local newfs mountpoint ZFS_CMD ZFS_STDERR ZFS_ERROR
+
+	# As long as it's NOT one of (our) clones, take the next.
+	[ $(get_fs_value $fs origin) != "-" ] && continue
+
+	newfs=$fs
+
+	# If we're booting from snapshot(s), then overwrite the 'fs' value.
+	[ -n "$ZFS_SNAPSHOT_BOOT" ] && newfs="$fs"_"$ZFS_SNAPSHOT_BOOT"
+
+	mountpoint=$(get_fs_value $fs mountpoint) # Need the _original_ datasets mountpoint!
+	[ "$quiet" != "y" ] && $log_begin_msg "Mounting '$newfs' on '$rootmnt/$mountpoint'"
+	if [ "$mountpoint" = "legacy" ]; then
+		ZFS_CMD="mount -t zfs"
+
+		# Can't use the mountpoint. Remove the $ZFS_BOOTFS_ORIG/ part
+		# => rpool/ROOT/debian/boot => boot
+		mountpoint=${fs##$ZFS_BOOTFS_ORIG/}
+	elif [ "$mountpoint" = "none" ]; then
+		return
+	else
+		ZFS_CMD="mount -o zfsutil -t zfs"
+	fi
+	ZFS_STDERR=$($ZFS_CMD ${newfs} ${rootmnt}/${mountpoint} 2>&1)
+	ZFS_ERROR=$?
+	[ "$quiet" != "y" ] && $log_end_msg
+
+	if [ "$ZFS_ERROR" != 0 ]
+	then
+		disable_plymouth
+		echo ""
+		echo "Command: ${ZFS_CMD} ${fs} ${rootmnt}/${mountpoint}"
+		echo "Message: $ZFS_STDERR"
+		echo "Error: $ZFS_ERROR"
+		echo ""
+		echo "Failed to mount $fs on $rootmnt/$mountpoint."
+		echo "Manually mount the filesystem and exit."
+		/bin/sh
+	fi
+}
+
+decrypt_fs()
+{
+	local fs=$1
+	local ZFS_CMD ZFS_STDERR ZFS_ERROR
+
+	[ "$quiet" != "y" ] && $log_begin_msg "Loading crypto wrapper key for $fs"
+
+	# Just make sure that ALL crypto modules module is loaded.
+	# Simplest just to load all...
+	for mod in sun-ccm sun-gcm sun-ctr
+	do
+		ZFS_CMD="/sbin/modprobe $mod"
+		ZFS_STDERR=$($ZFS_CMD 2>&1)
+		ZFS_ERROR=$?
+
+		if [ "$ZFS_ERROR" != 0 ]
+		then
+			disable_plymouth
+			echo ""
+			echo "Command: $ZFS_CMD"
+			echo "Message: $ZFS_STDERR"
+			echo "Error: $ZFS_ERROR"
+			echo ""
+			echo "Failed to load $mod module."
+			echo "Please verify that it is availible on the initrd image"
+			echo "(without it it won't be possible to unlock the filesystem)"
+			echo "and rerun:  $ZFS_CMD"
+			/bin/sh
+
+			ZFS_ERROR=0
+		fi
+	done
+
+	# If the key isn't availible, then this will fail!
+	ZFS_CMD="zfs key -l -r $fs"
+	ZFS_STDERR=$($ZFS_CMD 2>&1)
+	ZFS_ERROR=$?
+
+	if [ "$ZFS_ERROR" != 0 ]
+	then
+		disable_plymouth
+		echo ""
+		echo "Command: $ZFS_CMD"
+		echo "Message: $ZFS_STDERR"
+		echo "Error: $ZFS_ERROR"
+		echo ""
+		echo "Failed to load zfs encryption wrapper key (s)."
+		echo "Please verify dataset property 'keysource' for datasets"
+		echo "and rerun:  $ZFS_CMD"
+		/bin/sh
+
+		ZFS_ERROR=0
+	else
+		[ "$quiet" != "y" ] && $log_end_msg
+	fi
+}
+
+destroy_fs()
+{
+	local fs=$1
+	local ZFS_CMD ZFS_STDERR ZFS_ERROR
+
+	[ "$quiet" != "y" ] && $log_begin_msg "Destroying clone destination dataset"
+	ZFS_CMD="zfs destroy $fs"
+	ZFS_STDERR=$($ZFS_CMD 2>&1)
+	ZFS_ERROR=$?
+
+	# Destroying the clone target was not successfull -- let the user sort this out
+	if [ "$ZFS_ERROR" != 0 ]
+	then
+		disable_plymouth
+		echo ""
+		echo "Command: $ZFS_CMD"
+		echo "Message: $ZFS_STDERR"
+		echo "Error: $ZFS_ERROR"
+		echo ""
+		echo "Failed to destroy '$fs'. Please make sure that '$fs' is not availible."
+		echo "Hint: Try:  zfs destroy -Rfn $fs"
+		echo "If this dryrun looks good, then remove the 'n' from '-Rfn' and try again."
+		/bin/sh
+
+		ZFS_ERROR=0
+	else
+		[ "$quiet" != "y" ] && $log_end_msg
+	fi
+}
+
+clone_snap()
+{
+	local snap=$1
+	local fs=$2
+	local ZFS_CMD ZFS_STDERR ZFS_ERROR
+
+	# Clone the snapshot into a dataset we can boot from
+	# + We don't want this filesystem to be automatically mounted, we
+	#   want controll over this here and nowhere else.
+	# + We don't need any mountpoint set for the same reason.
+	[ "$quiet" != "y" ] && $log_begin_msg "Cloning $snap to $fs"
+	ZFS_CMD="zfs clone -o canmount=noauto -o mountpoint=none $snap $destfs"
+	ZFS_STDERR=$($ZFS_CMD 2>&1)
+	ZFS_ERROR=$?
+
+	# Clone was not successfull -- let the user sort this out
+	if [ "$ZFS_ERROR" != 0 ]
+	then
+		disable_plymouth
+		echo ""
+		echo "Command: $ZFS_CMD"
+		echo "Message: $ZFS_STDERR"
+		echo "Error: $ZFS_ERROR"
+		echo ""
+		echo "Failed to clone snapshot."
+		echo "Make sure that the any problems are corrected and then make sure"
+		echo "that the dataset '$destfs' exists and is bootable."
+		/bin/sh
+	
+		ZFS_ERROR=0
+	else
+		[ "$quiet" != "y" ] && $log_end_msg
+	fi
+	
+	# The first fs must be the root filesystem.
+	if [ -z "$ZFS_SNAPSHOT_BOOT" ]
+	then
+		# Remember the snapshot name for later
+		# (when/if we need to mount /usr, /var etc).
+		ZFS_SNAPSHOT_BOOT="${snap##*@}"
+
+		# Remember the original filesystem
+		ZFS_BOOTFS_ORIG="${snap%%@*}"
+
+		# This is now the root filesystem dataset.
+		ZFS_BOOTFS="$fs"
+	fi
+}
+
+# ================================================================
+
+# This is the main function.
 mountroot()
 {
 	# ----------------------------------------------------------------
 	# I N I T I A L   S E T U P
 
+	# ------------
+	# Run the pre-mount scripts from /scripts/local-top.
 	pre_mountroot
 
+	# ------------
+	# Source the default setup variables.
 	[ -r '/etc/default/zfs' ] && . /etc/default/zfs
 
 	# ------------
@@ -194,11 +382,13 @@ mountroot()
 	if grep -qiE '(^|[^\\](\\\\)* )(zfs_debug|zfs\.debug|zfsdebug)=(on|yes|1)( |$)' /proc/cmdline
 	then
 		ZPOOL_DEBUG=1
+		mkdir /var/log
+		#exec 2> /var/log/boot.debug
 		set -x
 	fi
 
 	# ------------
-	# Load ZFS module etc
+	# Load ZFS module etc.
 	load_module
 
 	# ------------
@@ -237,7 +427,7 @@ mountroot()
 
 	# This part is the really ugly part - there's so many options and permutations
 	# 'out there', and if we should make this the 'primary' source for ZFS initrd
-	# scripting, we need to support them all.
+	# scripting, we need/should support them all.
 	#
 	# Supports the following kernel command line argument combinations
 	# (in this order - first match win):
@@ -362,9 +552,11 @@ mountroot()
 	fi
 
 	# ----------------------------------------------------------------
-	# M O U N T   R O O T   F I L E S Y S T E M
+	# P R E P A R E   R O O T   F I L E S Y S T E M
 
 	# Prepare for the root fs mount (decrypt fs, clone a snapshot etc)
+	ZFS_SNAPSHOT_BOOT=
+	ZFS_BOOTFS_ORIG=$ZFS_BOOTFS # Will be overwritten in clone_snap() if we're booting from a snapshot.
 	if [ -n "$ZFS_BOOTFS" ]
 	then
 		# ------------
@@ -372,60 +564,7 @@ mountroot()
 		if zfs 2>&1 | grep -q 'key -l '
 		then
 			# 'zfs key' is availible (hence we have crypto), check if filesystem is encrypted.
-			crypt_type=$(get_fs_value $ZFS_BOOTFS encryption)
-			if [ "$crypt_type" != "off" ]
-			then
-				[ "$quiet" != "y" ] && $log_begin_msg "Loading crypto wrapper key for $ZFS_BOOTFS"
-
-				# Just make sure that ALL crypto modules module is loaded.
-				# Simplest just to load all...
-				for mod in sun-ccm sun-gcm sun-ctr
-				do
-					ZFS_CMD="/sbin/modprobe $mod"
-					ZFS_STDERR=$($ZFS_CMD 2>&1)
-					ZFS_ERROR=$?
-
-					if [ "$ZFS_ERROR" != 0 ]
-					then
-						disable_plymouth
-						echo ""
-						echo "Command: $ZFS_CMD"
-						echo "Message: $ZFS_STDERR"
-						echo "Error: $ZFS_ERROR"
-						echo ""
-						echo "Failed to load $mod module."
-						echo "Please verify that it is availible on the initrd image"
-						echo "(without it it won't be possible to unlock the filesystem)"
-						echo "and rerun:  $ZFS_CMD"
-						/bin/sh
-
-						ZFS_ERROR=0
-					fi
-				done
-
-				# If the key isn't availible, then this will fail!
-				ZFS_CMD="zfs key -l -r $ZFS_BOOTFS"
-				ZFS_STDERR=$($ZFS_CMD 2>&1)
-				ZFS_ERROR=$?
-
-				if [ "$ZFS_ERROR" != 0 ]
-				then
-					disable_plymouth
-					echo ""
-					echo "Command: $ZFS_CMD"
-					echo "Message: $ZFS_STDERR"
-					echo "Error: $ZFS_ERROR"
-					echo ""
-					echo "Failed to load zfs encryption wrapper key (s)."
-					echo "Please verify dataset property 'keysource' for datasets"
-					echo "and rerun:  $ZFS_CMD"
-					/bin/sh
-
-					ZFS_ERROR=0
-				else
-					[ "$quiet" != "y" ] && $log_end_msg
-				fi
-			fi
+			[ "$(get_fs_value $ZFS_BOOTFS encryption)" != "off" ] && decrypt_fs $ZFS_BOOTFS
 		fi
 
 		# ------------
@@ -444,71 +583,18 @@ mountroot()
 				ZFS_BOOTFS=${ZFS_BOOTFS%@*}
 				[ "$quiet" != "y" ] && $log_end_msg
 			else
-				# Replace the '@' separating dataset and snapshot name with a underscore
-				# NOTE: This might not be the prettiest, but at least we'll know where the
-				#       dataset came from.
-				dset=${ZFS_BOOTFS/@/_}
+				# Get all snapshots, recursivly (might need to clone /usr, /var etc as well).
+				for snap in $(zfs list -H -o name -t snapshot -r "${ZFS_BOOTFS%%@*}" | grep "${ZFS_BOOTFS##*@}")
+				do
+					# Replace the '@' separating dataset and snapshot name with a underscore
+					destfs=${snap/@/_}
 
-				# If the destination dataset for the clone already exists, destroy it.
-				if [ $(get_fs_value $dset type) ]
-				then
-					[ "$quiet" != "y" ] && $log_begin_msg "Destroying clone destination dataset"
-					ZFS_CMD="zfs destroy $dset"
-					ZFS_STDERR=$($ZFS_CMD 2>&1)
-					ZFS_ERROR=$?
+					# If the destination dataset for the clone already exists, destroy it.
+					[ $(get_fs_value $destfs type) ] && destroy_fs $destfs
 
-					# Destroying the clone target was not successfull -- let the user sort this out
-					if [ "$ZFS_ERROR" != 0 ]
-					then
-						disable_plymouth
-						echo ""
-						echo "Command: $ZFS_CMD"
-						echo "Message: $ZFS_STDERR"
-						echo "Error: $ZFS_ERROR"
-						echo ""
-						echo "Failed to destroy the already existing dataset the clone would create."
-		                                echo "Please make sure that '$dset' is not availible."
-						echo "Hint: Try:  zfs destroy -Rfn $dset"
-						echo "If this dryrun looks good, then remove the 'n' from '-Rfn' and try again."
-						/bin/sh
-
-						ZFS_ERROR=0
-					else
-						[ "$quiet" != "y" ] && $log_end_msg
-					fi
-				fi
-
-				# Clone the snapshot into a dataset we can boot from
-				[ "$quiet" != "y" ] && $log_begin_msg "Cloning boot snapshot to dataset"
-				ZFS_CMD="zfs clone $ZFS_BOOTFS $dset"
-				ZFS_STDERR=$($ZFS_CMD 2>&1)
-				ZFS_ERROR=$?
-
-				# Clone was not successfull -- let the user sort this out
-				if [ "$ZFS_ERROR" != 0 ]
-				then
-					disable_plymouth
-					echo ""
-					echo "Command: $ZFS_CMD"
-					echo "Message: $ZFS_STDERR"
-					echo "Error: $ZFS_ERROR"
-					echo ""
-					echo "Failed to clone snapshot."
-	                                echo "Make sure that the any problems are corrected and then make sure"
-	                                echo "that the dataset '$dset' exists and is bootable."
-					/bin/sh
-
-					ZFS_ERROR=0
-				else
-					[ "$quiet" != "y" ] && $log_end_msg
-				fi
-
-				# Success - unmount the filesystem. We'll mount it properly and on the
-				# correct location later.
-				umount /$dset
-
-				# Use the clone as bootfs.
-				ZFS_BOOTFS="$dset"
+					# Clone the snapshot into it's now filesystem
+					clone_snap $snap $destfs
+				done
 			fi
 		fi
 	else
@@ -523,74 +609,37 @@ mountroot()
 		/bin/sh
 	fi
 
-	# ------------
-	# Ideally, the root filesystem would be mounted like this:
-	#
-	#   zpool import -R "$rootmnt" -N "$ZFS_RPOOL"
-	#   zfs mount -o mountpoint=/ "$ZFS_BOOTFS"
-	#
-	# but the MOUNTPOINT prefix is preserved on descendent filesystem after
-	# the pivot into the regular root, which later breaks things like
-	# `zfs mount -a` and the /etc/mtab refresh.
-
-	[ "$quiet" != "y" ] && $log_begin_msg "Mounting root filesystem"
-	mountpoint=$(get_fs_value $ZFS_BOOTFS mountpoint)
-	if [ "$mountpoint" = "legacy" ] ; then
-		ZFS_CMD="mount -t zfs"
-	else
-		ZFS_CMD="mount -o zfsutil -t zfs"
-	fi
-	ZFS_STDERR=$($ZFS_CMD ${ZFS_BOOTFS} ${rootmnt} 2>&1)
-	ZFS_ERROR=$?
-	[ "$quiet" != "y" ] && $log_end_msg
-
-	if [ "$ZFS_ERROR" != 0 ]
-	then
-		disable_plymouth
-		echo ""
-		echo "Command: ${ZFS_CMD} ${ZFS_BOOTFS} ${rootmnt}"
-		echo "Message: $ZFS_STDERR"
-		echo "Error: $ZFS_ERROR"
-		echo ""
-		echo "Manually mount the root filesystem on $rootmnt and then exit."
-		/bin/sh
-	fi
-
 	# ----------------------------------------------------------------
-	# A D D I T I O N A L   S E T U P
+	# M O U N T   F I L E S Y S T E M S
 
-	# ------------
-	# Mount additional filesystems required
-	# Such as /usr, /var, /usr/local etc.
-	# NOTE: Mounted in the order specified in the ZFS_INITRD_ADDITIONAL_DATASETS
-	#       variable so take care!
-	ZFS_CMD="mount -o zfsutil -t zfs"
+	# * Ideally, the root filesystem would be mounted like this:
+	#
+	#     zpool import -R "$rootmnt" -N "$ZFS_RPOOL"
+	#     zfs mount -o mountpoint=/ "$ZFS_BOOTFS"
+	#
+	#   but the MOUNTPOINT prefix is preserved on descendent filesystem after
+	#   the pivot into the regular root, which later breaks things like
+	#   `zfs mount -a` and the /etc/mtab refresh.
+	#
+	# * Mount additional filesystems required
+	#   Such as /usr, /var, /usr/local etc.
+	#   NOTE: Mounted in the order specified in the
+	#         ZFS_INITRD_ADDITIONAL_DATASETS variable so take care!
 
-	for fs in $ZFS_INITRD_ADDITIONAL_DATASETS
+	# Go through the complete list (recursivly) on all filesystems below
+	# the real root dataset
+	filesystems=$(zfs list -o name -H -r $ZFS_BOOTFS_ORIG)
+	for fs in $filesystems $ZFS_INITRD_ADDITIONAL_DATASETS
 	do
-		mountpoint=$(get_fs_value $fs mountpoint)
-		ZFS_STDERR=$($ZFS_CMD ${fs} ${rootmnt}/${mountpoint} 2>&1)
-		ZFS_ERROR=$?
-		[ "$quiet" != "y" ] && $log_end_msg
-
-		if [ "$ZFS_ERROR" != 0 ]
-		then
-			disable_plymouth
-			echo ""
-			echo "Command: ${ZFS_CMD} ${fs} ${rootmnt}/${mountpoint}"
-			echo "Message: $ZFS_STDERR"
-			echo "Error: $ZFS_ERROR"
-			echo ""
-			echo "Failed to mount additional filesystem $fs on $rootmnt/$mountpoint."
-			echo "Manually mount the filesystem on and then exit."
-			/bin/sh
-		fi
+		mount_fs $fs
 	done
 
 	# ------------
 	# Debugging information
 	if [ -n "$ZPOOL_DEBUG" ]
 	then
+		#exec 2>&1-
+
 		echo "DEBUG: imported pools:"
 		zpool list -H
 		echo
@@ -601,6 +650,10 @@ mountroot()
 
 		echo -n "=> waiting for ENTER before continuing because of 'zfsdebug=1': "
 		read b
+
+		# Undocoumented for a reason... Don't touch (unless you know what you're doing)!
+		[ "$b" = "c" ] && /bin/sh
+		[ "$b" = "r" ] && reboot -f
 
 		set +x
 	fi
