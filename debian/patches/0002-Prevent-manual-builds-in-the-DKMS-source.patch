@@ -19,10 +19,10 @@ ZFS has a DKMS registration.
  3 files changed, 18 insertions(+), 3 deletions(-)
  create mode 100644 config/dkms.m4
 
-Index: b/config/dkms.m4
+Index: pkg-zfs/config/dkms.m4
 ===================================================================
---- /dev/null
-+++ b/config/dkms.m4
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ pkg-zfs/config/dkms.m4	2015-03-27 03:01:23.946340364 +0100
 @@ -0,0 +1,14 @@
 +dnl #
 +dnl # Prevent manual building in DKMS source tree.
@@ -38,23 +38,23 @@ Index: b/config/dkms.m4
 +		AC_MSG_RESULT([not found])
 +        ])
 +])
-Index: b/config/user.m4
+Index: pkg-zfs/config/user.m4
 ===================================================================
---- a/config/user.m4
-+++ b/config/user.m4
+--- pkg-zfs.orig/config/user.m4	2015-03-27 03:01:20.376556409 +0100
++++ pkg-zfs/config/user.m4	2015-03-27 03:01:23.946340364 +0100
 @@ -2,6 +2,7 @@
  dnl # Default ZFS user configuration
  dnl #
  AC_DEFUN([ZFS_AC_CONFIG_USER], [
 +	ZFS_AC_DKMS_INHIBIT
  	ZFS_AC_CONFIG_USER_UDEV
- 	ZFS_AC_CONFIG_USER_DRACUT
- 	ZFS_AC_CONFIG_USER_ARCH
-Index: b/config/zfs-build.m4
+ 	ZFS_AC_CONFIG_USER_SYSTEMD
+ 	ZFS_AC_CONFIG_USER_SYSVINIT
+Index: pkg-zfs/config/zfs-build.m4
 ===================================================================
---- a/config/zfs-build.m4
-+++ b/config/zfs-build.m4
-@@ -86,10 +86,10 @@
+--- pkg-zfs.orig/config/zfs-build.m4	2015-03-27 03:01:20.376556409 +0100
++++ pkg-zfs/config/zfs-build.m4	2015-03-27 03:01:23.946340364 +0100
+@@ -87,10 +87,10 @@
  	ZFS_AC_CONFIG_ALWAYS
  
  	case "$ZFS_CONFIG" in

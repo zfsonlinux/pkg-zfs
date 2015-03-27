@@ -1,0 +1,12 @@
+Index: pkg-zfs/configure.ac
+===================================================================
+--- pkg-zfs.orig/configure.ac	2015-03-27 03:05:17.471058456 +0100
++++ pkg-zfs/configure.ac	2015-03-27 03:05:56.598587899 +0100
+@@ -61,6 +61,7 @@
+ 	udev/rules.d/Makefile
+ 	etc/Makefile
+ 	etc/zfs/Makefile
++	etc/init.d/Makefile
+ 	etc/systemd/Makefile
+ 	etc/systemd/system/Makefile
+ 	etc/modules-load.d/Makefile
