@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-39-7d90f5) jessie; urgency=low
+
+   * Prepare for correct upgrade path by changing version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 27 Mar 2015 23:51:49 +0100
+
 zfs-linux (0.6.3-35-7d90f5-jessie) jessie; urgency=low
 
    * New upstream GIT tag.
