@@ -1,3 +1,11 @@
+zfs-linux (0.6.3.1-16~utopic~6.gbp939797) utopic; urgency=low
+
+  ** SNAPSHOT build @939797da710a031c4edfb98da675269aa83c4eee **
+
+  * Rebranch snapshot builds from Vivid to Utopic.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 30 Mar 2015 21:46:09 -0500
+
 zfs-linux (0.6.3.1-16~vivid~6.gbpa8217c) vivid; urgency=low
 
   ** SNAPSHOT build @a8217cf8bf1dcb766c776e7d11bd7fca9fbc4a13 **
