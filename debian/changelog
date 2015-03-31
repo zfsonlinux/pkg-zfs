@@ -1,3 +1,11 @@
+zfs-linux (0.6.3.1-16.0~trusty~6.gbp3eacad) trusty; urgency=low
+
+  ** SNAPSHOT build @3eacad053f721b3af81e66cac2540461748e7eab **
+
+  * Rebranch snapshot builds from Utopic to Trusty.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 30 Mar 2015 23:30:52 -0400
+
 zfs-linux (0.6.3.1-16~utopic~6.gbp939797) utopic; urgency=low
 
   ** SNAPSHOT build @939797da710a031c4edfb98da675269aa83c4eee **
