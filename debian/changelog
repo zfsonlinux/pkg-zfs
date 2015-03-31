@@ -1,3 +1,80 @@
+zfs-linux (0.6.3.1-16~vivid~6.gbpa8217c) vivid; urgency=low
+
+  ** SNAPSHOT build @a8217cf8bf1dcb766c776e7d11bd7fca9fbc4a13 **
+
+  [ Hajo Möller ]
+  * Actually source /etc/sysconfig/zfs instead of /etc/default/zfs
+
+  [ Brian Behlendorf ]
+  * Mark zfs_inactive() with PF_FSTRANS
+
+  [ Josef 'Jeff' Sipek ]
+  * Illumos 5047 - don't use atomic_*_nv if you discard the return value
+
+  [ Justin T. Gibbs ]
+  * Illumos 5630 - stale bonus buffer in recycled dnode_t leads to data corruption
+
+  [ Bill McGonigle ]
+  * Linux 4.0 compat: bdi_setup_and_register() __must_check
+
+  [ Hajo Möller ]
+  * Fix warning about AM_INIT_AUTOMAKE arguments
+
+  [ Chunwei Chen ]
+  * Use MUTEX_FSTRANS on l2arc_buflist_mtx
+
+  [ Turbo Fredriksson ]
+  * Move duplicate information about the 'zfs send -e' option.
+
+  [ Richard Yao ]
+  * Increase Linux pipe buffer size on 'zfs receive'
+
+  [ Brian Behlendorf ]
+  * Fix arc_meta_max accounting
+  * Restructure per-filesystem reclaim
+  * Fix arc_adjust_meta() behavior
+
+  [ Chris Dunlop ]
+  * Reduce size of zfs_sb_t: allocate z_hold_mtx separately
+
+  [ Isaac Huang ]
+  * zio_injection_enabled should not be a module option
+
+  [ Gordan Bobic ]
+  * Execute udevadm settle before trying to import pools
+
+  [ Tim Chase ]
+  * Set the maximum ZVOL transfer size correctly
+
+  [ Ned Bass ]
+  * dbuf_free_range() overzealously frees dbufs
+
+  [ Brian Behlendorf ]
+  * Check all vdev labels in 'zpool import'
+  * Remove rpm/fedora directory
+  * Add RHEL style kmod packages
+
+  [ Ned Bass ]
+  * Add NULL guard in zfs_zrlock_class event class
+  * zpool import should honor overlay property
+
+  [ Prakash Surya ]
+  * Illumos 5695 - dmu_sync'ed holes do not retain birth time
+
+  [ Chris Dunlop ]
+  * Align code with Illumos
+
+  [ George Wilson ]
+  * Illumos 5694 - traverse_prefetcher does not prefetch enough
+
+  [ Matthew Ahrens ]
+  * Illumus 5693 - ztest fails in dbuf_verify: buf[i] == 0, due to dedup and bp_override
+
+  [ Darik Horn ]
+  * Bump META version for subverted snapshot builds.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 30 Mar 2015 21:41:58 -0400
+
 zfs-linux (0.6.3.0-16~vivid~5.gbp00f435) vivid; urgency=low
 
   ** SNAPSHOT build @00f435fc7da015c2d4d6e7af2b329ffe41c78bf0 **
