@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Debian ZFS on Linux maintainers <pkg-zfsonlinux-devel@lists.alioth.debian.org>
 Uploaders: Aron Xu <aron@debian.org>,
            Carlos Alberto Lopez Perez <clopez@igalia.com>,
-           Turbo Fredriksson <turbo@bayour.com>
+           Turbo Fredriksson <turbo@debian.org>
 Build-Depends: autoconf,
                autogen,
                automake,
@@ -19,6 +19,7 @@ Build-Depends: autoconf,
                zlib1g-dev,
                libblkid-dev,
                dh-systemd,
+	       chrpath,
                ##MODULES_BUILD_DEPENDS##
 Standards-Version: 3.9.4
 Homepage: http://www.zfsonlinux.org/

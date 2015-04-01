@@ -2,8 +2,8 @@
 
 ### BEGIN INIT INFO
 # Provides:          zed zeventd
-# Required-Start:    zfs
-# Required-Stop:     zfs
+# Required-Start:    $remote_fs zfs
+# Required-Stop:     $remote_fs zfs
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 # Short-Description: ZFS Event Daemon
@@ -114,7 +114,7 @@ case "$1" in
   status)
 	status_of_proc "$DAEMON" "$NAME" && exit 0 || exit $?
 	;;
-  reload)
+  reload|force-reload)
 	log_daemon_msg "Reloading $DESC" "$NAME"
 	do_reload
 	log_end_msg $?
@@ -142,7 +142,7 @@ case "$1" in
 	esac
 	;;
   *)
-	echo "Usage: $SCRIPTNAME {start|stop|status|restart|reload}" >&2
+	echo "Usage: $SCRIPTNAME {start|stop|status|restart|reload|force-reload}" >&2
 	exit 3
 	;;
 esac

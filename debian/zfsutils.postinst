@@ -2,24 +2,13 @@
 
 set -e
 
+# Source debconf library
+. /usr/share/debconf/confmodule
+
 if dpkg-maintscript-helper supports rm_conffile 2>/dev/null
 then
 	dpkg-maintscript-helper rm_conffile /etc/default/zfsload -- "$@"
 	dpkg-maintscript-helper rm_conffile /etc/init.d/zfs -- "$@"
-fi
-
-if [ "$1" = "configure" ] && . /usr/share/debconf/confmodule
-then
-    # Should be in $2, but make absolutly sure by checking the dmesg log!
-    running_version=`grep ZFS: /var/log/dmesg | sed "s,.* module v\(.*\)-[0-9].*,\1,"`
-    if [ -z "$running_version" ]; then
-	running_version=`echo $2 | sed 's,-.*,,'`
-    fi
-
-    if [ "$running_version" = "0.6.2" ]; then
-	db_input critical zfs/062_upgrade || true
-	db_go || true
-    fi
 fi
 
 #DEBHELPER#

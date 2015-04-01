@@ -11,7 +11,7 @@ REVISION := $(shell dpkg-parsechangelog \
   | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f2-)
 
 DKMSFILES := module include config zfs.release.in META AUTHORS \
-		DISCLAIMER COPYRIGHT OPENSOLARIS.LICENSE README.markdown
+		DISCLAIMER COPYRIGHT README.markdown
 
 export SHLIB_MAJOR = 2
 
@@ -140,6 +140,9 @@ override_dh_auto_install:
 
 	find '$(CURDIR)/debian/tmp' -name '*~' | xargs rm
 
+	# Fix the includes according to https://github.com/zfsonlinux/zfs/issues/2903
+	./debian/fix_includes-libspl.sh
+
 override_dh_installinit:
 	@# Install systemd files
 	dh_systemd_enable -pzfsutils etc/systemd/system/zfs.target
@@ -176,7 +179,8 @@ endif
 	dh_installinit --name=zed
 
 	@# Add systemd snippets to post/pre inst/rm files
-	dh_systemd_start -pzfsutils etc/systemd/system/zfs.target
+	dh_systemd_start --no-restart-on-upgrade --no-start \
+	  -pzfsutils etc/systemd/system/zfs.target
 
 override_dh_dkms:
 	dh_dkms -V $(VERSION)
@@ -202,11 +206,20 @@ override_dh_auto_clean:
 	@if test -e META.orig; then mv META.orig META; fi
 	debconf-updatepo
 
-override_dh_install: override_dh_installinit
+override_dh_install:
 	find . -name lib*.la -delete
-	[ ! -d debian/tmp/usr/lib/dracut -a -d debian/tmp/usr/share/dracut ] && \
-		mv debian/tmp/usr/share/dracut debian/tmp/usr/lib/
+	if [ ! -d debian/tmp/usr/lib/dracut -a -d debian/tmp/usr/share/dracut ]; then \
+		mv debian/tmp/usr/share/dracut debian/tmp/usr/lib/; \
+	fi
+
+	dh_installdocs -pzfsutils
+	dh_link -A 
+
 	dh_install
+
+	for so in `find debian/*-udeb -name '*.so.*' -type f`; do \
+		chrpath -d $$so; \
+	done
 
 # ------------ UDEBS
 
