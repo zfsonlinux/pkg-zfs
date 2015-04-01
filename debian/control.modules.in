@@ -2,7 +2,7 @@
 Package: zfs-modules-_KVERS_-_ARCH_
 Architecture: _ARCH_
 Provides: zfs-modules, zfs-dkms
-Depends: linux-image-_KVERS_ (= _IMGVER_), spl-modules | spl-dkms
+Depends: ${misc:Depends}, linux-image-_KVERS_ (= _IMGVER_), spl-modules | spl-dkms
 Recommends: zfsutils
 Conflicts: zfs-dkms
 Replaces: zfs-dkms

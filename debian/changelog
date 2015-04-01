@@ -1,3 +1,22 @@
+zfs-linux (0.6.3-41-0f7d2a) wheezy; urgency=low
+
+  * Do not start or restart zfs.target on upgrade. Same behaviour as with
+    install init [scripts].
+  * Move 0.6.2 upgrade check from zfsutils.postinst to new zfsutils.config.
+    Partly to fix linitian error, but it makes sence to do that check earlier.
+  * Init script for zed needs/must support 'force-reload'.
+  * Add '${misc:Depends}' to the depends list for the zfs-modules-....
+  * Change my mail address to the Debian GNU/Linux one in 'Uploaders'.
+  * Don't run/call 'override_dh_installinit' from 'override_dh_install'. Being
+    run twice.
+  * Use chrpath to remove .rpath from libraries.
+  * Instead of copying the OPENSOLARIS.LICENSE file into every package,
+    create symlink to the real one in the zfsutils package.
+  * Fix the include files before package them.
+    See: https://github.com/zfsonlinux/zfs/issues/2903
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 01 Apr 2015 15:58:21 +0200
+
 zfs-linux (0.6.3-40-0f7d2a) jessie; urgency=low
 
    * New upstream GIT tag.
