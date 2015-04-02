@@ -227,6 +227,7 @@ in_mtab() {
 read_fstab() {
         for fs in "${!FSTAB[@]}" ; do unset FSTAB["$fs"] ; done
         while read -r fs mntpnt fstype opts blah ; do
+                echo $fs | grep -q '^#' && continue
                 fs=`printf '%b\n' "$fs"`
                 FSTAB["$fs"]=$mntpnt
         done < <(grep -E "$1" /etc/fstab)
@@ -236,4 +237,3 @@ in_fstab() {
         [ "${FSTAB[$1]}" != "" ]
         return $?
 }
-
