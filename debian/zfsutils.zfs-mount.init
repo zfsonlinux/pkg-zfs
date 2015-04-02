@@ -32,8 +32,15 @@ servicename=zfs-mount
 # Import all pools
 do_import()
 {
+	POOL_IMPORTED=
 	already_imported=$(zpool list -H -oname)
-	available_pools=$(zpool import | grep pool: | sed 's@.*: @@')
+	available_pools=$(zpool import 2> /dev/null | grep pool: | sed 's@.*: @@')
+
+	# Just in case - seen it happen
+	if [ -z "$available_pools" -a -n "$USE_DISK_BY_ID" -a "$USE_DISK_BY_ID" == 'yes' ]; then
+		available_pools=$(zpool import -d /dev/disk/by-id 2> /dev/null | \
+		    grep pool: | sed 's@.*: @@')
+	fi
 
 	for pool in $available_pools; do
 		# We have pools that haven't been imported - import them
@@ -47,7 +54,7 @@ do_import()
 
 		if [ "$USE_DISK_BY_ID" == 'yes' ]; then
 			# Really the default/prefered way.
-			for dir in /dev/disk/by-* /dev; do
+			for dir in /dev/disk/by-vdev /dev/disk/by-* /dev; do
 				$log_begin_msg "Importing ZFS pool $pool (using $dir)"
 				"$ZPOOL" import -d $dir -N $pool 2>/dev/null
 				RET=$?
@@ -119,15 +126,23 @@ do_mount()
 
 		FS_MOUNTED=1
 
+		$log_begin_msg "Mounting volumes registered in fstab: "
 		read_mtab  "^/dev/(zd|zvol)"
 		read_fstab "^/dev/(zd|zvol)"
-
-		$log_begin_msg "Mounting volumes registered in fstab: "
 		for volume in "${!FSTAB[@]}" ; do
-			if in_mtab "$volume" ; then continue ; fi
+			in_mtab "$volume" && continue
 
 			$log_progress_msg "$volume "
 			mount "$volume"
+		done
+
+		read_mtab  "zfs"
+		read_fstab "zfs"
+		for fs in "${!FSTAB[@]}" ; do
+			in_mtab "$fs" && continue
+
+			$log_progress_msg "$fs "
+			mount "$fs"
 		done
 
 		$log_end_msg 0

@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-42-0f7d2a) wheezy; urgency=low
+
+  * Update init script to mount legacy mounts from /etc/fstab.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 02 Apr 2015 10:09:23 +0200
+
 zfs-linux (0.6.3-41-0f7d2a) wheezy; urgency=low
 
   * Do not start or restart zfs.target on upgrade. Same behaviour as with
