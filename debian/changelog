@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-43-40d06e-wheezy) wheezy; urgency=low
+
+  * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 04 Apr 2015 02:31:42 +0200
+
 zfs-linux (0.6.3-42-0f7d2a-wheezy) wheezy; urgency=low
 
   * Update init script to mount legacy mounts from /etc/fstab.
