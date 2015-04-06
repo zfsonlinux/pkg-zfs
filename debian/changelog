@@ -1,3 +1,9 @@
+zfs-linux (0.6.3-44-40d06e-wheezy) wheezy; urgency=low
+
+  * Fix ordering of fstab entries.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 06 Apr 2015 06:56:37 +0200
+
 zfs-linux (0.6.3-43-40d06e-wheezy) wheezy; urgency=low
 
   * New upstream GIT tag.

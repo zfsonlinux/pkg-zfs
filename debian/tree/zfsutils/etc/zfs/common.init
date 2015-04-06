@@ -225,11 +225,12 @@ in_mtab() {
 
 # first parameter is a regular expression that filters fstab
 read_fstab() {
+	local i=0
         for fs in "${!FSTAB[@]}" ; do unset FSTAB["$fs"] ; done
         while read -r fs mntpnt fstype opts blah ; do
-                echo $fs | grep -q '^#' && continue
                 fs=`printf '%b\n' "$fs"`
-                FSTAB["$fs"]=$mntpnt
+                FSTAB["$i"]=$mntpnt
+		i=$((i + 1))
         done < <(grep -E "$1" /etc/fstab)
 }
 

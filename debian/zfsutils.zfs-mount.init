@@ -139,10 +139,10 @@ do_mount()
 		read_mtab  "zfs"
 		read_fstab "zfs"
 		for fs in "${!FSTAB[@]}" ; do
-			in_mtab "$fs" && continue
+			in_mtab "${FSTAB[$fs]}" && continue
 
-			$log_progress_msg "$fs "
-			mount "$fs"
+			$log_progress_msg "${FSTAB[$fs]} "
+			mount "${FSTAB[$fs]}"
 		done
 
 		$log_end_msg 0
