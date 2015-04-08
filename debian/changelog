@@ -1,3 +1,18 @@
+zfs-linux (0.6.3.1-16.0~trusty~7.gbpe0a429) trusty; urgency=low
+
+  ** SNAPSHOT build @e0a429872e413b786f24a4060e89bfc361f420c3 **
+
+  [ Brian Behlendorf ]
+  * Update zfs_pd_bytes_max default in zfs(8)
+
+  [ Tim Chase ]
+  * Mark all ZPL and ioctl functions as PF_FSTRANS
+
+  [ Brian Behlendorf ]
+  * Use vmem_alloc() in spa_config_write()
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 07 Apr 2015 20:44:54 -0400
+
 zfs-linux (0.6.3.1-16.0~trusty~6.gbp3eacad) trusty; urgency=low
 
   ** SNAPSHOT build @3eacad053f721b3af81e66cac2540461748e7eab **
