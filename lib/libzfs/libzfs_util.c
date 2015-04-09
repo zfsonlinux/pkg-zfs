@@ -571,7 +571,7 @@ zfs_nicenum(uint64_t num, char *buf, size_t buflen)
 	int index = 0;
 	char u;
 
-	while (n >= 1024) {
+	while (n >= 1024 && index < 6) {
 		n /= 1024;
 		index++;
 	}
@@ -962,7 +962,7 @@ zfs_strcmp_pathname(char *name, char *cmp, int wholedisk)
 	if (name[0] != '/')
 		return (zfs_strcmp_shortname(name, cmp_name, wholedisk));
 
-	strncpy(path_name, name, MAXPATHLEN);
+	(void) strlcpy(path_name, name, MAXPATHLEN);
 	path_len = strlen(path_name);
 	cmp_len = strlen(cmp_name);
 
