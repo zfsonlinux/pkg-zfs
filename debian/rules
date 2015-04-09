@@ -28,6 +28,10 @@ override_dh_auto_install:
 	@# Install the utilities.
 	$(MAKE) install DESTDIR='$(CURDIR)/debian/tmp'
 
+	@# Zed has dependencies outside of the system root.
+	$(INSTALL) -d '$(CURDIR)/debian/tmp/usr/sbin/'
+	mv '$(CURDIR)/debian/tmp/sbin/zed' '$(CURDIR)/debian/tmp/usr/sbin/zed'
+
 	@# Get a bare copy of the source code for DKMS.
 	@# This creates the $(META_DISTDIR)/ tree.
 	$(MAKE) distdir
@@ -86,6 +90,9 @@ override_dh_installdocs:
 	dh_installdocs --link-doc=zfs-doc
 
 override_dh_installinit:
+	@# Install debian/zfs-zed.zed.upstart as /etc/init/zed.conf.
+	dh_installinit --name=zed
+
 	@# Install debian/zfsutils.zfs.default as /etc/default/zfs.
 	dh_installinit --name=zfs
 
@@ -104,4 +111,5 @@ override_dh_strip:
 	dh_strip -plibuutil1 --dbg-package=libuutil1-dbg
 	dh_strip -plibzfs2 --dbg-package=libzfs2-dbg
 	dh_strip -plibzpool2 --dbg-package=libzpool2-dbg
+	dh_strip -pzfs-zed --dbg-package=zfs-zed-dbg
 	dh_strip -pzfsutils --dbg-package=zfsutils-dbg
