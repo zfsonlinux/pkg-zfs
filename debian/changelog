@@ -1,4 +1,4 @@
-zfs-linux (0.6.4-2~utopic) utopic; urgency=low
+zfs-linux (0.6.4-3~utopic) utopic; urgency=low
 
   [ SenH ]
   * Fix man zpool property feature_guid
@@ -640,8 +640,10 @@ zfs-linux (0.6.4-2~utopic) utopic; urgency=low
 
   [ Darik Horn ]
   * Refresh debian/patches after upstream merge.
+  * Package zed separately.
+  * Prevent driver modprobe in the zed upstart job.
 
- -- Darik Horn <dajhorn@vanadac.com>  Thu, 09 Apr 2015 12:59:32 -0500
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 09 Apr 2015 12:59:33 -0500
 
 zfs-linux (0.6.3-15~utopic) utopic; urgency=low
 
