@@ -35,13 +35,16 @@ zpl_open(struct inode *ip, struct file *filp)
 {
 	cred_t *cr = CRED();
 	int error;
+	fstrans_cookie_t cookie;
 
 	error = generic_file_open(ip, filp);
 	if (error)
 		return (error);
 
 	crhold(cr);
+	cookie = spl_fstrans_mark();
 	error = -zfs_open(ip, filp->f_mode, filp->f_flags, cr);
+	spl_fstrans_unmark(cookie);
 	crfree(cr);
 	ASSERT3S(error, <=, 0);
 
@@ -53,12 +56,15 @@ zpl_release(struct inode *ip, struct file *filp)
 {
 	cred_t *cr = CRED();
 	int error;
+	fstrans_cookie_t cookie;
 
+	cookie = spl_fstrans_mark();
 	if (ITOZ(ip)->z_atime_dirty)
 		zfs_mark_inode_dirty(ip);
 
 	crhold(cr);
 	error = -zfs_close(ip, filp->f_flags, cr);
+	spl_fstrans_unmark(cookie);
 	crfree(cr);
 	ASSERT3S(error, <=, 0);
 
@@ -71,9 +77,12 @@ zpl_iterate(struct file *filp, struct dir_context *ctx)
 	struct dentry *dentry = filp->f_path.dentry;
 	cred_t *cr = CRED();
 	int error;
+	fstrans_cookie_t cookie;
 
 	crhold(cr);
+	cookie = spl_fstrans_mark();
 	error = -zfs_readdir(dentry->d_inode, ctx, cr);
+	spl_fstrans_unmark(cookie);
 	crfree(cr);
 	ASSERT3S(error, <=, 0);
 
@@ -106,15 +115,24 @@ zpl_fsync(struct file *filp, struct dentry *dentry, int datasync)
 {
 	cred_t *cr = CRED();
 	int error;
+	fstrans_cookie_t cookie;
 
 	crhold(cr);
+	cookie = spl_fstrans_mark();
 	error = -zfs_fsync(dentry->d_inode, datasync, cr);
+	spl_fstrans_unmark(cookie);
 	crfree(cr);
 	ASSERT3S(error, <=, 0);
 
 	return (error);
 }
 
+static int
+zpl_aio_fsync(struct kiocb *kiocb, int datasync)
+{
+	struct file *filp = kiocb->ki_filp;
+	return (zpl_fsync(filp, filp->f_path.dentry, datasync));
+}
 #elif defined(HAVE_FSYNC_WITHOUT_DENTRY)
 /*
  * Linux 2.6.35 - 3.0 API,
@@ -128,15 +146,23 @@ zpl_fsync(struct file *filp, int datasync)
 	struct inode *inode = filp->f_mapping->host;
 	cred_t *cr = CRED();
 	int error;
+	fstrans_cookie_t cookie;
 
 	crhold(cr);
+	cookie = spl_fstrans_mark();
 	error = -zfs_fsync(inode, datasync, cr);
+	spl_fstrans_unmark(cookie);
 	crfree(cr);
 	ASSERT3S(error, <=, 0);
 
 	return (error);
 }
 
+static int
+zpl_aio_fsync(struct kiocb *kiocb, int datasync)
+{
+	return (zpl_fsync(kiocb->ki_filp, datasync));
+}
 #elif defined(HAVE_FSYNC_RANGE)
 /*
  * Linux 3.1 - 3.x API,
@@ -151,49 +177,73 @@ zpl_fsync(struct file *filp, loff_t start, loff_t end, int datasync)
 	struct inode *inode = filp->f_mapping->host;
 	cred_t *cr = CRED();
 	int error;
+	fstrans_cookie_t cookie;
 
 	error = filemap_write_and_wait_range(inode->i_mapping, start, end);
 	if (error)
 		return (error);
 
 	crhold(cr);
+	cookie = spl_fstrans_mark();
 	error = -zfs_fsync(inode, datasync, cr);
+	spl_fstrans_unmark(cookie);
 	crfree(cr);
 	ASSERT3S(error, <=, 0);
 
 	return (error);
 }
+
+static int
+zpl_aio_fsync(struct kiocb *kiocb, int datasync)
+{
+	return (zpl_fsync(kiocb->ki_filp, kiocb->ki_pos,
+	    kiocb->ki_pos + kiocb->ki_nbytes, datasync));
+}
 #else
 #error "Unsupported fops->fsync() implementation"
 #endif
 
-ssize_t
-zpl_read_common(struct inode *ip, const char *buf, size_t len, loff_t pos,
+static inline ssize_t
+zpl_read_common_iovec(struct inode *ip, const struct iovec *iovp, size_t count,
+    unsigned long nr_segs, loff_t *ppos, uio_seg_t segment,
+    int flags, cred_t *cr)
+{
+	ssize_t read;
+	uio_t uio;
+	int error;
+	fstrans_cookie_t cookie;
+
+	uio.uio_iov = (struct iovec *)iovp;
+	uio.uio_resid = count;
+	uio.uio_iovcnt = nr_segs;
+	uio.uio_loffset = *ppos;
+	uio.uio_limit = MAXOFFSET_T;
+	uio.uio_segflg = segment;
+
+	cookie = spl_fstrans_mark();
+	error = -zfs_read(ip, &uio, flags, cr);
+	spl_fstrans_unmark(cookie);
+	if (error < 0)
+		return (error);
+
+	read = count - uio.uio_resid;
+	*ppos += read;
+	task_io_account_read(read);
+
+	return (read);
+}
+
+inline ssize_t
+zpl_read_common(struct inode *ip, const char *buf, size_t len, loff_t *ppos,
     uio_seg_t segment, int flags, cred_t *cr)
 {
-	int error;
-	ssize_t read;
 	struct iovec iov;
-	uio_t uio;
 
 	iov.iov_base = (void *)buf;
 	iov.iov_len = len;
 
-	uio.uio_iov = &iov;
-	uio.uio_resid = len;
-	uio.uio_iovcnt = 1;
-	uio.uio_loffset = pos;
-	uio.uio_limit = MAXOFFSET_T;
-	uio.uio_segflg = segment;
-
-	error = -zfs_read(ip, &uio, flags, cr);
-	if (error < 0)
-		return (error);
-
-	read = len - uio.uio_resid;
-	task_io_account_read(read);
-
-	return (read);
+	return (zpl_read_common_iovec(ip, &iov, len, 1, ppos, segment,
+	    flags, cr));
 }
 
 static ssize_t
@@ -203,44 +253,80 @@ zpl_read(struct file *filp, char __user *buf, size_t len, loff_t *ppos)
 	ssize_t read;
 
 	crhold(cr);
-	read = zpl_read_common(filp->f_mapping->host, buf, len, *ppos,
+	read = zpl_read_common(filp->f_mapping->host, buf, len, ppos,
 	    UIO_USERSPACE, filp->f_flags, cr);
 	crfree(cr);
 
-	if (read < 0)
-		return (read);
-
-	*ppos += read;
 	return (read);
 }
 
-ssize_t
-zpl_write_common(struct inode *ip, const char *buf, size_t len, loff_t pos,
+static ssize_t
+zpl_aio_read(struct kiocb *kiocb, const struct iovec *iovp,
+	unsigned long nr_segs, loff_t pos)
+{
+	cred_t *cr = CRED();
+	struct file *filp = kiocb->ki_filp;
+	size_t count = kiocb->ki_nbytes;
+	ssize_t read;
+	size_t alloc_size = sizeof (struct iovec) * nr_segs;
+	struct iovec *iov_tmp = kmem_alloc(alloc_size, KM_SLEEP);
+	bcopy(iovp, iov_tmp, alloc_size);
+
+	ASSERT(iovp);
+
+	crhold(cr);
+	read = zpl_read_common_iovec(filp->f_mapping->host, iov_tmp, count,
+	    nr_segs, &kiocb->ki_pos, UIO_USERSPACE, filp->f_flags, cr);
+	crfree(cr);
+
+	kmem_free(iov_tmp, alloc_size);
+
+	return (read);
+}
+
+static inline ssize_t
+zpl_write_common_iovec(struct inode *ip, const struct iovec *iovp, size_t count,
+    unsigned long nr_segs, loff_t *ppos, uio_seg_t segment,
+    int flags, cred_t *cr)
+{
+	ssize_t wrote;
+	uio_t uio;
+	int error;
+	fstrans_cookie_t cookie;
+
+	if (flags & O_APPEND)
+		*ppos = i_size_read(ip);
+
+	uio.uio_iov = (struct iovec *)iovp;
+	uio.uio_resid = count;
+	uio.uio_iovcnt = nr_segs;
+	uio.uio_loffset = *ppos;
+	uio.uio_limit = MAXOFFSET_T;
+	uio.uio_segflg = segment;
+
+	cookie = spl_fstrans_mark();
+	error = -zfs_write(ip, &uio, flags, cr);
+	spl_fstrans_unmark(cookie);
+	if (error < 0)
+		return (error);
+
+	wrote = count - uio.uio_resid;
+	*ppos += wrote;
+	task_io_account_write(wrote);
+
+	return (wrote);
+}
+inline ssize_t
+zpl_write_common(struct inode *ip, const char *buf, size_t len, loff_t *ppos,
     uio_seg_t segment, int flags, cred_t *cr)
 {
-	int error;
-	ssize_t wrote;
 	struct iovec iov;
-	uio_t uio;
 
 	iov.iov_base = (void *)buf;
 	iov.iov_len = len;
 
-	uio.uio_iov = &iov;
-	uio.uio_resid = len,
-	uio.uio_iovcnt = 1;
-	uio.uio_loffset = pos;
-	uio.uio_limit = MAXOFFSET_T;
-	uio.uio_segflg = segment;
-
-	error = -zfs_write(ip, &uio, flags, cr);
-	if (error < 0)
-		return (error);
-
-	wrote = len - uio.uio_resid;
-	task_io_account_write(wrote);
-
-	return (wrote);
+	return (zpl_write_common_iovec(ip, &iov, len, 1, ppos, segment,
+	    flags, cr));
 }
 
 static ssize_t
@@ -250,14 +336,34 @@ zpl_write(struct file *filp, const char __user *buf, size_t len, loff_t *ppos)
 	ssize_t wrote;
 
 	crhold(cr);
-	wrote = zpl_write_common(filp->f_mapping->host, buf, len, *ppos,
+	wrote = zpl_write_common(filp->f_mapping->host, buf, len, ppos,
 	    UIO_USERSPACE, filp->f_flags, cr);
 	crfree(cr);
 
-	if (wrote < 0)
-		return (wrote);
+	return (wrote);
+}
 
-	*ppos += wrote;
+static ssize_t
+zpl_aio_write(struct kiocb *kiocb, const struct iovec *iovp,
+	unsigned long nr_segs, loff_t pos)
+{
+	cred_t *cr = CRED();
+	struct file *filp = kiocb->ki_filp;
+	size_t count = kiocb->ki_nbytes;
+	ssize_t wrote;
+	size_t alloc_size = sizeof (struct iovec) * nr_segs;
+	struct iovec *iov_tmp = kmem_alloc(alloc_size, KM_SLEEP);
+	bcopy(iovp, iov_tmp, alloc_size);
+
+	ASSERT(iovp);
+
+	crhold(cr);
+	wrote = zpl_write_common_iovec(filp->f_mapping->host, iov_tmp, count,
+	    nr_segs, &kiocb->ki_pos, UIO_USERSPACE, filp->f_flags, cr);
+	crfree(cr);
+
+	kmem_free(iov_tmp, alloc_size);
+
 	return (wrote);
 }
 
@@ -265,13 +371,17 @@ static loff_t
 zpl_llseek(struct file *filp, loff_t offset, int whence)
 {
 #if defined(SEEK_HOLE) && defined(SEEK_DATA)
+	fstrans_cookie_t cookie;
+
 	if (whence == SEEK_DATA || whence == SEEK_HOLE) {
 		struct inode *ip = filp->f_mapping->host;
 		loff_t maxbytes = ip->i_sb->s_maxbytes;
 		loff_t error;
 
 		spl_inode_lock(ip);
+		cookie = spl_fstrans_mark();
 		error = -zfs_holey(ip, whence, &offset);
+		spl_fstrans_unmark(cookie);
 		if (error == 0)
 			error = lseek_execute(filp, ip, offset, maxbytes);
 		spl_inode_unlock(ip);
@@ -332,9 +442,12 @@ zpl_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct inode *ip = filp->f_mapping->host;
 	znode_t *zp = ITOZ(ip);
 	int error;
+	fstrans_cookie_t cookie;
 
+	cookie = spl_fstrans_mark();
 	error = -zfs_map(ip, vma->vm_pgoff, (caddr_t *)vma->vm_start,
 	    (size_t)(vma->vm_end - vma->vm_start), vma->vm_flags);
+	spl_fstrans_unmark(cookie);
 	if (error)
 		return (error);
 
@@ -364,12 +477,15 @@ zpl_readpage(struct file *filp, struct page *pp)
 	struct inode *ip;
 	struct page *pl[1];
 	int error = 0;
+	fstrans_cookie_t cookie;
 
 	ASSERT(PageLocked(pp));
 	ip = pp->mapping->host;
 	pl[0] = pp;
 
+	cookie = spl_fstrans_mark();
 	error = -zfs_getpage(ip, pl, 1);
+	spl_fstrans_unmark(cookie);
 
 	if (error) {
 		SetPageError(pp);
@@ -402,19 +518,14 @@ int
 zpl_putpage(struct page *pp, struct writeback_control *wbc, void *data)
 {
 	struct address_space *mapping = data;
+	fstrans_cookie_t cookie;
 
 	ASSERT(PageLocked(pp));
 	ASSERT(!PageWriteback(pp));
-	ASSERT(!(current->flags & PF_NOFS));
 
-	/*
-	 * Annotate this call path with a flag that indicates that it is
-	 * unsafe to use KM_SLEEP during memory allocations due to the
-	 * potential for a deadlock.  KM_PUSHPAGE should be used instead.
-	 */
-	current->flags |= PF_NOFS;
+	cookie = spl_fstrans_mark();
 	(void) zfs_putpage(mapping->host, pp, wbc);
-	current->flags &= ~PF_NOFS;
+	spl_fstrans_unmark(cookie);
 
 	return (0);
 }
@@ -479,38 +590,56 @@ zpl_writepage(struct page *pp, struct writeback_control *wbc)
 
 /*
  * The only flag combination which matches the behavior of zfs_space()
- * is FALLOC_FL_PUNCH_HOLE.  This flag was introduced in the 2.6.38 kernel.
+ * is FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE.  The FALLOC_FL_PUNCH_HOLE
+ * flag was introduced in the 2.6.38 kernel.
  */
+#if defined(HAVE_FILE_FALLOCATE) || defined(HAVE_INODE_FALLOCATE)
 long
 zpl_fallocate_common(struct inode *ip, int mode, loff_t offset, loff_t len)
 {
-	cred_t *cr = CRED();
 	int error = -EOPNOTSUPP;
 
-	if (mode & FALLOC_FL_KEEP_SIZE)
-		return (-EOPNOTSUPP);
+#if defined(FALLOC_FL_PUNCH_HOLE) && defined(FALLOC_FL_KEEP_SIZE)
+	cred_t *cr = CRED();
+	flock64_t bf;
+	loff_t olen;
+	fstrans_cookie_t cookie;
+
+	if (mode != (FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
+		return (error);
 
 	crhold(cr);
 
-#ifdef FALLOC_FL_PUNCH_HOLE
-	if (mode & FALLOC_FL_PUNCH_HOLE) {
-		flock64_t bf;
+	if (offset < 0 || len <= 0)
+		return (-EINVAL);
 
-		bf.l_type = F_WRLCK;
-		bf.l_whence = 0;
-		bf.l_start = offset;
-		bf.l_len = len;
-		bf.l_pid = 0;
+	spl_inode_lock(ip);
+	olen = i_size_read(ip);
 
-		error = -zfs_space(ip, F_FREESP, &bf, FWRITE, offset, cr);
+	if (offset > olen) {
+		spl_inode_unlock(ip);
+		return (0);
 	}
-#endif /* FALLOC_FL_PUNCH_HOLE */
+	if (offset + len > olen)
+		len = olen - offset;
+	bf.l_type = F_WRLCK;
+	bf.l_whence = 0;
+	bf.l_start = offset;
+	bf.l_len = len;
+	bf.l_pid = 0;
+
+	cookie = spl_fstrans_mark();
+	error = -zfs_space(ip, F_FREESP, &bf, FWRITE, offset, cr);
+	spl_fstrans_unmark(cookie);
+	spl_inode_unlock(ip);
 
 	crfree(cr);
+#endif /* defined(FALLOC_FL_PUNCH_HOLE) && defined(FALLOC_FL_KEEP_SIZE) */
 
 	ASSERT3S(error, <=, 0);
 	return (error);
 }
+#endif /* defined(HAVE_FILE_FALLOCATE) || defined(HAVE_INODE_FALLOCATE) */
 
 #ifdef HAVE_FILE_FALLOCATE
 static long
@@ -528,7 +657,7 @@ zpl_fallocate(struct file *filp, int mode, loff_t offset, loff_t len)
 static int
 zpl_ioctl_getflags(struct file *filp, void __user *arg)
 {
-	struct inode *ip = filp->f_dentry->d_inode;
+	struct inode *ip = file_inode(filp);
 	unsigned int ioctl_flags = 0;
 	uint64_t zfs_flags = ITOZ(ip)->z_pflags;
 	int error;
@@ -564,13 +693,14 @@ zpl_ioctl_getflags(struct file *filp, void __user *arg)
 static int
 zpl_ioctl_setflags(struct file *filp, void __user *arg)
 {
-	struct inode	*ip = filp->f_dentry->d_inode;
+	struct inode	*ip = file_inode(filp);
 	uint64_t	zfs_flags = ITOZ(ip)->z_pflags;
 	unsigned int	ioctl_flags;
 	cred_t		*cr = CRED();
 	xvattr_t	xva;
 	xoptattr_t	*xoap;
 	int		error;
+	fstrans_cookie_t cookie;
 
 	if (copy_from_user(&ioctl_flags, arg, sizeof (ioctl_flags)))
 		return (-EFAULT);
@@ -605,7 +735,9 @@ zpl_ioctl_setflags(struct file *filp, void __user *arg)
 		xoap->xoa_nodump = B_TRUE;
 
 	crhold(cr);
+	cookie = spl_fstrans_mark();
 	error = -zfs_setattr(ip, (vattr_t *)&xva, 0, cr);
+	spl_fstrans_unmark(cookie);
 	crfree(cr);
 
 	return (error);
@@ -646,8 +778,11 @@ const struct file_operations zpl_file_operations = {
 	.llseek		= zpl_llseek,
 	.read		= zpl_read,
 	.write		= zpl_write,
+	.aio_read	= zpl_aio_read,
+	.aio_write	= zpl_aio_write,
 	.mmap		= zpl_mmap,
 	.fsync		= zpl_fsync,
+	.aio_fsync	= zpl_aio_fsync,
 #ifdef HAVE_FILE_FALLOCATE
 	.fallocate	= zpl_fallocate,
 #endif /* HAVE_FILE_FALLOCATE */
