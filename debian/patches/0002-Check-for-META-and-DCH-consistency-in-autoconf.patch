@@ -9,8 +9,8 @@ correct paths and that users see the same version everywhere.
  config/zfs-meta.m4 | 34 +++++++++++++++++++++++++++++-----
  1 file changed, 29 insertions(+), 5 deletions(-)
 
-diff --git a/config/zfs-meta.m4 b/config/zfs-meta.m4
-index 7c92dd5..d174ccc 100644
+Index: b/config/zfs-meta.m4
+===================================================================
 --- a/config/zfs-meta.m4
 +++ b/config/zfs-meta.m4
 @@ -1,9 +1,10 @@
