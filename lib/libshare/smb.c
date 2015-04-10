@@ -681,16 +681,6 @@ static const sa_share_ops_t smb_shareops = {
 static boolean_t
 smb_available(void)
 {
-	/* If we got past libshare_smb_init(), then it is available! */
-	return (B_TRUE);
-}
-
-/*
- * Initializes the SMB functionality of libshare.
- */
-void
-libshare_smb_init(void)
-{
 	int rc;
 	char *argv[5];
 
@@ -704,14 +694,26 @@ libshare_smb_init(void)
 
 		rc = libzfs_run_process(argv[0], argv, 0);
 		if (rc != 255)
-			smb_fstype = register_fstype("smb", &smb_shareops);
+			return B_TRUE;
 #ifdef DEBUG
-		else
+		else {
 			fprintf(stderr, "ERROR: %s can't talk to samba.\n",
 				NET_CMD_PATH);
+			return B_FALSE;
+		}
 	} else {
 		fprintf(stderr, "ERROR: %s does not exist or not executable\n",
 			NET_CMD_PATH);
+			return B_FALSE;
 #endif
 	}
+}
+
+/*
+ * Initializes the SMB functionality of libshare.
+ */
+void
+libshare_smb_init(void)
+{
+	smb_fstype = register_fstype("smb", &smb_shareops);
 }

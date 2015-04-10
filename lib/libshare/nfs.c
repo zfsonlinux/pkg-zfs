@@ -293,7 +293,7 @@ get_linux_shareopts_cb(const char *key, const char *value, void *cookie)
 
 	if (strcmp(key, "ro") == 0 || strcmp(key, "rw") == 0 ||
 	    strcmp(key, "sec") == 0) {
-		if (value[0] == '@') {
+		if (value && value[0] == '@') {
 			int rc;
 			char *host;
 
