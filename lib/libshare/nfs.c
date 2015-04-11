@@ -262,20 +262,24 @@ update_host_list(void *cookie)
 	/* Get the current head of the list */
 	share = list_tail(&all_nfs_shares_list);
 
-	if (share->host != NULL) {
-		/* Create a new object list */
-		new_share = (nfs_share_list_t *)
-			malloc(sizeof (nfs_share_list_t));
-		if (new_share == NULL)
-			return (SA_NO_MEMORY);
+	/* Create a new object list */
+	new_share = (nfs_share_list_t *)
+		malloc(sizeof (nfs_share_list_t));
+	if (new_share == NULL)
+		return (SA_NO_MEMORY);
 
-		list_link_init(&new_share->next);
+	list_link_init(&new_share->next);
+	if (share->host != NULL)
 		strcpy(new_share->host, share->host);
-		strcpy(new_share->opts, *plinux_opts);
+	else
+		strcpy(new_share->host, "*");
+	strcpy(new_share->opts, *plinux_opts);
 
-		/* Replace the old head with this new object */
+	/* Replace the old head with this new object */
+	if (share->host != NULL)
 		list_link_replace(&share->next, &new_share->next);
-	}
+	else
+		list_insert_tail(&all_nfs_shares_list, new_share);
 
 	return (SA_OK);
 }
