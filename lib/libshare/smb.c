@@ -696,17 +696,16 @@ smb_available(void)
 		if (rc != 255)
 			return B_TRUE;
 #ifdef DEBUG
-		else {
+		else
 			fprintf(stderr, "ERROR: %s can't talk to samba.\n",
 				NET_CMD_PATH);
-			return B_FALSE;
-		}
 	} else {
 		fprintf(stderr, "ERROR: %s does not exist or not executable\n",
 			NET_CMD_PATH);
-			return B_FALSE;
 #endif
 	}
+
+	return B_FALSE;
 }
 
 /*
