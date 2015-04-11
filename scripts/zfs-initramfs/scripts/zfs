@@ -104,7 +104,6 @@ find_rootfs()
 import_pool()
 {
 	local pool=$1
-	local dir ZFS_STDERR ZFS_ERROR
 
 	# Verify that the pool isn't already imported
 	# Make as sure as we can to not require '-f' to import.
@@ -361,6 +360,83 @@ clone_snap()
 	fi
 }
 
+rollback_snap()
+{
+	local snap=$1
+	local ZFS_CMD ZFS_STDERR ZFS_ERROR
+
+	[ "$quiet" != "y" ] && $log_begin_msg "Cloning $snap to $fs"
+	ZFS_CMD="zfs rollback -Rf $snap"
+	ZFS_STDERR=$($ZFS_CMD 2>&1)
+	ZFS_ERROR=$?
+
+	# Rollback was not successfull -- let the user sort this out
+	if [ "$ZFS_ERROR" != 0 ]
+	then
+		disable_plymouth
+		echo ""
+		echo "Command: $ZFS_CMD"
+		echo "Message: $ZFS_STDERR"
+		echo "Error: $ZFS_ERROR"
+		echo ""
+		echo "Failed to rollback snapshot."
+		/bin/sh
+	
+		ZFS_ERROR=0
+	else
+		[ "$quiet" != "y" ] && $log_end_msg
+	fi
+
+	# The first fs must be the root filesystem.
+	echo "DBG: ZFS_SNAPSHOT_BOOT(1)='$ZFS_SNAPSHOT_BOOT'"
+	if [ -z "$ZFS_SNAPSHOT_BOOT" ]
+	then
+		# Remember the snapshot name for later
+		# (when/if we need to mount /usr, /var etc).
+		ZFS_SNAPSHOT_BOOT="${snap##*@}"
+
+		# Remember the original filesystem
+		ZFS_BOOTFS_ORIG="${snap%%@*}"
+
+		# This is now the root filesystem dataset.
+		ZFS_BOOTFS="${snap%%@*}"
+
+		# We're not really using the snapshot any more, so unset this.
+		ZFS_SNAPSHOT_BOOT=""
+	fi
+}
+
+ask_user_snap()
+{
+	local fs="$1"
+	local i=1
+
+	echo "What snapshot do you want to boot from?"
+	while read snap; do
+	    echo "  $i: ${snap##*@}"
+	    eval `echo SNAP_$i=$snap`
+	    i=$((i + 1))
+	done <<EOT
+$(zfs list -H -oname -tsnapshot -r "${fs%@*}")
+EOT
+
+	echo -n "  Snap nr [0-$((i-1))]? "
+	read snapnr
+
+	SNAP=`eval echo "$"SNAP_$snapnr`
+	if [ -n "$SNAP" -a -z "$ZFS_SNAPSHOT_BOOT" ]; then
+		# Remember the snapshot name for later
+		# (when/if we need to mount /usr, /var etc).
+		ZFS_SNAPSHOT_BOOT="${SNAP##*@}"
+
+		# Remember the original filesystem
+		ZFS_BOOTFS_ORIG="${SNAP%%@*}"
+
+		# This is now the root filesystem dataset.
+		ZFS_BOOTFS="$ZFS_BOOTFS_ORIG"
+	fi
+}
+
 # ================================================================
 
 # This is the main function.
@@ -574,28 +650,29 @@ mountroot()
 			# Make sure that the snapshot specified exist.
 			if [ ! $(get_fs_value $ZFS_BOOTFS type) ]
 			then
-				# TODO: Ask the user for a snapshot to use?
-				#       If so, make sure it is set in /tmp/zfs_bootfs
-				#       and source that into ZFS_BOOTFS here.
+				# Snapshot does not exist (...@<null> ?)
+				# Ask the user for a snapshot to use.
+				ask_user_snap $ZFS_BOOTFS
+			fi
 
-				# Use the original dataset (the part before '@').
-				[ "$quiet" != "y" ] && $log_begin_msg "Snapshot does not exist. Using base dataset for root."
-				ZFS_BOOTFS=${ZFS_BOOTFS%@*}
-				[ "$quiet" != "y" ] && $log_end_msg
-			else
-				# Get all snapshots, recursivly (might need to clone /usr, /var etc as well).
-				for snap in $(zfs list -H -o name -t snapshot -r "${ZFS_BOOTFS%%@*}" | grep "${ZFS_BOOTFS##*@}")
-				do
-					# Replace the '@' separating dataset and snapshot name with a underscore
-					destfs=${snap/@/_}
+			# Get all snapshots, recursivly (might need to clone /usr, /var etc as well).
+			for snap in $(zfs list -H -o name -t snapshot -r "${ZFS_BOOTFS%%@*}" | grep "${ZFS_BOOTFS##*@}")
+			do
+				# Replace the '@' separating dataset and snapshot name with a underscore
+				destfs=$(echo "$snap" | sed 's,@,_,')
 
-					# If the destination dataset for the clone already exists, destroy it.
-					[ $(get_fs_value $destfs type) ] && destroy_fs $destfs
+				# If the destination dataset for the clone already exists, destroy it.
+				[ $(get_fs_value $destfs type) ] && destroy_fs $destfs
 
+				if grep -qiE '(^|[^\\](\\\\)* )(rollback)=(on|yes|1)( |$)' /proc/cmdline
+				then
+					# Rollback snapshot
+					rollback_snap $snap
+				else
 					# Clone the snapshot into it's now filesystem
 					clone_snap $snap $destfs
-				done
-			fi
+				fi
+			done
 		fi
 	else
 		#  Unknown root fs -- let the user sort this out.
