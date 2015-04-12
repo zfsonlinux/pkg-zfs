@@ -1,3 +1,17 @@
+zfs-linux (0.6.4-1-3) jessie; urgency=low
+
+  * Remove duplicate nfs.c:foreach_nfs_shareopt. It was renamed to
+    libshare.c:foreach_shareopt.
+  * Add support to rollback snapshot instead of cloning it and use the
+    clone as root filesystem.
+  * Add support to ask user for snapshot to boot from if root=...@<nul>.
+  * Ubuntu Trusty busybox thinks that 'destfs=${snap/@/_}' is a bad
+    substitution. Replace it with:  destfs=$(echo "$snap" | sed 's,@,_,').
+  * Don't treat ZFS_STDERR and ZFS_ERROR as local in import_pool().
+    Need them later if there's an error.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 12 Apr 2015 07:25:49 +0200
+
 zfs-linux (0.6.4-1-2) jessie; urgency=low
 
   * Replace apparently broken nfs.c with one that works on my Primary.

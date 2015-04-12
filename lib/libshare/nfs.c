@@ -65,65 +65,6 @@ typedef struct nfs_share_list_s {
 /* Global list of shares */
 list_t all_nfs_shares_list;
 
-/*
- * Invokes the specified callback function for each Solaris share option
- * listed in the specified string.
- */
-static int
-foreach_nfs_shareopt(const char *shareopts,
-    nfs_shareopt_callback_t callback, void *cookie)
-{
-	char *shareopts_dup, *opt, *cur, *value;
-	int was_nul, rc;
-
-	if (shareopts == NULL)
-		return (SA_OK);
-
-	shareopts_dup = strdup(shareopts);
-	if (shareopts_dup == NULL)
-		return (SA_NO_MEMORY);
-
-	opt = shareopts_dup;
-	was_nul = 0;
-
-	while (1) {
-		cur = opt;
-
-		while (*cur != ',' && *cur != '\0')
-			cur++;
-
-		if (*cur == '\0')
-			was_nul = 1;
-
-		*cur = '\0';
-
-		if (cur > opt) {
-			value = strchr(opt, '=');
-
-			if (value != NULL) {
-				*value = '\0';
-				value++;
-			}
-
-			rc = callback(opt, value, cookie);
-
-			if (rc != SA_OK) {
-				free(shareopts_dup);
-				return (rc);
-			}
-		}
-
-		opt = cur + 1;
-
-		if (was_nul)
-			break;
-	}
-
-	free(shareopts_dup);
-
-	return (SA_OK);
-}
-
 static int
 find_option(char *opt, const char *needle)
 {
@@ -401,7 +342,7 @@ get_linux_shareopts(const char *shareopts, char **plinux_opts)
 		(void) add_linux_shareopt(plinux_opts, "mountpoint", NULL);
 	}
 
-	rc = foreach_nfs_shareopt(shareopts, get_linux_shareopts_cb,
+	rc = foreach_shareopt(shareopts, get_linux_shareopts_cb,
 	    plinux_opts);
 	if (rc != SA_OK) {
 		free(*plinux_opts);
