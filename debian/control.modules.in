@@ -19,21 +19,3 @@ Description: Native ZFS filesystem kernel modules for Linux
  your own zfs-modules. The zfs-source package has been
  provided for use with the Debian kernel-package utility to produce a
  version of zfs-module for your kernel.
-
-Package: zfs-modules-_KVERS_-_ARCH_-di
-Package-Type: udeb
-Section: debian-installer
-Architecture: _ARCH_
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Provides: zfs-modules, zfs-modules-_KVERS_-udeb, zfs-dkms
-Conflicts: zfs-dkms
-Replaces: zfs-dkms
-Description: Native ZFS filesystem kernel modules for Linux
- An advanced integrated volume manager and filesystem that is designed for
- performance and data integrity. Snapshots, clones, checksums, deduplication,
- compression, and RAID redundancy are built-in features.
- .
- This package contains the compiled kernel module, debian-installar version,
- for kernel _KVERS_.
- .
- This is a minimal package for use in debian-installer.
