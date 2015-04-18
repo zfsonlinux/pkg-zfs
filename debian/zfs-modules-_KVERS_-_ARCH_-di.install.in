@@ -1,6 +1,0 @@
-module/zcommon/zcommon.ko	lib/modules/_KVERS_-_ARCH_/extra/zcommon/
-module/zfs/zfs.ko		lib/modules/_KVERS_-_ARCH_/extra/zfs/
-module/avl/zavl.ko		lib/modules/_KVERS_-_ARCH_/extra/avl/
-module/unicode/zunicode.ko	lib/modules/_KVERS_-_ARCH_/extra/unicode/
-module/zpios/zpios.ko		lib/modules/_KVERS_-_ARCH_/extra/zpios/
-module/nvpair/znvpair.ko	lib/modules/_KVERS_-_ARCH_/extra/nvpari/
