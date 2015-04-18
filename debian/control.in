@@ -19,8 +19,7 @@ Build-Depends: autoconf,
                zlib1g-dev,
                libblkid-dev,
                dh-systemd,
-	       chrpath,
-               ##MODULES_BUILD_DEPENDS##
+	       chrpath
 Standards-Version: 3.9.4
 Homepage: http://www.zfsonlinux.org/
 Vcs-Git: git://github.com/zfsonlinux/pkg-zfs.git
@@ -88,13 +87,28 @@ Description: Native ZFS pool library for Linux
  .
  This zpool library provides support for managing zpools.
 
+Package: zfs-modules-source
+Section: kernel
+Priority: extra
+Architecture: all
+Depends: ${misc:Depends}, debhelper (>= 8),
+ module-assistant | kernel-package, perl
+Recommends: zfsutils (>= ${source:Version})
+Description: Native ZFS filesystem kernel modules for Linux
+ The Z file system is a pooled filesystem designed for maximum data
+ integrity, supporting data snapshots, multiple copies, and data
+ checksums.
+ .
+ This package provides the source to the SPL kernel module in a form
+ suitable for use by module-assistant or kernel-package.
+
 Package: zfs-dkms
 Architecture: all
 Pre-Depends: spl-dkms
 Depends: dkms (>> 2.1.1.2-5), lsb-release, ${misc:Depends}, file
 Recommends: zfsutils
 Replaces: lzfs, lzfs-dkms
-Provides: lustre-backend-fs, lzfs, lzfs-dkms, zfs-modules
+Provides: lustre-backend-fs, lzfs, lzfs-dkms, zfs-modules, zfs-modules-source
 Conflicts: lzfs, lzfs-dkms
 Description: Native ZFS filesystem kernel modules for Linux
  The Z file system is a pooled filesystem designed for maximum data
@@ -106,7 +120,9 @@ Description: Native ZFS filesystem kernel modules for Linux
 Package: zfs-dracut
 Section: utils
 Architecture: linux-any
-Depends: dracut, zfs-modules | zfs-dkms, zfsutils, ${misc:Depends}
+Depends: dracut,
+ zfs-modules | zfs-dkms | zfs-modules-source (>= ${source:Version}),
+ zfsutils, ${misc:Depends}
 Description: Native ZFS root filesystem capabilities for Linux
  The Z file system is a pooled filesystem designed for maximum data
  integrity, supporting data snapshots, multiple copies, and data
@@ -117,7 +133,9 @@ Description: Native ZFS root filesystem capabilities for Linux
 
 Package: zfs-initramfs
 Architecture: linux-any
-Depends: initramfs-tools, zfs-modules | zfs-dkms, zfsutils, ${misc:Depends}
+Depends: initramfs-tools,
+ zfs-modules | zfs-dkms | zfs-modules-source (>= ${source:Version}),
+ zfsutils, ${misc:Depends}
 Description: Native ZFS root filesystem capabilities for Linux
  The Z file system is a pooled filesystem designed for maximum data
  integrity, supporting data snapshots, multiple copies, and data
@@ -130,7 +148,7 @@ Package: zfsutils
 Section: admin
 Architecture: linux-any
 Depends: initscripts, lsb-base, python, ${misc:Depends}, ${shlibs:Depends}
-Recommends: zfs-modules | zfs-dkms
+Recommends: zfs-modules | zfs-dkms | zfs-modules-source (>= ${source:Version})
 Suggests: nfs-kernel-server, samba-common-bin (>= 3.0.23), zfs-initramfs
 Conflicts: zfs, zfs-fuse
 Replaces: zfs

@@ -1,0 +1,24 @@
+#!/usr/bin/perl
+#
+# Extract the kernel version from the kernel version header file.  Takes the
+# kernel source path as its only argument.  If the version header couldn't be
+# found, print nothing and exit quietly.
+
+my $ksrc = shift;
+unless ($ksrc && open (VERSION, "$ksrc/include/linux/version.h")) {
+    exit 0;
+}
+my $found;
+my $line = <VERSION>;
+if ($line =~ /"(.+)"/) {
+    print "$1\n";
+    $found = 1;
+}
+exit 0 if $found;
+unless (open (VERSION, "$ksrc/include/config/kernel.release")) {
+    exit 0;
+}
+if ($line = <VERSION>) {
+    print "$line";
+}
+exit 0;
