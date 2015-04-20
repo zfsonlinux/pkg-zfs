@@ -1,3 +1,11 @@
+zfs-linux (0.6.4-1-6-wheezy) wheezy; urgency=low
+
+  * Fix nfs.c:update_host_list() to not segfault on faulty options.
+    + To not share to world, if host is given.
+      Closes: #3319
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 20 Apr 2015 20:56:22 +0200
+
 zfs-linux (0.6.4-1-5-wheezy) wheezy; urgency=low
 
   * Remove module builds etc from package. Instead, create a modules-source
