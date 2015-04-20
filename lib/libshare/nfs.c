@@ -261,6 +261,8 @@ update_host_list(void *cookie)
 
 	/* Get the current head of the list */
 	share = list_tail(&all_nfs_shares_list);
+	if (share == NULL)
+		return (SA_OK);
 
 	/* Create a new object list */
 	new_share = (nfs_share_list_t *)
@@ -269,11 +271,11 @@ update_host_list(void *cookie)
 		return (SA_NO_MEMORY);
 
 	list_link_init(&new_share->next);
-	if (share->host != NULL)
-		strcpy(new_share->host, share->host);
-	else
+	if (share == NULL)
 		strcpy(new_share->host, "*");
-	strcpy(new_share->opts, *plinux_opts);
+	else
+		strcpy(new_share->host, share->host);
+	sprintf(new_share->opts, "%s", *plinux_opts);
 
 	/* Replace the old head with this new object */
 	if (share->host != NULL)
@@ -297,6 +299,13 @@ get_linux_shareopts_cb(const char *key, const char *value, void *cookie)
 
 	if (strcmp(key, "ro") == 0 || strcmp(key, "rw") == 0 ||
 	    strcmp(key, "sec") == 0) {
+		opts = (nfs_share_list_t *)
+			malloc(sizeof (nfs_share_list_t));
+		if (opts == NULL)
+			return (SA_NO_MEMORY);
+
+		list_link_init(&opts->next);
+
 		if (value && value[0] == '@') {
 			int rc;
 			char *host;
@@ -304,13 +313,6 @@ get_linux_shareopts_cb(const char *key, const char *value, void *cookie)
 			rc = get_linux_hostspec(value, &host);
 			if (rc < 0)
 				return (rc);
-
-			opts = (nfs_share_list_t *)
-				malloc(sizeof (nfs_share_list_t));
-			if (opts == NULL)
-				return (SA_NO_MEMORY);
-
-			list_link_init(&opts->next);
 
 			if (*plinux_opts != NULL) {
 				/*
@@ -330,9 +332,11 @@ get_linux_shareopts_cb(const char *key, const char *value, void *cookie)
 			/* Start a new host opts definition */
 			strncpy(opts->host, host, sizeof (opts->host));
 			opts->opts[0] = '\0';
-
-			list_insert_tail(&all_nfs_shares_list, opts);
+		} else {
+			strcpy(opts->host, "*");
+			opts->opts[0] = '\0';
 		}
+		list_insert_tail(&all_nfs_shares_list, opts);
 
 		(void) add_linux_shareopt(plinux_opts, key, NULL);
 		return (SA_OK);
