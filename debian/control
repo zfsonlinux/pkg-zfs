@@ -165,6 +165,23 @@ Description: Native OpenZFS root filesystem capabilities for Linux
  This package adds OpenZFS to the system initramfs with a hook
  for the initramfs-tools infrastructure.
 
+Package: zfs-zed
+Section: admin
+Architecture: linux-any
+Depends: ${misc:Depends}, ${shlibs:Depends}, zfsutils
+Recommends: mail-transport-agent
+Replaces: zfsutils
+Description: OpenZFS Event Daemon (zed)
+ A monitor that automatically runs scripts for OpenZFS kernel events,
+ like disk failures.
+
+Package: zfs-zed-dbg
+Section: debug
+Architecture: linux-any
+Depends: ${misc:Depends}, zfs-zed (= ${binary:Version})
+Description: Debugging symbols for zfs-zed
+ This package contains the debugging symbols for zfs-zed.
+
 Package: zfsutils
 Section: admin
 Architecture: linux-any

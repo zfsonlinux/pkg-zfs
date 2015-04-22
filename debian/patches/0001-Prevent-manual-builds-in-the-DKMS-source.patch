@@ -19,9 +19,8 @@ ZFS has a DKMS registration.
  3 files changed, 18 insertions(+), 3 deletions(-)
  create mode 100644 config/dkms.m4
 
-diff --git a/config/dkms.m4 b/config/dkms.m4
-new file mode 100644
-index 0000000..cfa1152
+Index: b/config/dkms.m4
+===================================================================
 --- /dev/null
 +++ b/config/dkms.m4
 @@ -0,0 +1,14 @@
@@ -39,8 +38,8 @@ index 0000000..cfa1152
 +		AC_MSG_RESULT([not found])
 +        ])
 +])
-diff --git a/config/user.m4 b/config/user.m4
-index 3802437..f5a8827 100644
+Index: b/config/user.m4
+===================================================================
 --- a/config/user.m4
 +++ b/config/user.m4
 @@ -2,6 +2,7 @@ dnl #
@@ -48,14 +47,14 @@ index 3802437..f5a8827 100644
  dnl #
  AC_DEFUN([ZFS_AC_CONFIG_USER], [
 +	ZFS_AC_DKMS_INHIBIT
+ 	ZFS_AC_CONFIG_USER_MOUNT_HELPER
  	ZFS_AC_CONFIG_USER_UDEV
  	ZFS_AC_CONFIG_USER_SYSTEMD
- 	ZFS_AC_CONFIG_USER_SYSVINIT
-diff --git a/config/zfs-build.m4 b/config/zfs-build.m4
-index 5ec94a0..41eec88 100644
+Index: b/config/zfs-build.m4
+===================================================================
 --- a/config/zfs-build.m4
 +++ b/config/zfs-build.m4
-@@ -87,10 +87,10 @@ AC_DEFUN([ZFS_AC_CONFIG], [
+@@ -86,10 +86,10 @@ AC_DEFUN([ZFS_AC_CONFIG], [
  	ZFS_AC_CONFIG_ALWAYS
  
  	case "$ZFS_CONFIG" in

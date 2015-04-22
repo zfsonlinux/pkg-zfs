@@ -20,7 +20,7 @@
  */
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2013 by Delphix. All rights reserved.
+ * Copyright (c) 2012, 2014 by Delphix. All rights reserved.
  */
 
 /*
@@ -64,7 +64,7 @@ static int inject_next_id = 1;
  * Returns true if the given record matches the I/O in progress.
  */
 static boolean_t
-zio_match_handler(zbookmark_t *zb, uint64_t type,
+zio_match_handler(zbookmark_phys_t *zb, uint64_t type,
     zinject_record_t *record, int error)
 {
 	/*
@@ -525,6 +525,11 @@ zio_inject_fini(void)
 }
 
 #if defined(_KERNEL) && defined(HAVE_SPL)
-module_param(zio_injection_enabled, int, 0644);
-MODULE_PARM_DESC(zio_injection_enabled, "Enable fault injection");
+EXPORT_SYMBOL(zio_injection_enabled);
+EXPORT_SYMBOL(zio_inject_fault);
+EXPORT_SYMBOL(zio_inject_list_next);
+EXPORT_SYMBOL(zio_clear_fault);
+EXPORT_SYMBOL(zio_handle_fault_injection);
+EXPORT_SYMBOL(zio_handle_device_injection);
+EXPORT_SYMBOL(zio_handle_label_injection);
 #endif
