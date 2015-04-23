@@ -160,6 +160,9 @@ chmod u+x ${RPM_BUILD_ROOT}%{kmodinstdir_prefix}/*/extra/*/*/*
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Wed Jun  24 2015 Ned Bass <bass6@llnl.gov> - 0.6.4.2-1
+- No changes from 0.6.4-1
+- Bump version to match ZFS release
 * Wed Apr  8 2015 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.4-1
 - Released 0.6.4-1
 * Thu Jun 12 2014 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.3-1
