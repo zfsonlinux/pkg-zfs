@@ -17,24 +17,20 @@ fi
 if type log_failure_msg > /dev/null ; then
 	# LSB functions
 	log_begin_msg=log_begin_msg
-	log_end_msg=log_end_msg
 	log_failure_msg=log_failure_msg
 	log_progress_msg=log_progress_msg
 elif type success > /dev/null ; then
 	# Fedora/RedHat functions
 	log_begin_msg=success
-	log_end_msg=success
 	log_failure_msg=failure
 	log_progress_msg=echo -n
 elif type einfo > /dev/null ; then
 	# Gentoo functions
 	log_begin_msg=einfo
-	log_end_msg=einfo
 	log_failure_msg=eerror
 	log_progress_msg=echo -n
 else
 	log_begin_msg=echo -n
-	log_end_msg=echo
 	log_failure_msg=echo
 	log_progress_msg=echo -n
 fi
@@ -57,20 +53,19 @@ fi
 log_end_msg=log_end_msg
 
 # Paths to what we need
-ZFS="/sbin/zfs"
-ZPOOL="/sbin/zpool"
-ZPOOL_CACHE="/etc/zfs/zpool.cache"
+ZFS="@sbindir@/zfs"
+ZED="@sbindir@/zed"
+ZPOOL="@sbindir@/zpool"
+ZPOOL_CACHE="@sysconfdir@/zfs/zpool.cache"
 
-# Sencible defaults
+# Sensible defaults
 ZFS_MOUNT='yes'
 ZFS_UNMOUNT='yes'
-LOCKDIR=/var/lock/zfs
+LOCKDIR=/run/lock
 
 # Source zfs configuration, overriding the defaults
-if [ -f /etc/default/zfs ]; then
-	. /etc/default/zfs
-elif [ -f /etc/sysconfig/zfs ]; then
-	. /etc/sysconfig/zfs
+if [ -f /etc/@initconfdir@/zfs ]; then
+	. /etc/@initconfdir@/zfs
 fi
 
 [ ! -d "$LOCKDIR" ] && mkdir $LOCKDIR
@@ -90,12 +85,43 @@ zfs_installed() {
 	$log_end_msg 0
 }
 
+# Trigger udev and wait for it to settle.
+udev_trigger() {
+	if [ -x /sbin/udevadm ]; then
+		/sbin/udevadm trigger --action=change --subsystem-match=block
+		/sbin/udevadm settle
+	elif [ -x /sbin/udevsettle ]; then
+		/sbin/udevtrigger
+		/sbin/udevsettle
+	fi
+}
+
+# From scripts/common.sh
+wait_udev() {
+	local DEVICE=$1
+	local DELAY=$2
+	local COUNT=0
+
+	udev_trigger
+	while [ ! -e ${DEVICE} ]; do
+		if [ ${COUNT} -gt ${DELAY} ]; then
+			return 1
+		fi
+
+		let COUNT=${COUNT}+1
+	        sleep 1
+	done
+
+	return 0
+}
+
 # Do a lot of checks to make sure it's 'safe' to continue with import/mount etc
 checksystem()
 {
 	if [ -z "$init" ]; then
-		# Not interactive
-		grep -qiE '(^|[^\\](\\\\)* )zfs=(off|no)( |$)' /proc/cmdline && exit 3
+		# Not interactive and we don't want to import pool or mount filesystems.
+		# Won't of course work if you're booting from ZFS...
+		grep -qiE '(^|[^\\](\\\\)* )zfs=(off|no|0)( |$)' /proc/cmdline && exit 3
 	fi
 
 	[ -f "$LOCKDIR/$servicename" ] && return 3
@@ -105,14 +131,6 @@ checksystem()
 		$log_failure_msg "not installed"
 		return 5
 	}
-
-	# Requires selinux policy which has not been written.
-	if [ -r "/selinux/enforce" ] &&
-	   [ "$(cat /selinux/enforce)" == "1" ]; then
-
-		$log_failure_msg "SELinux ZFS policy required"
-		return 4
-	fi
 
 	# Delay until all required block devices are present.
 	if [ -x /sbin/udevadm ]; then
@@ -131,7 +149,9 @@ checksystem()
 		}
 		$log_end_msg 0
 	fi
-	sleep 1
+
+	# Just make sure that /dev/zfs is created.
+	wait_udev /dev/zfs 15
 
 	# fix mtab to include already-mounted fs filesystems, in case there are any
 	# we ONLY do this if mtab does not point to /proc/mounts
@@ -160,20 +180,6 @@ checksystem()
 		# should we break here? People doing this should know what they
 		# do, thus i'm not breaking here.
 	fi
-}
-
-depend()
-{
-	# Try to allow people to mix and match fstab with ZFS in a way that makes sense.
-	if [ "$(mountinfo -s /)" == 'zfs' ]; then
-		before localmount
-	else
-		after localmount
-	fi
-
-	# bootmisc will log to /var which may be a different zfs than root.
-	before bootmisc logger
-	keyword -lxc -openvz -prefix -vserver
 }
 
 reregister_mounts() {
@@ -230,12 +236,12 @@ in_mtab() {
 # first parameter is a regular expression that filters fstab
 read_fstab() {
 	local i=0
-        for fs in "${!FSTAB[@]}" ; do unset FSTAB["$fs"] ; done
-        while read -r fs mntpnt fstype opts blah ; do
-                fs=`printf '%b\n' "$fs"`
-                FSTAB["$i"]=$mntpnt
+	for fs in "${!FSTAB[@]}" ; do unset FSTAB["$fs"] ; done
+	while read -r fs mntpnt fstype opts blah ; do
+		fs=`printf '%b\n' "$fs"`
+		FSTAB["$i"]=$mntpnt
 		i=$((i + 1))
-        done < <(grep -E "$1" /etc/fstab)
+	done < <(grep -E "$1" /etc/fstab)
 }
 
 in_fstab() {
