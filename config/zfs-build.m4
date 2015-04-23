@@ -311,6 +311,15 @@ AC_DEFUN([ZFS_AC_DEFAULT_PACKAGE], [
 
 	AC_MSG_RESULT([$DEFAULT_INIT_SCRIPT])
 	AC_SUBST(DEFAULT_INIT_SCRIPT)
+
+	AC_MSG_CHECKING([default init config direectory])
+	AS_IF([test -d "/etc/default"], [
+		DEFAULT_INITCONF_DIR="/etc/default"
+	], [test -d "/etc/sysconfig"], [
+		DEFAULT_INITCONF_DIR="/etc/sysconfig"
+	])
+	AC_MSG_RESULT([$DEFAULT_INITCONF_DIR])
+	AC_SUBST(DEFAULT_INITCONF_DIR)
 ])
 
 dnl #

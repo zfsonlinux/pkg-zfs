@@ -2,7 +2,13 @@
 lib/udev
 sbin
 usr/share/man
-etc/zfs/zed.d
+etc/default/zfs
+etc/init.d/zfs-import
+etc/init.d/zfs-mount
+etc/init.d/zfs-share
+etc/init.d/zfs-zed
+etc/zfs/zed.d/*
+etc/zfs/common.init
 usr/lib/x86_64-linux-gnu/zfs/zed.d
 usr/sbin/*
 lib/systemd/system
