@@ -1,0 +1,124 @@
+#!@SHELL@
+#
+# zfs-zed
+#
+# chkconfig:    2345 01 99
+# description:  This script will start and stop the ZFS Event Daemon.
+# probe: true
+#
+### BEGIN INIT INFO
+# Provides:          zfs-zed
+# Required-Start:    mtab
+# Required-Stop:     $local_fs mtab
+# Default-Start:     S
+# Default-Stop:      0 1 6
+# X-Start-Before:    checkfs
+# X-Stop-After:      zfs-import
+# Short-Description: ZFS Event Daemon
+# Description:       zed monitors ZFS events. When a zevent is posted, zed
+#                    will run any scripts that have been enabled for the
+#                    corresponding zevent class.
+### END INIT INFO
+#
+# NOTE: Not having '$local_fs' on Required-Start but only on Required-Stop
+#       is on purpose. If we have '$local_fs' in both (and X-Start-Before=checkfs)
+#       we get conflicts - zed and import needs to be started extremly early,
+#       but not stopped TO late.
+
+# Source the common init script
+. @sysconfdir@/zfs/common.init
+
+ZED_NAME="zed"
+ZED_PIDFILE="@runstatedir@/$ZED_NAME.pid"
+
+# Exit if the package is not installed
+[ -x "$ZED" ] || exit 0
+
+# ----------------------------------------------------
+
+depend()
+{
+	# Try to allow people to mix and match fstab with ZFS in a way that makes sense.
+	if [ "$(mountinfo -s /)" = 'zfs' ]
+	then
+		before localmount
+	else
+		after localmount
+	fi
+
+	# bootmisc will log to /var which may be a different zfs than root.
+	before bootmisc logger
+	use mtab
+	keyword -lxc -openvz -prefix -vserver
+}
+
+start()
+{
+	check_module_loaded || exit 0
+
+	ZED_ARGS="$ZED_ARGS -p $ZED_PIDFILE"
+	
+	zfs_action "Starting ZFS Event Daemon" zfs_daemon_start \
+	    "$ZED_PIDFILE" "$ZED" "$ZED_ARGS"
+	return $?
+}
+
+stop()
+{
+	check_module_loaded || exit 0
+
+	zfs_action "Stopping ZFS Event Daemon" zfs_daemon_stop \
+	    "$ZED_PIDFILE" "$ZED" "$ZED_NAME"
+	RETVAL=$?
+
+	[ "$RETVAL" == 0 ] && rm -f "$ZED_PIDFILE"
+
+	return $RETVAL
+}
+
+status()
+{
+	check_module_loaded || exit 0
+
+	zfs_daemon_status "$ZED" "$ZED_NAME"
+	return $?
+}
+
+reload()
+{
+	check_module_loaded || exit 0
+
+	zfs_action "Reloading ZFS Event Daemon" zfs_daemon_reload \
+	    "$PIDFILE" "$ZED_NAME"
+	return $?
+}
+
+# ----------------------------------------------------
+
+if [ ! -e /etc/gentoo-release ]; then
+	case "$1" in
+		start)
+			start
+			;;
+		stop)
+			stop
+			;;
+		status)
+			status
+			;;
+		reload)
+			reload
+			;;
+		restart)
+			stop
+			start
+			;;
+		*)
+			[ -n "$1" ] && echo "Error: Unknown command $1."
+			echo "Usage: $0 {start|stop|status|reload|restart}"
+			exit 1
+			;;
+	esac
+
+	exit $?
+fi
