@@ -21,7 +21,7 @@ loss of data, please use zfs-initramfs with caution.
  -- Aron Xu <aron@debian.org>  Sat, 3 Aug 2013 03:23:11 +0800
 
 3. Additional patches and Pull Requests on top of the core zfs
-   softwares have been added. This to give additional functionality
+   software have been added. This to give additional functionality
    not yet availible or merged.
 
    These are:

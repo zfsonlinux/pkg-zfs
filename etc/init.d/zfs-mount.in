@@ -1,132 +1,66 @@
 #!/bin/bash
 #
-# zfs-mount     This script will import/mount/umount/export the zfs filesystems.
+# zfs-mount     This script will mount/umount the zfs filesystems.
 #
 # chkconfig:    2345 01 99
-# description:  This script will import/mount/umount/export the zfs
-#               filesystems during system boot/shutdown.  Configuration of
-#               which filesystems should be mounted is handled by the zfs
-#               'mountpoint' and 'canmount' properties.  See the zfs(8) man
-#               page for details.
+# description:  This script will mount/umount the zfs filesystems during
+#               system boot/shutdown. Configuration of which filesystems
+#               should be mounted is handled by the zfs 'mountpoint' and
+#               'canmount' properties. See the zfs(8) man page for details.
 #               It is also responsible for all userspace zfs services.
 # probe: true
 #
 ### BEGIN INIT INFO
-# Provides:       zvol zfs zfs-mount
-# Required-Start: $local_fs
-# Required-Stop:  
-# X-Stop-After:   umountfs
-# Default-Start:  2 3 4 5
-# Default-Stop:   0 1 6
-# Short-Description: Import and mount ZFS pools, filesystems and volumes
-# Description: Run the `zfs import`, `zfs mount -a`, `zfs umount -a` or
-#              `zfs export` command.
+# Provides:          zvol zfs zfs-mount
+# Required-Start:    $local_fs
+# Required-Stop:     
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Mount ZFS filesystems and volumes
+# Description: Run the `zfs mount -a` or `zfs umount -a` commands.
 ### END INIT INFO
 
 # Source the common init script
-. /etc/zfs/common.init
+. @sysconfdir@/zfs/common.init
 servicename=zfs-mount
 
 # ----------------------------------------------------
 
-# Import all pools
-do_import()
-{
-	already_imported=$(zpool list -H -oname)
-	available_pools=$(zpool import | grep pool: | sed 's@.*: @@')
-
-	for pool in $available_pools; do
-		# We have pools that haven't been imported - import them
-		if [ -n "$ZFS_POOL_EXCEPTIONS" ]; then
-			for exception in $ZFS_POOL_EXCEPTIONS; do
-				# ... unless we've specified them as NOT
-				# to import.
-				[ "$pool" == "$exception" ] && continue 2
-			done
-		fi
-
-		if [ "$USE_DISK_BY_ID" == 'yes' ]; then
-			# Really the default/prefered way.
-			for dir in /dev/disk/by-* /dev; do
-				$log_begin_msg "Importing ZFS pool $pool (using $dir)"
-				"$ZPOOL" import -d $dir -N $pool 2>/dev/null
-				RET=$?
-				if [ "$RET" -eq 0 ]; then
-					POOL_IMPORTED=1
-					$log_end_msg $RET
-					continue 2
-				fi
-			done
-		elif [ -f "$ZPOOL_CACHE" ] ; then
-			# Fallback - use a cache file
-			$log_begin_msg "Importing ZFS pools (using cache file)"
-			"$ZPOOL" import -c "$ZPOOL_CACHE" -N $pool 2>/dev/null
-			RET=$?
-			if [ "$RET" -eq 0 ]; then
-				POOL_IMPORTED=1
-				$log_end_msg $RET
-				continue 2
-			fi
-		else
-			# Last ditch attempt, try /dev!
-			$log_begin_msg "Importing ZFS pools"
-			"$ZPOOL" import -N $pool 2>/dev/null
-			RET=$?
-			if [ "$RET" -eq 0 ]; then
-				POOL_IMPORTED=1
-				$log_end_msg $RET
-				continue 2
-			fi
-
-			$log_end_msg $ret
-		fi
-	done
-
-	if [ -n "$already_imported" -a -z "$available_pools" ]; then
-		# All pools imported
-		POOL_IMPORTED=1
-		$log_end_msg $RET
-	fi
-}
-
-# Export all pools
-do_export()
-{
-	$log_begin_msg "Exporting ZFS pools"
-	"$ZPOOL" list -H -o name | \
-	    while read pool; do
-		"$ZPOOL" export $pool
-	    done
-	rmmod zfs
-	$log_end_msg 0 # return code not that important.
-}
-
 # Mount all datasets/filesystems
 do_mount()
 {
-	if [ -n "$POOL_IMPORTED" ]; then
+	if [ -f "$LOCKDIR/zfs-import" ]; then
 		[ "$VERBOSE_MOUNT" == 'yes' ] && verbose=v
 		[ "$DO_OVERLAY_MOUNTS" == 'yes' ] && overlay=O
 
 		$log_begin_msg "Mounting ZFS filesystems not yet mounted"
 		$ZFS mount -a$verbose$overlay $MOUNT_EXTRA_OPTIONS
 		RET=$?
-
 		if [ $RET != 0 ] ; then
 			$log_end_msg $RET
 			exit $RET
 		fi
 		$log_end_msg 0
 
-		read_mtab  "^/dev/(zd|zvol)"
-		read_fstab "^/dev/(zd|zvol)"
+		FS_MOUNTED=1
 
 		$log_begin_msg "Mounting volumes registered in fstab: "
+		read_mtab  "^/dev/(zd|zvol)"
+		read_fstab "^/dev/(zd|zvol)"
 		for volume in "${!FSTAB[@]}" ; do
-			if in_mtab "$volume" ; then continue ; fi
+			in_mtab "$volume" && continue
 
 			$log_progress_msg "$volume "
 			mount "$volume"
+		done
+
+		read_mtab  "zfs"
+		read_fstab "zfs"
+		for fs in "${!FSTAB[@]}" ; do
+			in_mtab "${FSTAB[$fs]}" && continue
+
+			$log_progress_msg "${FSTAB[$fs]} "
+			mount "${FSTAB[$fs]}"
 		done
 
 		$log_end_msg 0
@@ -163,19 +97,6 @@ do_unmount()
 	$log_end_msg 0
 }
 
-# Output the status and list of pools
-status()
-{
-	[ ! -f "$LOCKDIR/$servicename" ] && return 3
-
-	if ! grep -q zfs /proc/modules ; then
-		# module not loaded, no point in running zpool.
-		exit 0
-	fi
-
-	"$ZPOOL" status && echo "" && "$ZPOOL" list
-}
-
 start()
 {
 	checksystem && {
@@ -185,7 +106,6 @@ start()
 				;;
 		esac
 
-		do_import
 		do_mount
 
 		touch "$LOCKDIR/$servicename"
@@ -212,7 +132,6 @@ stop()
 	fi
 
 	do_unmount
-	do_export
 
 	rm -f "$LOCKDIR/$servicename"
 }
@@ -226,15 +145,12 @@ case "$1" in
 	(stop)
 		stop
 		;;
-	(status)
-		status
-		;;
 	(force-reload|condrestart|reload|restart)
 		# no-op
 		;;
 	(*)
 		[ -n "$1" ] && echo "Error: Unknown command $1."
-		echo "Usage: $0 {start|stop|status}"
+		echo "Usage: $0 {start|stop}"
 		exit 3
 		;;
 esac
