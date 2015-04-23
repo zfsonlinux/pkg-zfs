@@ -1,3 +1,9 @@
+zfs-linux (0.6.4-1-11) jessie; urgency=low
+
+  * New init scripts from PR 3337.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 30 Apr 2015 15:29:03 +0200
+
 zfs-linux (0.6.4-1-10) jessie; urgency=low
 
   * Change hierarchical naming of clones for boot-from-snapshot.
