@@ -1,0 +1,68 @@
+#!/bin/bash
+#
+# zfs-share     This script will network share zfs filesystems and volumes.
+#
+# chkconfig:    2345 30 99
+# description:  Run the `zfs share -a` or `zfs unshare -a` commands
+#               for controlling iSCSI, NFS, or CIFS network shares.
+# probe: true
+#
+### BEGIN INIT INFO
+# Provides:          zfs-share
+# Required-Start:    $local_fs $network $remote_fs zfs-mount
+# Required-Stop:     $local_fs $network $remote_fs zfs-mount
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Should-Start:      iscsi iscsitarget istgt scst @NFS_SRV@ samba samba4 zfs-mount
+# Should-Stop:       iscsi iscsitarget istgt scst @NFS_SRV@ samba samba4 zfs-mount
+# Short-Description: Network share ZFS datasets and volumes.
+# Description:       Run the `zfs share -a` or `zfs unshare -a` commands
+#                    for controlling iSCSI, NFS, or CIFS network shares.
+### END INIT INFO
+
+# Source the common init script
+. @sysconfdir@/zfs/common.init
+servicename=zfs-share
+
+# ----------------------------------------------------
+
+start()
+{
+	case "$ZFS_SHARE" in
+		([Oo][Ff][Ff]|[Nn][Oo]|'')
+			exit 0
+			;;
+	esac
+
+	zfs_action "Sharing ZFS filesystems" "$ZFS" share -a
+}
+
+stop()
+{
+	case "$ZFS_UNSHARE" in
+		([Oo][Ff][Ff]|[Nn][Oo]|'')
+			exit 0
+			;;
+	esac
+
+	check_module_loaded || exit 0
+
+	zfs_action "Unsharing ZFS filesystems" "$ZFS" unshare -a
+}
+
+case "$1" in
+	(start)
+		start
+		;;
+	(stop)
+		stop
+		;;
+	(force-reload|reload|restart|status)
+		# no-op
+		;;
+	(*)
+		[ -n "$1" ] && echo "Error: Unknown command $1."
+		echo "Usage: $0 {start|stop}"
+		exit 3
+		;;
+esac
