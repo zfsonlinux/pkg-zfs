@@ -1,3 +1,9 @@
+zfs-linux (0.6.4-1-7) jessie; urgency=low
+
+  * Document all additional PRs and patches in README.Debian.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 23 Apr 2015 11:28:20 +0200
+
 zfs-linux (0.6.4-1-6) jessie; urgency=low
 
   * Fix nfs.c:update_host_list() to not segfault on faulty options.
