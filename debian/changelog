@@ -1,3 +1,9 @@
+zfs-linux (0.6.4-1-8) jessie; urgency=low
+
+  * New upstream GIT tag - zfs-0.6.4.1.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 24 Apr 2015 19:03:03 +0200
+
 zfs-linux (0.6.4-1-7) jessie; urgency=low
 
   * Document all additional PRs and patches in README.Debian.
