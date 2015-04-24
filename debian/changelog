@@ -1,3 +1,9 @@
+zfs-linux (0.6.4-1.1-1) jessie; urgency=low
+
+  * Merge new upstream tag zfs-0.6.4.1.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 24 Apr 2015 18:32:07 +0200
+
 zfs-linux (0.6.4-1-2.2) jessie; urgency=low
 
   * Document all additional PRs and patches in README.Debian.
