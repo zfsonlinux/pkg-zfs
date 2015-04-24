@@ -1,3 +1,20 @@
+zfs-linux (0.6.4.1-1~trusty) trusty; urgency=low
+
+  [ Tim Chase ]
+  * Allocate zfs_znode_cache on the Linux slab
+
+  [ Brian Behlendorf ]
+  * Mark additional functions as PF_FSTRANS
+
+  [ Chris Dunlap ]
+  * Fix io-spare.sh to work with disk vdevs
+
+  [ Brian Behlendorf ]
+  * Extend PF_FSTRANS critical regions
+  * Tag zfs-0.6.4.1
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 24 Apr 2015 16:37:54 -0500
+
 zfs-linux (0.6.4-3~trusty) trusty; urgency=low
 
   [ SenH ]
