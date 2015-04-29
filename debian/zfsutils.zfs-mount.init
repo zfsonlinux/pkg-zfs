@@ -42,6 +42,13 @@ do_import()
 		    grep pool: | sed 's@.*: @@')
 	fi
 
+	# TODO:
+	#   If there's only ever been one pool on the system and it have been recreated
+	#   WITHOUT using 'labelclear' first, it might show up in 'available_pools'. But
+	#   _most likely_ can't be imported any more.
+	#   POOL_IMPORTED will therefor be unset!
+	#   => Unknown what to do about this... Somehow use the 'state: UNAVAIL' for this?
+
 	for pool in $available_pools; do
 		# We have pools that haven't been imported - import them
 		if [ -n "$ZFS_POOL_EXCEPTIONS" ]; then
@@ -54,8 +61,9 @@ do_import()
 
 		if [ "$USE_DISK_BY_ID" == 'yes' ]; then
 			# Really the default/prefered way.
+			$log_begin_msg "Importing ZFS pool $pool using:"
 			for dir in /dev/disk/by-vdev /dev/disk/by-* /dev; do
-				$log_begin_msg "Importing ZFS pool $pool (using $dir)"
+				$log_progress_msg "$dir "
 				"$ZPOOL" import -d $dir -N $pool 2>/dev/null
 				RET=$?
 				if [ "$RET" -eq 0 ]; then
