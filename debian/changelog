@@ -1,3 +1,14 @@
+zfs-linux (0.6.4-1-9) jessie; urgency=low
+
+  * Missing 'log_end_msg' command variable translation added to
+    init + initrd scripts.
+  * Move and fix the log begin message "Importing ZFS pool ..." to
+    improve readability.
+  * Some minor cleanups in verbose output in helper functions fixed.
+  * An erroneous DBG echo removed.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 29 Apr 2015 14:16:59 +0200
+
 zfs-linux (0.6.4-1-8) jessie; urgency=low
 
   * New upstream GIT tag - zfs-0.6.4.1.
