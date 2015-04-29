@@ -17,20 +17,24 @@ fi
 if type log_failure_msg > /dev/null ; then
 	# LSB functions
 	log_begin_msg=log_begin_msg
+	log_end_msg=log_end_msg
 	log_failure_msg=log_failure_msg
 	log_progress_msg=log_progress_msg
 elif type success > /dev/null ; then
 	# Fedora/RedHat functions
 	log_begin_msg=success
+	log_end_msg=success
 	log_failure_msg=failure
 	log_progress_msg=echo -n
 elif type einfo > /dev/null ; then
 	# Gentoo functions
 	log_begin_msg=einfo
+	log_end_msg=einfo
 	log_failure_msg=eerror
 	log_progress_msg=echo -n
 else
 	log_begin_msg=echo -n
+	log_end_msg=echo
 	log_failure_msg=echo
 	log_progress_msg=echo -n
 fi
