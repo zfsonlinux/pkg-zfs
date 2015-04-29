@@ -12,20 +12,24 @@
 if type log_failure_msg > /dev/null 2>&1 ; then
 	# LSB functions
 	log_begin_msg=log_begin_msg
+	log_end_msg=log_end_msg
 	log_failure_msg=log_failure_msg
 	log_progress_msg=log_progress_msg
 elif type success > /dev/null 2>&1 ; then
 	# Fedora/RedHat functions
 	log_begin_msg=success
+	log_end_msg=success
 	log_failure_msg=failure
 	log_progress_msg="echo -n"
 elif type einfo > /dev/null 2>&1 ; then
 	# Gentoo functions
 	log_begin_msg=einfo
+	log_end_msg=einfo
 	log_failure_msg=eerror
 	log_progress_msg="echo -n"
 else
 	log_begin_msg="echo -n"
+	log_end_msg=echo
 	log_failure_msg=echo
 	log_progress_msg="echo -n"
 fi
@@ -194,7 +198,6 @@ mount_fs()
 	[ -n "$ZFS_SNAPSHOT_BOOT" ] && newfs="$fs"_"$ZFS_SNAPSHOT_BOOT"
 
 	mountpoint=$(get_fs_value $fs mountpoint) # Need the _original_ datasets mountpoint!
-	[ "$quiet" != "y" ] && $log_begin_msg "Mounting '$newfs' on '$rootmnt/$mountpoint'"
 	if [ "$mountpoint" = "legacy" ]; then
 		ZFS_CMD="mount -t zfs"
 
@@ -206,9 +209,10 @@ mount_fs()
 	else
 		ZFS_CMD="mount -o zfsutil -t zfs"
 	fi
+	[ "$quiet" != "y" ] && $log_begin_msg "Mounting '$newfs' on '$rootmnt/$mountpoint'"
+	[ -n "$ZPOOL_DEBUG" ] && $log_begin_msg "CMD: '$ZFS_CMD $newfs $rootmnt/$mountpoint'"
 	ZFS_STDERR=$($ZFS_CMD ${newfs} ${rootmnt}/${mountpoint} 2>&1)
 	ZFS_ERROR=$?
-	[ "$quiet" != "y" ] && $log_end_msg
 
 	if [ "$ZFS_ERROR" != 0 ]
 	then
@@ -221,6 +225,8 @@ mount_fs()
 		echo "Failed to mount $fs on $rootmnt/$mountpoint."
 		echo "Manually mount the filesystem and exit."
 		/bin/sh
+	else
+	    [ "$quiet" != "y" ] && $log_end_msg
 	fi
 }
 
@@ -286,7 +292,7 @@ destroy_fs()
 	local fs=$1
 	local ZFS_CMD ZFS_STDERR ZFS_ERROR
 
-	[ "$quiet" != "y" ] && $log_begin_msg "Destroying clone destination dataset"
+	[ "$quiet" != "y" ] && $log_begin_msg "Destroying clone destination dataset '$fs'"
 	ZFS_CMD="zfs destroy $fs"
 	ZFS_STDERR=$($ZFS_CMD 2>&1)
 	ZFS_ERROR=$?
@@ -321,7 +327,7 @@ clone_snap()
 	# + We don't want this filesystem to be automatically mounted, we
 	#   want controll over this here and nowhere else.
 	# + We don't need any mountpoint set for the same reason.
-	[ "$quiet" != "y" ] && $log_begin_msg "Cloning $snap to $fs"
+	[ "$quiet" != "y" ] && $log_begin_msg "Cloning '$snap' to '$fs'"
 	ZFS_CMD="zfs clone -o canmount=noauto -o mountpoint=none $snap $destfs"
 	ZFS_STDERR=$($ZFS_CMD 2>&1)
 	ZFS_ERROR=$?
@@ -388,7 +394,6 @@ rollback_snap()
 	fi
 
 	# The first fs must be the root filesystem.
-	echo "DBG: ZFS_SNAPSHOT_BOOT(1)='$ZFS_SNAPSHOT_BOOT'"
 	if [ -z "$ZFS_SNAPSHOT_BOOT" ]
 	then
 		# Remember the snapshot name for later
