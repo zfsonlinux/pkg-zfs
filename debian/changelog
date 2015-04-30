@@ -1,3 +1,10 @@
+zfs-linux (0.6.4-1-10-wheezy) wheezy; urgency=low
+
+  * Change hierarchical naming of clones for boot-from-snapshot.
+    Thanx to 'bisector' for patch.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 30 Apr 2015 13:27:26 +0200
+
 zfs-linux (0.6.4-1-9-wheezy) wheezy; urgency=low
 
   * Missing 'log_end_msg' command variable translation added to
