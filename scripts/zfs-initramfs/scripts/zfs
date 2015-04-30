@@ -188,6 +188,7 @@ mount_fs()
 {
 	local fs=$1
 	local newfs mountpoint ZFS_CMD ZFS_STDERR ZFS_ERROR
+	local fssub
 
 	# As long as it's NOT one of (our) clones, take the next.
 	[ $(get_fs_value $fs origin) != "-" ] && continue
@@ -195,7 +196,10 @@ mount_fs()
 	newfs=$fs
 
 	# If we're booting from snapshot(s), then overwrite the 'fs' value.
-	[ -n "$ZFS_SNAPSHOT_BOOT" ] && newfs="$fs"_"$ZFS_SNAPSHOT_BOOT"
+	if [ -n "$ZFS_SNAPSHOT_BOOT" ]; then
+		fssub="${fs##${ZFS_BOOTFS_ORIG}}"
+		newfs="${ZFS_BOOTFS_ORIG}_${ZFS_SNAPSHOT_BOOT}${fssub}"
+	fi
 
 	mountpoint=$(get_fs_value $fs mountpoint) # Need the _original_ datasets mountpoint!
 	if [ "$mountpoint" = "legacy" ]; then
@@ -328,7 +332,7 @@ clone_snap()
 	#   want controll over this here and nowhere else.
 	# + We don't need any mountpoint set for the same reason.
 	[ "$quiet" != "y" ] && $log_begin_msg "Cloning '$snap' to '$fs'"
-	ZFS_CMD="zfs clone -o canmount=noauto -o mountpoint=none $snap $destfs"
+	ZFS_CMD="zfs clone -o canmount=noauto -o mountpoint=none $snap $fs"
 	ZFS_STDERR=$($ZFS_CMD 2>&1)
 	ZFS_ERROR=$?
 
@@ -343,26 +347,12 @@ clone_snap()
 		echo ""
 		echo "Failed to clone snapshot."
 		echo "Make sure that the any problems are corrected and then make sure"
-		echo "that the dataset '$destfs' exists and is bootable."
+		echo "that the dataset '$fs' exists and is bootable."
 		/bin/sh
 	
 		ZFS_ERROR=0
 	else
 		[ "$quiet" != "y" ] && $log_end_msg
-	fi
-	
-	# The first fs must be the root filesystem.
-	if [ -z "$ZFS_SNAPSHOT_BOOT" ]
-	then
-		# Remember the snapshot name for later
-		# (when/if we need to mount /usr, /var etc).
-		ZFS_SNAPSHOT_BOOT="${snap##*@}"
-
-		# Remember the original filesystem
-		ZFS_BOOTFS_ORIG="${snap%%@*}"
-
-		# This is now the root filesystem dataset.
-		ZFS_BOOTFS="$fs"
 	fi
 }
 
@@ -371,7 +361,7 @@ rollback_snap()
 	local snap=$1
 	local ZFS_CMD ZFS_STDERR ZFS_ERROR
 
-	[ "$quiet" != "y" ] && $log_begin_msg "Cloning $snap to $fs"
+	[ "$quiet" != "y" ] && $log_begin_msg "Rollback $snap"
 	ZFS_CMD="zfs rollback -Rf $snap"
 	ZFS_STDERR=$($ZFS_CMD 2>&1)
 	ZFS_ERROR=$?
@@ -447,6 +437,10 @@ EOT
 # This is the main function.
 mountroot()
 {
+	local snaporig
+	local snapsub
+	local destfs
+
 	# ----------------------------------------------------------------
 	# I N I T I A L   S E T U P
 
@@ -663,8 +657,24 @@ mountroot()
 			# Get all snapshots, recursivly (might need to clone /usr, /var etc as well).
 			for snap in $(zfs list -H -o name -t snapshot -r "${ZFS_BOOTFS%%@*}" | grep "${ZFS_BOOTFS##*@}")
 			do
-				# Replace the '@' separating dataset and snapshot name with a underscore
-				destfs=$(echo "$snap" | sed 's,@,_,')
+				# The first fs must be the root filesystem.
+				if [ -z "$ZFS_SNAPSHOT_BOOT" ]
+				then
+					# Remember the snapshot name for later
+					# (when/if we need to mount /usr, /var etc).
+					ZFS_SNAPSHOT_BOOT="${snap##*@}"
+			
+					# Remember the original filesystem
+					ZFS_BOOTFS_ORIG="${snap%%@*}"
+			
+					# This is now the root filesystem dataset.
+					ZFS_BOOTFS="$fs"
+				fi
+
+				# Add _{snapshot} to the toplevel root name of the snapshot filesystem 
+				snaporig="${snap%%@*}"
+				snapsub="${snaporig##${ZFS_BOOTFS_ORIG}}"
+				destfs="${ZFS_BOOTFS_ORIG}_${ZFS_SNAPSHOT_BOOT}$snapsub"
 
 				# If the destination dataset for the clone already exists, destroy it.
 				[ $(get_fs_value $destfs type) ] && destroy_fs $destfs
@@ -674,7 +684,7 @@ mountroot()
 					# Rollback snapshot
 					rollback_snap $snap
 				else
-					# Clone the snapshot into it's now filesystem
+					# Clone the snapshot into its own filesystem
 					clone_snap $snap $destfs
 				fi
 			done
