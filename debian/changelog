@@ -1,3 +1,9 @@
+zfs-linux (0.6.4-12-0c60cc-wheezy) wheezy; urgency=low
+
+  * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 04 May 2015 19:11:56 +0200
+
 zfs-linux (0.6.4-11-wheezy) wheezy; urgency=low
 
   * New init scripts from PR 3337.
