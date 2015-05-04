@@ -153,9 +153,6 @@ typedef enum zio_priority {
 	ZIO_PRIORITY_NOW		/* non-queued i/os (e.g. free) */
 } zio_priority_t;
 
-#define	ZIO_PIPELINE_CONTINUE		0x100
-#define	ZIO_PIPELINE_STOP		0x101
-
 enum zio_flag {
 	/*
 	 * Flags inherited by gang, ddt, and vdev children,
@@ -427,6 +424,7 @@ struct zio {
 	hrtime_t	io_delta;	/* vdev queue service delta */
 	uint64_t	io_delay;	/* vdev disk service delta (ticks) */
 	avl_node_t	io_queue_node;
+	avl_node_t	io_offset_node;
 
 	/* Internal pipeline state */
 	enum zio_flag	io_flags;

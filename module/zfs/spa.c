@@ -23,6 +23,7 @@
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2013 by Delphix. All rights reserved.
  * Copyright (c) 2013, 2014, Nexenta Systems, Inc.  All rights reserved.
+ * Copyright (c) 2014 Spectra Logic Corporation, All rights reserved.
  */
 
 /*
@@ -237,7 +238,8 @@ spa_prop_get_config(spa_t *spa, nvlist_t **nvp)
 		 */
 		if (pool->dp_free_dir != NULL) {
 			spa_prop_add_list(*nvp, ZPOOL_PROP_FREEING, NULL,
-			    pool->dp_free_dir->dd_phys->dd_used_bytes, src);
+			    dsl_dir_phys(pool->dp_free_dir)->dd_used_bytes,
+			    src);
 		} else {
 			spa_prop_add_list(*nvp, ZPOOL_PROP_FREEING,
 			    NULL, 0, src);
@@ -245,7 +247,8 @@ spa_prop_get_config(spa_t *spa, nvlist_t **nvp)
 
 		if (pool->dp_leak_dir != NULL) {
 			spa_prop_add_list(*nvp, ZPOOL_PROP_LEAKED, NULL,
-			    pool->dp_leak_dir->dd_phys->dd_used_bytes, src);
+			    dsl_dir_phys(pool->dp_leak_dir)->dd_used_bytes,
+			    src);
 		} else {
 			spa_prop_add_list(*nvp, ZPOOL_PROP_LEAKED,
 			    NULL, 0, src);
@@ -663,7 +666,8 @@ spa_prop_set(spa_t *spa, nvlist_t *nvp)
 			 * feature descriptions object.
 			 */
 			error = dsl_sync_task(spa->spa_name, NULL,
-			    spa_sync_version, &ver, 6);
+			    spa_sync_version, &ver,
+			    6, ZFS_SPACE_CHECK_RESERVED);
 			if (error)
 				return (error);
 			continue;
@@ -675,7 +679,7 @@ spa_prop_set(spa_t *spa, nvlist_t *nvp)
 
 	if (need_sync) {
 		return (dsl_sync_task(spa->spa_name, NULL, spa_sync_props,
-		    nvp, 6));
+		    nvp, 6, ZFS_SPACE_CHECK_RESERVED));
 	}
 
 	return (0);
@@ -756,7 +760,7 @@ spa_change_guid(spa_t *spa)
 	guid = spa_generate_guid(NULL);
 
 	error = dsl_sync_task(spa->spa_name, spa_change_guid_check,
-	    spa_change_guid_sync, &guid, 5);
+	    spa_change_guid_sync, &guid, 5, ZFS_SPACE_CHECK_RESERVED);
 
 	if (error == 0) {
 		spa_config_sync(spa, B_FALSE, B_TRUE);
@@ -1093,6 +1097,8 @@ spa_activate(spa_t *spa, int mode)
 
 	list_create(&spa->spa_config_dirty_list, sizeof (vdev_t),
 	    offsetof(vdev_t, vdev_config_dirty_node));
+	list_create(&spa->spa_evicting_os_list, sizeof (objset_t),
+	    offsetof(objset_t, os_evicting_node));
 	list_create(&spa->spa_state_dirty_list, sizeof (vdev_t),
 	    offsetof(vdev_t, vdev_state_dirty_node));
 
@@ -1121,9 +1127,12 @@ spa_deactivate(spa_t *spa)
 	ASSERT(spa->spa_async_zio_root == NULL);
 	ASSERT(spa->spa_state != POOL_STATE_UNINITIALIZED);
 
+	spa_evicting_os_wait(spa);
+
 	txg_list_destroy(&spa->spa_vdev_txg_list);
 
 	list_destroy(&spa->spa_config_dirty_list);
+	list_destroy(&spa->spa_evicting_os_list);
 	list_destroy(&spa->spa_state_dirty_list);
 
 	taskq_cancel_id(system_taskq, spa->spa_deadman_tqid);
@@ -2134,6 +2143,11 @@ spa_load(spa_t *spa, spa_load_state_t state, spa_import_type_t type,
 		    mosconfig, &ereport);
 	}
 
+	/*
+	 * Don't count references from objsets that are already closed
+	 * and are making their way through the eviction process.
+	 */
+	spa_evicting_os_wait(spa);
 	spa->spa_minref = refcount_count(&spa->spa_refcount);
 	if (error) {
 		if (error != EEXIST) {
@@ -3264,9 +3278,12 @@ spa_feature_stats_from_cache(spa_t *spa, nvlist_t *features)
 static void
 spa_add_feature_stats(spa_t *spa, nvlist_t *config)
 {
-	nvlist_t *features = spa->spa_feat_stats;
+	nvlist_t *features;
 
 	ASSERT(spa_config_held(spa, SCL_CONFIG, RW_READER));
+
+	mutex_enter(&spa->spa_feat_stats_lock);
+	features = spa->spa_feat_stats;
 
 	if (features != NULL) {
 		spa_feature_stats_from_cache(spa, features);
@@ -3278,6 +3295,8 @@ spa_add_feature_stats(spa_t *spa, nvlist_t *config)
 
 	VERIFY0(nvlist_add_nvlist(config, ZPOOL_CONFIG_FEATURE_STATS,
 	    features));
+
+	mutex_exit(&spa->spa_feat_stats_lock);
 }
 
 int
@@ -3768,6 +3787,11 @@ spa_create(const char *pool, nvlist_t *nvroot, nvlist_t *props,
 
 	spa_history_log_version(spa, "create");
 
+	/*
+	 * Don't count references from objsets that are already closed
+	 * and are making their way through the eviction process.
+	 */
+	spa_evicting_os_wait(spa);
 	spa->spa_minref = refcount_count(&spa->spa_refcount);
 
 	mutex_exit(&spa_namespace_lock);
@@ -4307,8 +4331,10 @@ spa_export_common(char *pool, int new_state, nvlist_t **oldconfig,
 	 * modify its state.  Objsets may be open only because they're dirty,
 	 * so we have to force it to sync before checking spa_refcnt.
 	 */
-	if (spa->spa_sync_on)
+	if (spa->spa_sync_on) {
 		txg_wait_synced(spa->spa_dsl_pool, 0);
+		spa_evicting_os_wait(spa);
+	}
 
 	/*
 	 * A pool cannot be exported or destroyed if there are active
