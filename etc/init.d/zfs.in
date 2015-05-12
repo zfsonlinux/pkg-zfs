@@ -71,4 +71,4 @@ ZFS_INITRD_POST_MODPROBE_SLEEP='0'
 #ZFS_POOL_EXCEPTIONS="test2"
 
 # Location of the lockfile.
-LOCKDIR=/run/lock
+LOCKDIR=/var/lock

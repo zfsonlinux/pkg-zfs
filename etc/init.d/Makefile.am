@@ -31,7 +31,7 @@ $(init_SCRIPTS) $(initconf_SCRIPTS) $(initcommon_SCRIPTS):
 		 -e 's,@runstatedir\@,$(runstatedir),g' \
 		 -e "s,@NFS_SRV\@,$$NFS_SRV,g" \
 		 '$@.in' >'$@'; \
-	  [ '$@' == 'common.init' -o '$@' == 'zfs' ] || \
+	  [ '$@' = 'common.init' -o '$@' = 'zfs' ] || \
 		chmod +x '$@')
 
 distclean-local::

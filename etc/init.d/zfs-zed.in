@@ -1,11 +1,13 @@
 #!/bin/bash
 
 ### BEGIN INIT INFO
-# Provides:          zed zeventd zfs-zed
-# Required-Start:    $local_fs zpool
-# Required-Stop:     $local_fs zpool
-# Default-Start:     2 3 4 5
+# Provides:          zfs-zed
+# Required-Start:    mtab
+# Required-Stop:     mtab
+# Default-Start:     S
 # Default-Stop:      0 1 6
+# X-Start-Before:    checkfs
+# X-Stop-After:      zfs-import
 # Short-Description: ZFS Event Daemon
 # Description:       zed monitors ZFS events. When a zevent is posted, zed
 #                    will run any scripts that have been enabled for the
@@ -32,11 +34,11 @@ do_start()
 	#   1 if daemon was already running
 	#   2 if daemon could not be started
 
-	start-stop-daemon --start --quiet --pidfile /var/run/$servicename.pid --exec $ZED \
-		--test > /dev/null || return 1
+	start-stop-daemon --start --quiet --pidfile /var/run/$servicename.pid \
+		--exec "$ZED" --test > /dev/null || return 1
 
-	start-stop-daemon --start --quiet --pidfile /var/run/$servicename.pid --exec $ZED \
-		-- $DAEMON_ARGS || return 2
+	start-stop-daemon --start --quiet --pidfile /var/run/$servicename.pid \
+		--exec "$ZED" -- "$DAEMON_ARGS" || return 2
 
 	# Add code here, if necessary, that waits for the process to be ready
 	# to handle requests from services started subsequently which depend
@@ -65,7 +67,8 @@ do_stop()
 	# that waits for the process to drop all resources that could be
 	# needed by services started subsequently.  A last resort is to
 	# sleep for some time.
-	start-stop-daemon --stop --quiet --oknodo --retry=0/30/KILL/5 --exec $ZED
+	start-stop-daemon --stop --quiet --oknodo --retry=0/30/KILL/5 \
+	    --exec "$ZED"
 	[ "$?" = 2 ] && return 2
 
 	# Many daemons don't delete their pidfiles when they exit.
@@ -76,7 +79,8 @@ do_stop()
 #
 # Function that sends a SIGHUP to the daemon/service
 #
-do_reload() {
+do_reload()
+{
 	# If the daemon can reload its configuration without
 	# restarting (for example, when it is sent a SIGHUP),
 	# then implement that here.
@@ -88,47 +92,44 @@ do_reload() {
 
 case "$1" in
   start)
-	[ "$VERBOSE" != no ] && $log_begin_msg "Starting ZFS Event Daemon" "$servicename"
+	[ "$VERBOSE" != no ] && zfs_log_begin_msg "Starting ZFS Event Daemon"
 	do_start
 	case "$?" in
-		0|1) [ "$VERBOSE" != no ] && $log_end_msg 0 ;;
-		2) [ "$VERBOSE" != no ] && $log_end_msg 1 ;;
+		0|1) [ "$VERBOSE" != no ] && zfs_log_end_msg 0 ;;
+		2) [ "$VERBOSE" != no ] && zfs_log_end_msg 1 ;;
 	esac
 	;;
   stop)
-	[ "$VERBOSE" != no ] && $log_begin_msg "Stopping ZFS Event Daemon" "$servicename"
+	[ "$VERBOSE" != no ] && zfs_log_begin_msg "Stopping ZFS Event Daemon"
 	do_stop
 	case "$?" in
-		0|1) [ "$VERBOSE" != no ] && $log_end_msg 0 ;;
-		2) [ "$VERBOSE" != no ] && $log_end_msg 1 ;;
+		0|1) [ "$VERBOSE" != no ] && zfs_log_end_msg 0 ;;
+		2) [ "$VERBOSE" != no ] && zfs_log_end_msg 1 ;;
 	esac
 	;;
   status)
 	status_of_proc "$ZED" "$servicename" && exit 0 || exit $?
 	;;
   reload|force-reload)
-	$log_begin_msg "Reloading ZFS Event Daemon" "$servicename"
+	zfs_log_begin_msg "Reloading ZFS Event Daemon"
 	do_reload
-	$log_end_msg $?
+	zfs_log_end_msg $?
 	;;
   restart)
-	# If the "reload" option is implemented then remove the
-	# 'force-reload' alias
-
-	$log_begin_msg "Restarting ZFS Event Daemon" "$servicename"
+	zfs_log_begin_msg "Restarting ZFS Event Daemon"
 	do_stop
 	case "$?" in
 	  0|1)
 		do_start
 		case "$?" in
-			0) $log_end_msg 0 ;;
-			1) $log_end_msg 1 ;; # Old process is still running
-			*) $log_end_msg 1 ;; # Failed to start
+			0) zfs_log_end_msg 0 ;;
+			1) zfs_log_end_msg 1 ;; # Old process is still running
+			*) zfs_log_end_msg 1 ;; # Failed to start
 		esac
 		;;
 	  *)
 		# Failed to stop
-		$log_end_msg 1
+		zfs_log_end_msg 1
 		;;
 	esac
 	;;

@@ -2,7 +2,7 @@
 #
 # zfs-mount     This script will mount/umount the zfs filesystems.
 #
-# chkconfig:    2345 01 99
+# chkconfig:    2345 06 99
 # description:  This script will mount/umount the zfs filesystems during
 #               system boot/shutdown. Configuration of which filesystems
 #               should be mounted is handled by the zfs 'mountpoint' and
@@ -11,11 +11,12 @@
 # probe: true
 #
 ### BEGIN INIT INFO
-# Provides:          zvol zfs zfs-mount
-# Required-Start:    $local_fs
-# Required-Stop:     
+# Provides:          zfs-mount
+# Required-Start:    $local_fs zfs-import
+# Required-Stop:     $local_fs zfs-import
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
+# X-Stop-After:      zfs-share
 # Short-Description: Mount ZFS filesystems and volumes
 # Description: Run the `zfs mount -a` or `zfs umount -a` commands.
 ### END INIT INFO
@@ -29,87 +30,115 @@ servicename=zfs-mount
 # Mount all datasets/filesystems
 do_mount()
 {
+	local verbose overlay RET i
+
 	if [ -f "$LOCKDIR/zfs-import" ]; then
 		[ "$VERBOSE_MOUNT" == 'yes' ] && verbose=v
 		[ "$DO_OVERLAY_MOUNTS" == 'yes' ] && overlay=O
 
-		$log_begin_msg "Mounting ZFS filesystems not yet mounted"
-		$ZFS mount -a$verbose$overlay $MOUNT_EXTRA_OPTIONS
-		RET=$?
-		if [ $RET != 0 ] ; then
-			$log_end_msg $RET
-			exit $RET
-		fi
-		$log_end_msg 0
+		zfs_action "Mounting ZFS filesystem(s)" \
+		    "$ZFS" mount -a$verbose$overlay $MOUNT_EXTRA_OPTIONS
 
-		FS_MOUNTED=1
-
-		$log_begin_msg "Mounting volumes registered in fstab: "
+		# Require each volume/filesytem to have 'noauto' and no fsck
+		# option. This shouldn't really be necessary, as long as one
+		# can get zfs-import to run sufficiently early on in the boot
+		# process - before local mounts. This is just here in case/if
+		# this isn't possible.
+		[ "$VERBOSE_MOUNT" == 'yes' ] && \
+		    zfs_log_begin_msg "Mounting volumes and filesystems registered in fstab"
 		read_mtab  "^/dev/(zd|zvol)"
 		read_fstab "^/dev/(zd|zvol)"
-		for volume in "${!FSTAB[@]}" ; do
-			in_mtab "$volume" && continue
+		for i in "${!FSTAB[@]}" ; do
+			in_mtab "${FSTAB[$i]}" && continue
+			is_mounted "${FSTAB[$i]}" && continue
 
-			$log_progress_msg "$volume "
-			mount "$volume"
+			[ "$VERBOSE_MOUNT" == 'yes' ] && \
+			    zfs_log_progress_msg "${FSTAB[$i]} "
+			fsck "${FSTAB[$i]}" && mount "${FSTAB[$i]}"
 		done
 
 		read_mtab  "zfs"
 		read_fstab "zfs"
-		for fs in "${!FSTAB[@]}" ; do
-			in_mtab "${FSTAB[$fs]}" && continue
+		for i in "${!FSTAB[@]}" ; do
+			in_mtab "${FSTAB[$i]}" && continue
+			is_mounted "${FSTAB[$i]}" && continue
 
-			$log_progress_msg "${FSTAB[$fs]} "
-			mount "${FSTAB[$fs]}"
+			[ "$VERBOSE_MOUNT" == 'yes' ] && \
+			    zfs_log_progress_msg "${FSTAB[$i]} "
+			mount "${FSTAB[$i]}"
 		done
-
-		$log_end_msg 0
+		[ "$VERBOSE_MOUNT" == 'yes' ] && zfs_log_end_msg 0
 	fi
+
+	return 0
 }
 
 # Unmount all filesystems
 do_unmount()
 {
-	$log_begin_msg "Unmounting ZFS filesystems"
-	$ZFS unmount -a
-	RET=$?
+	local i
 
-	# Ignore a non-zero `zfs` result so that a busy ZFS instance
-	# does not hang the system during shutdown.
-	if [ $RET != 0 ] ; then
-		$log_end_msg $RET
-	fi
-
-	$log_end_msg 0
-
+	# This shouldn't really be necessary, as long as one can get
+	# zfs-import to run sufficiently late in the shutdown/reboot process
+	# - after unmounting local filesystems. This is just here in case/if
+	# this isn't possible.
+	zfs_action "Unmounting ZFS filesystems" "$ZFS" unmount -a
+	[ "$VERBOSE_MOUNT" == 'yes' ] && \
+	    zfs_log_begin_msg "Unmounting volumes and filesystems registered in fstab"
 	read_mtab  "^/dev/(zd|zvol)"
 	read_fstab "^/dev/(zd|zvol)"
+	for i in "${!FSTAB[@]}" ; do
+		dev=/dev/$(find "${FSTAB[$i]}" | sed 's@.*/@@')
+		in_mtab "$dev" && continue
+		is_mounted "${FSTAB[$i]}" || continue
 
-	$log_begin_msg "Unmounting volumes registered in fstab: "
-	for volume in "${!FSTAB[@]}" ; do
-		dev=/dev/$(ls -l "$volume" | sed 's@.*/@@')
-		if ! in_mtab "$dev" ; then continue ; fi
-
-		$log_progress_msg "$volume "
-		umount "$volume"
+		[ "$VERBOSE_MOUNT" == 'yes' ] && \
+		    zfs_log_progress_msg "${FSTAB[$i]} "
+		umount "${FSTAB[$i]}"
 	done
 
-	$log_end_msg 0
+	read_mtab  "zfs"
+	read_fstab "zfs"
+	for i in "${!FSTAB[@]}" ; do
+		in_mtab "${FSTAB[$i]}" && continue
+		is_mounted "${FSTAB[$i]}" || continue
+
+		[ "$VERBOSE_MOUNT" == 'yes' ] && \
+		    zfs_log_progress_msg "${FSTAB[$i]} "
+		umount "${FSTAB[$i]}"
+	done
+	[ "$VERBOSE_MOUNT" == 'yes' ] && zfs_log_end_msg 0
 }
 
 start()
 {
-	checksystem && {
-		case "$ZFS_MOUNT" in
-			([Oo][Ff][Ff]|[Nn][Oo]|'')
-				exit 3
-				;;
-		esac
+	# fix mtab to include already-mounted fs filesystems, in case there are any
+	# we ONLY do this if mtab does not point to /proc/mounts
+	# which is the case in some systems (systemd may bring that soon)
+	if ! readlink /etc/mtab | grep -q /proc ; then
+		if grep -qE "(^/dev/zd|^/dev/zvol| zfs )" /proc/mounts ; then
+			zfs_action "Registering already-mounted ZFS filesystems and volumes" \
+			    reregister_mounts
+		fi
+	fi
 
-		do_mount
+	# Ensure / exists in /etc/mtab, if not update mtab accordingly.
+	# This should be handled by rc.sysinit but lets be paranoid.
+	awk '$2 == "/" { exit 1 }' /etc/mtab
+	RETVAL=$?
+	if [ "$RETVAL" -eq 0 ]; then
+		mount -f /
+	fi
 
-		touch "$LOCKDIR/$servicename"
-	}
+	case "$ZFS_MOUNT" in
+		([Oo][Ff][Ff]|[Nn][Oo]|'')
+			exit 3
+			;;
+	esac
+
+	do_mount
+
+	touch "$LOCKDIR/$servicename"
 }
 
 stop()
@@ -120,16 +149,7 @@ stop()
 			;;
 	esac
 
-	# Check if ZFS is installed.  If not, comply to FC standards and bail
-	zfs_installed || {
-		$log_failure_msg "not installed"
-		$log_end_msg 5
-	}
-
-	if ! grep -q zfs /proc/modules ; then
-		# module not loaded, no need to umount anything
-		exit 0
-	fi
+	check_module_loaded || exit 0
 
 	do_unmount
 
@@ -145,7 +165,7 @@ case "$1" in
 	(stop)
 		stop
 		;;
-	(force-reload|condrestart|reload|restart)
+	(force-reload|condrestart|reload|restart|status)
 		# no-op
 		;;
 	(*)
