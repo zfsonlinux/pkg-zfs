@@ -8,12 +8,13 @@
 # probe: true
 #
 ### BEGIN INIT INFO
-# Provides:          shareiscsi sharenfs sharesmb zfs-share
-# Required-Start:    $local_fs $network $remote_fs zvol
-# Required-Stop:     $local_fs $network $remote_fs zvol
+# Provides:          zfs-share
+# Required-Start:    $local_fs $network $remote_fs zfs-mount
+# Required-Stop:     $local_fs $network $remote_fs zfs-mount
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# X-Stop-Before:     iscsi iscsitarget istgt scst @NFS_SRV@ samba samba4
+# Should-Start:      iscsi iscsitarget istgt scst @NFS_SRV@ samba samba4 zfs-mount
+# Should-Stop:       iscsi iscsitarget istgt scst @NFS_SRV@ samba samba4 zfs-mount
 # Short-Description: Network share ZFS datasets and volumes.
 # Description:       Run the `zfs share -a` or `zfs unshare -a` commands
 #                    for controlling iSCSI, NFS, or CIFS network shares.
@@ -25,48 +26,17 @@ servicename=zfs-share
 
 # ----------------------------------------------------
 
-do_share()
-{
-	$log_begin_msg "Sharing ZFS filesystems"
-	$ZFS share -a
-	RET=$?
-
-	if [ $RET != 0 ] ; then
-		$log_failure_msg "Failed to share filesystems"
-		$log_end_msg $RET
-	fi
-
-	$log_end_msg 0
-}
-
-do_unshare()
-{
-	$log_begin_msg "Unsharing ZFS filesystems"
-	$ZFS unshare -a
-	RET=$?
-
-	# Ignore a non-zero `zfs` result so that a busy ZFS instance
-	# does not hang the system during shutdown.
-	if [ $RET != 0 ] ; then
-		$log_end_msg $RET
-	fi
-
-	$log_end_msg 0
-}
-
 start()
 {
-	checksystem && {
-		case "$ZFS_SHARE" in
-			([Oo][Ff][Ff]|[Nn][Oo]|'')
-				exit 0
-				;;
-		esac
+	case "$ZFS_SHARE" in
+		([Oo][Ff][Ff]|[Nn][Oo]|'')
+			exit 0
+			;;
+	esac
 
-		do_share
+	zfs_action "Sharing ZFS filesystems" "$ZFS" share -a
 
-		touch "$LOCKDIR/$servicename"
-	}
+	touch "$LOCKDIR/$servicename"
 }
 
 stop()
@@ -77,22 +47,11 @@ stop()
 			;;
 	esac
 
-	# Do a more simplified version of checksystem()
-
 	[ ! -f "$LOCKDIR/$servicename" ] && return 3
 
-	# Check if ZFS is installed.  If not, comply to FC standards and bail
-	zfs_installed || {
-		$log_failure_msg "not installed"
-		$log_end_msg 5
-	}
+	check_module_loaded || exit 0
 
-	if ! grep -q zfs /proc/modules ; then
-		# module not loaded, no need to unshare anything
-		exit 0
-	fi
-
-	do_unshare
+	zfs_action "Unsharing ZFS filesystems" "$ZFS" unshare -a
 
 	rm -f "$LOCKDIR/$servicename"
 }

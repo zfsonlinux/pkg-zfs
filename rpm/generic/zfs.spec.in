@@ -229,7 +229,12 @@ find %{?buildroot}%{_libdir} -name '*.la' -exec rm -f {} \;
 %if 0%{?_systemd}
 %systemd_post zfs.target
 %else
-[ -x /sbin/chkconfig ] && /sbin/chkconfig --add zfs
+if [ -x /sbin/chkconfig ]; then
+    /sbin/chkconfig --add zfs-import
+    /sbin/chkconfig --add zfs-mount
+    /sbin/chkconfig --add zfs-share
+    /sbin/chkconfig --add zfs-zed
+fi
 %endif
 exit 0
 
@@ -237,8 +242,11 @@ exit 0
 %if 0%{?_systemd}
 %systemd_preun zfs.target
 %else
-if [ $1 -eq 0 ] ; then
-    [ -x /sbin/chkconfig ] && /sbin/chkconfig --del zfs
+if [ $1 -eq 0 ] && [ -x /sbin/chkconfig ]; then
+    /sbin/chkconfig --del zfs-import
+    /sbin/chkconfig --del zfs-mount
+    /sbin/chkconfig --del zfs-share
+    /sbin/chkconfig --del zfs-zed
 fi
 %endif
 exit 0
@@ -265,6 +273,7 @@ exit 0
 %{_presetdir}/*
 %else
 %{_sysconfdir}/init.d/*
+%{_initconfdir}/zfs
 %endif
 %{_sysconfdir}/default/*
 
