@@ -36,10 +36,10 @@ loss of data, please use zfs-initramfs with caution.
        https://github.com/zfsonlinux/zfs/pull/2790
 
      * Include my own base scripts on the init scripts
-       https://github.com/zfsonlinux/zfs/pull/2106
+       https://github.com/zfsonlinux/zfs/pull/3337
 
      * Include my own initramfs scripts
-       https://github.com/zfsonlinux/zfs/pull/2087
+       https://github.com/zfsonlinux/zfs/pull/3338
 
      * Adds support for property overrides
        https://github.com/zfsonlinux/zfs/pull/1867
