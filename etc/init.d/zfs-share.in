@@ -35,8 +35,6 @@ start()
 	esac
 
 	zfs_action "Sharing ZFS filesystems" "$ZFS" share -a
-
-	touch "$LOCKDIR/$servicename"
 }
 
 stop()
@@ -47,13 +45,9 @@ stop()
 			;;
 	esac
 
-	[ ! -f "$LOCKDIR/$servicename" ] && return 3
-
 	check_module_loaded || exit 0
 
 	zfs_action "Unsharing ZFS filesystems" "$ZFS" unshare -a
-
-	rm -f "$LOCKDIR/$servicename"
 }
 
 case "$1" in

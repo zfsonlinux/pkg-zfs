@@ -70,5 +70,6 @@ ZFS_INITRD_POST_MODPROBE_SLEEP='0'
 # This is a space separated list.
 #ZFS_POOL_EXCEPTIONS="test2"
 
-# Location of the lockfile.
-LOCKDIR=/var/lock
+# Optional arguments for the ZFS Event Daemon (ZED).
+# See zed(8) for more information on availible options.
+#ZED_ARGS="-M"

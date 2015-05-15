@@ -58,9 +58,8 @@ ZPOOL_CACHE="@sysconfdir@/zfs/zpool.cache"
 # Sensible defaults
 ZFS_MOUNT='yes'
 ZFS_UNMOUNT='yes'
-LOCKDIR=/var/lock
 
-export ZFS ZED ZPOOL ZPOOL_CACHE ZFS_MOUNT ZFS_UNMOUNT LOCKDIR
+export ZFS ZED ZPOOL ZPOOL_CACHE ZFS_MOUNT ZFS_UNMOUNT
 
 # Source zfs configuration, overriding the defaults
 if [ -f @initconfdir@/zfs ]; then
@@ -71,8 +70,7 @@ fi
 
 zfs_action()
 {
-	local MSG=$1
-	shift
+	local MSG=$1;	shift
 	local CMD=$*
 	local ret
 
@@ -82,6 +80,110 @@ zfs_action()
 	zfs_log_end_msg $ret
 
 	return $ret
+}
+
+# Returns
+#   0 if daemon has been started
+#   1 if daemon was already running
+#   2 if daemon could not be started
+#   3 if unsupported
+#
+zfs_daemon_start()
+{
+	local PIDFILE="$1";	shift
+	local DAEMON_BIN="$1";	shift
+	local DAEMON_ARGS="$*"
+
+	if type start-stop-daemon > /dev/null 2>&1 ; then
+		# LSB functions
+		start-stop-daemon --start --quiet --pidfile "$PIDFILE" \
+		    --exec "$DAEMON_BIN" --test > /dev/null || return 1
+
+	        start-stop-daemon --start --quiet --exec "$DAEMON_BIN" -- \
+		    $DAEMON_ARGS || return 2
+	elif type daemon > /dev/null 2>&1 ; then
+	        # Fedora/RedHat functions
+		daemon --pidfile "$ZED_PIDFILE" "$ZED" $DAEMON_ARGS
+		return $?
+	else
+		# Unsupported
+		return 3
+	fi
+
+	return 0
+}
+
+# Returns
+#   0 if daemon has been stopped
+#   1 if daemon was already stopped
+#   2 if daemon could not be stopped
+#   3 if unsupported
+#
+zfs_daemon_stop()
+{
+	local PIDFILE="$1"
+	local DAEMON_BIN="$2"
+	local DAEMON_NAME="$3"
+
+	if type start-stop-daemon > /dev/null 2>&1 ; then
+		# LSB functions
+		start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 \
+		    --pidfile "$PIDFILE" --name "$DAEMON_NAME"
+		return $?
+	elif type killproc > /dev/null 2>&1 ; then
+		# Fedora/RedHat functions
+		killproc "$DAEMON_NAME"
+		return $?
+	else
+		# Unsupported
+		return 3
+	fi
+
+	return 0
+}
+
+# Returns status
+zfs_daemon_status()
+{
+	local DAEMON_BIN="$1"
+	local DAEMON_NAME="$2"
+
+	if type status_of_proc > /dev/null 2>&1 ; then
+		# LSB functions
+		status_of_proc "$DAEMON_NAME" "$DAEMON_BIN"
+		return $?
+	elif type status > /dev/null 2>&1 ; then
+		# Fedora/RedHat functions
+		status "$DAEMON_NAME"
+		return $?
+	else
+		# Unsupported
+		return 3
+	fi
+
+	return 0
+}
+
+zfs_daemon_reload()
+{
+	local PIDFILE="$1"
+	local DAEMON_NAME="$2"
+
+	if type start-stop-daemon > /dev/null 2>&1 ; then
+		# LSB functions
+		start-stop-daemon --stop -signal 1 --quiet \
+		    --pidfile "$PIDFILE" --name "$DAEMON_NAME"
+		return $?
+	elif type killproc > /dev/null 2>&1 ; then
+		# Fedora/RedHat functions
+                killproc "$DAEMON_NAME" "-SIGHUP" > /dev/null
+		return $?
+	else
+		# Unsupported
+		return 3
+	fi
+
+	return 0
 }
 
 zfs_installed()
@@ -165,8 +267,6 @@ checksystem()
 		# should we break here? People doing this should know what they
 		# do, thus i'm not breaking here.
 	fi
-
-	[ ! -d "$LOCKDIR" ] && mkdir -p "$LOCKDIR"
 
 	return 0
 }

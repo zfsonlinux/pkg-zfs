@@ -190,8 +190,6 @@ do_export()
 # Output the status and list of pools
 do_status()
 {
-	[ ! -f "$LOCKDIR/$servicename" ] && return 3
-
 	check_module_loaded || exit 0
 
 	"$ZPOOL" status && echo "" && "$ZPOOL" list
@@ -217,7 +215,6 @@ do_start()
 		[ "$VERBOSE_MOUNT" == 'yes' ] && zfs_log_end_msg 0
 
 		do_import && udev_trigger # just to make sure we get zvols.
-		touch "$LOCKDIR/$servicename"
 	fi
 }
 
@@ -227,8 +224,6 @@ do_stop()
 	check_module_loaded || exit 0
 
 	do_export
-
-	rm -f "$LOCKDIR/$servicename"
 }
 
 # ----------------------------------------------------
