@@ -21,6 +21,11 @@ $(init_SCRIPTS) $(initconf_SCRIPTS) $(initcommon_SCRIPTS):
 	  else \
 		NFS_SRV=nfs; \
 	  fi; \
+	  if [ -e /etc/gentoo-release ]; then \
+		SHELL=/sbin/runscript; \
+	  else \
+		SHELL=/bin/bash; \
+	  fi; \
 	  $(SED) -e 's,@bindir\@,$(bindir),g' \
 		 -e 's,@sbindir\@,$(sbindir),g' \
 		 -e 's,@udevdir\@,$(udevdir),g' \
@@ -29,6 +34,7 @@ $(init_SCRIPTS) $(initconf_SCRIPTS) $(initcommon_SCRIPTS):
 		 -e 's,@initconfdir\@,$(initconfdir),g' \
 		 -e 's,@initdir\@,$(initdir),g' \
 		 -e 's,@runstatedir\@,$(runstatedir),g' \
+		 -e "s,@SHELL\@,$$SHELL,g" \
 		 -e "s,@NFS_SRV\@,$$NFS_SRV,g" \
 		 '$@.in' >'$@'; \
 	  [ '$@' = 'common.init' -o '$@' = 'zfs' ] || \

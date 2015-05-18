@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@SHELL@
 #
 # zfs-share     This script will network share zfs filesystems and volumes.
 #
@@ -22,9 +22,13 @@
 
 # Source the common init script
 . @sysconfdir@/zfs/common.init
-servicename=zfs-share
 
 # ----------------------------------------------------
+
+depend()
+{
+	need zfs-mount
+}
 
 start()
 {
@@ -33,6 +37,8 @@ start()
 			exit 0
 			;;
 	esac
+
+	check_module_loaded || exit 0
 
 	zfs_action "Sharing ZFS filesystems" "$ZFS" share -a
 }
@@ -50,19 +56,25 @@ stop()
 	zfs_action "Unsharing ZFS filesystems" "$ZFS" unshare -a
 }
 
-case "$1" in
-	(start)
-		start
-		;;
-	(stop)
-		stop
-		;;
-	(force-reload|reload|restart|status)
-		# no-op
-		;;
-	(*)
-		[ -n "$1" ] && echo "Error: Unknown command $1."
-		echo "Usage: $0 {start|stop}"
-		exit 3
-		;;
-esac
+# ----------------------------------------------------
+
+if [ ! -e /etc/gentoo-release ]; then
+	case "$1" in
+		start)
+			start
+			;;
+		stop)
+			stop
+			;;
+		force-reload|reload|restart|status)
+			# no-op
+			;;
+		*)
+			[ -n "$1" ] && echo "Error: Unknown command $1."
+			echo "Usage: $0 {start|stop}"
+			exit 3
+			;;
+	esac
+
+	exit $?
+fi

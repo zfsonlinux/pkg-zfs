@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@SHELL@
 #
 # zfs-zed
 #
@@ -27,25 +27,46 @@
 
 # Source the common init script
 . @sysconfdir@/zfs/common.init
-servicename="zfs-zed"
 
 ZED_NAME="zed"
-ZED_PIDFILE="@runstatedir@/$servicename.pid"
+ZED_PIDFILE="@runstatedir@/$ZED_NAME.pid"
 
 # Exit if the package is not installed
 [ -x "$ZED" ] || exit 0
 
-do_start()
-{
-	ZED_ARGS="$ZED_ARGS -p $ZED_PIDFILE"
+# ----------------------------------------------------
 
+depend()
+{
+	# Try to allow people to mix and match fstab with ZFS in a way that makes sense.
+	if [ "$(mountinfo -s /)" = 'zfs' ]
+	then
+		before localmount
+	else
+		after localmount
+	fi
+
+	# bootmisc will log to /var which may be a different zfs than root.
+	before bootmisc logger
+	use mtab
+	keyword -lxc -openvz -prefix -vserver
+}
+
+start()
+{
+	check_module_loaded || exit 0
+
+	ZED_ARGS="$ZED_ARGS -p $ZED_PIDFILE"
+	
 	zfs_action "Starting ZFS Event Daemon" zfs_daemon_start \
 	    "$ZED_PIDFILE" "$ZED" "$ZED_ARGS"
 	return $?
 }
 
-do_stop()
+stop()
 {
+	check_module_loaded || exit 0
+
 	zfs_action "Stopping ZFS Event Daemon" zfs_daemon_stop \
 	    "$ZED_PIDFILE" "$ZED" "$ZED_NAME"
 	RETVAL=$?
@@ -55,44 +76,49 @@ do_stop()
 	return $RETVAL
 }
 
-do_status()
+status()
 {
+	check_module_loaded || exit 0
+
 	zfs_daemon_status "$ZED" "$ZED_NAME"
 	return $?
 }
 
-do_reload()
+reload()
 {
+	check_module_loaded || exit 0
+
 	zfs_action "Reloading ZFS Event Daemon" zfs_daemon_reload \
 	    "$PIDFILE" "$ZED_NAME"
 	return $?
 }
 
-case "$1" in
-	start)
-		do_start
-		;;
+# ----------------------------------------------------
 
-	stop)
-		do_stop
-		;;
+if [ ! -e /etc/gentoo-release ]; then
+	case "$1" in
+		start)
+			start
+			;;
+		stop)
+			stop
+			;;
+		status)
+			status
+			;;
+		reload)
+			reload
+			;;
+		restart)
+			stop
+			start
+			;;
+		*)
+			[ -n "$1" ] && echo "Error: Unknown command $1."
+			echo "Usage: $0 {start|stop|status|reload|restart}"
+			exit 1
+			;;
+	esac
 
-	status)
-		do_status
-		;;
-
-	reload)
-		do_reload
-		;;
-
-	restart)
-		do_stop
-		do_start
-		;;
-	*)
-		echo "Usage: $0 {start|stop|status|reload|restart}" >&2
-		exit 1
-		;;
-esac
-
-exit $?
+	exit $?
+fi
