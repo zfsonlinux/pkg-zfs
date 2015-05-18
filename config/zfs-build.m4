@@ -314,6 +314,7 @@ AC_DEFUN([ZFS_AC_DEFAULT_PACKAGE], [
 
 	AC_MSG_CHECKING([default init config direectory])
 	case "$VENDOR" in
+		gentoo)     DEFAULT_INITCONF_DIR=/etc/conf.d    ;;
 		toss)       DEFAULT_INITCONF_DIR=/etc/sysconfig ;;
 		redhat)     DEFAULT_INITCONF_DIR=/etc/sysconfig ;;
 		fedora)     DEFAULT_INITCONF_DIR=/etc/sysconfig ;;

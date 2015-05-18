@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@SHELL@
 #
 # zfs-mount     This script will mount/umount the zfs filesystems.
 #
@@ -23,17 +23,21 @@
 
 # Source the common init script
 . @sysconfdir@/zfs/common.init
-servicename=zfs-mount
 
 # ----------------------------------------------------
+
+depend()
+{
+	need zfs-import
+}
 
 # Mount all datasets/filesystems
 do_mount()
 {
-	local verbose overlay RET i
+	local verbose overlay i var val
 
 	[ "$VERBOSE_MOUNT" == 'yes' ] && verbose=v
-	[ "$DO_OVERLAY_MOUNTS" == 'yes' ] && overlay=O
+	[ "$OVERLAY_MOUNTS" == 'yes' ] && overlay=O
 
 	zfs_action "Mounting ZFS filesystem(s)" \
 	    "$ZFS" mount -a$verbose$overlay $MOUNT_EXTRA_OPTIONS
@@ -45,26 +49,36 @@ do_mount()
 	# this isn't possible.
 	[ "$VERBOSE_MOUNT" == 'yes' ] && \
 	    zfs_log_begin_msg "Mounting volumes and filesystems registered in fstab"
-	read_mtab  "^/dev/(zd|zvol)"
-	read_fstab "^/dev/(zd|zvol)"
-	for i in "${!FSTAB[@]}" ; do
-		in_mtab "${FSTAB[$i]}" && continue
-		is_mounted "${FSTAB[$i]}" && continue
 
-		[ "$VERBOSE_MOUNT" == 'yes' ] && \
-		    zfs_log_progress_msg "${FSTAB[$i]} "
-		fsck "${FSTAB[$i]}" && mount "${FSTAB[$i]}"
+	read_mtab  "^/dev/(zd|zvol)[[:space:]]"
+	read_fstab "^/dev/(zd|zvol)[[:space:]]"
+	i=0; var=$(eval echo FSTAB_$i)
+	while [ -n "$(eval echo "$"$var)" ]; do
+		val=$(eval echo "$"$var)
+		dev=/dev/$(find "$val" | sed 's@.*/@@')
+		if ! in_mtab "$dev" && ! is_mounted "$val" && [ -d "$dev" ]; then
+			[ "$VERBOSE_MOUNT" == 'yes' ] && \
+				zfs_log_progress_msg "$val "
+			fsck "$val" && mount "$val"
+		fi
+
+		i=$((i + 1))
+		var=$(eval echo FSTAB_$i)
 	done
 
-	read_mtab  "zfs"
-	read_fstab "zfs"
-	for i in "${!FSTAB[@]}" ; do
-		in_mtab "${FSTAB[$i]}" && continue
-		is_mounted "${FSTAB[$i]}" && continue
+	read_mtab  "[[:space:]]zfs[[:space:]]"
+	read_fstab "[[:space:]]zfs[[:space:]]"
+	i=0; var=$(eval echo FSTAB_$i)
+	while [ -n "$(eval echo "$"$var)" ]; do
+		val=$(eval echo "$"$var)
+		if ! in_mtab "$val" && ! is_mounted "$val"; then
+			[ "$VERBOSE_MOUNT" == 'yes' ] && \
+				zfs_log_progress_msg "$val "
+			mount "$val"
+		fi
 
-		[ "$VERBOSE_MOUNT" == 'yes' ] && \
-		    zfs_log_progress_msg "${FSTAB[$i]} "
-		mount "${FSTAB[$i]}"
+		i=$((i + 1))
+		var=$(eval echo FSTAB_$i)
 	done
 	[ "$VERBOSE_MOUNT" == 'yes' ] && zfs_log_end_msg 0
 
@@ -74,42 +88,56 @@ do_mount()
 # Unmount all filesystems
 do_unmount()
 {
-	local i
+	local i var val
 
 	# This shouldn't really be necessary, as long as one can get
 	# zfs-import to run sufficiently late in the shutdown/reboot process
 	# - after unmounting local filesystems. This is just here in case/if
 	# this isn't possible.
 	zfs_action "Unmounting ZFS filesystems" "$ZFS" unmount -a
+
 	[ "$VERBOSE_MOUNT" == 'yes' ] && \
 	    zfs_log_begin_msg "Unmounting volumes and filesystems registered in fstab"
-	read_mtab  "^/dev/(zd|zvol)"
-	read_fstab "^/dev/(zd|zvol)"
-	for i in "${!FSTAB[@]}" ; do
-		dev=/dev/$(find "${FSTAB[$i]}" | sed 's@.*/@@')
-		in_mtab "$dev" && continue
-		is_mounted "${FSTAB[$i]}" || continue
 
-		[ "$VERBOSE_MOUNT" == 'yes' ] && \
-		    zfs_log_progress_msg "${FSTAB[$i]} "
-		umount "${FSTAB[$i]}"
+	read_mtab  "^/dev/(zd|zvol)[[:space:]]"
+	read_fstab "^/dev/(zd|zvol)[[:space:]]"
+	i=0; var=$(eval echo FSTAB_$i)
+	while [ -n "$(eval echo "$"$var)" ]; do
+		val=$(eval echo "$"$var)
+		dev=/dev/$(find "$val" | sed 's@.*/@@')
+		if in_mtab "$dev" && is_mounted "$val"; then
+			[ "$VERBOSE_MOUNT" == 'yes' ] && \
+				zfs_log_progress_msg "$val "
+			umount "$val"
+		fi
+
+		i=$((i + 1))
+		var=$(eval echo FSTAB_$i)
 	done
 
-	read_mtab  "zfs"
-	read_fstab "zfs"
-	for i in "${!FSTAB[@]}" ; do
-		in_mtab "${FSTAB[$i]}" && continue
-		is_mounted "${FSTAB[$i]}" || continue
+	read_mtab  "[[:space:]]zfs[[:space:]]"
+	read_fstab "[[:space:]]zfs[[:space:]]"
+	i=0; var=$(eval echo FSTAB_$i)
+	while [ -n "$(eval echo "$"$var)" ]; do
+		val=$(eval echo "$"$var)
+		if is_mounted "$val"; then
+			[ "$VERBOSE_MOUNT" == 'yes' ] && \
+			    zfs_log_progress_msg "$val "
+			umount "$val"
+		fi
 
-		[ "$VERBOSE_MOUNT" == 'yes' ] && \
-		    zfs_log_progress_msg "${FSTAB[$i]} "
-		umount "${FSTAB[$i]}"
+		i=$((i + 1))
+		var=$(eval echo FSTAB_$i)
 	done
 	[ "$VERBOSE_MOUNT" == 'yes' ] && zfs_log_end_msg 0
+
+	return 0
 }
 
 start()
 {
+	check_module_loaded || exit 0
+
 	# fix mtab to include already-mounted fs filesystems, in case there are any
 	# we ONLY do this if mtab does not point to /proc/mounts
 	# which is the case in some systems (systemd may bring that soon)
@@ -152,19 +180,23 @@ stop()
 
 # ----------------------------------------------------
 
-case "$1" in
-	(start)
-		start
-		;;
-	(stop)
-		stop
-		;;
-	(force-reload|condrestart|reload|restart|status)
-		# no-op
-		;;
-	(*)
-		[ -n "$1" ] && echo "Error: Unknown command $1."
-		echo "Usage: $0 {start|stop}"
-		exit 3
-		;;
-esac
+if [ ! -e /etc/gentoo-release ]; then
+	case "$1" in
+		start)
+			start
+			;;
+		stop)
+			stop
+			;;
+		force-reload|condrestart|reload|restart|status)
+			# no-op
+			;;
+		*)
+			[ -n "$1" ] && echo "Error: Unknown command $1."
+			echo "Usage: $0 {start|stop}"
+			exit 3
+			;;
+	esac
+
+	exit $?
+fi

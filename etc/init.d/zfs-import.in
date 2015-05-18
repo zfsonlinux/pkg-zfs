@@ -1,4 +1,4 @@
-#!/bin/bash
+#!@SHELL@
 #
 # zfs-mount     This script will import/export zfs pools.
 #
@@ -22,9 +22,13 @@
 
 # Source the common init script
 . @sysconfdir@/zfs/common.init
-servicename=zfs-import
 
 # ----------------------------------------------------
+
+depend()
+{
+	need zfs-zed
+}
 
 # Import all pools
 do_import()
@@ -164,6 +168,8 @@ do_export()
 	root_pool=$(get_root_pool)
 
 	[ -n "$init" ] && zfs_log_begin_msg "Exporting ZFS pool(s)"
+	TMPFILE=$(tempfile -d /var/tmp -m 600 -p zpool.)
+	"$ZPOOL" list -H -o name > $TMPFILE
 	while read pool; do
 		[ "$pool" == "$root_pool" ] && continue
 
@@ -178,7 +184,8 @@ do_export()
 		"$ZPOOL" export "$pool"
 		r=$? ; RET=$((RET + r))
 		[ -z "$init" ] && zfs_log_end_msg $r
-	done < <("$ZPOOL" list -H -o name)
+	done < $TMPFILE
+	rm -f $TMPFILE
 	[ -n "$init" ] && zfs_log_end_msg $RET
 
 	if [ "$RET" == "0" -a -z "$root_pool" ]; then
@@ -188,14 +195,14 @@ do_export()
 }
 
 # Output the status and list of pools
-do_status()
+status()
 {
 	check_module_loaded || exit 0
 
 	"$ZPOOL" status && echo "" && "$ZPOOL" list
 }
 
-do_start()
+start()
 {
 	if [ "$VERBOSE_MOUNT" == 'yes' ]; then
 	    zfs_log_begin_msg "Checking if zfs userspace tools present"
@@ -215,10 +222,14 @@ do_start()
 		[ "$VERBOSE_MOUNT" == 'yes' ] && zfs_log_end_msg 0
 
 		do_import && udev_trigger # just to make sure we get zvols.
+
+		return 0
+	else
+		return 1
 	fi
 }
 
-do_stop()
+stop()
 {
 	# Check to see if the module is even loaded.
 	check_module_loaded || exit 0
@@ -228,22 +239,26 @@ do_stop()
 
 # ----------------------------------------------------
 
-case "$1" in
-	(start)
-		do_start
-		;;
-	(stop)
-		do_stop
-		;;
-	(status)
-		do_status
-		;;
-	(force-reload|condrestart|reload|restart)
-		# no-op
-		;;
-	(*)
-		[ -n "$1" ] && echo "Error: Unknown command $1."
-		echo "Usage: $0 {start|stop|status}"
-		exit 3
-		;;
-esac
+if [ ! -e /etc/gentoo-release ]; then
+	case "$1" in
+		start)
+			start
+			;;
+		stop)
+			stop
+			;;
+		status)
+			status
+			;;
+		force-reload|condrestart|reload|restart)
+			# no-op
+			;;
+		*)
+			[ -n "$1" ] && echo "Error: Unknown command $1."
+			echo "Usage: $0 {start|stop|status}"
+			exit 3
+			;;
+	esac
+
+	exit $?
+fi

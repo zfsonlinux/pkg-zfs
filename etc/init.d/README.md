@@ -1,5 +1,5 @@
 DESCRIPTION
-  These script was written with the primary intention to be portable and
+  These script where written with the primary intention of being portable and
   usable on as many systems as possible.
 
   This is, in practice, usually not possible. But the intention is there.
@@ -53,6 +53,14 @@ INSTALLING INIT SCRIPT LINKS
     chkconfig zfs-import
     chkconfig zfs-mount
     chkconfig zfs-share
+
+  On Gentoo:
+
+    rc-update add zfs-zed sysinit
+    rc-update add zfs-import sysinit
+    rc-update add zfs-mount default
+    rc-update add zfs-share default
+
 
   The idea here is to make sure ZED is started before the imports (so that
   we can start consuming pool events before pools are imported).

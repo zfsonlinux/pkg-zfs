@@ -10,6 +10,8 @@ if [ -f /lib/lsb/init-functions ]; then
 	. /lib/lsb/init-functions
 elif [ -f /etc/rc.d/init.d/functions ]; then
 	. /etc/rc.d/init.d/functions
+elif [ -L /etc/init.d/functions.sh ]; then
+	. /etc/init.d/functions.sh
 fi
 
 # Of course the functions we need is called differently
@@ -29,10 +31,11 @@ elif type success > /dev/null 2>&1 ; then
 	zfs_log_progress_msg() { echo -n "$1"; }
 elif type einfo > /dev/null 2>&1 ; then
 	# Gentoo functions
-	zfs_log_begin_msg() { echo -n "$1"; }
-	zfs_log_end_msg() { einfo "$1"; }
+	zfs_log_begin_msg() { ebegin "$1"; }
+	zfs_log_end_msg() { eend "$1"; }
 	zfs_log_failure_msg() { eerror "$1"; }
-	zfs_log_progress_msg() { echo -n "$1"; }
+#	zfs_log_progress_msg() { echo -n "$1"; }
+	zfs_log_progress_msg() { echo -n; }
 else
 	# Unknown - simple substitues.
 	zfs_log_begin_msg() { echo -n "$1"; }
@@ -294,7 +297,7 @@ reregister_mounts()
 				umount --fake "$mntpnt"
 			fi
 		fi
-	done < <(cat /etc/mtab)
+	done < /proc/mounts
 
 	while read -r fs mntpnt fstype opts rest ; do
 		fs=$(printf '%b\n' "$fs")
@@ -304,7 +307,7 @@ reregister_mounts()
 		elif echo "$fs" | grep -q "^/dev/zd" ; then
 			mount -f -t "$fstype" -o "$opts" "$fs" "$mntpnt"
 		fi
-	done < <(cat /proc/mounts)
+	done < /proc/mounts
 }
 
 get_root_pool()
@@ -315,7 +318,7 @@ get_root_pool()
 
 check_module_loaded()
 {
-	grep -q zfs /proc/modules && return 0 || return 1
+	[ -r /sys/module/zfs/version ] && return 0 || return 1
 }
 
 load_module()
@@ -329,48 +332,60 @@ load_module()
 	return 0
 }
 
-# i need a bash guru to simplify this, since this is copy and paste, but donno
-# how to correctly dereference variable names in bash, or how to do this right
-
-declare -A MTAB
-declare -A FSTAB
-
 # first parameter is a regular expression that filters mtab
 read_mtab()
 {
-	local fs mntpnt fstype opts rest
+	local match="$1"
+	local fs mntpnt fstype opts rest TMPFILE
 
-	for fs in "${!MTAB[@]}" ; do unset MTAB["$fs"] ; done
+	# Unset all MTAB_* variables
+	unset $(env | grep ^MTAB_ | sed 's,=.*,,')
 
-	while read -r fs mntpnt fstype opts rest ; do
-		fs=$(printf '%b\n' "$fs")
-		MTAB["$fs"]=$mntpnt
-	done < <(grep -E "$1" /etc/mtab)
+	while read -r fs mntpnt fstype opts rest; do
+		if echo "$fs $mntpnt $fstype $opts" | grep -qE "$match"; then
+			fs=$(printf '%b\n' "$fs")
+			eval export MTAB_${fs//\//_}=$mntpnt
+		fi
+	done < /proc/mounts
 }
 
 in_mtab()
 {
-	[ "${MTAB[$1]}" != "" ]
+	local var
+
+	var=$(eval echo MTAB_${1//\//_})
+	[ "$(eval echo "$"$var)" != "" ]
 	return $?
 }
 
 # first parameter is a regular expression that filters fstab
 read_fstab()
 {
-	local i=0
+	local match="$1"
+	local i var TMPFILE
 
-	for fs in "${!FSTAB[@]}" ; do unset FSTAB["$fs"] ; done
-	while read -r fs mntpnt fstype opts blah ; do
-		echo "$fs" | grep -q '^#' && continue
-		fs=$(printf '%b\n' "$fs")
-		FSTAB["$i"]=$mntpnt
-		i=$((i + 1))
-	done < <(grep -E "$1" /etc/fstab)
+	# Unset all FSTAB_* variables
+	unset $(env | grep ^FSTAB_ | sed 's,=.*,,')
+
+	i=0
+	while read -r fs mntpnt fstype opts; do
+		echo "$fs" | egrep -qE '^#|^$' && continue
+
+		if echo "$fs $mntpnt $fstype $opts" | grep -qE "$match"; then
+			fs=$(printf '%b\n' "$fs")
+			eval export FSTAB_${i//\//_}=$mntpnt
+
+			i=$((i + 1))
+		fi
+	done < /etc/fstab
 }
 
 in_fstab()
 {
-	[ "${FSTAB[$1]}" != "" ]
+	local var
+
+	var=$(eval echo FSTAB_${1//\//_})
+	[ "${var}" != "" ]
 	return $?
 }
 
@@ -379,9 +394,14 @@ is_mounted()
 	local fs=$1
 	local line
 
+	TMPFILE=$(tempfile -d /var/tmp -m 600 -p mount.)
+	mount > $TMPFILE
+
 	while read line; do
 		echo "$line" | grep -q " on $fs " && return 0
-	done < <(mount)
+	done < $TMPFILE
+
+	rm -f $TMPFILE
 
 	return 1
 }
