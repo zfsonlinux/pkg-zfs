@@ -1,5 +1,7 @@
-zfs-linux (0.6.4-16-7fec46-wheezy) wheezy; urgency=low
+zfs-linux (0.6.4-16-544f71-wheezy) wheezy; urgency=low
 
+  * New upstream GIT version.
+  * New init scripts from PR 3337.
   * Make sure we only get 'filesystem's when we're about to mount it/them.
     This to filter out volumes (i.e. swap etc) and snapshots.
     Thanx to 'kidmin' for fix.
