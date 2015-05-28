@@ -2,13 +2,13 @@ initdir = $(DEFAULT_INIT_DIR)
 init_SCRIPTS = zfs-import zfs-mount zfs-share zfs-zed
 
 initcommondir = $(sysconfdir)/zfs
-initcommon_SCRIPTS = common.init
+initcommon_SCRIPTS = zfs-functions
 
 initconfdir = $(DEFAULT_INITCONF_DIR)
 initconf_SCRIPTS = zfs
 
 EXTRA_DIST = \
-	$(top_srcdir)/etc/init.d/common.init.in \
+	$(top_srcdir)/etc/init.d/zfs-functions.in \
 	$(top_srcdir)/etc/init.d/zfs-share.in \
 	$(top_srcdir)/etc/init.d/zfs-import.in \
 	$(top_srcdir)/etc/init.d/zfs-mount.in \
@@ -24,7 +24,7 @@ $(init_SCRIPTS) $(initconf_SCRIPTS) $(initcommon_SCRIPTS):
 	  if [ -e /etc/gentoo-release ]; then \
 		SHELL=/sbin/runscript; \
 	  else \
-		SHELL=/bin/bash; \
+		SHELL=/bin/sh; \
 	  fi; \
 	  $(SED) -e 's,@bindir\@,$(bindir),g' \
 		 -e 's,@sbindir\@,$(sbindir),g' \
@@ -37,7 +37,7 @@ $(init_SCRIPTS) $(initconf_SCRIPTS) $(initcommon_SCRIPTS):
 		 -e "s,@SHELL\@,$$SHELL,g" \
 		 -e "s,@NFS_SRV\@,$$NFS_SRV,g" \
 		 '$@.in' >'$@'; \
-	  [ '$@' = 'common.init' -o '$@' = 'zfs' ] || \
+	  [ '$@' = 'zfs-functions' -o '$@' = 'zfs' ] || \
 		chmod +x '$@')
 
 distclean-local::

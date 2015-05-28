@@ -22,11 +22,18 @@
 #
 # NOTE: Not having '$local_fs' on Required-Start but only on Required-Stop
 #       is on purpose. If we have '$local_fs' in both (and X-Start-Before=checkfs)
-#       we get conflicts - zed and import needs to be started extremly early,
-#       but not stopped TO late.
+#       we get conflicts - zed and import needs to be started extremely early,
+#       but not stopped too late.
+#
+# Released under the 2-clause BSD license.
+#
+# The original script that acted as a template for this script came from
+# the Debian GNU/Linux kFreeBSD ZFS packages (which did not include a
+# licensing stansa) in the commit dated Mar 24, 2011:
+#   https://github.com/zfsonlinux/pkg-zfs/commit/80a3ae582b59c0250d7912ba794dca9e669e605a
 
 # Source the common init script
-. @sysconfdir@/zfs/common.init
+. @sysconfdir@/zfs/zfs-functions
 
 ZED_NAME="zed"
 ZED_PIDFILE="@runstatedir@/$ZED_NAME.pid"
@@ -36,7 +43,7 @@ ZED_PIDFILE="@runstatedir@/$ZED_NAME.pid"
 
 # ----------------------------------------------------
 
-depend()
+do_depend()
 {
 	# Try to allow people to mix and match fstab with ZFS in a way that makes sense.
 	if [ "$(mountinfo -s /)" = 'zfs' ]
@@ -47,50 +54,60 @@ depend()
 	fi
 
 	# bootmisc will log to /var which may be a different zfs than root.
-	before bootmisc logger
-	use mtab
-	keyword -lxc -openvz -prefix -vserver
+	before bootmisc logger zfs-import
+	after sysfs
 }
 
-start()
+do_start()
 {
 	check_module_loaded || exit 0
 
 	ZED_ARGS="$ZED_ARGS -p $ZED_PIDFILE"
-	
+
 	zfs_action "Starting ZFS Event Daemon" zfs_daemon_start \
 	    "$ZED_PIDFILE" "$ZED" "$ZED_ARGS"
-	return $?
+	return "$?"
 }
 
-stop()
+do_stop()
 {
+	local pools RET
 	check_module_loaded || exit 0
 
 	zfs_action "Stopping ZFS Event Daemon" zfs_daemon_stop \
-	    "$ZED_PIDFILE" "$ZED" "$ZED_NAME"
-	RETVAL=$?
-
-	[ "$RETVAL" == 0 ] && rm -f "$ZED_PIDFILE"
-
-	return $RETVAL
+	   "$ZED_PIDFILE" "$ZED" "$ZED_NAME"
+	if [ "$?" -eq "0" ]
+	then
+		# Let's see if we have any pools imported
+		pools=$("$ZPOOL" list -H -oname)
+		if [ -z "$pools" ]
+		then
+			# No pools imported, it is/should be safe/possible to
+			# unload modules.
+			zfs_action "Unloading modules" rmmod zfs zunicode \
+			    zavl zcommon znvpair spl
+			return "$?"
+		fi
+	else
+		return "$?"
+	fi
 }
 
-status()
+do_status()
 {
 	check_module_loaded || exit 0
 
-	zfs_daemon_status "$ZED" "$ZED_NAME"
-	return $?
+	zfs_daemon_status "$ZED_PIDFILE" "$ZED" "$ZED_NAME"
+	return "$?"
 }
 
-reload()
+do_reload()
 {
 	check_module_loaded || exit 0
 
 	zfs_action "Reloading ZFS Event Daemon" zfs_daemon_reload \
-	    "$PIDFILE" "$ZED_NAME"
-	return $?
+	    "$ZED_PIDFILE" "$ZED_NAME"
+	return "$?"
 }
 
 # ----------------------------------------------------
@@ -98,20 +115,20 @@ reload()
 if [ ! -e /etc/gentoo-release ]; then
 	case "$1" in
 		start)
-			start
+			do_start
 			;;
 		stop)
-			stop
+			do_stop
 			;;
 		status)
-			status
+			do_status
 			;;
-		reload)
-			reload
+		reload|force-reload)
+			do_reload
 			;;
 		restart)
-			stop
-			start
+			do_stop
+			do_start
 			;;
 		*)
 			[ -n "$1" ] && echo "Error: Unknown command $1."
@@ -121,4 +138,11 @@ if [ ! -e /etc/gentoo-release ]; then
 	esac
 
 	exit $?
+else
+	# Create wrapper functions since Gentoo don't use the case part.
+	depend() { do_depend; }
+	start() { do_start; }
+	stop() { do_stop; }
+	status() { do_status; }
+	reload() { do_reload; }
 fi

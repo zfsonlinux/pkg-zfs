@@ -13,12 +13,14 @@ ZFS_SHARE='yes'
 # Run `zfs unshare -a` during system stop?
 ZFS_UNSHARE='yes'
 
-# Sould we use '-d /dev/disk/by-*' when importing pool?
-# Variable is somewhat missleading. Previously the code tried _only_
-# '/dev/disk/by-id', but will now try any '/dev/disk/by-*' directory.
-USE_DISK_BY_ID='yes'
+# Specify specific path(s) to look for device nodes and/or links for the
+# pool import(s). See zpool(8) for more information about this variable.
+# It supersedes the old USE_DISK_BY_ID which indicated that it would only
+# try '/dev/disk/by-id'.
+# The old variable will still work in the code, but is deprecated.
+#ZPOOL_IMPORT_PATH="/dev/disk/by-vdev:/dev/disk/by-id"
 
-# Should the datasets be mounted verbosly?
+# Should the datasets be mounted verbosely?
 # A mount counter will be used when mounting if set to 'yes'.
 VERBOSE_MOUNT='no'
 
@@ -32,22 +34,27 @@ DO_OVERLAY_MOUNTS='no'
 MOUNT_EXTRA_OPTIONS=""
 
 # Build kernel modules with the --enable-debug switch?
+# Only applicable for Debian GNU/Linux {dkms,initramfs}.
 ZFS_DKMS_ENABLE_DEBUG='no'
 
 # Build kernel modules with the --enable-debug-dmu-tx switch?
+# Only applicable for Debian GNU/Linux {dkms,initramfs}.
 ZFS_DKMS_ENABLE_DEBUG_DMU_TX='no'
 
 # Keep debugging symbols in kernel modules?
+# Only applicable for Debian GNU/Linux {dkms,initramfs}.
 ZFS_DKMS_DISABLE_STRIP='no'
 
 # Wait for this many seconds in the initrd pre_mountroot?
 # This delays startup and should be '0' on most systems.
+# Only applicable for Debian GNU/Linux {dkms,initramfs}.
 ZFS_INITRD_PRE_MOUNTROOT_SLEEP='0'
 
 # Wait for this many seconds in the initrd mountroot?
 # This delays startup and should be '0' on most systems. This might help on
 # systems which have their ZFS root on a USB disk that takes just a little
 # longer to be available
+# Only applicable for Debian GNU/Linux {dkms,initramfs}.
 ZFS_INITRD_POST_MODPROBE_SLEEP='0'
 
 # List of additional datasets to mount after the root dataset is mounted?
@@ -63,7 +70,7 @@ ZFS_INITRD_POST_MODPROBE_SLEEP='0'
 # taken care of by the initrd script automatically. These are only for
 # additional filesystems needed. Such as /opt, /usr/local which is not
 # located under the root fs.
-# Example: If root FS is 'rpool/ROOT/rootfs', this would make sence.
+# Example: If root FS is 'rpool/ROOT/rootfs', this would make sense.
 #ZFS_INITRD_ADDITIONAL_DATASETS="rpool/ROOT/usr rpool/ROOT/var"
 
 # List of pools that should NOT be imported at boot?
@@ -71,5 +78,5 @@ ZFS_INITRD_POST_MODPROBE_SLEEP='0'
 #ZFS_POOL_EXCEPTIONS="test2"
 
 # Optional arguments for the ZFS Event Daemon (ZED).
-# See zed(8) for more information on availible options.
+# See zed(8) for more information on available options.
 #ZED_ARGS="-M"
