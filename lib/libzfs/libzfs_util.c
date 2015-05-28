@@ -59,6 +59,31 @@ libzfs_errno(libzfs_handle_t *hdl)
 }
 
 const char *
+libzfs_error_init(int error)
+{
+	switch (error) {
+	case ENXIO:
+		return (dgettext(TEXT_DOMAIN, "The ZFS modules are not "
+		    "loaded.\nTry running '/sbin/modprobe zfs' as root "
+		    "to load them.\n"));
+	case ENOENT:
+		return (dgettext(TEXT_DOMAIN, "The /dev/zfs device is "
+		    "missing and must be created.\nTry running 'udevadm "
+		    "trigger' as root to create it.\n"));
+	case ENOEXEC:
+		return (dgettext(TEXT_DOMAIN, "The ZFS modules cannot be "
+		    "auto-loaded.\nTry running '/sbin/modprobe zfs' as "
+		    "root to manually load them.\n"));
+	case EACCES:
+		return (dgettext(TEXT_DOMAIN, "Permission denied the "
+		    "ZFS utilities must be run as root.\n"));
+	default:
+		return (dgettext(TEXT_DOMAIN, "Failed to initialize the "
+		    "libzfs library.\n"));
+	}
+}
+
+const char *
 libzfs_error_action(libzfs_handle_t *hdl)
 {
 	return (hdl->libzfs_action);
@@ -632,7 +657,7 @@ int
 libzfs_run_process(const char *path, char *argv[], int flags)
 {
 	pid_t pid;
-	int rc, devnull_fd;
+	int error, devnull_fd;
 
 	pid = vfork();
 	if (pid == 0) {
@@ -654,9 +679,9 @@ libzfs_run_process(const char *path, char *argv[], int flags)
 	} else if (pid > 0) {
 		int status;
 
-		while ((rc = waitpid(pid, &status, 0)) == -1 &&
+		while ((error = waitpid(pid, &status, 0)) == -1 &&
 			errno == EINTR);
-		if (rc < 0 || !WIFEXITED(status))
+		if (error < 0 || !WIFEXITED(status))
 			return (-1);
 
 		return (WEXITSTATUS(status));
@@ -665,26 +690,85 @@ libzfs_run_process(const char *path, char *argv[], int flags)
 	return (-1);
 }
 
-int
+/*
+ * Verify the required ZFS_DEV device is available and optionally attempt
+ * to load the ZFS modules.  Under normal circumstances the modules
+ * should already have been loaded by some external mechanism.
+ *
+ * Environment variables:
+ * - ZFS_MODULE_LOADING="YES|yes|ON|on" - Attempt to load modules.
+ * - ZFS_MODULE_TIMEOUT="<seconds>"     - Seconds to wait for ZFS_DEV
+ */
+static int
 libzfs_load_module(const char *module)
 {
 	char *argv[4] = {"/sbin/modprobe", "-q", (char *)module, (char *)0};
+	char *load_str, *timeout_str;
+	long timeout = 10; /* seconds */
+	long busy_timeout = 10; /* milliseconds */
+	int load = 0, fd;
+	hrtime_t start;
 
-	if (libzfs_module_loaded(module))
-		return (0);
+	/* Optionally request module loading */
+	if (!libzfs_module_loaded(module)) {
+		load_str = getenv("ZFS_MODULE_LOADING");
+		if (load_str) {
+			if (!strncasecmp(load_str, "YES", strlen("YES")) ||
+			    !strncasecmp(load_str, "ON", strlen("ON")))
+				load = 1;
+			else
+				load = 0;
+		}
 
-	return (libzfs_run_process("/sbin/modprobe", argv, 0));
+		if (load && libzfs_run_process("/sbin/modprobe", argv, 0))
+			return (ENOEXEC);
+	}
+
+	/* Module loading is synchronous it must be available */
+	if (!libzfs_module_loaded(module))
+		return (ENXIO);
+
+	/*
+	 * Device creation by udev is asynchronous and waiting may be
+	 * required.  Busy wait for 10ms and then fall back to polling every
+	 * 10ms for the allowed timeout (default 10s, max 10m).  This is
+	 * done to optimize for the common case where the device is
+	 * immediately available and to avoid penalizing the possible
+	 * case where udev is slow or unable to create the device.
+	 */
+	timeout_str = getenv("ZFS_MODULE_TIMEOUT");
+	if (timeout_str) {
+		timeout = strtol(timeout_str, NULL, 0);
+		timeout = MAX(MIN(timeout, (10 * 60)), 0); /* 0 <= N <= 600 */
+	}
+
+	start = gethrtime();
+	do {
+		fd = open(ZFS_DEV, O_RDWR);
+		if (fd >= 0) {
+			(void) close(fd);
+			return (0);
+		} else if (errno != ENOENT) {
+			return (errno);
+		} else if (NSEC2MSEC(gethrtime() - start) < busy_timeout) {
+			sched_yield();
+		} else {
+			usleep(10 * MILLISEC);
+		}
+	} while (NSEC2MSEC(gethrtime() - start) < (timeout * MILLISEC));
+
+	return (ENOENT);
 }
 
 libzfs_handle_t *
 libzfs_init(void)
 {
 	libzfs_handle_t *hdl;
+	int error;
 
-	if (libzfs_load_module("zfs") != 0) {
-		(void) fprintf(stderr, gettext("Failed to load ZFS module "
-		    "stack.\nLoad the module manually by running "
-		    "'insmod <location>/zfs.ko' as root.\n"));
+	error = libzfs_load_module(ZFS_DRIVER);
+	if (error) {
+		errno = error;
 		return (NULL);
 	}
 
@@ -693,13 +777,6 @@ libzfs_init(void)
 	}
 
 	if ((hdl->libzfs_fd = open(ZFS_DEV, O_RDWR)) < 0) {
-		(void) fprintf(stderr, gettext("Unable to open %s: %s.\n"),
-		    ZFS_DEV, strerror(errno));
-		if (errno == ENOENT)
-			(void) fprintf(stderr,
-			    gettext("Verify the ZFS module stack is "
-			    "loaded by running '/sbin/modprobe zfs'.\n"));
-
 		free(hdl);
 		return (NULL);
 	}
@@ -710,8 +787,6 @@ libzfs_init(void)
 	if ((hdl->libzfs_mnttab = fopen(MNTTAB, "r")) == NULL) {
 #endif
 		(void) close(hdl->libzfs_fd);
-		(void) fprintf(stderr,
-		    gettext("mtab is not present at %s.\n"), MNTTAB);
 		free(hdl);
 		return (NULL);
 	}
