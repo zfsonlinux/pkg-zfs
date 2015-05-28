@@ -8,7 +8,7 @@ etc/init.d/zfs-mount
 etc/init.d/zfs-share
 etc/init.d/zfs-zed
 etc/zfs/zed.d/*
-etc/zfs/common.init
+etc/zfs/zfs-functions
 usr/lib/x86_64-linux-gnu/zfs/zed.d
 usr/sbin/*
 lib/systemd/system
