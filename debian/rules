@@ -169,7 +169,7 @@ override_dh_installinit:
 	chmod -x $(CURDIR)/debian/zfsutils/etc/default/zfs
 
 	@# Install the common init script.
-	install -m 644 $(CURDIR)/etc/init.d/common.init $(CURDIR)/debian/zfsutils/etc/zfs/
+	install -m 644 $(CURDIR)/etc/init.d/zfs-functions $(CURDIR)/debian/zfsutils/etc/zfs/
 
 	@# Install the ZED init file.
 	dh_installinit -pzfsutils --onlyscripts --name=zfs-zed \
