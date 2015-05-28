@@ -19,21 +19,29 @@
 # Description:       Run the `zfs share -a` or `zfs unshare -a` commands
 #                    for controlling iSCSI, NFS, or CIFS network shares.
 ### END INIT INFO
+#
+# Released under the 2-clause BSD license.
+#
+# The original script that acted as a template for this script came from
+# the Debian GNU/Linux kFreeBSD ZFS packages (which did not include a
+# licensing stansa) in the commit dated Mar 24, 2011:
+#   https://github.com/zfsonlinux/pkg-zfs/commit/80a3ae582b59c0250d7912ba794dca9e669e605a
 
 # Source the common init script
-. @sysconfdir@/zfs/common.init
+. @sysconfdir@/zfs/zfs-functions
 
 # ----------------------------------------------------
 
-depend()
+do_depend()
 {
-	need zfs-mount
+	after sysfs zfs-mount
+	keyword -lxc -openvz -prefix -vserver
 }
 
-start()
+do_start()
 {
 	case "$ZFS_SHARE" in
-		([Oo][Ff][Ff]|[Nn][Oo]|'')
+		[Oo][Ff][Ff]|[Nn][Oo]|''|0)
 			exit 0
 			;;
 	esac
@@ -43,10 +51,10 @@ start()
 	zfs_action "Sharing ZFS filesystems" "$ZFS" share -a
 }
 
-stop()
+do_stop()
 {
 	case "$ZFS_UNSHARE" in
-		([Oo][Ff][Ff]|[Nn][Oo]|'')
+		[Oo][Ff][Ff]|[Nn][Oo]|''|0)
 			exit 0
 			;;
 	esac
@@ -61,10 +69,10 @@ stop()
 if [ ! -e /etc/gentoo-release ]; then
 	case "$1" in
 		start)
-			start
+			do_start
 			;;
 		stop)
-			stop
+			do_stop
 			;;
 		force-reload|reload|restart|status)
 			# no-op
@@ -77,4 +85,9 @@ if [ ! -e /etc/gentoo-release ]; then
 	esac
 
 	exit $?
+else
+	# Create wrapper functions since Gentoo don't use the case part.
+	depend() { do_depend; }
+	start() { do_start; }
+	stop() { do_stop; }
 fi

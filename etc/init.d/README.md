@@ -1,11 +1,11 @@
 DESCRIPTION
-  These script where written with the primary intention of being portable and
+  These script were written with the primary intention of being portable and
   usable on as many systems as possible.
 
   This is, in practice, usually not possible. But the intention is there.
   And it is a good one.
 
-  It have been tested successfully on:
+  They have been tested successfully on:
 
     * Debian GNU/Linux Wheezy
     * Debian GNU/Linux Jessie
@@ -22,11 +22,11 @@ SUPPORT
 
     * Distribution name
     * Distribution version
-    * Where to find a install CD image
+    * Where to find an install CD image
     * Architecture
 
   If you have code to share that fixes the problem, that is much better.
-  But please remember to try your best to think 'portability'. If you
+  But please remember to try your best keep portability in mind. If you
   suspect that what you're writing/modifying won't work on anything else
   than your distribution, please make sure to put that code in appropriate
   if/else/fi code.
@@ -34,8 +34,8 @@ SUPPORT
   It currently MUST be bash (or fully compatible) for this to work.
 
   If you're making your own distribution and you want the scripts to
-  work on that, the biggest problem you'll (proably) have is the part
-  at the beginning of the "common.init.in" file which sets up the
+  work on that, the biggest problem you'll (probably) have is the part
+  at the beginning of the "zfs-functions.in" file which sets up the
   logging output.
 
 INSTALLING INIT SCRIPT LINKS
@@ -56,9 +56,9 @@ INSTALLING INIT SCRIPT LINKS
 
   On Gentoo:
 
-    rc-update add zfs-zed sysinit
-    rc-update add zfs-import sysinit
-    rc-update add zfs-mount default
+    rc-update add zfs-zed boot
+    rc-update add zfs-import boot
+    rc-update add zfs-mount boot
     rc-update add zfs-share default
 
 
@@ -68,7 +68,7 @@ INSTALLING INIT SCRIPT LINKS
   Then import any/all pools (except the root pool which is mounted in the
   initrd before the system even boots - basically before the S (single-user)
   mode).
-  
+
   Then we mount all filesystems before we start any network service (such as
   NFSd, AFSd, Samba, iSCSI targets and what not). Even if the share* in ZFS
   isn't used, the filesystem must be mounted for the service to start properly.

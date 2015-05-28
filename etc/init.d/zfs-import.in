@@ -1,6 +1,6 @@
 #!@SHELL@
 #
-# zfs-mount     This script will import/export zfs pools.
+# zfs-import    This script will import/export zfs pools.
 #
 # chkconfig:    2345 01 99
 # description:  This script will import/export zfs pools during system
@@ -19,46 +19,141 @@
 # Short-Description: Import ZFS pools
 # Description: Run the `zpool import` or `zpool export` commands.
 ### END INIT INFO
+#
+# Released under the 2-clause BSD license.
+#
+# The original script that acted as a template for this script came from
+# the Debian GNU/Linux kFreeBSD ZFS packages (which did not include a
+# licensing stansa) in the commit dated Mar 24, 2011:
+#   https://github.com/zfsonlinux/pkg-zfs/commit/80a3ae582b59c0250d7912ba794dca9e669e605a
 
 # Source the common init script
-. @sysconfdir@/zfs/common.init
+. @sysconfdir@/zfs/zfs-functions
 
 # ----------------------------------------------------
 
-depend()
+do_depend()
 {
-	need zfs-zed
+	after sysfs udev zfs-zed
+	keyword -lxc -openvz -prefix -vserver
+}
+
+# Support function to get a list of all pools, separated with ';'
+find_pools()
+{
+	local CMD="$*"
+	local pools
+
+	pools=$($CMD 2> /dev/null | \
+		grep -E "pool:|^[a-zA-Z0-9]" | \
+		sed 's@.*: @@' | \
+		sort | \
+		while read pool; do \
+		    echo -n "$pool;"
+		done)
+
+	echo "${pools%%;}" # Return without the last ';'.
 }
 
 # Import all pools
 do_import()
 {
-	local already_imported available_pools pool apools exception dir RET r
-	RET=0
+	local already_imported available_pools pool npools
+	local exception dir ZPOOL_IMPORT_PATH RET=0 r=1
 
-	already_imported=$($ZPOOL list -H -oname)
-	available_pools=$($ZPOOL import 2> /dev/null | grep pool: | \
-	    sed 's@.*: @@')
+	# In case not shutdown cleanly.
+	[ -n "$init" ] && rm -f /etc/dfs/sharetab
 
-	# Just in case - seen it happen
-	if [ -z "$available_pools" -a -n "$USE_DISK_BY_ID" -a \
-	     "$USE_DISK_BY_ID" == 'yes' ]
+	# Just simplify code later on.
+	if [ -n "$USE_DISK_BY_ID" -a "$USE_DISK_BY_ID" != 'yes' ]
 	then
-		available_pools=$($ZPOOL import -d /dev/disk/by-id 2>/dev/null \
-		    | grep pool: | sed 's@.*: @@')
+		# It's something, but not 'yes' so it's no good to us.
+		unset USE_DISK_BY_ID
+	fi
+
+	# Find list of already imported pools.
+	already_imported=$(find_pools "$ZPOOL" list -H -oname)
+	available_pools=$(find_pools "$ZPOOL" import)
+
+	# Just in case - seen it happen (that a pool isn't visable/found
+	# with a simple "zpool import" but only when using the "-d"
+	# option or setting ZPOOL_IMPORT_PATH).
+	if [ -d "/dev/disk/by-id" ]
+	then
+		npools=$(find_pools "$ZPOOL" import -d /dev/disk/by-id)
+		if [ -n "$npools" ]
+		then
+			# Because we have found extra pool(s) here, which wasn't
+			# found 'normaly', we need to force USE_DISK_BY_ID to
+			# make sure we're able to actually import it/them later.
+			USE_DISK_BY_ID='yes'
+
+			# Filter out duplicates (pools found with the simpl
+			# "zpool import" but which is also found with the
+			# "zpool import -d ...").
+			npools=$(echo "$npools" | sed "s,$available_pools,,")
+
+			if [ -n "$available_pools" ]
+			then
+				# Add the list to the existing list of
+				# available pools
+				available_pools="$available_pools;$npools"
+			else
+				available_pools="$npools"
+			fi
+		fi
 	fi
 
         # Filter out any exceptions...
-	if [ -n "$ZFS_POOL_EXCEPTIONS" ]; then
-		apools=""
-		for pool in $available_pools; do
-			for exception in $ZFS_POOL_EXCEPTIONS; do
-				[ "$pool" != "$exception" ] && apools="$apools $pool"
+	if [ -n "$ZFS_POOL_EXCEPTIONS" ]
+	then
+		local found=""
+		local apools=""
+		OLD_IFS="$IFS" ; IFS=";"
+
+		for pool in $available_pools
+		do
+			for exception in $ZFS_POOL_EXCEPTIONS
+			do
+				[ "$pool" = "$exception" ] && continue 2
+				found="$pool"
 			done
+
+			if [ -n "$found" ]
+			then
+				if [ -n "$apools" ]
+				then
+					apools="$apools;$pool"
+				else
+					apools="$pool"
+				fi
+			fi
 		done
 
-		available_pools=$apools
+		IFS="$OLD_IFS"
+		available_pools="$apools"
 	fi
+
+	# For backwards compability, make sure that ZPOOL_IMPORT_PATH is set
+	# to something we can use later with the real import(s). We want to
+	# make sure we find all by* dirs, BUT by-vdev should be first (if it
+	# exists).
+	if [ -n "$USE_DISK_BY_ID" -a -z "$ZPOOL_IMPORT_PATH" ]
+	then
+		local dirs
+		dirs="$(find /dev/disk/by-* -maxdepth 0 -type d | \
+			grep -v by-vdev)"
+		dirs="$(echo "$dirs" | sed 's, ,:,g')"
+		if [ -d "/dev/disk/by-vdev" ]
+		then
+			# Add by-vdev at the beginning.
+			ZPOOL_IMPORT_PATH="/dev/disk/by-vdev:"
+		fi
+		ZPOOL_IMPORT_PATH="$ZPOOL_IMPORT_PATH$dirs:/dev"
+	fi
+
+	# Needs to be exported for "zpool" to catch it.
+	[ -n "$ZPOOL_IMPORT_PATH" ] && export ZPOOL_IMPORT_PATH
 
 	# Mount all availible pools (except those set in ZFS_POOL_EXCEPTIONS.
 	#
@@ -69,94 +164,66 @@ do_import()
 	#
 	# If it IS interactive (started from the shell manually), then we
 	# get one line per pool importing.
-	# Example: Importing ZFS pool $pool1                            [OK]
-	#          Importing ZFS pool $pool2                            [OK]
-	#          [etc]
-	#
-	# In addition to that (being interactive), if VERBOSE_MOUNT='yes',
-	# then we also get information about where it finds the devices for
-	# the pool.
-	# Example: Importing ZFS pool $pool1 using /dev/disk/by-vdev    [OK]
-	#          Importing ZFS pool $pool2 using /dev/disk/by-vdev    [OK]
+	# Example: Importing ZFS pool pool1                             [OK]
+	#          Importing ZFS pool pool2                             [OK]
 	#          [etc]
 	[ -n "$init" ] && zfs_log_begin_msg "Importing ZFS pool(s)"
-	for pool in $available_pools; do
+	OLD_IFS="$IFS" ; IFS=";"
+	for pool in $available_pools
+	do
+		[ -z "$pool" ] && continue
+
 		# We have pools that haven't been imported - import them
-		if [ -z "$init" ]; then
+		if [ -n "$init" ]
+		then
+			# Not interactive - a dot for each pool.
+			# Except on Gentoo where this doesn't work.
+			zfs_log_progress_msg "."
+		else
 			# Interactive - one 'Importing ...' line per pool
 			zfs_log_begin_msg "Importing ZFS pool $pool"
-		else
-			# Not interactive - a dot for each pool.
-			zfs_log_progress_msg "."
 		fi
 
-		if [ "$USE_DISK_BY_ID" == 'yes' ]; then
-			# Really the default/prefered way.
-			if [ -z "$init" -a "$VERBOSE_MOUNT" == 'yes' ]; then
-			    # Interactive + Verbose = more information
-			    zfs_log_progress_msg " using "
-			fi
+		# Import by using ZPOOL_IMPORT_PATH (either set above or in
+		# the config file) _or_ with the 'built in' default search
+		# paths. This is the prefered way.
+		"$ZPOOL" import -N "$pool" 2> /dev/null
+		r="$?" ; RET=$((RET + r))
+		if [ "$r" -eq 0 ]
+		then
+			# Output success and process the next pool
+			[ -z "$init" ] && zfs_log_end_msg 0
+			continue
+		fi
+		# We don't want a fail msg here, we're going to try import
+		# using the cache file soon and that might succeed.
+		[ ! -f "$ZPOOL_CACHE" ] && zfs_log_end_msg "$RET"
 
-			for dir in /dev/disk/by-vdev /dev/disk/by-* /dev; do
-				[ ! -d "$dir" ] && continue
-
-				if [ -z "$init" -a "$VERBOSE_MOUNT" == 'yes' ];
-				then
-					# Interactive + Verbose = show dir.
-					zfs_log_progress_msg " $dir"
-				fi
-
-				"$ZPOOL" import -d "$dir" -N "$pool" 2>/dev/null
-				r=$? ; RET=$((RET + r))
-				[ "$r" -eq 0 ] && break
-			done
-			[ -z "$init" ] && zfs_log_end_msg $RET
-		elif [ -f "$ZPOOL_CACHE" ]; then
-			# Fallback - use a cache file
-			if [ -z "$init" -a "$VERBOSE_MOUNT" == 'yes' ]; then
+		if [ "$r" -gt 0 -a -f "$ZPOOL_CACHE" ]
+		then
+			# Failed to import without a cache file. Try WITH...
+			if [ -z "$init" -a "$VERBOSE_MOUNT" = 'yes' ]
+			then
 				# Interactive + Verbose = more information
 				zfs_log_progress_msg " using cache file"
 			fi
 
-			"$ZPOOL" import -c "$ZPOOL_CACHE" -N "$pool" 2>/dev/null
-			r=$? ; RET=$((RET + r))
-			if [ "$r" -eq 0 ]; then
-				if [ -z "$init" -a "$VERBOSE_MOUNT" == 'yes' ];
-				then
-				    zfs_log_end_msg 0
-				fi
-
-				break
+			"$ZPOOL" import -c "$ZPOOL_CACHE" -N "$pool" 2> /dev/null
+			r="$?" ; RET=$((RET + r))
+			if [ "$r" -eq 0 ]
+			then
+				[ -z "$init" ] && zfs_log_end_msg 0
+				continue 3 # Next pool
 			fi
-			zfs_log_end_msg $RET
-		else
-			# Last ditch attempt, try /dev!
-			if [ -z "$init" -a "$VERBOSE_MOUNT" == 'yes' ]; then
-				# Interactive + Verbose = more information
-				zfs_log_begin_msg " using defaults"
-			fi
-
-			"$ZPOOL" import -N "$pool" 2>/dev/null
-			r=$? ; RET=$((RET + r))
-			if [ "$r" -eq 0 ]; then
-				if [ -z "$init" -a "$VERBOSE_MOUNT" == 'yes' ];
-				then
-					zfs_log_end_msg 0
-				fi
-
-				break
-			fi
-			zfs_log_end_msg $RET
+			zfs_log_end_msg "$RET"
 		fi
 	done
-	[ -n "$init" ] && zfs_log_end_msg $RET
+	[ -n "$init" ] && zfs_log_end_msg "$RET"
 
-	if [ -n "$already_imported" -a -z "$available_pools" ]; then
-		# All pools imported
-		return 0
-	fi
+	IFS="$OLD_IFS"
+	[ -n "$already_imported" -a -z "$available_pools" ] && return 0
 
-	return $RET
+	return "$RET"
 }
 
 # Export all pools
@@ -168,58 +235,58 @@ do_export()
 	root_pool=$(get_root_pool)
 
 	[ -n "$init" ] && zfs_log_begin_msg "Exporting ZFS pool(s)"
-	TMPFILE=$(tempfile -d /var/tmp -m 600 -p zpool.)
-	"$ZPOOL" list -H -o name > $TMPFILE
+	TMPFILE=$(mktemp --tmpdir=/var/tmp zpool.XXXXX)
+	"$ZPOOL" list -H -oname > "$TMPFILE"
 	while read pool; do
-		[ "$pool" == "$root_pool" ] && continue
+		[ "$pool" = "$root_pool" ] && continue
 
-		if [ -z "$init" ]; then
+		if [ -z "$init" ]
+		then
 			# Interactive - one 'Importing ...' line per pool
 			zfs_log_begin_msg "Exporting ZFS pool $pool"
 		else
 			# Not interactive - a dot for each pool.
 			zfs_log_progress_msg "."
 		fi
-		
-		"$ZPOOL" export "$pool"
-		r=$? ; RET=$((RET + r))
-		[ -z "$init" ] && zfs_log_end_msg $r
-	done < $TMPFILE
-	rm -f $TMPFILE
-	[ -n "$init" ] && zfs_log_end_msg $RET
 
-	if [ "$RET" == "0" -a -z "$root_pool" ]; then
-		zfs_action "Unloading modules" rmmod zfs zunicode zavl \
-		    zcommon znvpair spl
-	fi
+		"$ZPOOL" export "$pool"
+		r="$?" ; RET=$((RET + r))
+		[ -z "$init" ] && zfs_log_end_msg "$r"
+	done < "$TMPFILE"
+	rm -f "$TMPFILE"
+	[ -n "$init" ] && zfs_log_end_msg "$RET"
 }
 
 # Output the status and list of pools
-status()
+do_status()
 {
 	check_module_loaded || exit 0
 
 	"$ZPOOL" status && echo "" && "$ZPOOL" list
 }
 
-start()
+do_start()
 {
-	if [ "$VERBOSE_MOUNT" == 'yes' ]; then
-	    zfs_log_begin_msg "Checking if zfs userspace tools present"
+	if [ "$VERBOSE_MOUNT" = 'yes' ]
+	then
+	    zfs_log_begin_msg "Checking if ZFS userspace tools present"
 	fi
 
-	if checksystem; then
-		[ "$VERBOSE_MOUNT" == 'yes' ] && zfs_log_end_msg 0
+	if checksystem
+	then
+		[ "$VERBOSE_MOUNT" = 'yes' ] && zfs_log_end_msg 0
 
-		if [ "$VERBOSE_MOUNT" == 'yes' ]; then
+		if [ "$VERBOSE_MOUNT" = 'yes' ]
+		then
 		    zfs_log_begin_msg "Loading kernel ZFS infrastructure"
 		fi
 
-		if ! load_module; then
-			[ "$VERBOSE_MOUNT" == 'yes' ] && zfs_log_end_msg 1
+		if ! load_module
+		then
+			[ "$VERBOSE_MOUNT" = 'yes' ] && zfs_log_end_msg 1
 			return 5
 		fi
-		[ "$VERBOSE_MOUNT" == 'yes' ] && zfs_log_end_msg 0
+		[ "$VERBOSE_MOUNT" = 'yes' ] && zfs_log_end_msg 0
 
 		do_import && udev_trigger # just to make sure we get zvols.
 
@@ -229,7 +296,7 @@ start()
 	fi
 }
 
-stop()
+do_stop()
 {
 	# Check to see if the module is even loaded.
 	check_module_loaded || exit 0
@@ -239,16 +306,17 @@ stop()
 
 # ----------------------------------------------------
 
-if [ ! -e /etc/gentoo-release ]; then
+if [ ! -e /etc/gentoo-release ]
+then
 	case "$1" in
 		start)
-			start
+			do_start
 			;;
 		stop)
-			stop
+			do_stop
 			;;
 		status)
-			status
+			do_status
 			;;
 		force-reload|condrestart|reload|restart)
 			# no-op
@@ -261,4 +329,10 @@ if [ ! -e /etc/gentoo-release ]; then
 	esac
 
 	exit $?
+else
+	# Create wrapper functions since Gentoo don't use the case part.
+	depend() { do_depend; }
+	start() { do_start; }
+	stop() { do_stop; }
+	status() { do_status; }
 fi
