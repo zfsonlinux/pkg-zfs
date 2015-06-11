@@ -1,3 +1,9 @@
+zfs-linux (0.6.4-18-06358e-wheezy) wheezy; urgency=low
+
+  * New upstream GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 11 Jun 2015 20:29:25 +0200
+
 zfs-linux (0.6.4-17-c3520e-wheezy) wheezy; urgency=low
 
   * New upstream GIT version.
