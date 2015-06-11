@@ -1,3 +1,10 @@
+zfs-linux (0.6.4-17-c3520e) jessie; urgency=low
+
+  * New upstream GIT version.
+  * init scripts from PR 3337 is now applied.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 11 Jun 2015 10:02:40 +0200
+
 zfs-linux (0.6.4-16-544f71) jessie; urgency=low
 
   * New upstream GIT version.
