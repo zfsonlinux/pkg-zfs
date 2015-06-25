@@ -302,6 +302,7 @@ exit 0
 %files dracut
 %doc dracut/README.dracut.markdown
 %{_dracutdir}/modules.d/*
+%{_datadir}/initramfs-tools
 
 %changelog
 * Wed Apr  8 2015 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.4-1
