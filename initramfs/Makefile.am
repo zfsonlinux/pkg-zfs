@@ -7,7 +7,7 @@ EXTRA_DIST = \
 	$(top_srcdir)/initramfs/hooks/zfs \
 	$(top_srcdir)/initramfs/scripts/zfs
 
-install-initrd_SCRIPTS: $(EXTRA_DIST)
+install-initrdSCRIPTS: $(EXTRA_DIST)
 	for d in conf-hooks.d hooks scripts; do \
 	  $(MKDIR_P) $(DESTDIR)$(initrddir)/$$d; \
 	  cp $(top_srcdir)/initramfs/$$d/zfs \
