@@ -133,7 +133,7 @@ Description: Native ZFS root filesystem capabilities for Linux
 
 Package: zfs-initramfs
 Architecture: linux-any
-Depends: initramfs-tools,
+Depends: initramfs-tools, busybox,
  zfs-modules | zfs-dkms | zfs-modules-source (>= ${source:Version}),
  zfsutils, ${misc:Depends}
 Description: Native ZFS root filesystem capabilities for Linux
