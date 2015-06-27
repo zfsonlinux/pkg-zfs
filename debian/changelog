@@ -1,3 +1,10 @@
+zfs-linux (0.6.4-1.2-1) jessie; urgency=low
+
+  * Merge new upstream tag zfs-0.6.4.2.
+  * zfs-initramfs needs to depend on busybox.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 27 Jun 2015 15:10:44 +0200
+
 zfs-linux (0.6.4-1.1-2) jessie; urgency=low
 
   * Make sure we only get 'filesystem's when we're about to mount it/them.
