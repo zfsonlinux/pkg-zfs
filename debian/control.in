@@ -117,7 +117,7 @@ Description: Native ZFS root filesystem capabilities for Linux
 
 Package: zfs-initramfs
 Architecture: linux-any
-Depends: initramfs-tools, zfs-modules | zfs-dkms, zfsutils, ${misc:Depends}
+Depends: initramfs-tools, busybox, zfs-modules | zfs-dkms, zfsutils, ${misc:Depends}
 Description: Native ZFS root filesystem capabilities for Linux
  The Z file system is a pooled filesystem designed for maximum data
  integrity, supporting data snapshots, multiple copies, and data
