@@ -33,17 +33,6 @@
 
 # ----------------------------------------------------
 
-chkroot() {
-	while read line; do
-		set -- $line
-		if [ "$2" = "/" ]; then
-			return 0
-		fi
-	done < /etc/mtab
-
-	return 1
-}
-
 do_depend()
 {
 	after procfs zfs-import sysfs procps
