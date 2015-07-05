@@ -31,6 +31,9 @@ DO_OVERLAY_MOUNTS='no'
 
 # Any additional option to the 'zfs import' commandline?
 # Include '-o' for each option wanted.
+# You don't need to put '-f' in here, unless you want it ALL the time.
+# Using the option 'zfsforce=1' on the grub/kernel command line will
+# do the same, but on a case-to-case basis.
 ZPOOL_IMPORT_OPTS=""
 
 # Any additional option to the 'zfs mount' command line?
