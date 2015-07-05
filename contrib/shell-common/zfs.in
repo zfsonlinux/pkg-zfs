@@ -29,6 +29,10 @@ VERBOSE_MOUNT='no'
 # is not allowed).
 DO_OVERLAY_MOUNTS='no'
 
+# Any additional option to the 'zfs import' commandline?
+# Include '-o' for each option wanted.
+ZPOOL_IMPORT_OPTS=""
+
 # Any additional option to the 'zfs mount' command line?
 # Include '-o' for each option wanted.
 MOUNT_EXTRA_OPTIONS=""

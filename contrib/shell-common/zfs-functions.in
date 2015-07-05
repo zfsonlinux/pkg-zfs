@@ -11,6 +11,9 @@
 #   https://github.com/zfsonlinux/pkg-zfs/commit/80a3ae582b59c0250d7912ba794dca9e669e605a
 
 PATH=/sbin:/bin:/usr/bin:/usr/sbin
+OLD_IFS="${IFS}"
+NEWLINE="
+"
 
 # Source function library
 if [ -f /etc/rc.d/init.d/functions ]; then
@@ -22,6 +25,9 @@ elif [ -L /etc/init.d/functions.sh ]; then
 elif [ -f /lib/lsb/init-functions ]; then
 	# LSB, Debian GNU/Linux and derivates
 	. /lib/lsb/init-functions
+elif [ -f /lib/dracut-lib.sh ]; then
+	# Dracut initrd
+	. /lib/dracut-lib.sh
 fi
 
 # Of course the functions we need are called differently
@@ -71,6 +77,12 @@ elif type einfo > /dev/null 2>&1 ; then
 	zfs_log_failure_msg() { eend "$1"; }
 #	zfs_log_progress_msg() { echo -n "$1"; }
 	zfs_log_progress_msg() { echo -n; }
+elif type info > /dev/null 2>&1 ; then
+	# Dracut functions
+	zfs_log_begin_msg() { info "ZFS: $1"; }
+	zfs_log_end_msg() { echo -n; }
+	zfs_log_failure_msg() { warn "ZFS: $1"; }
+	zfs_log_progress_msg() { echo -n; }
 else
 	# Unknown - simple substitues.
 	zfs_log_begin_msg() { echo -n "$1"; }
@@ -102,6 +114,13 @@ export ZFS ZED ZPOOL ZPOOL_CACHE ZFS_MOUNT ZFS_UNMOUNT
 # Source zfs configuration, overriding the defaults
 if [ -f @initconfdir@/zfs ]; then
 	. @initconfdir@/zfs
+fi
+
+if [ -f /lib/dracut-lib.sh ]; then
+	if getargbool 0 zfs_force -y zfs.force -y zfsforce ; then
+		warn "ZFS: Will force-import pools if necessary."
+		ZPOOL_IMPORT_OPTS="${ZPOOL_IMPORT_OPTS} -f"
+	fi
 fi
 
 # ----------------------------------------------------
@@ -598,7 +617,7 @@ import_pool()
 	[ "$quiet" != "y" ] && zfs_log_begin_msg \
 		"Importing pool '${pool}' using defaults"
 
-	ZFS_CMD="${ZPOOL} import -N ${ZPOOL_FORCE}"
+	ZFS_CMD="${ZPOOL} import -N ${ZPOOL_FORCE} ${ZPOOL_IMPORT_OPTS}"
 	ZFS_STDERR="$($ZFS_CMD "$pool" 2>&1)"
 	ZFS_ERROR="$?"
 	if [ "${ZFS_ERROR}" != 0 ]
@@ -608,7 +627,7 @@ import_pool()
 		[ "$quiet" != "y" ] && zfs_log_begin_msg \
 			"Importing pool '${pool}' using cachefile."
 
-		ZFS_CMD="${ZPOOL} import -c ${ZPOOL_CACHE} -N ${ZPOOL_FORCE}"
+		ZFS_CMD="${ZPOOL} import -c ${ZPOOL_CACHE} -N ${ZPOOL_FORCE} ${ZPOOL_IMPORT_OPTS}"
 		ZFS_STDERR="$($ZFS_CMD "$pool" 2>&1)"
 		ZFS_ERROR="$?"
 		if [ "${ZFS_ERROR}" != 0 ]
@@ -1006,4 +1025,32 @@ chkroot() {
 	done < /etc/mtab
 
 	return 1
+}
+
+# export_pools [OPTS]
+#   exports all imported zfs pools.
+export_pools() {
+	local opts="${1}"
+	local ret=0
+
+	IFS="${NEWLINE}"
+	for pool in `zpool list -H -o name` ; do
+		if zpool list -H "${pool}" 2>&1 > /dev/null ; then
+			zpool export "${pool}" ${opts} || ret=$?
+		fi
+	done
+	IFS="${OLD_IFS}"
+
+	return ${ret}
+}
+
+# If plymouth is availible, hide the splash image.
+disable_plymouth()
+{
+	if [ -x /bin/plymouth ] && /bin/plymouth --ping
+	then
+		/bin/plymouth hide-splash >/dev/null 2>&1
+	else
+		return 999
+	fi
 }
