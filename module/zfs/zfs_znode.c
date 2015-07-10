@@ -147,12 +147,14 @@ void
 zfs_znode_init(void)
 {
 	/*
-	 * Initialize zcache
+	 * Initialize zcache.  The KMC_SLAB hint is used in order that it be
+	 * backed by kmalloc() when on the Linux slab in order that any
+	 * wait_on_bit() operations on the related inode operate properly.
 	 */
 	ASSERT(znode_cache == NULL);
 	znode_cache = kmem_cache_create("zfs_znode_cache",
 	    sizeof (znode_t), 0, zfs_znode_cache_constructor,
-	    zfs_znode_cache_destructor, NULL, NULL, NULL, KMC_KMEM);
+	    zfs_znode_cache_destructor, NULL, NULL, NULL, KMC_SLAB);
 }
 
 void
@@ -948,6 +950,8 @@ again:
 				mutex_exit(&zp->z_lock);
 				sa_buf_rele(db, NULL);
 				ZFS_OBJ_HOLD_EXIT(zsb, obj_num);
+				/* inode might need this to finish evict */
+				cond_resched();
 				goto again;
 			}
 			*zpp = zp;
