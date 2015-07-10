@@ -1,3 +1,34 @@
+zfs-linux (0.6.4.2-1~vivid) vivid; urgency=low
+
+  [ Brian Behlendorf ]
+  * Wait in libzfs_init() for the /dev/zfs device
+  * Use ExecStartPre to load zfs modules
+  * Wait interruptibly in prefetch thread
+
+  [ Tim Chase ]
+  * Linux 3.12 compat: NUMA-aware per-superblock shrinker
+
+  [ Matus Kral ]
+  * Linux 4.1 compat: use read_iter() / write_iter()
+
+  [ Brian Behlendorf ]
+  * Add zfs_sb_prune_aliases() function
+
+  [ Chris Dunlop ]
+  * Wait for all znodes to be released before tearing down the superblock
+
+  [ tuxoko ]
+  * Add cond_resched to zfs_zget to prevent infinite loop
+
+  [ Ned Bass ]
+  * Serialize access to spa->spa_feat_stats nvlist
+  * Tag zfs-0.6.4.2
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 09 Jul 2015 22:42:29 -0400
+
 zfs-linux (0.6.4.1-1~vivid) vivid; urgency=low
 
   [ Tim Chase ]
