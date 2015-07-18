@@ -12,7 +12,7 @@ USER_C = \
 	nfs.c \
 	nfs.h \
 	smb.c \
-	smb.h
+	smb.h \
 	iscsi.c \
 	iscsi_iet.c \
 	iscsi_lio.c \
