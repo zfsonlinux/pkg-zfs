@@ -70,6 +70,8 @@ AC_DEFUN([ZFS_AC_CONFIG_KERNEL], [
 	ZFS_AC_KERNEL_MKDIR_UMODE_T
 	ZFS_AC_KERNEL_LOOKUP_NAMEIDATA
 	ZFS_AC_KERNEL_CREATE_NAMEIDATA
+	ZFS_AC_KERNEL_FOLLOW_LINK
+	ZFS_AC_KERNEL_PUT_LINK
 	ZFS_AC_KERNEL_TRUNCATE_RANGE
 	ZFS_AC_KERNEL_AUTOMOUNT
 	ZFS_AC_KERNEL_ENCODE_FH_WITH_INODE
@@ -108,6 +110,7 @@ AC_DEFUN([ZFS_AC_CONFIG_KERNEL], [
 	dnl # -Wall -fno-strict-aliasing -Wstrict-prototypes and other
 	dnl # compiler options are added by the kernel build system.
 	KERNELCPPFLAGS="$KERNELCPPFLAGS $NO_UNUSED_BUT_SET_VARIABLE"
+	KERNELCPPFLAGS="$KERNELCPPFLAGS $NO_BOOL_COMPARE"
 	KERNELCPPFLAGS="$KERNELCPPFLAGS -DHAVE_SPL -D_KERNEL"
 	KERNELCPPFLAGS="$KERNELCPPFLAGS -DTEXT_DOMAIN=\\\"zfs-linux-kernel\\\""
 
@@ -335,6 +338,8 @@ AC_DEFUN([ZFS_AC_SPL], [
 				splbuild="${splsrc}/${LINUX_VERSION}"
 			], [ test -e "${splsrc}/spl_config.h" ], [
 				splbuild="${splsrc}"
+			], [ find -L "${splsrc}" -name spl_config.h 2> /dev/null | grep -wq spl_config.h ], [
+				splbuild=$(find -L "${splsrc}" -name spl_config.h | sed 's,/spl_config.h,,')
 			], [
 				splbuild="[Not found]"
 			])
