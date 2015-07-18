@@ -22,7 +22,7 @@ ZFS has a DKMS registration.
 Index: pkg-zfs/config/dkms.m4
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/config/dkms.m4	2015-02-16 17:50:02.028361855 +0100
++++ pkg-zfs/config/dkms.m4	2015-07-18 18:55:05.504447311 +0200
 @@ -0,0 +1,14 @@
 +dnl #
 +dnl # Prevent manual building in DKMS source tree.
@@ -40,8 +40,8 @@ Index: pkg-zfs/config/dkms.m4
 +])
 Index: pkg-zfs/config/user.m4
 ===================================================================
---- pkg-zfs.orig/config/user.m4	2015-02-16 17:49:58.076411497 +0100
-+++ pkg-zfs/config/user.m4	2015-02-16 17:50:02.028361855 +0100
+--- pkg-zfs.orig/config/user.m4	2015-07-18 18:54:54.656447268 +0200
++++ pkg-zfs/config/user.m4	2015-07-18 18:55:05.504447311 +0200
 @@ -2,6 +2,7 @@
  dnl # Default ZFS user configuration
  dnl #
@@ -52,9 +52,9 @@ Index: pkg-zfs/config/user.m4
  	ZFS_AC_CONFIG_USER_SYSTEMD
 Index: pkg-zfs/config/zfs-build.m4
 ===================================================================
---- pkg-zfs.orig/config/zfs-build.m4	2015-02-16 17:49:58.076411497 +0100
-+++ pkg-zfs/config/zfs-build.m4	2015-02-16 17:50:02.028361855 +0100
-@@ -86,10 +86,10 @@
+--- pkg-zfs.orig/config/zfs-build.m4	2015-07-18 18:54:54.656447268 +0200
++++ pkg-zfs/config/zfs-build.m4	2015-07-18 18:55:05.504447311 +0200
+@@ -87,10 +87,10 @@
  	ZFS_AC_CONFIG_ALWAYS
  
  	case "$ZFS_CONFIG" in
