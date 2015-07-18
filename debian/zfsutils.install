@@ -1,4 +1,5 @@
-../tree/zfsutils/* /
+../tree/zfsutils/*		/
+contrib/bash_completion.d/zfs	/etc/bash_completion.d/zfs
 lib/udev
 sbin
 usr/share/man

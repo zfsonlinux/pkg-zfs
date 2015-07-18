@@ -6,7 +6,7 @@ include config/tgz.am
 
 SUBDIRS = include rpm
 if CONFIG_USER
-SUBDIRS += udev etc man scripts lib cmd contrib initramfs
+SUBDIRS += udev etc man scripts lib cmd contrib
 endif
 if CONFIG_KERNEL
 SUBDIRS += module
