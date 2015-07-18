@@ -7,11 +7,11 @@ pkgdracut_SCRIPTS = \
 	zfs-lib.sh
 
 EXTRA_DIST = \
-	$(top_srcdir)/contrib/dracut/90zfs/export-zfs.sh.in \
-	$(top_srcdir)/contrib/dracut/90zfs/module-setup.sh.in \
-	$(top_srcdir)/contrib/dracut/90zfs/mount-zfs.sh.in \
-	$(top_srcdir)/contrib/dracut/90zfs/parse-zfs.sh.in \
-	$(top_srcdir)/contrib/dracut/90zfs/zfs-lib.sh.in
+	contrib/dracut/90zfs/export-zfs.sh.in \
+	contrib/dracut/90zfs/module-setup.sh.in \
+	contrib/dracut/90zfs/mount-zfs.sh.in \
+	contrib/dracut/90zfs/parse-zfs.sh.in \
+	contrib/dracut/90zfs/zfs-lib.sh.in
 
 $(pkgdracut_SCRIPTS):
 	-$(SED) -e 's,@bindir\@,$(bindir),g' \
@@ -19,7 +19,7 @@ $(pkgdracut_SCRIPTS):
 		-e 's,@udevdir\@,$(udevdir),g' \
 		-e 's,@udevruledir\@,$(udevruledir),g' \
 		-e 's,@sysconfdir\@,$(sysconfdir),g' \
-		"$(top_srcdir)/contrib/dracut/90zfs/$@.in" >'$@'
+		'$@.in' >'$@'
 
 distclean-local::
 	-$(RM) $(pkgdracut_SCRIPTS)
