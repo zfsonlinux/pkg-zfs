@@ -48,7 +48,7 @@ cstyle:
 shellcheck:
 	@if type shellcheck > /dev/null 2>&1; then \
 		(find ${top_srcdir} -type f -name '*.sh.in' -o -type f \
-		 -name '*.sh'; find etc/init.d/zfs*.in -type f) | \
+		 -name '*.sh'; find contrib/sysv-init/zfs*.in -type f) | \
 		 grep -v 'zfs-script-config' | \
 		 while read file; do \
 			shellcheck --format gcc "$$file"; \
