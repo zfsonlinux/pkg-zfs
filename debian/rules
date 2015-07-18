@@ -28,8 +28,7 @@ ifndef SPL
 SPLSRC=/usr/src/spl-$(VERSION)
 endif
 
-CFG_OPTS=--without-selinux \
-	 --with-linux=$(KSRC) \
+CFG_OPTS=--with-linux=$(KSRC) \
 	 --with-linux-obj=$(KOBJ) \
 	 --with-spl=$(SPLSRC)
 
