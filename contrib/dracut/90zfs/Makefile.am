@@ -1,15 +1,15 @@
 pkgdracutdir = $(dracutdir)/modules.d/90zfs
 pkgdracut_SCRIPTS = \
-	$(top_srcdir)/contrib/dracut/90zfs/export-zfs.sh \
-	$(top_srcdir)/contrib/dracut/90zfs/module-setup.sh \
-	$(top_srcdir)/contrib/dracut/90zfs/mount-zfs.sh \
-	$(top_srcdir)/contrib/dracut/90zfs/parse-zfs.sh
+	export-zfs.sh \
+	module-setup.sh \
+	mount-zfs.sh \
+	parse-zfs.sh
 
 EXTRA_DIST = \
-	$(top_srcdir)/contrib/dracut/90zfs/export-zfs.sh.in \
-	$(top_srcdir)/contrib/dracut/90zfs/module-setup.sh.in \
-	$(top_srcdir)/contrib/dracut/90zfs/mount-zfs.sh.in \
-	$(top_srcdir)/contrib/dracut/90zfs/parse-zfs.sh.in
+	export-zfs.sh.in \
+	module-setup.sh.in \
+	mount-zfs.sh.in \
+	parse-zfs.sh.in
 
 $(pkgdracut_SCRIPTS): $(EXTRA_DIST)
 	-$(SED) -e 's,@bindir\@,$(bindir),g' \
