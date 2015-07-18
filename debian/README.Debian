@@ -35,11 +35,9 @@ loss of data, please use zfs-initramfs with caution.
      * Include my own NFS modifications
        https://github.com/zfsonlinux/zfs/pull/2790
 
-     * Include my own base scripts on the init scripts
-       https://github.com/zfsonlinux/zfs/pull/3337
-
-     * Include my own initramfs scripts
-       https://github.com/zfsonlinux/zfs/pull/3338
+     * Include my own SYSV, initramfs and dracut modifications
+       https://github.com/zfsonlinux/zfs/pull/3559
+       https://github.com/zfsonlinux/zfs/pull/3560
 
      * Adds support for property overrides
        https://github.com/zfsonlinux/zfs/pull/1867
@@ -49,3 +47,5 @@ loss of data, please use zfs-initramfs with caution.
 
      * Default to --with-blkid in packaging
        https://github.com/zfsonlinux/zfs/pull/2512
+
+ -- Turbo Fredriksson <turbo@bayour.com>  Sat, 18 Jul 2015 22:07:44 +0200
