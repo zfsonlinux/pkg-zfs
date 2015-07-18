@@ -6,10 +6,10 @@ pkgdracut_SCRIPTS = \
 	parse-zfs.sh
 
 EXTRA_DIST = \
-	contrib/dracut/90zfs/export-zfs.sh.in \
-	contrib/dracut/90zfs/module-setup.sh.in \
-	contrib/dracut/90zfs/mount-zfs.sh.in \
-	contrib/dracut/90zfs/parse-zfs.sh.in
+	export-zfs.sh.in \
+	module-setup.sh.in \
+	mount-zfs.sh.in \
+	parse-zfs.sh.in
 
 $(pkgdracut_SCRIPTS): $(EXTRA_DIST)
 	-$(SED) -e 's,@bindir\@,$(bindir),g' \
