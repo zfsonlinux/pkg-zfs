@@ -1,3 +1,9 @@
+zfs-linux (0.6.4-21-53b1d9) jessie; urgency=low
+
+  * New upstream GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 18 Jul 2015 18:41:19 +0200
+
 zfs-linux (0.6.4-20-16421a) jessie; urgency=low
 
   * New upstream GIT version.
