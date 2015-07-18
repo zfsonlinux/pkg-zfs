@@ -28,7 +28,7 @@ $(init_SCRIPTS): $(EXTRA_DIST)
 		 -e 's,@runstatedir\@,$(runstatedir),g' \
 		 -e "s,@SHELL\@,$$SHELL,g" \
 		 -e "s,@NFS_SRV\@,$$NFS_SRV,g" \
-		 "$(top_srcdir)/etc/init.d/$@.in" >'$@'; \
+		 "$(top_srcdir)/contrib/sysv-init/$@.in" >'$@'; \
 	  [ '$@' = 'zfs-functions' -o '$@' = 'zfs' ] || \
 		chmod +x '$@')
 

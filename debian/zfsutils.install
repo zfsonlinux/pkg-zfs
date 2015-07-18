@@ -1,13 +1,13 @@
 ../tree/zfsutils/*		/
-contrib/bash_completion.d/zfs	/etc/bash_completion.d/zfs
+contrib/bash_completion.d/zfs	/etc/bash_completion.d/
+contrib/sysv-init/zfs-import	/etc/init.d/
+contrib/sysv-init/zfs-mount	/etc/init.d/
+contrib/sysv-init/zfs-share	/etc/init.d/
+contrib/sysv-init/zfs-zed	/etc/init.d/
 lib/udev
 sbin
 usr/share/man
 etc/default/zfs
-etc/init.d/zfs-import
-etc/init.d/zfs-mount
-etc/init.d/zfs-share
-etc/init.d/zfs-zed
 etc/zfs/zed.d/*
 etc/zfs/zfs-functions
 usr/lib/x86_64-linux-gnu/zfs/zed.d
