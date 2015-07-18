@@ -6,19 +6,24 @@ DEFAULT_INCLUDES += \
 
 noinst_LTLIBRARIES = libshare.la
 
-libshare_la_SOURCES = \
-	$(top_srcdir)/lib/libshare/libshare_impl.h \
-	$(top_srcdir)/lib/libshare/libshare.c \
-	$(top_srcdir)/lib/libshare/nfs.c \
-	$(top_srcdir)/lib/libshare/nfs.h \
-	$(top_srcdir)/lib/libshare/smb.c \
-	$(top_srcdir)/lib/libshare/smb.h \
-	$(top_srcdir)/lib/libshare/iscsi.c \
-	$(top_srcdir)/lib/libshare/iscsi_iet.c \
-	$(top_srcdir)/lib/libshare/iscsi_lio.c \
-	$(top_srcdir)/lib/libshare/iscsi_scst.c \
-	$(top_srcdir)/lib/libshare/iscsi_stgt.c \
-	$(top_srcdir)/lib/libshare/iscsi.h
+USER_C = \
+	libshare_impl.h \
+	libshare.c \
+	nfs.c \
+	nfs.h \
+	smb.c \
+	smb.h
+	iscsi.c \
+	iscsi_iet.c \
+	iscsi_lio.c \
+	iscsi_scst.c \
+	iscsi_stgt.c \
+	iscsi.h
 
-libshare_la_LIBADD = \
-	$(top_builddir)/lib/libspl/libspl.la
+KERNEL_C =
+
+nodist_libshare_la_SOURCES = \
+	$(USER_C)
+	$(KERNEL_C)
+
+EXTRA_DIST = $(USER_C)

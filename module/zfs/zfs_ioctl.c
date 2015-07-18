@@ -1334,7 +1334,7 @@ get_nvlist(uint64_t nvl, uint64_t size, int iflag, nvlist_t **nvp)
 	if ((error = ddi_copyin((void *)(uintptr_t)nvl, packed, size,
 	    iflag)) != 0) {
 		vmem_free(packed, size);
-		return (error);
+		return (SET_ERROR(EFAULT));
 	}
 
 	if ((error = nvlist_unpack(packed, size, &list, 0)) != 0) {
@@ -1451,7 +1451,7 @@ zfs_sb_hold(const char *name, void *tag, zfs_sb_t **zsbp, boolean_t writer)
 	if (get_zfs_sb(name, zsbp) != 0)
 		error = zfs_sb_create(name, zsbp);
 	if (error == 0) {
-		rrw_enter(&(*zsbp)->z_teardown_lock, (writer) ? RW_WRITER :
+		rrm_enter(&(*zsbp)->z_teardown_lock, (writer) ? RW_WRITER :
 		    RW_READER, tag);
 		if ((*zsbp)->z_unmounted) {
 			/*
@@ -1459,7 +1459,7 @@ zfs_sb_hold(const char *name, void *tag, zfs_sb_t **zsbp, boolean_t writer)
 			 * thread should be just about to disassociate the
 			 * objset from the zsb.
 			 */
-			rrw_exit(&(*zsbp)->z_teardown_lock, tag);
+			rrm_exit(&(*zsbp)->z_teardown_lock, tag);
 			return (SET_ERROR(EBUSY));
 		}
 	}
@@ -1469,7 +1469,7 @@ zfs_sb_hold(const char *name, void *tag, zfs_sb_t **zsbp, boolean_t writer)
 static void
 zfs_sb_rele(zfs_sb_t *zsb, void *tag)
 {
-	rrw_exit(&zsb->z_teardown_lock, tag);
+	rrm_exit(&zsb->z_teardown_lock, tag);
 
 	if (zsb->z_sb) {
 		deactivate_super(zsb->z_sb);
@@ -5171,11 +5171,19 @@ zfs_ioc_space_snaps(const char *lastsnap, nvlist_t *innvl, nvlist_t *outnvl)
 		return (error);
 
 	error = dsl_dataset_hold(dp, lastsnap, FTAG, &new);
+	if (error == 0 && !new->ds_is_snapshot) {
+		dsl_dataset_rele(new, FTAG);
+		error = SET_ERROR(EINVAL);
+	}
 	if (error != 0) {
 		dsl_pool_rele(dp, FTAG);
 		return (error);
 	}
 	error = dsl_dataset_hold(dp, firstsnap, FTAG, &old);
+	if (error == 0 && !old->ds_is_snapshot) {
+		dsl_dataset_rele(old, FTAG);
+		error = SET_ERROR(EINVAL);
+	}
 	if (error != 0) {
 		dsl_dataset_rele(new, FTAG);
 		dsl_pool_rele(dp, FTAG);
