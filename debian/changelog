@@ -1,6 +1,11 @@
 zfs-linux (0.6.4-21-53b1d9) jessie; urgency=low
 
   * New upstream GIT version.
+  * Remove duplicate initramfs and bash completion scripts (left overs
+    from previous local merges).
+  * Include PR 3559 - Refactor SYSV init and initramfs (Phase 2).
+  * Include PR 3560 - Refactor SYSV init, initramfs and dracut (Phase 3).
+  * Update gbp.conf so that we generates a correct/up-to-date orig.tar.gz file.
 
  -- Turbo Fredriksson <turbo@debian.org>  Sat, 18 Jul 2015 18:41:19 +0200
 
