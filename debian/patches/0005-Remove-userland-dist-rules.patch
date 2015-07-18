@@ -10,9 +10,9 @@ instances of EXTRA_DIST and change dist_ to nodist_.
 
 Index: pkg-zfs/Makefile.am
 ===================================================================
---- pkg-zfs.orig/Makefile.am	2014-02-28 12:21:18.929852656 +0100
-+++ pkg-zfs/Makefile.am	2014-02-28 12:21:18.945852480 +0100
-@@ -20,7 +20,7 @@
+--- pkg-zfs.orig/Makefile.am	2015-07-18 18:57:33.820345439 +0200
++++ pkg-zfs/Makefile.am	2015-07-18 18:57:33.820345439 +0200
+@@ -19,7 +19,7 @@
  endif
  
  AUTOMAKE_OPTIONS = foreign
@@ -23,15 +23,15 @@ Index: pkg-zfs/Makefile.am
  
 Index: pkg-zfs/cmd/vdev_id/Makefile.am
 ===================================================================
---- pkg-zfs.orig/cmd/vdev_id/Makefile.am	2014-02-28 12:06:34.629846250 +0100
-+++ pkg-zfs/cmd/vdev_id/Makefile.am	2014-02-28 12:21:18.945852480 +0100
+--- pkg-zfs.orig/cmd/vdev_id/Makefile.am	2015-07-18 18:57:33.820345439 +0200
++++ pkg-zfs/cmd/vdev_id/Makefile.am	2015-07-18 18:57:33.820345439 +0200
 @@ -1 +1 @@
 -dist_udev_SCRIPTS = vdev_id
 +nodist_udev_SCRIPTS = vdev_id
 Index: pkg-zfs/etc/zfs/Makefile.am
 ===================================================================
---- pkg-zfs.orig/etc/zfs/Makefile.am	2014-02-28 12:06:34.645846201 +0100
-+++ pkg-zfs/etc/zfs/Makefile.am	2014-02-28 12:21:18.945852480 +0100
+--- pkg-zfs.orig/etc/zfs/Makefile.am	2015-07-18 18:57:33.820345439 +0200
++++ pkg-zfs/etc/zfs/Makefile.am	2015-07-18 18:57:33.820345439 +0200
 @@ -6,4 +6,3 @@
  	vdev_id.conf.sas_switch.example \
  	vdev_id.conf.multipath.example
@@ -39,8 +39,8 @@ Index: pkg-zfs/etc/zfs/Makefile.am
 -EXTRA_DIST = $(pkgsysconf_DATA)
 Index: pkg-zfs/scripts/zpios-profile/Makefile.am
 ===================================================================
---- pkg-zfs.orig/scripts/zpios-profile/Makefile.am	2014-02-28 12:06:34.709846204 +0100
-+++ pkg-zfs/scripts/zpios-profile/Makefile.am	2014-02-28 12:21:18.945852480 +0100
+--- pkg-zfs.orig/scripts/zpios-profile/Makefile.am	2015-07-18 18:57:33.820345439 +0200
++++ pkg-zfs/scripts/zpios-profile/Makefile.am	2015-07-18 18:57:33.820345439 +0200
 @@ -1,5 +1,5 @@
  pkgdataprofiledir = $(pkgdatadir)/zpios-profile
 -dist_pkgdataprofile_SCRIPTS = \
@@ -50,8 +50,8 @@ Index: pkg-zfs/scripts/zpios-profile/Makefile.am
  	$(top_srcdir)/scripts/zpios-profile/zpios-profile-post.sh \
 Index: pkg-zfs/scripts/zpios-test/Makefile.am
 ===================================================================
---- pkg-zfs.orig/scripts/zpios-test/Makefile.am	2014-02-28 12:06:34.709846204 +0100
-+++ pkg-zfs/scripts/zpios-test/Makefile.am	2014-02-28 12:21:18.949852443 +0100
+--- pkg-zfs.orig/scripts/zpios-test/Makefile.am	2015-07-18 18:57:33.820345439 +0200
++++ pkg-zfs/scripts/zpios-test/Makefile.am	2015-07-18 18:57:33.820345439 +0200
 @@ -1,5 +1,5 @@
  pkgdatatestdir = $(pkgdatadir)/zpios-test
 -dist_pkgdatatest_SCRIPTS = \
@@ -61,8 +61,8 @@ Index: pkg-zfs/scripts/zpios-test/Makefile.am
  	$(top_srcdir)/scripts/zpios-test/1x256th-65536rc-4rs-1cs-4off.sh \
 Index: pkg-zfs/scripts/zpool-config/Makefile.am
 ===================================================================
---- pkg-zfs.orig/scripts/zpool-config/Makefile.am	2014-02-28 12:06:34.709846204 +0100
-+++ pkg-zfs/scripts/zpool-config/Makefile.am	2014-02-28 12:21:18.949852443 +0100
+--- pkg-zfs.orig/scripts/zpool-config/Makefile.am	2015-07-18 18:57:33.820345439 +0200
++++ pkg-zfs/scripts/zpool-config/Makefile.am	2015-07-18 18:57:33.820345439 +0200
 @@ -1,5 +1,5 @@
  pkgdataconfigdir = $(pkgdatadir)/zpool-config
 -dist_pkgdataconfig_SCRIPTS = \
