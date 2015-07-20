@@ -203,6 +203,7 @@ extern void zfs_save_arguments(int argc, char **, char *, int);
 extern int zpool_log_history(libzfs_handle_t *, const char *);
 
 extern int libzfs_errno(libzfs_handle_t *);
+extern const char *libzfs_error_init(int);
 extern const char *libzfs_error_action(libzfs_handle_t *);
 extern const char *libzfs_error_description(libzfs_handle_t *);
 extern int zfs_standard_error(libzfs_handle_t *, int, const char *);
@@ -617,6 +618,9 @@ typedef struct sendflags {
 	/* show progress (ie. -v) */
 	boolean_t progress;
 
+	/* large blocks (>128K) are permitted */
+	boolean_t largeblock;
+
 	/* WRITE_EMBEDDED records of type DATA are permitted */
 	boolean_t embed_data;
 } sendflags_t;
@@ -746,7 +750,6 @@ extern int zfs_nicestrtonum(libzfs_handle_t *, const char *, uint64_t *);
 #define	STDERR_VERBOSE	0x02
 
 int libzfs_run_process(const char *, char **, int flags);
-int libzfs_load_module(const char *);
 
 /*
  * Given a device or file, determine if it is part of a pool.
