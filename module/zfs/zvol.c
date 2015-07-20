@@ -764,7 +764,7 @@ zvol_request(struct request_queue *q)
 			continue;
 		}
 
-		switch (rq_data_dir(req)) {
+		switch ((int)rq_data_dir(req)) {
 		case READ:
 			zvol_dispatch(zvol_read, req);
 			break;
@@ -1632,7 +1632,7 @@ zvol_init(void)
 	mutex_init(&zvol_state_lock, NULL, MUTEX_DEFAULT, NULL);
 
 	zvol_taskq = taskq_create(ZVOL_DRIVER, zvol_threads, maxclsyspri,
-	    zvol_threads, INT_MAX, TASKQ_PREPOPULATE);
+	    zvol_threads * 2, INT_MAX, TASKQ_PREPOPULATE | TASKQ_DYNAMIC);
 	if (zvol_taskq == NULL) {
 		printk(KERN_INFO "ZFS: taskq_create() failed\n");
 		error = -ENOMEM;

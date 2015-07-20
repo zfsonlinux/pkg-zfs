@@ -137,6 +137,20 @@ Default value: \fB8,388,608\fR.
 .sp
 .ne 2
 .na
+\fBmetaslab_aliquot\fR (ulong)
+.ad
+.RS 12n
+Metaslab granularity, in bytes. This is roughly similar to what would be
+referred to as the "stripe size" in traditional RAID arrays. In normal
+operation, ZFS will try to write this amount of data to a top-level vdev
+before moving on to the next one.
+.sp
+Default value: \fB524,288\fR.
+.RE
+
+.sp
+.ne 2
+.na
 \fBmetaslab_bias_enabled\fR (int)
 .ad
 .RS 12n
@@ -350,6 +364,19 @@ Default value: \fB8192\fR.
 .sp
 .ne 2
 .na
+\fBzfs_arc_evict_batch_limit\fR (int)
+.ad
+.RS 12n
+Number ARC headers to evict per sub-list before proceeding to another sub-list.
+This batch-style operation prevents entire sub-lists from being evicted at once
+but comes at a cost of additional unlocking and locking.
+.sp
+Default value: \fB10\fR.
+.RE
+
+.sp
+.ne 2
+.na
 \fBzfs_arc_grow_retry\fR (int)
 .ad
 .RS 12n
@@ -391,6 +418,19 @@ consume in the ARC.  When this limit is reached meta data buffers will
 be reclaimed even if the overall arc_c_max has not been reached.  This
 value defaults to 0 which indicates that 3/4 of the ARC may be used
 for meta data.
+.sp
+Default value: \fB0\fR.
+.RE
+
+.sp
+.ne 2
+.na
+\fBzfs_arc_meta_min\fR (ulong)
+.ad
+.RS 12n
+The minimum allowed size in bytes that meta data buffers may consume in
+the ARC.  This value defaults to 0 which disables a floor on the amount
+of the ARC devoted meta data.
 .sp
 Default value: \fB0\fR.
 .RE
@@ -450,6 +490,40 @@ Default value: \fB100\fR.
 .sp
 .ne 2
 .na
+\fBzfs_arc_num_sublists_per_state\fR (int)
+.ad
+.RS 12n
+To allow more fine-grained locking, each ARC state contains a series
+of lists for both data and meta data objects.  Locking is performed at
+the level of these "sub-lists".  This parameters controls the number of
+sub-lists per ARC state.
+.sp
+Default value: 1 or the number of on-online CPUs, whichever is greater
+.RE
+
+.sp
+.ne 2
+.na
+\fBzfs_arc_overflow_shift\fR (int)
+.ad
+.RS 12n
+The ARC size is considered to be overflowing if it exceeds the current
+ARC target size (arc_c) by a threshold determined by this parameter.
+The threshold is calculated as a fraction of arc_c using the formula
+"arc_c >> \fBzfs_arc_overflow_shift\fR".
+
+The default value of 8 causes the ARC to be considered to be overflowing
+if it exceeds the target size by 1/256th (0.3%) of the target size.
+
+When the ARC is overflowing, new buffer allocations are stalled until
+the reclaim thread catches up and the overflow condition no longer exists.
+.sp
+Default value: \fB8\fR.
+.RE
+
+.sp
+.ne 2
+.na
 \fBzfs_arc_p_aggressive_disable\fR (int)
 .ad
 .RS 12n
@@ -488,7 +562,7 @@ Default value: \fB5\fR.
 .RS 12n
 Disable pool import at module load by ignoring the cache file (typically \fB/etc/zfs/zpool.cache\fR).
 .sp
-Use \fB1\fR for yes and \fB0\fR for no (default).
+Use \fB1\fR for yes (default) and \fB0\fR for no.
 .RE
 
 .sp
@@ -943,6 +1017,24 @@ Default value: \fB1,000\fR.
 Largest data block to write to zil
 .sp
 Default value: \fB32,768\fR.
+.RE
+
+.sp
+.ne 2
+.na
+\fBzfs_max_recordsize\fR (int)
+.ad
+.RS 12n
+We currently support block sizes from 512 bytes to 16MB.  The benefits of
+larger blocks, and thus larger IO, need to be weighed against the cost of
+COWing a giant block to modify one byte.  Additionally, very large blocks
+can have an impact on i/o latency, and also potentially on the memory
+allocator.  Therefore, we do not allow the recordsize to be set larger than
+zfs_max_recordsize (default 1MB).  Larger blocks can be created by changing
+this tunable, and pools with larger blocks can always be imported and used,
+regardless of this setting.
+.sp
+Default value: \fB1,048,576\fR.
 .RE
 
 .sp

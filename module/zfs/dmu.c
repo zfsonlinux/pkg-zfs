@@ -764,7 +764,7 @@ dmu_read(objset_t *os, uint64_t object, uint64_t offset, uint64_t size,
 	 * handle that here as well.
 	 */
 	if (dn->dn_maxblkid == 0) {
-		int newsz = offset > dn->dn_datablksz ? 0 :
+		uint64_t newsz = offset > dn->dn_datablksz ? 0 :
 		    MIN(size, dn->dn_datablksz - offset);
 		bzero((char *)buf + newsz, size - newsz);
 		size = newsz;
@@ -784,16 +784,16 @@ dmu_read(objset_t *os, uint64_t object, uint64_t offset, uint64_t size,
 			break;
 
 		for (i = 0; i < numbufs; i++) {
-			int tocpy;
-			int bufoff;
+			uint64_t tocpy;
+			int64_t bufoff;
 			dmu_buf_t *db = dbp[i];
 
 			ASSERT(size > 0);
 
 			bufoff = offset - db->db_offset;
-			tocpy = (int)MIN(db->db_size - bufoff, size);
+			tocpy = MIN(db->db_size - bufoff, size);
 
-			bcopy((char *)db->db_data + bufoff, buf, tocpy);
+			(void) memcpy(buf, (char *)db->db_data + bufoff, tocpy);
 
 			offset += tocpy;
 			size -= tocpy;
@@ -819,14 +819,14 @@ dmu_write(objset_t *os, uint64_t object, uint64_t offset, uint64_t size,
 	    FALSE, FTAG, &numbufs, &dbp));
 
 	for (i = 0; i < numbufs; i++) {
-		int tocpy;
-		int bufoff;
+		uint64_t tocpy;
+		int64_t bufoff;
 		dmu_buf_t *db = dbp[i];
 
 		ASSERT(size > 0);
 
 		bufoff = offset - db->db_offset;
-		tocpy = (int)MIN(db->db_size - bufoff, size);
+		tocpy = MIN(db->db_size - bufoff, size);
 
 		ASSERT(i == 0 || i == numbufs-1 || tocpy == db->db_size);
 
@@ -1108,13 +1108,15 @@ dmu_read_req(objset_t *os, uint64_t object, struct request *req)
 
 	req_offset = 0;
 	for (i = 0; i < numbufs; i++) {
-		int tocpy, didcpy, bufoff;
+		uint64_t tocpy;
+		int64_t bufoff;
+		int didcpy;
 		dmu_buf_t *db = dbp[i];
 
 		bufoff = offset - db->db_offset;
 		ASSERT3S(bufoff, >=, 0);
 
-		tocpy = (int)MIN(db->db_size - bufoff, size);
+		tocpy = MIN(db->db_size - bufoff, size);
 		if (tocpy == 0)
 			break;
 
@@ -1156,13 +1158,15 @@ dmu_write_req(objset_t *os, uint64_t object, struct request *req, dmu_tx_t *tx)
 
 	req_offset = 0;
 	for (i = 0; i < numbufs; i++) {
-		int tocpy, didcpy, bufoff;
+		uint64_t tocpy;
+		int64_t bufoff;
+		int didcpy;
 		dmu_buf_t *db = dbp[i];
 
 		bufoff = offset - db->db_offset;
 		ASSERT3S(bufoff, >=, 0);
 
-		tocpy = (int)MIN(db->db_size - bufoff, size);
+		tocpy = MIN(db->db_size - bufoff, size);
 		if (tocpy == 0)
 			break;
 
@@ -1195,8 +1199,8 @@ dmu_write_req(objset_t *os, uint64_t object, struct request *req, dmu_tx_t *tx)
 	return (err);
 }
 
-int
-dmu_read_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size)
+static int
+dmu_read_uio_dnode(dnode_t *dn, uio_t *uio, uint64_t size)
 {
 	dmu_buf_t **dbp;
 	int numbufs, i, err;
@@ -1206,20 +1210,20 @@ dmu_read_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size)
 	 * NB: we could do this block-at-a-time, but it's nice
 	 * to be reading in parallel.
 	 */
-	err = dmu_buf_hold_array(os, object, uio->uio_loffset, size, TRUE, FTAG,
-	    &numbufs, &dbp);
+	err = dmu_buf_hold_array_by_dnode(dn, uio->uio_loffset, size,
+	    TRUE, FTAG, &numbufs, &dbp, 0);
 	if (err)
 		return (err);
 
 	for (i = 0; i < numbufs; i++) {
-		int tocpy;
-		int bufoff;
+		uint64_t tocpy;
+		int64_t bufoff;
 		dmu_buf_t *db = dbp[i];
 
 		ASSERT(size > 0);
 
 		bufoff = uio->uio_loffset - db->db_offset;
-		tocpy = (int)MIN(db->db_size - bufoff, size);
+		tocpy = MIN(db->db_size - bufoff, size);
 
 		if (xuio) {
 			dmu_buf_impl_t *dbi = (dmu_buf_impl_t *)db;
@@ -1249,6 +1253,58 @@ dmu_read_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size)
 	return (err);
 }
 
+/*
+ * Read 'size' bytes into the uio buffer.
+ * From object zdb->db_object.
+ * Starting at offset uio->uio_loffset.
+ *
+ * If the caller already has a dbuf in the target object
+ * (e.g. its bonus buffer), this routine is faster than dmu_read_uio(),
+ * because we don't have to find the dnode_t for the object.
+ */
+int
+dmu_read_uio_dbuf(dmu_buf_t *zdb, uio_t *uio, uint64_t size)
+{
+	dmu_buf_impl_t *db = (dmu_buf_impl_t *)zdb;
+	dnode_t *dn;
+	int err;
+
+	if (size == 0)
+		return (0);
+
+	DB_DNODE_ENTER(db);
+	dn = DB_DNODE(db);
+	err = dmu_read_uio_dnode(dn, uio, size);
+	DB_DNODE_EXIT(db);
+
+	return (err);
+}
+
+/*
+ * Read 'size' bytes into the uio buffer.
+ * From the specified object
+ * Starting at offset uio->uio_loffset.
+ */
+int
+dmu_read_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size)
+{
+	dnode_t *dn;
+	int err;
+
+	if (size == 0)
+		return (0);
+
+	err = dnode_hold(os, object, FTAG, &dn);
+	if (err)
+		return (err);
+
+	err = dmu_read_uio_dnode(dn, uio, size);
+
+	dnode_rele(dn, FTAG);
+
+	return (err);
+}
+
 static int
 dmu_write_uio_dnode(dnode_t *dn, uio_t *uio, uint64_t size, dmu_tx_t *tx)
 {
@@ -1263,14 +1319,14 @@ dmu_write_uio_dnode(dnode_t *dn, uio_t *uio, uint64_t size, dmu_tx_t *tx)
 		return (err);
 
 	for (i = 0; i < numbufs; i++) {
-		int tocpy;
-		int bufoff;
+		uint64_t tocpy;
+		int64_t bufoff;
 		dmu_buf_t *db = dbp[i];
 
 		ASSERT(size > 0);
 
 		bufoff = uio->uio_loffset - db->db_offset;
-		tocpy = (int)MIN(db->db_size - bufoff, size);
+		tocpy = MIN(db->db_size - bufoff, size);
 
 		ASSERT(i == 0 || i == numbufs-1 || tocpy == db->db_size);
 
@@ -1301,6 +1357,15 @@ dmu_write_uio_dnode(dnode_t *dn, uio_t *uio, uint64_t size, dmu_tx_t *tx)
 	return (err);
 }
 
+/*
+ * Write 'size' bytes from the uio buffer.
+ * To object zdb->db_object.
+ * Starting at offset uio->uio_loffset.
+ *
+ * If the caller already has a dbuf in the target object
+ * (e.g. its bonus buffer), this routine is faster than dmu_write_uio(),
+ * because we don't have to find the dnode_t for the object.
+ */
 int
 dmu_write_uio_dbuf(dmu_buf_t *zdb, uio_t *uio, uint64_t size,
     dmu_tx_t *tx)
@@ -1320,6 +1385,11 @@ dmu_write_uio_dbuf(dmu_buf_t *zdb, uio_t *uio, uint64_t size,
 	return (err);
 }
 
+/*
+ * Write 'size' bytes from the uio buffer.
+ * To the specified object.
+ * Starting at offset uio->uio_loffset.
+ */
 int
 dmu_write_uio(objset_t *os, uint64_t object, uio_t *uio, uint64_t size,
     dmu_tx_t *tx)
@@ -1652,19 +1722,32 @@ dmu_sync(zio_t *pio, uint64_t txg, dmu_sync_cb_t *done, zgd_t *zgd)
 	ASSERT(dr->dr_next == NULL || dr->dr_next->dr_txg < txg);
 
 	/*
-	 * Assume the on-disk data is X, the current syncing data is Y,
-	 * and the current in-memory data is Z (currently in dmu_sync).
-	 * X and Z are identical but Y is has been modified. Normally,
-	 * when X and Z are the same we will perform a nopwrite but if Y
-	 * is different we must disable nopwrite since the resulting write
-	 * of Y to disk can free the block containing X. If we allowed a
-	 * nopwrite to occur the block pointing to Z would reference a freed
-	 * block. Since this is a rare case we simplify this by disabling
-	 * nopwrite if the current dmu_sync-ing dbuf has been modified in
-	 * a previous transaction.
+	 * Assume the on-disk data is X, the current syncing data (in
+	 * txg - 1) is Y, and the current in-memory data is Z (currently
+	 * in dmu_sync).
+	 *
+	 * We usually want to perform a nopwrite if X and Z are the
+	 * same.  However, if Y is different (i.e. the BP is going to
+	 * change before this write takes effect), then a nopwrite will
+	 * be incorrect - we would override with X, which could have
+	 * been freed when Y was written.
+	 *
+	 * (Note that this is not a concern when we are nop-writing from
+	 * syncing context, because X and Y must be identical, because
+	 * all previous txgs have been synced.)
+	 *
+	 * Therefore, we disable nopwrite if the current BP could change
+	 * before this TXG.  There are two ways it could change: by
+	 * being dirty (dr_next is non-NULL), or by being freed
+	 * (dnode_block_freed()).  This behavior is verified by
+	 * zio_done(), which VERIFYs that the override BP is identical
+	 * to the on-disk BP.
 	 */
-	if (dr->dr_next)
+	DB_DNODE_ENTER(db);
+	dn = DB_DNODE(db);
+	if (dr->dr_next != NULL || dnode_block_freed(dn, db->db_blkid))
 		zp.zp_nopwrite = B_FALSE;
+	DB_DNODE_EXIT(db);
 
 	ASSERT(dr->dr_txg == txg);
 	if (dr->dt.dl.dr_override_state == DR_IN_DMU_SYNC ||
@@ -1781,19 +1864,15 @@ dmu_write_policy(objset_t *os, dnode_t *dn, int level, int wp, zio_prop_t *zp)
 	 *	 3. all other level 0 blocks
 	 */
 	if (ismd) {
-		/*
-		 * XXX -- we should design a compression algorithm
-		 * that specializes in arrays of bps.
-		 */
-		boolean_t lz4_ac = spa_feature_is_active(os->os_spa,
-		    SPA_FEATURE_LZ4_COMPRESS);
-
 		if (zfs_mdcomp_disable) {
 			compress = ZIO_COMPRESS_EMPTY;
-		} else if (lz4_ac) {
-			compress = ZIO_COMPRESS_LZ4;
 		} else {
-			compress = ZIO_COMPRESS_LZJB;
+			/*
+			 * XXX -- we should design a compression algorithm
+			 * that specializes in arrays of bps.
+			 */
+			compress = zio_compress_select(os->os_spa,
+			    ZIO_COMPRESS_ON, ZIO_COMPRESS_ON);
 		}
 
 		/*
@@ -1826,7 +1905,8 @@ dmu_write_policy(objset_t *os, dnode_t *dn, int level, int wp, zio_prop_t *zp)
 		compress = ZIO_COMPRESS_OFF;
 		checksum = ZIO_CHECKSUM_OFF;
 	} else {
-		compress = zio_compress_select(dn->dn_compress, compress);
+		compress = zio_compress_select(os->os_spa, dn->dn_compress,
+		    compress);
 
 		checksum = (dedup_checksum == ZIO_CHECKSUM_OFF) ?
 		    zio_checksum_select(dn->dn_checksum, checksum) :

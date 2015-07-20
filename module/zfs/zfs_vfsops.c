@@ -187,10 +187,9 @@ static void
 blksz_changed_cb(void *arg, uint64_t newval)
 {
 	zfs_sb_t *zsb = arg;
-
-	if (newval < SPA_MINBLOCKSIZE ||
-	    newval > SPA_MAXBLOCKSIZE || !ISP2(newval))
-		newval = SPA_MAXBLOCKSIZE;
+	ASSERT3U(newval, <=, spa_maxblocksize(dmu_objset_spa(zsb->z_os)));
+	ASSERT3U(newval, >=, SPA_MINBLOCKSIZE);
+	ASSERT(ISP2(newval));
 
 	zsb->z_max_blksz = newval;
 }
@@ -671,7 +670,7 @@ zfs_sb_create(const char *osname, zfs_sb_t **zsbp)
 	 */
 	zsb->z_sb = NULL;
 	zsb->z_parent = zsb;
-	zsb->z_max_blksz = SPA_MAXBLOCKSIZE;
+	zsb->z_max_blksz = SPA_OLD_MAXBLOCKSIZE;
 	zsb->z_show_ctldir = ZFS_SNAPDIR_VISIBLE;
 	zsb->z_os = os;
 
@@ -772,7 +771,7 @@ zfs_sb_create(const char *osname, zfs_sb_t **zsbp)
 	mutex_init(&zsb->z_lock, NULL, MUTEX_DEFAULT, NULL);
 	list_create(&zsb->z_all_znodes, sizeof (znode_t),
 	    offsetof(znode_t, z_link_node));
-	rrw_init(&zsb->z_teardown_lock, B_FALSE);
+	rrm_init(&zsb->z_teardown_lock, B_FALSE);
 	rw_init(&zsb->z_teardown_inactive_lock, NULL, RW_DEFAULT, NULL);
 	rw_init(&zsb->z_fuid_lock, NULL, RW_DEFAULT, NULL);
 
@@ -891,7 +890,7 @@ zfs_sb_free(zfs_sb_t *zsb)
 	mutex_destroy(&zsb->z_znodes_lock);
 	mutex_destroy(&zsb->z_lock);
 	list_destroy(&zsb->z_all_znodes);
-	rrw_destroy(&zsb->z_teardown_lock);
+	rrm_destroy(&zsb->z_teardown_lock);
 	rw_destroy(&zsb->z_teardown_inactive_lock);
 	rw_destroy(&zsb->z_fuid_lock);
 	for (i = 0; i != ZFS_OBJ_MTX_SZ; i++)
@@ -1215,14 +1214,14 @@ zfs_sb_teardown(zfs_sb_t *zsb, boolean_t unmounting)
 		 */
 		int round = 0;
 		while (zsb->z_nr_znodes > 0) {
-			taskq_wait(dsl_pool_iput_taskq(dmu_objset_pool(
-			    zsb->z_os)));
+			taskq_wait_outstanding(dsl_pool_iput_taskq(
+			    dmu_objset_pool(zsb->z_os)), 0);
 			if (++round > 1 && !unmounting)
 				break;
 		}
 	}
 
-	rrw_enter(&zsb->z_teardown_lock, RW_WRITER, FTAG);
+	rrm_enter(&zsb->z_teardown_lock, RW_WRITER, FTAG);
 
 	if (!unmounting) {
 		/*
@@ -1253,7 +1252,7 @@ zfs_sb_teardown(zfs_sb_t *zsb, boolean_t unmounting)
 	 */
 	if (!unmounting && (zsb->z_unmounted || zsb->z_os == NULL)) {
 		rw_exit(&zsb->z_teardown_inactive_lock);
-		rrw_exit(&zsb->z_teardown_lock, FTAG);
+		rrm_exit(&zsb->z_teardown_lock, FTAG);
 		return (SET_ERROR(EIO));
 	}
 
@@ -1281,7 +1280,7 @@ zfs_sb_teardown(zfs_sb_t *zsb, boolean_t unmounting)
 	 */
 	if (unmounting) {
 		zsb->z_unmounted = B_TRUE;
-		rrw_exit(&zsb->z_teardown_lock, FTAG);
+		rrm_exit(&zsb->z_teardown_lock, FTAG);
 		rw_exit(&zsb->z_teardown_inactive_lock);
 	}
 
@@ -1600,7 +1599,7 @@ zfs_resume_fs(zfs_sb_t *zsb, const char *osname)
 	znode_t *zp;
 	uint64_t sa_obj = 0;
 
-	ASSERT(RRW_WRITE_HELD(&zsb->z_teardown_lock));
+	ASSERT(RRM_WRITE_HELD(&zsb->z_teardown_lock));
 	ASSERT(RW_WRITE_HELD(&zsb->z_teardown_inactive_lock));
 
 	/*
@@ -1664,7 +1663,7 @@ zfs_resume_fs(zfs_sb_t *zsb, const char *osname)
 bail:
 	/* release the VFS ops */
 	rw_exit(&zsb->z_teardown_inactive_lock);
-	rrw_exit(&zsb->z_teardown_lock, FTAG);
+	rrm_exit(&zsb->z_teardown_lock, FTAG);
 
 	if (err) {
 		/*
@@ -1803,7 +1802,7 @@ zfs_init(void)
 void
 zfs_fini(void)
 {
-	taskq_wait(system_taskq);
+	taskq_wait_outstanding(system_taskq, 0);
 	unregister_filesystem(&zpl_fs_type);
 	zfs_znode_fini();
 	zfsctl_fini();
