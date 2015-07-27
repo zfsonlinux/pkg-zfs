@@ -66,7 +66,7 @@ load_module_initrd()
 	[ ! -f /etc/mtab ] && cat /proc/mounts > /etc/mtab
 
 	# Load the module
-	load_module || return 1
+	load_module "zfs" || return 1
 
 	if [ "$ZFS_INITRD_POST_MODPROBE_SLEEP" > 0 ]
 	then
