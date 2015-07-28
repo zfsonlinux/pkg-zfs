@@ -12,7 +12,13 @@ USER_C = \
 	nfs.c \
 	nfs.h \
 	smb.c \
-	smb.h
+	smb.h \
+	iscsi.c \
+	iscsi_iet.c \
+	iscsi_lio.c \
+	iscsi_scst.c \
+	iscsi_stgt.c \
+	iscsi.h
 
 KERNEL_C =
 
