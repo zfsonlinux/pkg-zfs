@@ -4,11 +4,21 @@
 #export DH_VERBOSE=1
 
 LSB_DISTRIBUTOR := $(shell lsb_release -is)
+LSB_CODENAME := $(shell lsb_release -c | cut -f2)
+
 NAME := $(shell awk '$$1 == "Name:" { print $$2; }' META)
-VERSION := $(shell dpkg-parsechangelog \
+VERSION := $(shell dpkg-parsechangelog -ldebian/changelog.in \
   | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f1)
-REVISION := $(shell dpkg-parsechangelog \
+
+# MAINREV-SHA1[-dist]
+REVISION := $(shell dpkg-parsechangelog -ldebian/changelog.in \
   | awk '$$1 == "Version:" { print $$2; }' | cut -d- -f2-)
+MAINREV := $(shell echo "$(REVISION)" | cut -d- -f1)
+MAINREV_NEW := $(shell expr $(MAINREV) + 1)
+
+# Source tag
+SRC_TAG := $(shell grep 'upstream-tag' debian/gbp.conf.in | cut -d= -f2)
+SRC_SHA := $(shell git show zol/master | head -n1 | cut -d" " -f2 | cut -c1-6)
 
 DKMSFILES := module include config zfs.release.in META AUTHORS \
 		DISCLAIMER COPYRIGHT README.markdown
@@ -54,6 +64,14 @@ override_dh_prep-base-deb-files:
 		sed -e 's/##KVERS##/$(KVERS)/g ; s/#KVERS#/$(KVERS)/g ; s/_KVERS_/$(KVERS)/g ; s/##KDREV##/$(KDREV)/g ; s/#KDREV#/$(KDREV)/g ; s/_KDREV_/$(KDREV)/g ; s/_ARCH_/$(KARCH)/' \
 		< $$templ > `echo $$templ | sed -e 's/_KVERS_/$(KVERS)/g ; s/_ARCH_/$(KARCH)/g ; s/_ARCH_/$(DEB_HOST_ARCH)/g ; s/\.in$$//'` ; \
 	done
+
+	@( \
+	  if [ "$(LSB_CODENAME)" = "wheezy" ]; then \
+		dist="-wheezy"; \
+	  fi; \
+	  $(CURDIR)/debian/update_changelog.sh "$(NAME)-linux ($(VERSION)-$(MAINREV_NEW)-$(SRC_SHA)$$dist) $(LSB_CODENAME); urgency=low"; \
+	  cat debian/gbp.conf.in | sed "s/%DIST%/$(LSB_CODENAME)/" > debian/gbp.conf; \
+	)
 
 override_dh_auto_configure: override_dh_prep-base-deb-files
 	@# Embed the downstream version in the module.
