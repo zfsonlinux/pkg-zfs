@@ -1,9 +1,10 @@
-zfs-linux (0.6.4-23-??????) jessie; urgency=low
+zfs-linux (0.6.4-23-53b1d9) jessie; urgency=low
 
   * Package zfs-modules-source needs to conflict and replace zfs-dkms
     and vise versa.
+  * Merge in changes to the initrd and and zfs-functions scripts.
 
- -- Turbo Fredriksson <turbo@debian.org>
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 28 Jul 2015 10:42:24 +0200
 
 zfs-linux (0.6.4-22-48511e) jessie; urgency=low
 
