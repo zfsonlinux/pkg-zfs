@@ -63,7 +63,7 @@ static sa_fstype_t *fstypes;
  */
 int
 foreach_shareopt(const char *shareopts,
-    shareopt_callback_t callback, void *cookie)
+    nfs_shareopt_callback_t callback, void *cookie)
 {
 	char *shareopts_dup, *opt, *cur, *value;
 	int was_nul, rc;
@@ -114,7 +114,7 @@ foreach_shareopt(const char *shareopts,
 
 	free(shareopts_dup);
 
-	return (0);
+	return (SA_OK);
 }
 
 sa_fstype_t *
