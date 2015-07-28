@@ -53,7 +53,8 @@ KIMGVER=$(shell dpkg -s linux-image-$(KVERS)-$(KARCH) | grep ^Version | sed 's/.
 %:
 	dh $@ --with dkms --parallel
 
-override_dh_prep-base-deb-files:
+override_dh_prep-base-deb-files: override_dh_prep-base-deb-files-stamp
+override_dh_prep-base-deb-files-stamp:
 	sed -e 's/##SHLIB_MAJOR##/$(SHLIB_MAJOR)/g' < debian/control.in > debian/control
 
 	for templ in $(wildcard $(CURDIR)/debian/*_SHLIB_MAJOR_*.in); do \
@@ -72,6 +73,8 @@ override_dh_prep-base-deb-files:
 	  $(CURDIR)/debian/update_changelog.sh "$(NAME)-linux ($(VERSION)-$(MAINREV_NEW)-$(SRC_SHA)$$dist) $(LSB_CODENAME); urgency=low"; \
 	  cat debian/gbp.conf.in | sed "s/%DIST%/$(LSB_CODENAME)/" > debian/gbp.conf; \
 	)
+
+	touch override_dh_prep-base-deb-files-stamp
 
 override_dh_auto_configure: override_dh_prep-base-deb-files
 	@# Embed the downstream version in the module.

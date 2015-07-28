@@ -2,9 +2,9 @@
 # don't check if debian-branch == current branch:
 ignore-branch = True
 # the default branch for the debian patch:
-debian-branch=snapshot/debian/%DIST%
+debian-branch=snapshot/debian
 # the default tag formats used:
-debian-tag=snapshot/debian/%DIST%/%(version)s
+debian-tag=snapshot/debian/%(version)s
 upstream-tag=zol/master
 # the default branch for upstream sources:
 upstream-branch=zol/master
