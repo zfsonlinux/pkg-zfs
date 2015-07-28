@@ -1,0 +1,93 @@
+#!/usr/bin/make -f
+
+# Find kernel build information.
+ifndef KSRC
+    KSRC := /lib/modules/$(shell uname -r)/build
+endif
+ifndef KPKG_DEST_DIR
+    KPKG_DEST_DIR = ..
+endif
+KVERS := $(shell uname -r)
+export KSRC
+export KVERS
+export KPKG_DEST_DIR
+
+SYS_NAME  := $(shell KSRC="$(KSRC)" KVERS="$(KVERS)" ARCH="$(ARCH)" \
+		sh debian/sysname)
+
+package    = zfs
+modulepkg := $(package)-modules-$(KVERS)${INT_SUBARCH}
+moduledir := debian/$(modulepkg)/lib/modules/$(KVERS)/extra/$(package)
+
+# After building the package, m-a calls debian/rules with the target
+# echo-debfile.  Without this dummy rule, this would trigger the setup
+# target (by way of the wildcard rule for dh), which re-creates the setup
+# flag file that we removed during make clean.
+#
+# Then, if module-assistant unpacks a new version of the source, the setup
+# file already exists so the setup rule isn't run again.  But the
+# debian/control file is the template from the new source, which doesn't
+# contain any buildable packages.
+#
+# Add a dummy target for echo-debfile to ensure that setup isn't run again
+# after clean.  If there are further changes to module-assistant, causing it
+# to run other targets after clean, more similar dummy rules may need to be
+# added.
+echo-debfile:
+	@true
+
+# make-kpkg tries to rebuild debian/rules first, so add a dummy target to
+# avoid our dh wildcard rule and a fatal error.
+debian/rules:
+	@true
+
+# This setup must be done before running any other target if it hasn't
+# already been done.
+setup:
+	@if test x"$(SYS_NAME)" = x"UNKNOWN" ; then exit 1 ; fi
+	@if test x"$(KVERS)" = x ; then \
+	    echo 'No version in $(KSRC)/include/linux/version.h' >&2 ; \
+	    exit 1 ; \
+	fi
+	sh debian/prep-modules $(KSRC)
+	touch $@
+
+%: setup
+	dh $@
+
+override_dh_auto_configure:
+	sh configure --prefix=$(CURDIR)/debian/tmp \
+	  --with-config=kernel \
+	  --prefix=/usr \
+	  --with-linux=$(KSRC)
+
+override_dh_auto_install:
+	cd module && make install DESTDIR=$(CURDIR)/debian/tmp
+	for dir in debian/tmp/lib/modules/*/extra/*; do \
+	    d=`basename $$dir`; \
+	    install -d -g root -o root -m 755 $(moduledir)/$$d; \
+	    install -g root -o root -m 644 $$dir/*.ko $(moduledir)/$$d/; \
+	done
+
+override_dh_gencontrol:
+	dh_gencontrol -- -v`cat debian/VERSION`
+
+override_dh_builddeb:
+	dh_builddeb --destdir="$(KPKG_DEST_DIR)"
+
+kdist_configure: override_dh_auto_configure
+
+kdist_image:
+	$(ROOT_CMD) $(MAKE) $(MFLAGS) -f debian/rules binary-arch
+	$(ROOT_CMD) $(MAKE) $(MFLAGS) -f debian/rules clean
+
+kdist:
+	$(ROOT_CMD) $(MAKE) $(MFLAGS) -f debian/rules binary-arch
+	KSRC="$(KSRC)" KMAINT="$(KMAINT)" KEMAIL="$(KEMAIL)" \
+	    sh -v debian/genchanges
+	$(ROOT_CMD) $(MAKE) $(MFLAGS) -f debian/rules clean
+
+kdist_clean:
+	$(ROOT_CMD) $(MAKE) $(MFLAGS) -f debian/rules clean
+
+.PHONY: kdist kdist_clean kdist_configure kdist_image
