@@ -506,7 +506,7 @@ find_pools()
 	local CMD="$*"
 	local pools
 
-	pools=$($CMD 2> /dev/null | \
+	pools=$(${CMD} 2> /dev/null | \
 		grep -E "pool:|^[a-zA-Z0-9]" | \
 		sed 's@.*: @@' | \
 		sort | \
@@ -631,9 +631,11 @@ import_pool()
 	[ "$quiet" != "y" ] && zfs_log_begin_msg \
 		"Importing pool '${pool}' using defaults"
 
-	ZFS_CMD="${ZPOOL} import -N ${ZPOOL_FORCE}"
+	ZFS_CMD="${ZPOOL} import -N ${ZPOOL_FORCE} ${ZPOOL_IMPORT_OPTS}"
+	zfs_set_ifs "$OLD_IFS"
 	ZFS_STDERR="$($ZFS_CMD "$pool" 2>&1)"
 	ZFS_ERROR="$?"
+	zfs_set_ifs "$TMP_IFS"
 	if [ "${ZFS_ERROR}" != 0 ]
 	then
 		[ "$quiet" != "y" ] && zfs_log_failure_msg "${ZFS_ERROR}"
@@ -643,24 +645,38 @@ import_pool()
 			[ "$quiet" != "y" ] && zfs_log_begin_msg \
 				"Importing pool '${pool}' using cachefile."
 
-			ZFS_CMD="${ZPOOL} import -c ${ZPOOL_CACHE} -N ${ZPOOL_FORCE}"
+			ZFS_CMD="${ZPOOL} import -c ${ZPOOL_CACHE} -N"
+			ZFS_CMD="${ZFS_CMD} ${ZPOOL_FORCE} ${ZPOOL_IMPORT_OPTS}"
+			zfs_set_ifs "$OLD_IFS"
 			ZFS_STDERR="$($ZFS_CMD "$pool" 2>&1)"
 			ZFS_ERROR="$?"
+			zfs_set_ifs "$TMP_IFS"
 		fi
 
+		ZFS_CMD="${ZPOOL} import -c ${ZPOOL_CACHE} -N"
+		ZFS_CMD="${ZFS_CMD} ${ZPOOL_FORCE} ${ZPOOL_IMPORT_OPTS}"
+		zfs_set_ifs "$OLD_IFS"
+		ZFS_STDERR="$($ZFS_CMD "$pool" 2>&1)"
+		ZFS_ERROR="$?"
+		zfs_set_ifs "$TMP_IFS"
 		if [ "${ZFS_ERROR}" != 0 ]
 		then
 			[ "$quiet" != "y" ] && zfs_log_failure_msg "${ZFS_ERROR}"
 
 			disable_plymouth
-			echo ""
-			echo "Command: ${ZFS_CMD} '$pool'"
-			echo "Message: $ZFS_STDERR"
-			echo "Error: $ZFS_ERROR"
-			echo ""
-			echo "Failed to import pool '$pool'."
-			echo "Manually import the pool and exit."
-			/bin/sh
+			if [ "$?" != 999 ]; then
+				echo ""
+				echo "Command: ${ZFS_CMD} '$pool'"
+				echo "Message: $ZFS_STDERR"
+				echo "Error: $ZFS_ERROR"
+				echo ""
+				echo "Failed to import pool '$pool'."
+				echo "Manually import the pool and exit."
+				emergency_shell
+			else
+				[ -n "$ORIG_IFS" ] && IFS=$ORIG_IFS
+				return 1
+			fi
 		fi
 	fi
 
@@ -718,21 +734,27 @@ mount_fs()
 	[ -n "${ZFS_DEBUG}" ] && \
 	    zfs_log_begin_msg "CMD: '$ZFS_CMD ${fs} ${rootmnt}/${mountpoint}'"
 
+	zfs_set_ifs "$OLD_IFS"
 	ZFS_STDERR=$(${ZFS_CMD} "${fs}" "${rootmnt}/${mountpoint}" 2>&1)
 	ZFS_ERROR=$?
+	zfs_set_ifs "$TMP_IFS"
 	if [ "${ZFS_ERROR}" != 0 ]
 	then
 		[ "$quiet" != "y" ] && zfs_log_failure_msg "${ZFS_ERROR}"
 
 		disable_plymouth
-		echo ""
-		echo "Command: ${ZFS_CMD} ${fs} ${rootmnt}/${mountpoint}"
-		echo "Message: $ZFS_STDERR"
-		echo "Error: $ZFS_ERROR"
-		echo ""
-		echo "Failed to mount ${fs} on ${rootmnt}/${mountpoint}."
-		echo "Manually mount the filesystem and exit."
-		/bin/sh
+		if [ "$?" != 999 ]; then
+			echo ""
+			echo "Command: ${ZFS_CMD} ${fs} ${rootmnt}/${mountpoint}"
+			echo "Message: $ZFS_STDERR"
+			echo "Error: $ZFS_ERROR"
+			echo ""
+			echo "Failed to mount ${fs} on ${rootmnt}/${mountpoint}."
+			echo "Manually mount the filesystem and exit."
+			emergency_shell
+		else
+			return 1
+		fi
 	else
 		[ "$quiet" != "y" ] && zfs_log_end_msg
 	fi
@@ -770,40 +792,48 @@ decrypt_fs()
 			[ "$quiet" != "y" ] && zfs_log_failure_msg "${ZFS_ERROR}"
 
 			disable_plymouth
-			echo ""
-			echo "Command: $ZFS_CMD"
-			echo "Message: $ZFS_STDERR"
-			echo "Error: $ZFS_ERROR"
-			echo ""
-			echo "Failed to load $mod module."
-			echo "Please verify that it is availible on the initrd image"
-			echo "(without it it won't be possible to unlock the filesystem)"
-			echo "and rerun:  $ZFS_CMD"
-			/bin/sh
-		else
-			[ "$quiet" != "y" ] && zfs_log_end_msg
+			if [ "$?" != 999 ]; then
+				echo ""
+				echo "Command: $ZFS_CMD"
+				echo "Message: $ZFS_STDERR"
+				echo "Error: $ZFS_ERROR"
+				echo ""
+				echo "Failed to load $mod module."
+				echo "Please verify that it is availible on the initrd image"
+				echo "(without it it won't be possible to unlock the filesystem)"
+				echo "and rerun:  $ZFS_CMD"
+				emergency_shell
+			else
+				return 1
+			fi
 		fi
 	done
 
 	# If the key isn't availible, then this will fail!
 	ZFS_CMD="${ZFS} key -l -r $fs"
+	zfs_set_ifs "$OLD_IFS"
 	ZFS_STDERR="$(${ZFS_CMD} 2>&1)"
 	ZFS_ERROR="$?"
+	zfs_set_ifs "$TMP_IFS"
 
 	if [ "${ZFS_ERROR}" != 0 ]
 	then
 		[ "$quiet" != "y" ] && zfs_log_failure_msg "${ZFS_ERROR}"
 
 		disable_plymouth
-		echo ""
-		echo "Command: $ZFS_CMD"
-		echo "Message: $ZFS_STDERR"
-		echo "Error: $ZFS_ERROR"
-		echo ""
-		echo "Failed to load zfs encryption wrapper key (s)."
-		echo "Please verify dataset property 'keysource' for datasets"
-		echo "and rerun:  $ZFS_CMD"
-		/bin/sh
+		if [ "$?" != 999 ]; then
+			echo ""
+			echo "Command: $ZFS_CMD"
+			echo "Message: $ZFS_STDERR"
+			echo "Error: $ZFS_ERROR"
+			echo ""
+			echo "Failed to load zfs encryption wrapper key (s)."
+			echo "Please verify dataset property 'keysource' for datasets"
+			echo "and rerun:  $ZFS_CMD"
+			emergency_shell
+		else
+			return 1
+		fi
 	else
 		[ "$quiet" != "y" ] && zfs_log_end_msg
 	fi
@@ -821,22 +851,28 @@ destroy_fs()
 	    zfs_log_begin_msg "Destroying '$fs'"
 
 	ZFS_CMD="${ZFS} destroy $fs"
+	zfs_set_ifs "$OLD_IFS"
 	ZFS_STDERR="$(${ZFS_CMD} 2>&1)"
 	ZFS_ERROR="$?"
+	zfs_set_ifs "$TMP_IFS"
 	if [ "${ZFS_ERROR}" != 0 ]
 	then
 		[ "$quiet" != "y" ] && zfs_log_failure_msg "${ZFS_ERROR}"
 
 		disable_plymouth
-		echo ""
-		echo "Command: $ZFS_CMD"
-		echo "Message: $ZFS_STDERR"
-		echo "Error: $ZFS_ERROR"
-		echo ""
-		echo "Failed to destroy '$fs'. Please make sure that '$fs' is not availible."
-		echo "Hint: Try:  zfs destroy -Rfn $fs"
-		echo "If this dryrun looks good, then remove the 'n' from '-Rfn' and try again."
-		/bin/sh
+		if [ "$?" != 999 ]; then
+			echo ""
+			echo "Command: $ZFS_CMD"
+			echo "Message: $ZFS_STDERR"
+			echo "Error: $ZFS_ERROR"
+			echo ""
+			echo "Failed to destroy '$fs'. Please make sure that '$fs' is not availible."
+			echo "Hint: Try:  zfs destroy -Rfn $fs"
+			echo "If this dryrun looks good, then remove the 'n' from '-Rfn' and try again."
+			emergency_shell
+		else
+			return 1
+		fi
 	else
 		[ "$quiet" != "y" ] && zfs_log_end_msg
 	fi
@@ -865,22 +901,28 @@ clone_snap()
 	ZFS_CMD="${ZFS} clone -o canmount=noauto -o mountpoint=none"
 	ZFS_CMD="${ZFS_CMD} -o org.zol:mountpoint=${mountpoint}"
 	ZFS_CMD="${ZFS_CMD} $snap $destfs"
+	zfs_set_ifs "$OLD_IFS"
 	ZFS_STDERR="$(${ZFS_CMD} 2>&1)"
 	ZFS_ERROR="$?"
+	zfs_set_ifs "$TMP_IFS"
 	if [ "${ZFS_ERROR}" != 0 ]
 	then
 		[ "$quiet" != "y" ] && zfs_log_failure_msg "${ZFS_ERROR}"
 
 		disable_plymouth
-		echo ""
-		echo "Command: $ZFS_CMD"
-		echo "Message: $ZFS_STDERR"
-		echo "Error: $ZFS_ERROR"
-		echo ""
-		echo "Failed to clone snapshot."
-		echo "Make sure that the any problems are corrected and then make sure"
-		echo "that the dataset '$destfs' exists and is bootable."
-		/bin/sh
+		if [ "$?" != 999 ]; then
+			echo ""
+			echo "Command: $ZFS_CMD"
+			echo "Message: $ZFS_STDERR"
+			echo "Error: $ZFS_ERROR"
+			echo ""
+			echo "Failed to clone snapshot."
+			echo "Make sure that the any problems are corrected and then make sure"
+			echo "that the dataset '$fs' exists and is bootable."
+			emergency_shell
+		else
+			return 1
+		fi
 	else
 		[ "$quiet" != "y" ] && zfs_log_end_msg
 	fi
@@ -897,20 +939,26 @@ rollback_snap()
 	[ "$quiet" != "y" ] && zfs_log_begin_msg "Rollback $snap"
 
 	ZFS_CMD="${ZFS} rollback -Rf $snap"
+	zfs_set_ifs "$OLD_IFS"
 	ZFS_STDERR="$(${ZFS_CMD} 2>&1)"
 	ZFS_ERROR="$?"
+	zfs_set_ifs "$TMP_IFS"
 	if [ "${ZFS_ERROR}" != 0 ]
 	then
 		[ "$quiet" != "y" ] && zfs_log_failure_msg "${ZFS_ERROR}"
 
 		disable_plymouth
-		echo ""
-		echo "Command: $ZFS_CMD"
-		echo "Message: $ZFS_STDERR"
-		echo "Error: $ZFS_ERROR"
-		echo ""
-		echo "Failed to rollback snapshot."
-		/bin/sh
+		if [ "$?" != 999 ]; then
+			echo ""
+			echo "Command: $ZFS_CMD"
+			echo "Message: $ZFS_STDERR"
+			echo "Error: $ZFS_ERROR"
+			echo ""
+			echo "Failed to rollback snapshot."
+			emergency_shell
+		else
+			return 1
+		fi
 	else
 		[ "$quiet" != "y" ] && zfs_log_end_msg
 	fi
@@ -1044,3 +1092,51 @@ chkroot() {
 
 	return 1
 }
+
+# export_pools [OPTS]
+#   exports all imported zfs pools.
+export_pools() {
+	local opts="${1}"
+	local ret=0
+
+	IFS="${NEWLINE}"
+	for pool in `zpool list -H -o name` ; do
+		if zpool list -H "${pool}" 2>&1 > /dev/null ; then
+			zpool export "${pool}" ${opts} || ret=$?
+		fi
+	done
+	IFS="${OLD_IFS}"
+
+	return ${ret}
+}
+
+# If plymouth is availible, hide the splash image.
+disable_plymouth()
+{
+	if [ -x /bin/plymouth ] && /bin/plymouth --ping
+	then
+		/bin/plymouth hide-splash >/dev/null 2>&1
+	else
+		# No plymouth. Return a high number that shouldn't
+		# mean anything to anyone but us.
+		return 999
+	fi
+}
+
+# This is defined in dracut, but nowhere
+# else. So create a wrapper.
+if ! type emergency_shell > /dev/null 2>&1 ; then
+	emergency_shell() { /bin/sh -i -l; }
+fi
+
+# For some reason, some functions in the library have a problem
+# with a changed IFS, so this function goes around that.
+zfs_set_ifs() {
+	local tIFS="$1"
+	if [ -n "$tIFS" ]
+	then
+		TMP_IFS="$IFS"
+		IFS="$tIFS"
+	fi
+}
+
