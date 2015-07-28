@@ -94,6 +94,8 @@ Architecture: all
 Depends: ${misc:Depends}, debhelper (>= 8),
  module-assistant | kernel-package, perl
 Recommends: zfsutils (>= ${source:Version})
+Conflicts: zfs-dkms
+Replaces: zfs-dkms
 Description: Native ZFS filesystem kernel modules for Linux
  The Z file system is a pooled filesystem designed for maximum data
  integrity, supporting data snapshots, multiple copies, and data
@@ -107,9 +109,9 @@ Architecture: all
 Pre-Depends: spl-dkms
 Depends: dkms (>> 2.1.1.2-5), lsb-release, ${misc:Depends}, file
 Recommends: zfsutils
-Replaces: lzfs, lzfs-dkms
+Replaces: lzfs, lzfs-dkms, zfs-modules-source
 Provides: lustre-backend-fs, lzfs, lzfs-dkms, zfs-modules, zfs-modules-source
-Conflicts: lzfs, lzfs-dkms
+Conflicts: lzfs, lzfs-dkms, zfs-modules-source
 Description: Native ZFS filesystem kernel modules for Linux
  The Z file system is a pooled filesystem designed for maximum data
  integrity, supporting data snapshots, multiple copies, and data
