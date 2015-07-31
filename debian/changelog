@@ -1,3 +1,51 @@
+zfs-linux (0.6.4.2-2~wily~2.gbpae6b4c) wily; urgency=low
+
+  ** SNAPSHOT build @ae6b4c38ba28770a88da6b67a1eb76770a113a76 **
+
+  [ Brian Behlendorf ]
+  * Set default _initconfdir directory
+
+  [ Matthew Ahrens ]
+  * Illumos 5376 - arc_kmem_reap_now() should not result in clearing arc_no_grow
+
+  [ Prakash Surya ]
+  * Illumos 5445 - Add more visibility via arcstats
+  * Illumos 5817 - change type of arcs_size from uint64_t to refcount_t
+
+  [ Brian Behlendorf ]
+  * Reinstate zfs_arc_p_min_shift
+  * Add hdr_recl() reclaim callback
+  * Remove double counting HDR_L2ONLY_SIZE
+  * Minor style cleanup
+
+  [ Turbo Fredriksson ]
+  * Fix some minor issues with the SYSV init and initramfs scripts.
+  * Make sure that POOL_IMPORTED is set, unset and checked where appropriate.
+
+  [ Brian Behlendorf ]
+  * Check for NULL in dmu_free_long_range_impl()
+  * Align thread priority with Linux defaults
+
+  [ Frédéric VANNIÈRE ]
+  * Fix build failure with Linux 4.1 and FTRACE
+
+  [ Chunwei Chen ]
+  * Fix "BUG: Bad page state" caused by writeback flag
+
+  [ Brian Behlendorf ]
+  * Bound zvol_threads module option
+  * Update arc_available_memory() to check freemem
+  * Update arc_memory_throttle() to check pageout
+
+  [ Chris Dunlap ]
+  * Fix whitespace in zed_log_err
+  * Rework zed_notify_email for configurable PROG/OPTS
+
+  [ Tim Chase ]
+  * ztest: display non-index properties properly at verbose level 6
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 30 Jul 2015 21:30:03 -0400
+
 zfs-linux (0.6.4.2-2~wily~1.gbp0fb919) wily; urgency=low
 
   ** SNAPSHOT build @0fb91945e8ce694a9c4ca3e284e4df9eb139c8a5 **
