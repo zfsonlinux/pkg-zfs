@@ -388,23 +388,24 @@ Default value: \fB5\fR.
 .sp
 .ne 2
 .na
+\fBzfs_arc_lotsfree_percent\fR (int)
+.ad
+.RS 12n
+Throttle I/O when free system memory drops below this percentage of total
+system memory.  Setting this value to 0 will disable the throttle.
+.sp
+Default value: \fB10\fR.
+.RE
+
+.sp
+.ne 2
+.na
 \fBzfs_arc_max\fR (ulong)
 .ad
 .RS 12n
 Max arc size
 .sp
 Default value: \fB0\fR.
-.RE
-
-.sp
-.ne 2
-.na
-\fBzfs_arc_memory_throttle_disable\fR (int)
-.ad
-.RS 12n
-Disable memory throttle
-.sp
-Use \fB1\fR for yes (default) and \fB0\fR to disable.
 .RE
 
 .sp
@@ -524,6 +525,18 @@ Default value: \fB8\fR.
 .sp
 .ne 2
 .na
+
+\fBzfs_arc_p_min_shift\fR (int)
+.ad
+.RS 12n
+arc_c shift to calc min/max arc_p
+.sp
+Default value: \fB4\fR.
+.RE
+
+.sp
+.ne 2
+.na
 \fBzfs_arc_p_aggressive_disable\fR (int)
 .ad
 .RS 12n
@@ -552,6 +565,19 @@ Use \fB1\fR for yes (default) and \fB0\fR to disable.
 log2(fraction of arc to reclaim)
 .sp
 Default value: \fB5\fR.
+.RE
+
+.sp
+.ne 2
+.na
+\fBzfs_arc_sys_free\fR (ulong)
+.ad
+.RS 12n
+The target number of bytes the ARC should leave as free memory on the system.
+Defaults to the larger of 1/64 of physical memory or 512K.  Setting this
+option to a non-zero value will override the default.
+.sp
+Default value: \fB0\fR.
 .RE
 
 .sp
@@ -1555,7 +1581,7 @@ Default value: \fB16,384\fR.
 \fBzvol_threads\fR (uint)
 .ad
 .RS 12n
-Number of threads for zvol device
+Max number of threads to handle zvol I/O requests
 .sp
 Default value: \fB32\fR.
 .RE
