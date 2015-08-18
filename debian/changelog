@@ -1,3 +1,10 @@
+zfs-linux (0.6.4-24-6bec43) jessie; urgency=low
+
+  * Remerge some PRs
+  * New upstream GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 18 Aug 2015 12:56:44 +0200
+
 zfs-linux (0.6.4-23-53b1d9) jessie; urgency=low
 
   * Package zfs-modules-source needs to conflict and replace zfs-dkms
