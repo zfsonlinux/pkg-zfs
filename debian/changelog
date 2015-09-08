@@ -1,3 +1,104 @@
+zfs-linux (0.6.4.2-2~wily~3.gbp0e31b1) wily; urgency=low
+
+  ** SNAPSHOT build @0e31b1191866032d9cd5b77f72cd0aa554501423 **
+
+  [ Chris Dunlop ]
+  * Linux 4.1 compat: configure bdi_setup_and_register()
+  * Fix build failure with Linux 4.1 and FTRACE
+
+  [ tuxoko ]
+  * Add parenthesis to the ternary operator
+
+  [ Richard Yao ]
+  * Fix zvol detection
+
+  [ Brian Behlendorf ]
+  * Handle zap_lookup() failure in ddt_object_load()
+  * Linux 4.2 compat: vfs_rename()
+
+  [ Chunwei Chen ]
+  * Add compatibility layer for {kmap,kunmap}_atomic
+  * Linux 4.1 compat: loop device on ZFS
+
+  [ Brian Behlendorf ]
+  * Limit max_hw_sectors_kb to 16M
+  * Check large block feature flag on volumes
+
+  [ Tim Chase ]
+  * Allow recovery from corrupted snapshot maps
+
+  [ Andreas Buschmann ]
+  * Add extra keyword 'slot' to vdev_id.conf
+
+  [ Tim Chase ]
+  * Initialize the taskq entry embedded within struct vdev
+
+  [ Richard Yao ]
+  * Some OpenRC dependency logic belongs in mount
+
+  [ loli10K ]
+  * Fix small typo
+
+  [ Richard Yao ]
+  * Clear QUEUE_FLAG_ADD_RANDOM on zvols
+
+  [ Andrey Vesnovaty ]
+  * zfsctl: No need to sync ctldir inodes
+
+  [ Brian Behlendorf ]
+  * Linux 3.18 compat: Snapshot auto-mounting
+  * Linux 4.2 compat: misc_deregister()
+
+  [ Richard Yao ]
+  * Remove blk_queue_physical_block_size() autotools check
+  * Remove blk_queue_io_opt() autotools check
+
+  [ tuxoko ]
+  * Check for RW_WRITE_HELD in zfs_inactive
+
+  [ Richard Yao ]
+  * Disable LBA weighting on files and SSDs
+
+  [ James Lee ]
+  * Reorder zfs-* services to allow /var on separate dataset
+
+  [ Brian Behlendorf ]
+  * Add spa_slop_shift module option
+
+  [ Tim Chase ]
+  * Dbuf hash table should be sized as is the arc hash table
+
+  [ Richard Yao ]
+  * VDEV_REQ_FUA should be mapped to REQ_FUA
+
+  [ Brian Behlendorf ]
+  * Add temporary mount options
+
+  [ Tim Chase ]
+  * Prevent reclaim in the traverse prefetch thread
+
+  [ Richard Yao ]
+  * zvol processing should use struct bio
+  * Support secure discard on zvols
+  * Remove rq_for_each_segment() autotools check
+  * Remove rq_is_sync() autotools check
+  * Remove blk_end_request() autotools check.
+  * Remove blk_requeue_request() autotools check
+  * Remove blk_fetch_request() autotools check
+  * Remove blk_rq_pos() autotools check
+  * Remove blk_rq_bytes()/blk_rq_sectors autotools checks
+  * Remove blk_queue_discard() autotools check
+  * Remove blk_queue_nonrot() autotools check
+
+  [ Andrey Vesnovaty ]
+  * Fix invalid fileid for snapshot root dentry
+
+  [ Brian Behlendorf ]
+  * Support accessing .zfs/snapshot via NFS
+  * Add dbgmsg kstat
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 07 Sep 2015 23:19:42 -0400
+
 zfs-linux (0.6.4.2-2~wily~2.gbpae6b4c) wily; urgency=low
 
   ** SNAPSHOT build @ae6b4c38ba28770a88da6b67a1eb76770a113a76 **
