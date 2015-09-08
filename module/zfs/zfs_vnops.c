@@ -21,6 +21,7 @@
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2013 by Delphix. All rights reserved.
+ * Copyright (c) 2015 by Chunwei Chen. All rights reserved.
  */
 
 /* Portions Copyright 2007 Jeremy Teo */
@@ -591,10 +592,10 @@ zfs_write(struct inode *ip, uio_t *uio, int ioflag, cred_t *cr)
 	int		max_blksz = zsb->z_max_blksz;
 	int		error = 0;
 	arc_buf_t	*abuf;
-	iovec_t		*aiov = NULL;
+	const iovec_t	*aiov = NULL;
 	xuio_t		*xuio = NULL;
 	int		i_iov = 0;
-	iovec_t		*iovp = uio->uio_iov;
+	const iovec_t	*iovp = uio->uio_iov;
 	int		write_eof;
 	int		count = 0;
 	sa_bulk_attr_t	bulk[4];
@@ -714,6 +715,7 @@ zfs_write(struct inode *ip, uio_t *uio, int ioflag, cred_t *cr)
 
 		if (xuio && abuf == NULL) {
 			ASSERT(i_iov < iovcnt);
+			ASSERT3U(uio->uio_segflg, !=, UIO_BVEC);
 			aiov = &iovp[i_iov];
 			abuf = dmu_xuio_arcbuf(xuio, i_iov);
 			dmu_xuio_clear(xuio, i_iov);
@@ -2413,6 +2415,16 @@ zfs_getattr_fast(struct inode *ip, struct kstat *sp)
 
 	mutex_exit(&zp->z_lock);
 
+	/*
+	 * Required to prevent NFS client from detecting different inode
+	 * numbers of snapshot root dentry before and after snapshot mount.
+	 */
+	if (zsb->z_issnap) {
+		if (ip->i_sb->s_root->d_inode == ip)
+			sp->ino = ZFSCTL_INO_SNAPDIRS -
+				dmu_objset_id(zsb->z_os);
+	}
+
 	ZFS_EXIT(zsb);
 
 	return (0);
@@ -4094,15 +4106,16 @@ zfs_inactive(struct inode *ip)
 	znode_t	*zp = ITOZ(ip);
 	zfs_sb_t *zsb = ITOZSB(ip);
 	int error;
+	int need_unlock = 0;
 
-	if (zfsctl_is_node(ip)) {
-		zfsctl_inode_inactive(ip);
-		return;
+	/* Only read lock if we haven't already write locked, e.g. rollback */
+	if (!RW_WRITE_HELD(&zsb->z_teardown_inactive_lock)) {
+		need_unlock = 1;
+		rw_enter(&zsb->z_teardown_inactive_lock, RW_READER);
 	}
-
-	rw_enter(&zsb->z_teardown_inactive_lock, RW_READER);
 	if (zp->z_sa_hdl == NULL) {
-		rw_exit(&zsb->z_teardown_inactive_lock);
+		if (need_unlock)
+			rw_exit(&zsb->z_teardown_inactive_lock);
 		return;
 	}
 
@@ -4125,7 +4138,8 @@ zfs_inactive(struct inode *ip)
 	}
 
 	zfs_zinactive(zp);
-	rw_exit(&zsb->z_teardown_inactive_lock);
+	if (need_unlock)
+		rw_exit(&zsb->z_teardown_inactive_lock);
 }
 EXPORT_SYMBOL(zfs_inactive);
 

@@ -247,55 +247,6 @@ static int zfs_fill_zplprops_root(uint64_t, nvlist_t *, nvlist_t *,
 int zfs_set_prop_nvlist(const char *, zprop_source_t, nvlist_t *, nvlist_t *);
 static int get_nvlist(uint64_t nvl, uint64_t size, int iflag, nvlist_t **nvp);
 
-#if defined(HAVE_DECLARE_EVENT_CLASS)
-void
-__dprintf(const char *file, const char *func, int line, const char *fmt, ...)
-{
-	const char *newfile;
-	size_t size = 4096;
-	char *buf = kmem_alloc(size, KM_SLEEP);
-	char *nl;
-	va_list adx;
-
-	/*
-	 * Get rid of annoying prefix to filename.
-	 */
-	newfile = strrchr(file, '/');
-	if (newfile != NULL) {
-		newfile = newfile + 1; /* Get rid of leading / */
-	} else {
-		newfile = file;
-	}
-
-	va_start(adx, fmt);
-	(void) vsnprintf(buf, size, fmt, adx);
-	va_end(adx);
-
-	/*
-	 * Get rid of trailing newline.
-	 */
-	nl = strrchr(buf, '\n');
-	if (nl != NULL)
-		*nl = '\0';
-
-	/*
-	 * To get this data enable the zfs__dprintf trace point as shown:
-	 *
-	 * # Enable zfs__dprintf tracepoint, clear the tracepoint ring buffer
-	 * $ echo 1 > /sys/module/zfs/parameters/zfs_flags
-	 * $ echo 1 > /sys/kernel/debug/tracing/events/zfs/enable
-	 * $ echo 0 > /sys/kernel/debug/tracing/trace
-	 *
-	 * # Dump the ring buffer.
-	 * $ cat /sys/kernel/debug/tracing/trace
-	 */
-	DTRACE_PROBE4(zfs__dprintf,
-	    char *, newfile, char *, func, int, line, char *, buf);
-
-	kmem_free(buf, size);
-}
-#endif /* HAVE_DECLARE_EVENT_CLASS */
-
 static void
 history_str_free(char *buf)
 {
@@ -1449,7 +1400,7 @@ zfs_sb_hold(const char *name, void *tag, zfs_sb_t **zsbp, boolean_t writer)
 	int error = 0;
 
 	if (get_zfs_sb(name, zsbp) != 0)
-		error = zfs_sb_create(name, zsbp);
+		error = zfs_sb_create(name, NULL, zsbp);
 	if (error == 0) {
 		rrm_enter(&(*zsbp)->z_teardown_lock, (writer) ? RW_WRITER :
 		    RW_READER, tag);
@@ -3201,7 +3152,7 @@ zfs_ioc_create(const char *fsname, nvlist_t *innvl, nvlist_t *outnvl)
 			volblocksize = zfs_prop_default_numeric(
 			    ZFS_PROP_VOLBLOCKSIZE);
 
-		if ((error = zvol_check_volblocksize(
+		if ((error = zvol_check_volblocksize(fsname,
 		    volblocksize)) != 0 ||
 		    (error = zvol_check_volsize(volsize,
 		    volblocksize)) != 0)
@@ -3410,37 +3361,20 @@ zfs_ioc_log_history(const char *unused, nvlist_t *innvl, nvlist_t *outnvl)
  * This function is best-effort.  Callers must deal gracefully if it
  * remains mounted (or is remounted after this call).
  *
- * XXX: This function should detect a failure to unmount a snapdir of a dataset
- * and return the appropriate error code when it is mounted. Its Illumos and
- * FreeBSD counterparts do this. We do not do this on Linux because there is no
- * clear way to access the mount information that FreeBSD and Illumos use to
- * distinguish between things with mounted snapshot directories, and things
- * without mounted snapshot directories, which include zvols. Returning a
- * failure for the latter causes `zfs destroy` to fail on zvol snapshots.
+ * Returns 0 if the argument is not a snapshot, or it is not currently a
+ * filesystem, or we were able to unmount it.  Returns error code otherwise.
  */
 int
 zfs_unmount_snap(const char *snapname)
 {
-	zfs_sb_t *zsb = NULL;
-	char *dsname;
-	char *fullname;
-	char *ptr;
+	int err;
 
-	if ((ptr = strchr(snapname, '@')) == NULL)
+	if (strchr(snapname, '@') == NULL)
 		return (0);
 
-	dsname = kmem_alloc(ptr - snapname + 1, KM_SLEEP);
-	strlcpy(dsname, snapname, ptr - snapname + 1);
-	fullname = strdup(snapname);
-
-	if (zfs_sb_hold(dsname, FTAG, &zsb, B_FALSE) == 0) {
-		ASSERT(!dsl_pool_config_held(dmu_objset_pool(zsb->z_os)));
-		(void) zfsctl_unmount_snapshot(zsb, fullname, MNT_FORCE);
-		zfs_sb_rele(zsb, FTAG);
-	}
-
-	kmem_free(dsname, ptr - snapname + 1);
-	strfree(fullname);
+	err = zfsctl_snapshot_unmount((char *)snapname, MNT_FORCE);
+	if (err != 0 && err != ENOENT)
+		return (SET_ERROR(err));
 
 	return (0);
 }
@@ -3841,6 +3775,7 @@ zfs_check_settable(const char *dsname, nvpair_t *pair, cred_t *cr)
 			return (SET_ERROR(ENOTSUP));
 		break;
 
+	case ZFS_PROP_VOLBLOCKSIZE:
 	case ZFS_PROP_RECORDSIZE:
 		/* Record sizes above 128k need the feature to be enabled */
 		if (nvpair_value_uint64(pair, &intval) == 0 &&
@@ -6044,13 +5979,9 @@ zfs_attach(void)
 static void
 zfs_detach(void)
 {
-	int error;
 	zfsdev_state_t *zs, *zsprev = NULL;
 
-	error = misc_deregister(&zfs_misc);
-	if (error != 0)
-		printk(KERN_INFO "ZFS: misc_deregister() failed %d\n", error);
-
+	misc_deregister(&zfs_misc);
 	mutex_destroy(&zfsdev_state_lock);
 
 	for (zs = zfsdev_state_list; zs != NULL; zs = zs->zs_next) {
