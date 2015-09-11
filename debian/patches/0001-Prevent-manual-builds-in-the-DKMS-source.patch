@@ -54,7 +54,7 @@ Index: b/config/zfs-build.m4
 ===================================================================
 --- a/config/zfs-build.m4
 +++ b/config/zfs-build.m4
-@@ -86,10 +86,10 @@
+@@ -87,10 +87,10 @@
  	ZFS_AC_CONFIG_ALWAYS
  
  	case "$ZFS_CONFIG" in

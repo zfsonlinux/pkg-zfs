@@ -187,10 +187,9 @@ static void
 blksz_changed_cb(void *arg, uint64_t newval)
 {
 	zfs_sb_t *zsb = arg;
-
-	if (newval < SPA_MINBLOCKSIZE ||
-	    newval > SPA_MAXBLOCKSIZE || !ISP2(newval))
-		newval = SPA_MAXBLOCKSIZE;
+	ASSERT3U(newval, <=, spa_maxblocksize(dmu_objset_spa(zsb->z_os)));
+	ASSERT3U(newval, >=, SPA_MINBLOCKSIZE);
+	ASSERT(ISP2(newval));
 
 	zsb->z_max_blksz = newval;
 }
@@ -263,11 +262,22 @@ zfs_register_callbacks(zfs_sb_t *zsb)
 {
 	struct dsl_dataset *ds = NULL;
 	objset_t *os = zsb->z_os;
-	boolean_t do_readonly = B_FALSE;
+	zfs_mntopts_t *zmo = zsb->z_mntopts;
 	int error = 0;
 
-	if (zfs_is_readonly(zsb) || !spa_writeable(dmu_objset_spa(os)))
-		do_readonly = B_TRUE;
+	ASSERT(zsb);
+	ASSERT(zmo);
+
+	/*
+	 * The act of registering our callbacks will destroy any mount
+	 * options we may have.  In order to enable temporary overrides
+	 * of mount options, we stash away the current values and
+	 * restore them after we register the callbacks.
+	 */
+	if (zfs_is_readonly(zsb) || !spa_writeable(dmu_objset_spa(os))) {
+		zmo->z_do_readonly = B_TRUE;
+		zmo->z_readonly = B_TRUE;
+	}
 
 	/*
 	 * Register property callbacks.
@@ -308,8 +318,25 @@ zfs_register_callbacks(zfs_sb_t *zsb)
 	if (error)
 		goto unregister;
 
-	if (do_readonly)
-		readonly_changed_cb(zsb, B_TRUE);
+	/*
+	 * Invoke our callbacks to restore temporary mount options.
+	 */
+	if (zmo->z_do_readonly)
+		readonly_changed_cb(zsb, zmo->z_readonly);
+	if (zmo->z_do_setuid)
+		setuid_changed_cb(zsb, zmo->z_setuid);
+	if (zmo->z_do_exec)
+		exec_changed_cb(zsb, zmo->z_exec);
+	if (zmo->z_do_devices)
+		devices_changed_cb(zsb, zmo->z_devices);
+	if (zmo->z_do_xattr)
+		xattr_changed_cb(zsb, zmo->z_xattr);
+	if (zmo->z_do_atime)
+		atime_changed_cb(zsb, zmo->z_atime);
+	if (zmo->z_do_relatime)
+		relatime_changed_cb(zsb, zmo->z_relatime);
+	if (zmo->z_do_nbmand)
+		nbmand_changed_cb(zsb, zmo->z_nbmand);
 
 	return (0);
 
@@ -643,8 +670,26 @@ zfs_owner_overquota(zfs_sb_t *zsb, znode_t *zp, boolean_t isgroup)
 }
 EXPORT_SYMBOL(zfs_owner_overquota);
 
+zfs_mntopts_t *
+zfs_mntopts_alloc(void)
+{
+	return (kmem_zalloc(sizeof (zfs_mntopts_t), KM_SLEEP));
+}
+
+void
+zfs_mntopts_free(zfs_mntopts_t *zmo)
+{
+	if (zmo->z_osname)
+		strfree(zmo->z_osname);
+
+	if (zmo->z_mntpoint)
+		strfree(zmo->z_mntpoint);
+
+	kmem_free(zmo, sizeof (zfs_mntopts_t));
+}
+
 int
-zfs_sb_create(const char *osname, zfs_sb_t **zsbp)
+zfs_sb_create(const char *osname, zfs_mntopts_t *zmo, zfs_sb_t **zsbp)
 {
 	objset_t *os;
 	zfs_sb_t *zsb;
@@ -665,13 +710,18 @@ zfs_sb_create(const char *osname, zfs_sb_t **zsbp)
 	}
 
 	/*
+	 * Optional temporary mount options, free'd in zfs_sb_free().
+	 */
+	zsb->z_mntopts = (zmo ? zmo : zfs_mntopts_alloc());
+
+	/*
 	 * Initialize the zfs-specific filesystem structure.
 	 * Should probably make this a kmem cache, shuffle fields,
 	 * and just bzero up to z_hold_mtx[].
 	 */
 	zsb->z_sb = NULL;
 	zsb->z_parent = zsb;
-	zsb->z_max_blksz = SPA_MAXBLOCKSIZE;
+	zsb->z_max_blksz = SPA_OLD_MAXBLOCKSIZE;
 	zsb->z_show_ctldir = ZFS_SNAPDIR_VISIBLE;
 	zsb->z_os = os;
 
@@ -772,7 +822,7 @@ zfs_sb_create(const char *osname, zfs_sb_t **zsbp)
 	mutex_init(&zsb->z_lock, NULL, MUTEX_DEFAULT, NULL);
 	list_create(&zsb->z_all_znodes, sizeof (znode_t),
 	    offsetof(znode_t, z_link_node));
-	rrw_init(&zsb->z_teardown_lock, B_FALSE);
+	rrm_init(&zsb->z_teardown_lock, B_FALSE);
 	rw_init(&zsb->z_teardown_inactive_lock, NULL, RW_DEFAULT, NULL);
 	rw_init(&zsb->z_fuid_lock, NULL, RW_DEFAULT, NULL);
 
@@ -780,10 +830,6 @@ zfs_sb_create(const char *osname, zfs_sb_t **zsbp)
 	    KM_SLEEP);
 	for (i = 0; i != ZFS_OBJ_MTX_SZ; i++)
 		mutex_init(&zsb->z_hold_mtx[i], NULL, MUTEX_DEFAULT, NULL);
-
-	avl_create(&zsb->z_ctldir_snaps, snapentry_compare,
-	    sizeof (zfs_snapentry_t), offsetof(zfs_snapentry_t, se_node));
-	mutex_init(&zsb->z_ctldir_lock, NULL, MUTEX_DEFAULT, NULL);
 
 	*zsbp = zsb;
 	return (0);
@@ -891,14 +937,13 @@ zfs_sb_free(zfs_sb_t *zsb)
 	mutex_destroy(&zsb->z_znodes_lock);
 	mutex_destroy(&zsb->z_lock);
 	list_destroy(&zsb->z_all_znodes);
-	rrw_destroy(&zsb->z_teardown_lock);
+	rrm_destroy(&zsb->z_teardown_lock);
 	rw_destroy(&zsb->z_teardown_inactive_lock);
 	rw_destroy(&zsb->z_fuid_lock);
 	for (i = 0; i != ZFS_OBJ_MTX_SZ; i++)
 		mutex_destroy(&zsb->z_hold_mtx[i]);
 	vmem_free(zsb->z_hold_mtx, sizeof (kmutex_t) * ZFS_OBJ_MTX_SZ);
-	mutex_destroy(&zsb->z_ctldir_lock);
-	avl_destroy(&zsb->z_ctldir_snaps);
+	zfs_mntopts_free(zsb->z_mntopts);
 	kmem_free(zsb, sizeof (zfs_sb_t));
 }
 EXPORT_SYMBOL(zfs_sb_free);
@@ -1215,14 +1260,14 @@ zfs_sb_teardown(zfs_sb_t *zsb, boolean_t unmounting)
 		 */
 		int round = 0;
 		while (zsb->z_nr_znodes > 0) {
-			taskq_wait(dsl_pool_iput_taskq(dmu_objset_pool(
-			    zsb->z_os)));
+			taskq_wait_outstanding(dsl_pool_iput_taskq(
+			    dmu_objset_pool(zsb->z_os)), 0);
 			if (++round > 1 && !unmounting)
 				break;
 		}
 	}
 
-	rrw_enter(&zsb->z_teardown_lock, RW_WRITER, FTAG);
+	rrm_enter(&zsb->z_teardown_lock, RW_WRITER, FTAG);
 
 	if (!unmounting) {
 		/*
@@ -1253,7 +1298,7 @@ zfs_sb_teardown(zfs_sb_t *zsb, boolean_t unmounting)
 	 */
 	if (!unmounting && (zsb->z_unmounted || zsb->z_os == NULL)) {
 		rw_exit(&zsb->z_teardown_inactive_lock);
-		rrw_exit(&zsb->z_teardown_lock, FTAG);
+		rrm_exit(&zsb->z_teardown_lock, FTAG);
 		return (SET_ERROR(EIO));
 	}
 
@@ -1281,7 +1326,7 @@ zfs_sb_teardown(zfs_sb_t *zsb, boolean_t unmounting)
 	 */
 	if (unmounting) {
 		zsb->z_unmounted = B_TRUE;
-		rrw_exit(&zsb->z_teardown_lock, FTAG);
+		rrm_exit(&zsb->z_teardown_lock, FTAG);
 		rw_exit(&zsb->z_teardown_inactive_lock);
 	}
 
@@ -1317,16 +1362,15 @@ atomic_long_t zfs_bdi_seq = ATOMIC_LONG_INIT(0);
 #endif
 
 int
-zfs_domount(struct super_block *sb, void *data, int silent)
+zfs_domount(struct super_block *sb, zfs_mntopts_t *zmo, int silent)
 {
-	zpl_mount_data_t *zmd = data;
-	const char *osname = zmd->z_osname;
+	const char *osname = zmo->z_osname;
 	zfs_sb_t *zsb;
 	struct inode *root_inode;
 	uint64_t recordsize;
 	int error;
 
-	error = zfs_sb_create(osname, &zsb);
+	error = zfs_sb_create(osname, zmo, &zsb);
 	if (error)
 		return (error);
 
@@ -1374,6 +1418,7 @@ zfs_domount(struct super_block *sb, void *data, int silent)
 		acltype_changed_cb(zsb, pval);
 		zsb->z_issnap = B_TRUE;
 		zsb->z_os->os_sync = ZFS_SYNC_DISABLED;
+		zsb->z_snap_defer_time = jiffies;
 
 		mutex_enter(&zsb->z_os->os_user_ptr_lock);
 		dmu_objset_set_user(zsb->z_os, zsb);
@@ -1423,8 +1468,8 @@ zfs_preumount(struct super_block *sb)
 {
 	zfs_sb_t *zsb = sb->s_fs_info;
 
-	if (zsb != NULL && zsb->z_ctldir != NULL)
-		zfsctl_destroy(zsb);
+	if (zsb)
+		zfsctl_destroy(sb->s_fs_info);
 }
 EXPORT_SYMBOL(zfs_preumount);
 
@@ -1468,13 +1513,15 @@ zfs_umount(struct super_block *sb)
 EXPORT_SYMBOL(zfs_umount);
 
 int
-zfs_remount(struct super_block *sb, int *flags, char *data)
+zfs_remount(struct super_block *sb, int *flags, zfs_mntopts_t *zmo)
 {
-	/*
-	 * All namespace flags (MNT_*) and super block flags (MS_*) will
-	 * be handled by the Linux VFS.  Only handle custom options here.
-	 */
-	return (0);
+	zfs_sb_t *zsb = sb->s_fs_info;
+	int error;
+
+	zfs_unregister_callbacks(zsb);
+	error = zfs_register_callbacks(zsb);
+
+	return (error);
 }
 EXPORT_SYMBOL(zfs_remount);
 
@@ -1553,6 +1600,8 @@ zfs_vget(struct super_block *sb, struct inode **ipp, fid_t *fidp)
 	zp_gen = zp_gen & gen_mask;
 	if (zp_gen == 0)
 		zp_gen = 1;
+	if ((fid_gen == 0) && (zsb->z_root == object))
+		fid_gen = zp_gen;
 	if (zp->z_unlinked || zp_gen != fid_gen) {
 		dprintf("znode gen (%llu) != fid gen (%llu)\n", zp_gen,
 		    fid_gen);
@@ -1600,7 +1649,7 @@ zfs_resume_fs(zfs_sb_t *zsb, const char *osname)
 	znode_t *zp;
 	uint64_t sa_obj = 0;
 
-	ASSERT(RRW_WRITE_HELD(&zsb->z_teardown_lock));
+	ASSERT(RRM_WRITE_HELD(&zsb->z_teardown_lock));
 	ASSERT(RW_WRITE_HELD(&zsb->z_teardown_inactive_lock));
 
 	/*
@@ -1664,7 +1713,7 @@ zfs_resume_fs(zfs_sb_t *zsb, const char *osname)
 bail:
 	/* release the VFS ops */
 	rw_exit(&zsb->z_teardown_inactive_lock);
-	rrw_exit(&zsb->z_teardown_lock, FTAG);
+	rrm_exit(&zsb->z_teardown_lock, FTAG);
 
 	if (err) {
 		/*
@@ -1803,7 +1852,7 @@ zfs_init(void)
 void
 zfs_fini(void)
 {
-	taskq_wait(system_taskq);
+	taskq_wait_outstanding(system_taskq, 0);
 	unregister_filesystem(&zpl_fs_type);
 	zfs_znode_fini();
 	zfsctl_fini();
