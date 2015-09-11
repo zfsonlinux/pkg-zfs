@@ -301,6 +301,9 @@ skip_open:
 	/* Clear the nowritecache bit, causes vdev_reopen() to try again. */
 	v->vdev_nowritecache = B_FALSE;
 
+	/* Inform the ZIO pipeline that we are non-rotational */
+	v->vdev_nonrot = blk_queue_nonrot(bdev_get_queue(vd->vd_bdev));
+
 	/* Physical volume size in bytes */
 	*psize = bdev_capacity(vd->vd_bdev);
 
@@ -426,15 +429,6 @@ BIO_END_IO_PROTO(vdev_disk_physio_completion, bio, size, error)
 	dio_request_t *dr = bio->bi_private;
 	int rc;
 
-	/* Fatal error but print some useful debugging before asserting */
-	if (dr == NULL)
-		PANIC("dr == NULL, bio->bi_private == NULL\n"
-		    "bi_next: %p, bi_flags: %lx, bi_rw: %lu, bi_vcnt: %d\n"
-		    "bi_idx: %d, bi_size: %d, bi_end_io: %p, bi_cnt: %d\n",
-		    bio->bi_next, bio->bi_flags, bio->bi_rw, bio->bi_vcnt,
-		    BIO_BI_IDX(bio), BIO_BI_SIZE(bio), bio->bi_end_io,
-		    atomic_read(&bio->bi_cnt));
-
 #ifndef HAVE_2ARGS_BIO_END_IO_T
 	if (BIO_BI_SIZE(bio))
 		return (1);
@@ -502,6 +496,22 @@ bio_map(struct bio *bio, void *bio_ptr, unsigned int bio_size)
 	return (bio_size);
 }
 
+static inline void
+vdev_submit_bio(int rw, struct bio *bio)
+{
+#ifdef HAVE_CURRENT_BIO_TAIL
+	struct bio **bio_tail = current->bio_tail;
+	current->bio_tail = NULL;
+	submit_bio(rw, bio);
+	current->bio_tail = bio_tail;
+#else
+	struct bio_list *bio_list = current->bio_list;
+	current->bio_list = NULL;
+	submit_bio(rw, bio);
+	current->bio_list = bio_list;
+#endif
+}
+
 static int
 __vdev_disk_physio(struct block_device *bdev, zio_t *zio, caddr_t kbuf_ptr,
     size_t kbuf_size, uint64_t kbuf_offset, int flags)
@@ -552,9 +562,9 @@ retry:
 			goto retry;
 		}
 
-		dr->dr_bio[i] = bio_alloc(GFP_NOIO,
-		    bio_nr_pages(bio_ptr, bio_size));
 		/* bio_alloc() with __GFP_WAIT never returns NULL */
+		dr->dr_bio[i] = bio_alloc(GFP_NOIO,
+		    MIN(bio_nr_pages(bio_ptr, bio_size), BIO_MAX_PAGES));
 		if (unlikely(dr->dr_bio[i] == NULL)) {
 			vdev_disk_dio_free(dr);
 			return (ENOMEM);
@@ -577,7 +587,7 @@ retry:
 		bio_offset += BIO_BI_SIZE(dr->dr_bio[i]);
 	}
 
-	/* Extra reference to protect dio_request during submit_bio */
+	/* Extra reference to protect dio_request during vdev_submit_bio */
 	vdev_disk_dio_get(dr);
 	if (zio)
 		zio->io_delay = jiffies_64;
@@ -585,7 +595,7 @@ retry:
 	/* Submit all bio's associated with this dio */
 	for (i = 0; i < dr->dr_bio_count; i++)
 		if (dr->dr_bio[i])
-			submit_bio(dr->dr_rw, dr->dr_bio[i]);
+			vdev_submit_bio(dr->dr_rw, dr->dr_bio[i]);
 
 	/*
 	 * On synchronous blocking requests we wait for all bio the completion
@@ -651,13 +661,13 @@ vdev_disk_io_flush(struct block_device *bdev, zio_t *zio)
 	bio->bi_private = zio;
 	bio->bi_bdev = bdev;
 	zio->io_delay = jiffies_64;
-	submit_bio(VDEV_WRITE_FLUSH_FUA, bio);
+	vdev_submit_bio(VDEV_WRITE_FLUSH_FUA, bio);
 	invalidate_bdev(bdev);
 
 	return (0);
 }
 
-static int
+static void
 vdev_disk_io_start(zio_t *zio)
 {
 	vdev_t *v = zio->io_vd;
@@ -669,7 +679,8 @@ vdev_disk_io_start(zio_t *zio)
 
 		if (!vdev_readable(v)) {
 			zio->io_error = SET_ERROR(ENXIO);
-			return (ZIO_PIPELINE_CONTINUE);
+			zio_interrupt(zio);
+			return;
 		}
 
 		switch (zio->io_cmd) {
@@ -685,7 +696,7 @@ vdev_disk_io_start(zio_t *zio)
 
 			error = vdev_disk_io_flush(vd->vd_bdev, zio);
 			if (error == 0)
-				return (ZIO_PIPELINE_STOP);
+				return;
 
 			zio->io_error = error;
 			if (error == ENOTSUP)
@@ -697,29 +708,35 @@ vdev_disk_io_start(zio_t *zio)
 			zio->io_error = SET_ERROR(ENOTSUP);
 		}
 
-		return (ZIO_PIPELINE_CONTINUE);
-
+		zio_execute(zio);
+		return;
 	case ZIO_TYPE_WRITE:
-		flags = WRITE;
+		if (zio->io_priority == ZIO_PRIORITY_SYNC_WRITE)
+			flags = WRITE_SYNC;
+		else
+			flags = WRITE;
 		break;
 
 	case ZIO_TYPE_READ:
-		flags = READ;
+		if (zio->io_priority == ZIO_PRIORITY_SYNC_READ)
+			flags = READ_SYNC;
+		else
+			flags = READ;
 		break;
 
 	default:
 		zio->io_error = SET_ERROR(ENOTSUP);
-		return (ZIO_PIPELINE_CONTINUE);
+		zio_interrupt(zio);
+		return;
 	}
 
 	error = __vdev_disk_physio(vd->vd_bdev, zio, zio->io_data,
 	    zio->io_size, zio->io_offset, flags);
 	if (error) {
 		zio->io_error = error;
-		return (ZIO_PIPELINE_CONTINUE);
+		zio_interrupt(zio);
+		return;
 	}
-
-	return (ZIO_PIPELINE_STOP);
 }
 
 static void

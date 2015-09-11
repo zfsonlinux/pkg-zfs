@@ -61,6 +61,7 @@
 #endif /* _KERNEL */
 
 #include <sys/dmu.h>
+#include <sys/dmu_objset.h>
 #include <sys/refcount.h>
 #include <sys/stat.h>
 #include <sys/zap.h>
@@ -273,9 +274,6 @@ zfs_inode_destroy(struct inode *ip)
 	znode_t *zp = ITOZ(ip);
 	zfs_sb_t *zsb = ZTOZSB(zp);
 
-	if (zfsctl_is_node(ip))
-		zfsctl_inode_destroy(ip);
-
 	mutex_enter(&zsb->z_znodes_lock);
 	if (list_link_active(&zp->z_link_node)) {
 		list_remove(&zsb->z_all_znodes, zp);
@@ -328,8 +326,8 @@ zfs_inode_set_ops(zfs_sb_t *zsb, struct inode *ip)
 	 */
 	case S_IFCHR:
 	case S_IFBLK:
-		VERIFY(sa_lookup(ITOZ(ip)->z_sa_hdl, SA_ZPL_RDEV(zsb),
-		    &rdev, sizeof (rdev)) == 0);
+		sa_lookup(ITOZ(ip)->z_sa_hdl, SA_ZPL_RDEV(zsb), &rdev,
+		    sizeof (rdev));
 		/*FALLTHROUGH*/
 	case S_IFIFO:
 	case S_IFSOCK:
@@ -338,8 +336,15 @@ zfs_inode_set_ops(zfs_sb_t *zsb, struct inode *ip)
 		break;
 
 	default:
-		printk("ZFS: Invalid mode: 0x%x\n", ip->i_mode);
-		VERIFY(0);
+		zfs_panic_recover("inode %llu has invalid mode: 0x%x\n",
+		    (u_longlong_t)ip->i_ino, ip->i_mode);
+
+		/* Assume the inode is a file and attempt to continue */
+		ip->i_mode = S_IFREG | 0644;
+		ip->i_op = &zpl_inode_operations;
+		ip->i_fop = &zpl_file_operations;
+		ip->i_mapping->a_ops = &zpl_address_space_operations;
+		break;
 	}
 }
 
@@ -1304,8 +1309,13 @@ zfs_extend(znode_t *zp, uint64_t end)
 		 * We are growing the file past the current block size.
 		 */
 		if (zp->z_blksz > ZTOZSB(zp)->z_max_blksz) {
+			/*
+			 * File's blocksize is already larger than the
+			 * "recordsize" property.  Only let it grow to
+			 * the next power of 2.
+			 */
 			ASSERT(!ISP2(zp->z_blksz));
-			newblksz = MIN(end, SPA_MAXBLOCKSIZE);
+			newblksz = MIN(end, 1 << highbit64(zp->z_blksz));
 		} else {
 			newblksz = MIN(end, ZTOZSB(zp)->z_max_blksz);
 		}
