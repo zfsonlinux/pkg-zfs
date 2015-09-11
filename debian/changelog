@@ -1,3 +1,565 @@
+zfs-linux (0.6.5-1~vivid) vivid; urgency=low
+
+  [ Tim Chase ]
+  * Allocate zfs_znode_cache on the Linux slab
+
+  [ DHE ]
+  * Rebuild init scripts on source file updates
+
+  [ Turbo Fredriksson ]
+  * Document bookmarks a little better in zfs(8)
+
+  [ Brian Behlendorf ]
+  * Mark additional functions as PF_FSTRANS
+
+  [ Chris Dunlap ]
+  * Fix io-spare.sh to work with disk vdevs
+
+  [ DHE ]
+  * Fix formatting error in zfs(8)
+
+  [ Brian Behlendorf ]
+  * Extend PF_FSTRANS critical regions
+
+  [ Tim Chase ]
+  * Support the "version" property on volumes via the zfs_prop_get_int() API
+
+  [ Chunwei Chen ]
+  * Fix kernel panic due to tsd_exit in ZFS_EXIT(zsb)
+
+  [ cburroughs ]
+  * align zfs_autoimport_disable manpage with reality
+
+  [ Ned Bass ]
+  * Serialize access to spa->spa_feat_stats nvlist
+
+  [ Paul B. Henson ]
+  * 5410 Document -S option to zfs inherit
+
+  [ Justin T. Gibbs ]
+  * 5313 Allow I/Os to be aggregated across ZIO priority classes
+
+  [ Isaac Huang ]
+  * Memory leak in make_root_vdev()
+  * Remove useless variable spa_active_count
+
+  [ Chris Dunlap ]
+  * Cleanup ZEDLETs
+  * Replace "email" ZEDLETs with "notify" ZEDLETs
+  * Add support for Pushbullet notifications
+  * Add notification to io-spare.sh
+  * Combine data-notify.sh with io-notify.sh
+
+  [ tuxoko ]
+  * Fix misuse of input argument in traverse_visitbp
+
+  [ Matthew Ahrens ]
+  * Illumos 5134 - if ZFS_DEBUG or debug= is set, libzpool should enable debug prints
+
+  [ Jerry Jelinek ]
+  * Illumos 3897 - zfs filesystem and snapshot limits
+
+  [ Alex Reece ]
+  * Illumos 3897 - zfs filesystem and snapshot limits (fix leak)
+
+  [ Jorgen Lundman ]
+  * Illumos 4975 - missing mutex_destroy() calls in zfs
+
+  [ Alex Reece ]
+  * Illumos 4873 - zvol unmap calls can take a very long time for larger datasets
+
+  [ Justin T. Gibbs ]
+  * Illumos 5038 - Remove "old-style" flexible array usage in ZFS.
+
+  [ Alex Reece ]
+  * Illumos 5095 - panic when adding a duplicate dbuf to dn_dbufs
+
+  [ Justin T. Gibbs ]
+  * Illumos 5310 - Remove always true tests for non-NULL ds->ds_phys
+  * Illumos 5314 - Remove "dbuf phys" db->db_data pointer aliases in ZFS
+  * Illumos 5056 - ZFS deadlock on db_mtx and dn_holds
+  * Illumos 5531 - NULL pointer dereference in dsl_prop_get_ds()
+  * Illumos 5592 - NULL pointer dereference in dsl_prop_notify_all_cb()
+
+  [ Matthew Ahrens ]
+  * Illumos 5812 - assertion failed in zrl_tryenter(): zr_owner==NULL
+
+  [ George Wilson ]
+  * Illumos #5244 - zio pipeline callers should explicitly invoke next stage
+
+  [ Jason Zaman ]
+  * dmu: fix integer overflows
+
+  [ tuxoko ]
+  * Add cond_resched to zfs_zget to prevent infinite loop
+
+  [ Matthew Ahrens ]
+  * Illumos 3654,3656
+
+  [ Jerry Jelinek ]
+  * Illumos 4901 - zfs filesystem/snapshot limit leaks
+
+  [ Max Grossman ]
+  * Illumos 4373 - add block contents print to zstreamdump
+
+  [ Matthew Ahrens ]
+  * Illumos 4951 - ZFS administrative commands should use reserved space
+
+  [ Christopher Siden ]
+  * Illumos 4951 - ZFS administrative commands (fix)
+
+  [ Turbo Fredriksson ]
+  * Add the '-a' option to 'zpool export' (Closes: #3203)
+
+  [ Will Andrews ]
+  * Illumos 5814 - bpobj_iterate_impl(): Close a refcount leak iterating on a sublist.
+
+  [ Matthew Ahrens ]
+  * Illumos 5808 - spa_check_logs is not necessary on readonly pools
+  * Illumos 5820 - verify failed in zio_done(): BP_EQUAL(bp, io_bp_orig)
+  * Illumos 5348 - zio_checksum_error() only fills in info if ECKSUM
+
+  [ Chris Dunlop ]
+  * Wait for all znodes to be released before tearing down the superblock
+
+  [ Matthew Ahrens ]
+  * Illumos 5349 - verify that block pointer is plausible before reading
+
+  [ Chris Dunlop ]
+  * arc_evict, arc_evict_ghost: reduce stack usage using kmem_zalloc
+
+  [ Brian Behlendorf ]
+  * Remove metaslab_min_alloc_size module option
+  * Fix type mismatch on 32-bit systems
+
+  [ Matthew Ahrens ]
+  * Illumos 5027 - zfs large block support
+
+  [ Brian Behlendorf ]
+  * ztest should randomly change recordsize
+
+  [ David Lamparter ]
+  * Safely handle security / ACL failures
+
+  [ Chris Dunlap ]
+  * Update ZED copyright boilerplate
+
+  [ Tim Chase ]
+  * Linux 2.6.36 compat, use REQ_FAILFAST_MASK and remove pre-2.6.36 support
+
+  [ Alex Reece ]
+  * Illumos 5422 - preserve AVL invariants in dn_dbufs
+
+  [ Matthew Ahrens ]
+  * Illumos 5350 - clean up code in dnode_sync()
+  * Illumos 5351, 5352 - scrub pauses
+  * Illumos 5810 - zdb should print details of bpobj
+
+  [ Justin T. Gibbs ]
+  * Illumos 5562 - ZFS sa_handle's violate kmem invariants, debug kernels panic on boot
+  * Illumos 5393 - spurious failures from dsl_dataset_hold_obj()
+
+  [ Max Grossman ]
+  * Illumos 5765 - add support for estimating send stream size with lzc_send_space when source is a bookmark
+
+  [ Brian Behlendorf ]
+  * Remove unused 'dsl_pool_t *dp' variable
+
+  [ Antonio Russo ]
+  * Relax restriction on zfs_ioc_next_obj() iteration
+
+  [ Jan Sanislo ]
+  * Return -ESTALE to force lookup for missing NFS file handles
+
+  [ Tim Chase ]
+  * Zdb should be able to open the root dataset
+
+  [ Matthew Ahrens ]
+  * Illumos 5243 - zdb -b could be much faster
+
+  [ Alexander Eremin ]
+  * Illumos 5847 - libzfs_diff should check zfs_prop_get() return
+
+  [ Tim Chase ]
+  * Initialize dbu_tqent in dmu_buf_init_user()
+
+  [ Turbo Fredriksson ]
+  * The mount helper mount.zfs MUST be in /sbin (not '$sbindir').
+
+  [ Hajo Möller ]
+  * Change 3-digit octal escapes to 4-digit ones
+
+  [ Turbo Fredriksson ]
+  * Style check shell scripts
+
+  [ Brian Behlendorf ]
+  * Wait in libzfs_init() for the /dev/zfs device
+  * Add libzfs_error_init() function
+  * Use ExecStartPre to load zfs modules
+
+  [ Turbo Fredriksson ]
+  * Base init scripts for SYSV systems
+  * SYSV init script fixes.
+
+  [ Ned Bass ]
+  * dbuf_try_add_ref minor bug fixes
+  * dmu_objset_userquota_get_ids uses dn_bonus unsafely
+
+  [ Turbo Fredriksson ]
+  * Improve on the ZFS events documentation
+
+  [ Arne Jansen ]
+  * Illumos 5269 - zpool import slow
+
+  [ Matthew Ahrens ]
+  * Illumos 5818 - zfs {ref}compressratio is incorrect with 4k sector size
+
+  [ Brian Behlendorf ]
+  * Remove unused variable in vdev_add_child()
+
+  [ Tim Chase ]
+  * Revert "arc_evict, arc_evict_ghost: reduce stack usage using kmem_zalloc"
+  * Revert "fix l2arc compression buffers leak"
+  * Revert "Allow arc_evict_ghost() to only evict meta data"
+  * Partially revert "Add ddt, ddt_entry, and l2arc_hdr caches"
+
+  [ George Wilson ]
+  * Illumos 5369 - arc flags should be an enum
+
+  [ Chris Williamson ]
+  * Illumos 5408 - managing ZFS cache devices requires lots of RAM
+
+  [ Prakash Surya ]
+  * Illumos 5497 - lock contention on arcs_mtx
+
+  [ Brian Behlendorf ]
+  * Add taskq_wait_outstanding() function
+  * Use taskq_wait_outstanding() function
+  * Make arc_prune() asynchronous
+
+  [ Tim Chase ]
+  * Increase arc_c_min to allow safe operation of arc_adapt()
+
+  [ Brian Behlendorf ]
+  * Rename cv_wait_interruptible() to cv_wait_sig()
+  * Wait interruptibly in prefetch thread
+
+  [ Hajo Möller ]
+  * Add -y option to `zpool iostat`
+
+  [ Tim Chase ]
+  * 3.12 compat, NUMA-aware per-superblock shrinker
+
+  [ Brian Behlendorf ]
+  * Unify mount and share for 'zfs create/clone'
+
+  [ Turbo Fredriksson ]
+  * Additional SYSV init script fixes.
+
+  [ Sören Tempel ]
+  * Refactor dracut module
+  * Force export if it failed the first time
+  * Only source '/lib/dracut-lib.sh' if it wasn't so far
+  * Update dracut README
+
+  [ Matus Kral ]
+  * Linux 4.1 compat: use read_iter() / write_iter()
+
+  [ Brian Behlendorf ]
+  * Increase the number of iput taskq threads
+  * Add zfs_sb_prune_aliases() function
+
+  [ Etienne Dechamps ]
+  * Allocate disk space fairly in the presence of vdevs of unequal size.
+  * Document metaslab_aliquot.
+  * Make metaslab_aliquot a module parameter.
+
+  [ Richard Yao ]
+  * zfsdev_getminor() should check for invalid file handles
+
+  [ Brian Behlendorf ]
+  * Add IMPLY() and EQUIV() macros
+
+  [ Prakash Surya ]
+  * Illumos 5701 - zpool list reports incorrect "alloc" value for cache devices
+
+  [ Andriy Gapon ]
+  * Account for ashift when gathering buffers to be written to l2arc device
+
+  [ Brian Behlendorf ]
+  * Update all default taskq settings
+
+  [ George Wilson ]
+  * Illumos 5163 - arc should reap range_seg_cache
+
+  [ Matthew Ahrens ]
+  * Illumos 5368 - ARC should cache more metadata
+
+  [ Turbo Fredriksson ]
+  * Revert "Additional SYSV init script fixes."
+  * Additional SYSV init script fixes (3).
+
+  [ Don Brady ]
+  * zdb -d has false positive warning when feature@large_blocks=disabled
+  * Fix for recent zdb -h | -i crashes (seg fault)
+
+  [ Brian Behlendorf ]
+  * Add ziltest.sh
+
+  [ Tim Chase ]
+  * Remove l2ad_evict from zfs_l2arc_evict_class
+
+  [ Turbo Fredriksson ]
+  * Add /dev/mapper to the list of possible sources for pool devices.
+
+  [ Matthew Ahrens ]
+  * Illumos 5175 - implement dmu_read_uio_dbuf() to improve cached read performance
+
+  [ Colin Ian King ]
+  * man: fix spelling mistakes in manual
+
+  [ Alek Pinchuk ]
+  * Illumos 6033 - arc_adjust() should search MFU lists
+
+  [ Andriy Gapon ]
+  * Illumos 5912 - full stream can not be force-received into a dataset if it has a snapshot
+  * Illumos 5909 - ensure that shared snap names don't become too long after promotion
+  * Illumos 5870 - dmu_recv_end_check() leaks origin_head hold if error happens in drc_force branch
+  * Illumos 5946, 5945
+
+  [ Arne Jansen ]
+  * Illumos 5981 - Deadlock in dmu_objset_find_dp
+
+  [ Matthew Ahrens ]
+  * Illumos 5911 - ZFS "hangs" while deleting file
+
+  [ Alexander Motin ]
+  * Illumos 5008 - lock contention (rrw_exit) while running a read only load
+
+  [ Tim Chase ]
+  * Prevent reclaim in metaslab preload threads
+
+  [ Turbo Fredriksson ]
+  * Initramfs scripts for ZoL.
+
+  [ Brian Behlendorf ]
+  * Move dracut directory to contrib
+
+  [ Josef 'Jeff' Sipek ]
+  * Illumos 4626 - libzfs memleak in zpool_in_use()
+  * Illumos 4745 - fix AVL code misspellings
+
+  [ George Wilson ]
+  * Illumos 4966 - zpool list iterator does not update output
+
+  [ Basil Crow ]
+  * Illumos 5118 - When verifying or creating a storage pool, error messages only show one device
+
+  [ Jan Kryl ]
+  * Illumos 5427 - memory leak in libzfs when doing rollback
+
+  [ Justin T. Gibbs ]
+  * Illumos 5661 - ZFS: "compression = on" should use lz4 if feature is enabled
+
+  [ Will Andrews ]
+  * Illumos 5813 - zfs_setprop_error(): Handle errno value E2BIG.
+
+  [ Richard Yao ]
+  * Fix Xen Virtual Block Device detection
+
+  [ Brian Behlendorf ]
+  * Use truncate instead of fallocate in ziltest.sh
+  * Disable gcc bool-compare warning
+  * Fix switch-bool warning
+
+  [ Boris Protopopov ]
+  * Translate sync zio to sync bio
+
+  [ Richard Yao ]
+  * Failure of userland copy should return EFAULT
+
+  [ Prasad Joshi ]
+  * Illumos 1765 - assert triggered in libzfs_import.c
+
+  [ Alexander Eremin ]
+  * Illumos 5610 - zfs clone from different source and target pools produces coredump
+
+  [ Manoj Joseph ]
+  * Illumos 5764 - "zfs send -nv" directs output to stderr
+
+  [ Matthew Ahrens ]
+  * Illumos 5347 - idle pool may run itself out of space
+
+  [ Brian Behlendorf ]
+  * Linux 4.2 compat: bdi_setup_and_register()
+  * Linux 4.2 compat: remove bio->bi_cnt access
+  * Linux 4.2 compat: follow_link() / put_link()
+  * Update inode under range lock
+
+  [ Turbo Fredriksson ]
+  * Support parallel build trees (VPATH builds)
+
+  [ Brian Behlendorf ]
+  * Add logic to try and recover an inode with an invalid mode
+  * Set default _initconfdir directory
+
+  [ Matthew Ahrens ]
+  * Illumos 5376 - arc_kmem_reap_now() should not result in clearing arc_no_grow
+
+  [ Prakash Surya ]
+  * Illumos 5445 - Add more visibility via arcstats
+  * Illumos 5817 - change type of arcs_size from uint64_t to refcount_t
+
+  [ Brian Behlendorf ]
+  * Reinstate zfs_arc_p_min_shift
+  * Add hdr_recl() reclaim callback
+  * Remove double counting HDR_L2ONLY_SIZE
+  * Minor style cleanup
+
+  [ Turbo Fredriksson ]
+  * Fix some minor issues with the SYSV init and initramfs scripts.
+  * Make sure that POOL_IMPORTED is set, unset and checked where appropriate.
+
+  [ Brian Behlendorf ]
+  * Check for NULL in dmu_free_long_range_impl()
+  * Align thread priority with Linux defaults
+
+  [ Frédéric VANNIÈRE ]
+  * Fix build failure with Linux 4.1 and FTRACE
+
+  [ Chunwei Chen ]
+  * Fix "BUG: Bad page state" caused by writeback flag
+
+  [ Brian Behlendorf ]
+  * Bound zvol_threads module option
+  * Update arc_available_memory() to check freemem
+  * Update arc_memory_throttle() to check pageout
+
+  [ Chris Dunlap ]
+  * Fix whitespace in zed_log_err
+  * Rework zed_notify_email for configurable PROG/OPTS
+
+  [ Tim Chase ]
+  * ztest: display non-index properties properly at verbose level 6
+
+  [ Chris Dunlop ]
+  * Linux 4.1 compat: configure bdi_setup_and_register()
+  * Fix build failure with Linux 4.1 and FTRACE
+
+  [ tuxoko ]
+  * Add parenthesis to the ternary operator
+
+  [ Richard Yao ]
+  * Fix zvol detection
+
+  [ Brian Behlendorf ]
+  * Handle zap_lookup() failure in ddt_object_load()
+  * Linux 4.2 compat: vfs_rename()
+
+  [ Chunwei Chen ]
+  * Add compatibility layer for {kmap,kunmap}_atomic
+  * Linux 4.1 compat: loop device on ZFS
+
+  [ Brian Behlendorf ]
+  * Limit max_hw_sectors_kb to 16M
+  * Check large block feature flag on volumes
+
+  [ Tim Chase ]
+  * Allow recovery from corrupted snapshot maps
+
+  [ Andreas Buschmann ]
+  * Add extra keyword 'slot' to vdev_id.conf
+
+  [ Tim Chase ]
+  * Initialize the taskq entry embedded within struct vdev
+
+  [ Richard Yao ]
+  * Some OpenRC dependency logic belongs in mount
+
+  [ loli10K ]
+  * Fix small typo
+
+  [ Richard Yao ]
+  * Clear QUEUE_FLAG_ADD_RANDOM on zvols
+
+  [ Andrey Vesnovaty ]
+  * zfsctl: No need to sync ctldir inodes
+
+  [ Brian Behlendorf ]
+  * Linux 3.18 compat: Snapshot auto-mounting
+  * Linux 4.2 compat: misc_deregister()
+
+  [ Richard Yao ]
+  * Remove blk_queue_physical_block_size() autotools check
+  * Remove blk_queue_io_opt() autotools check
+
+  [ tuxoko ]
+  * Check for RW_WRITE_HELD in zfs_inactive
+
+  [ Richard Yao ]
+  * Disable LBA weighting on files and SSDs
+
+  [ James Lee ]
+  * Reorder zfs-* services to allow /var on separate dataset
+
+  [ Brian Behlendorf ]
+  * Add spa_slop_shift module option
+
+  [ Tim Chase ]
+  * Dbuf hash table should be sized as is the arc hash table
+
+  [ Richard Yao ]
+  * VDEV_REQ_FUA should be mapped to REQ_FUA
+
+  [ Brian Behlendorf ]
+  * Add temporary mount options
+
+  [ Tim Chase ]
+  * Prevent reclaim in the traverse prefetch thread
+
+  [ Richard Yao ]
+  * zvol processing should use struct bio
+  * Support secure discard on zvols
+  * Remove rq_for_each_segment() autotools check
+  * Remove rq_is_sync() autotools check
+  * Remove blk_end_request() autotools check.
+  * Remove blk_requeue_request() autotools check
+  * Remove blk_fetch_request() autotools check
+  * Remove blk_rq_pos() autotools check
+  * Remove blk_rq_bytes()/blk_rq_sectors autotools checks
+  * Remove blk_queue_discard() autotools check
+  * Remove blk_queue_nonrot() autotools check
+
+  [ Andrey Vesnovaty ]
+  * Fix invalid fileid for snapshot root dentry
+
+  [ Brian Behlendorf ]
+  * Support accessing .zfs/snapshot via NFS
+  * Add dbgmsg kstat
+
+  [ SenH ]
+  * Force create /run/sendsigs.omit.d link when starting zed
+
+  [ Richard Yao ]
+  * Reintroduce IO accounting on zvols on Linux 3.19+
+
+  [ Brian Behlendorf ]
+  * Prefetch start and end of volumes
+
+  [ Arne Jansen ]
+  * Illumos 6214 - zpools going south
+
+  [ Brian Behlendorf ]
+  * Tag zfs-0.6.5
+
+  [ Darik Horn ]
+  * Refresh debian/patches after upstream merge.
+
+  [ Benjamin Staffin ]
+  * Add support for systemd systems
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 11 Sep 2015 19:18:52 -0400
+
 zfs-linux (0.6.4.2-1~vivid) vivid; urgency=low
 
   [ Brian Behlendorf ]
