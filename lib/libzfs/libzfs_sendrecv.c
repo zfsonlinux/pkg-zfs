@@ -214,7 +214,7 @@ static void *
 cksummer(void *arg)
 {
 	dedup_arg_t *dda = arg;
-	char *buf = malloc(1<<20);
+	char *buf = zfs_alloc(dda->dedup_hdl, SPA_MAXBLOCKSIZE);
 	dmu_replay_record_t thedrr;
 	dmu_replay_record_t *drr = &thedrr;
 	struct drr_begin *drrb = &thedrr.drr_u.drr_begin;
@@ -279,9 +279,9 @@ cksummer(void *arg)
 			    DMU_COMPOUNDSTREAM && drr->drr_payloadlen != 0) {
 				int sz = drr->drr_payloadlen;
 
-				if (sz > 1<<20) {
-					free(buf);
-					buf = malloc(sz);
+				if (sz > SPA_MAXBLOCKSIZE) {
+					buf = zfs_realloc(dda->dedup_hdl, buf,
+					    SPA_MAXBLOCKSIZE, sz);
 				}
 				(void) ssread(buf, sz, ofp);
 				if (ferror(stdin))
@@ -834,7 +834,8 @@ typedef struct send_dump_data {
 	char prevsnap[ZFS_MAXNAMELEN];
 	uint64_t prevsnap_obj;
 	boolean_t seenfrom, seento, replicate, doall, fromorigin;
-	boolean_t verbose, dryrun, parsable, progress, embed_data;
+	boolean_t verbose, dryrun, parsable, progress, embed_data, std_out;
+	boolean_t large_block;
 	int outfd;
 	boolean_t err;
 	nvlist_t *fss;
@@ -1062,6 +1063,7 @@ dump_snapshot(zfs_handle_t *zhp, void *arg)
 	int err;
 	boolean_t isfromsnap, istosnap, fromorigin;
 	boolean_t exclude = B_FALSE;
+	FILE *fout = sdd->std_out ? stdout : stderr;
 
 	err = 0;
 	thissnap = strchr(zhp->zfs_name, '@') + 1;
@@ -1136,30 +1138,30 @@ dump_snapshot(zfs_handle_t *zhp, void *arg)
 
 		if (sdd->parsable) {
 			if (sdd->prevsnap[0] != '\0') {
-				(void) fprintf(stderr, "incremental\t%s\t%s",
+				(void) fprintf(fout, "incremental\t%s\t%s",
 				    sdd->prevsnap, zhp->zfs_name);
 			} else {
-				(void) fprintf(stderr, "full\t%s",
+				(void) fprintf(fout, "full\t%s",
 				    zhp->zfs_name);
 			}
 		} else {
-			(void) fprintf(stderr, dgettext(TEXT_DOMAIN,
+			(void) fprintf(fout, dgettext(TEXT_DOMAIN,
 			    "send from @%s to %s"),
 			    sdd->prevsnap, zhp->zfs_name);
 		}
 		if (err == 0) {
 			if (sdd->parsable) {
-				(void) fprintf(stderr, "\t%llu\n",
+				(void) fprintf(fout, "\t%llu\n",
 				    (longlong_t)size);
 			} else {
 				char buf[16];
 				zfs_nicenum(size, buf, sizeof (buf));
-				(void) fprintf(stderr, dgettext(TEXT_DOMAIN,
+				(void) fprintf(fout, dgettext(TEXT_DOMAIN,
 				    " estimated size is %s\n"), buf);
 			}
 			sdd->size += size;
 		} else {
-			(void) fprintf(stderr, "\n");
+			(void) fprintf(fout, "\n");
 		}
 	}
 
@@ -1181,6 +1183,8 @@ dump_snapshot(zfs_handle_t *zhp, void *arg)
 		}
 
 		enum lzc_send_flags flags = 0;
+		if (sdd->large_block)
+			flags |= LZC_SEND_FLAG_LARGE_BLOCK;
 		if (sdd->embed_data)
 			flags |= LZC_SEND_FLAG_EMBED_DATA;
 
@@ -1401,6 +1405,7 @@ zfs_send(zfs_handle_t *zhp, const char *fromsnap, const char *tosnap,
 	int pipefd[2];
 	dedup_arg_t dda = { 0 };
 	int featureflags = 0;
+	FILE *fout;
 
 	(void) snprintf(errbuf, sizeof (errbuf), dgettext(TEXT_DOMAIN,
 	    "cannot send '%s'"), zhp->zfs_name);
@@ -1529,11 +1534,15 @@ zfs_send(zfs_handle_t *zhp, const char *fromsnap, const char *tosnap,
 	sdd.parsable = flags->parsable;
 	sdd.progress = flags->progress;
 	sdd.dryrun = flags->dryrun;
+	sdd.large_block = flags->largeblock;
 	sdd.embed_data = flags->embed_data;
 	sdd.filter_cb = filter_func;
 	sdd.filter_cb_arg = cb_arg;
 	if (debugnvp)
 		sdd.debugnv = *debugnvp;
+	if (sdd.verbose && sdd.dryrun)
+		sdd.std_out = B_TRUE;
+	fout = sdd.std_out ? stdout : stderr;
 
 	/*
 	 * Some flags require that we place user holds on the datasets that are
@@ -1573,12 +1582,12 @@ zfs_send(zfs_handle_t *zhp, const char *fromsnap, const char *tosnap,
 
 		if (flags->verbose) {
 			if (flags->parsable) {
-				(void) fprintf(stderr, "size\t%llu\n",
+				(void) fprintf(fout, "size\t%llu\n",
 				    (longlong_t)sdd.size);
 			} else {
 				char buf[16];
 				zfs_nicenum(sdd.size, buf, sizeof (buf));
-				(void) fprintf(stderr, dgettext(TEXT_DOMAIN,
+				(void) fprintf(fout, dgettext(TEXT_DOMAIN,
 				    "total estimated size is %s\n"), buf);
 			}
 		}
@@ -2179,7 +2188,8 @@ again:
 					needagain = B_TRUE;
 				else
 					progress = B_TRUE;
-				sprintf(guidname, "%lu", thisguid);
+				sprintf(guidname, "%llu",
+				    (u_longlong_t)thisguid);
 				nvlist_add_boolean(deleted, guidname);
 				continue;
 			}
@@ -2236,7 +2246,8 @@ again:
 				needagain = B_TRUE;
 			else
 				progress = B_TRUE;
-			sprintf(guidname, "%lu", parent_fromsnap_guid);
+			sprintf(guidname, "%llu",
+			    (u_longlong_t) parent_fromsnap_guid);
 			nvlist_add_boolean(deleted, guidname);
 			continue;
 		}
@@ -2269,7 +2280,8 @@ again:
 		if (stream_parent_fromsnap_guid != 0 &&
 		    parent_fromsnap_guid != 0 &&
 		    stream_parent_fromsnap_guid != parent_fromsnap_guid) {
-			sprintf(guidname, "%lu", parent_fromsnap_guid);
+			sprintf(guidname, "%llu",
+			    (u_longlong_t) parent_fromsnap_guid);
 			if (nvlist_exists(deleted, guidname)) {
 				progress = B_TRUE;
 				needagain = B_TRUE;
@@ -2561,7 +2573,7 @@ static int
 recv_skip(libzfs_handle_t *hdl, int fd, boolean_t byteswap)
 {
 	dmu_replay_record_t *drr;
-	void *buf = malloc(1<<20);
+	void *buf = zfs_alloc(hdl, SPA_MAXBLOCKSIZE);
 	char errbuf[1024];
 
 	(void) snprintf(errbuf, sizeof (errbuf), dgettext(TEXT_DOMAIN,

@@ -42,7 +42,7 @@ Index: b/config/user.m4
 ===================================================================
 --- a/config/user.m4
 +++ b/config/user.m4
-@@ -2,6 +2,7 @@ dnl #
+@@ -2,6 +2,7 @@
  dnl # Default ZFS user configuration
  dnl #
  AC_DEFUN([ZFS_AC_CONFIG_USER], [
@@ -54,7 +54,7 @@ Index: b/config/zfs-build.m4
 ===================================================================
 --- a/config/zfs-build.m4
 +++ b/config/zfs-build.m4
-@@ -86,10 +86,10 @@ AC_DEFUN([ZFS_AC_CONFIG], [
+@@ -87,10 +87,10 @@
  	ZFS_AC_CONFIG_ALWAYS
  
  	case "$ZFS_CONFIG" in

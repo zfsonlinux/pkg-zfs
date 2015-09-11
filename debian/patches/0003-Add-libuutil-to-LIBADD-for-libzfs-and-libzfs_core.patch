@@ -18,7 +18,7 @@ Index: b/lib/libzfs/Makefile.am
 ===================================================================
 --- a/lib/libzfs/Makefile.am
 +++ b/lib/libzfs/Makefile.am
-@@ -27,6 +27,7 @@ libzfs_la_SOURCES = \
+@@ -32,6 +32,7 @@
  
  libzfs_la_LIBADD = \
  	$(top_builddir)/lib/libzfs_core/libzfs_core.la \
@@ -30,8 +30,8 @@ Index: b/lib/libzfs_core/Makefile.am
 ===================================================================
 --- a/lib/libzfs_core/Makefile.am
 +++ b/lib/libzfs_core/Makefile.am
-@@ -10,6 +10,7 @@ libzfs_core_la_SOURCES = \
- 	$(top_srcdir)/lib/libzfs_core/libzfs_core.c
+@@ -16,7 +16,8 @@
+ 	$(KERNEL_C)
  
  libzfs_core_la_LIBADD = \
 -	$(top_builddir)/lib/libnvpair/libnvpair.la
@@ -39,3 +39,4 @@ Index: b/lib/libzfs_core/Makefile.am
 +	$(top_builddir)/lib/libuutil/libuutil.la
  
  libzfs_core_la_LDFLAGS = -version-info 1:0:0
+ 
