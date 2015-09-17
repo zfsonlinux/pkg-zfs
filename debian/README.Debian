@@ -11,16 +11,7 @@ then create pools like this:
 ZoL remains compatible with all other ZFS implementations derived
 from Illumos.
 
-2. Use zfs-initramfs with caution.
-
-Debian Installer's root installation support is being worked on,
-and zfs-initramfs is included here but still needs to be tested
-in detail. Since faulty operation on filesystem can lead to major
-loss of data, please use zfs-initramfs with caution.
-
- -- Aron Xu <aron@debian.org>  Sat, 3 Aug 2013 03:23:11 +0800
-
-3. Additional patches and Pull Requests on top of the core zfs
+2. Additional patches and Pull Requests on top of the core zfs
    software have been added. This to give additional functionality
    not yet availible or merged.
 

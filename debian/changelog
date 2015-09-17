@@ -1,3 +1,9 @@
+zfs-linux (0.6.5-1-wheezy) wheezy; urgency=low
+
+  * New upstream release.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 17 Sep 2015 13:13:05 +0200
+
 zfs-linux (0.6.4-24-6bec43-wheezy) wheezy; urgency=low
 
   * Remerge some PRs
