@@ -33,17 +33,6 @@
 
 # ----------------------------------------------------
 
-chkroot() {
-	while read line; do
-		set -- $line
-		if [ "$2" = "/" ]; then
-			return 0
-		fi
-	done < /etc/mtab
-
-	return 1
-}
-
 do_depend()
 {
 	# Try to allow people to mix and match fstab with ZFS in a way that makes sense.
@@ -68,7 +57,7 @@ do_mount()
 	local verbose overlay i mntpt val
 
 	[ "$VERBOSE_MOUNT" = 'yes' ] && verbose=v
-	[ "$OVERLAY_MOUNTS" = 'yes' ] && overlay=O
+	[ "$DO_OVERLAY_MOUNTS" = 'yes' ] && overlay=O
 
 	zfs_action "Mounting ZFS filesystem(s)" \
 	    "$ZFS" mount -a$verbose$overlay "$MOUNT_EXTRA_OPTIONS"
