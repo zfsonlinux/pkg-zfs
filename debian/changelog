@@ -1,3 +1,13 @@
+zfs-linux (0.6.5-2) wheezy; urgency=low
+
+  * Fixes to the SYSV init scripts:
+    + Use a check_boolean() function to check if a user config option is
+      set ('yes', 'Yes', 'YES' or any combination there of) OR '1'.
+      Anything else is considered 'unset'.
+    + Fix checking if pool is imported in import_pool().
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 17 Sep 2015 19:18:56 +0200
+
 zfs-linux (0.6.5-1) jessie; urgency=low
 
   * New upstream release.
