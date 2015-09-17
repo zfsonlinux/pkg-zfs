@@ -1,3 +1,9 @@
+zfs-linux (0.6.5-1) jessie; urgency=low
+
+  * New upstream release.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 17 Sep 2015 14:45:40 +0200
+
 zfs-linux (0.6.4-24-6bec43) jessie; urgency=low
 
   * Remerge some PRs
