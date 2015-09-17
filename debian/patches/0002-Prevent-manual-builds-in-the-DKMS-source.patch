@@ -1,0 +1,70 @@
+From: Darik Horn <dajhorn@vanadac.com>
+Date: Tue, 17 Jan 2012 19:45:07 -0600
+Subject: Prevent manual builds in the DKMS source.
+
+Print an instructive error messsage and exit if the `dkms.conf` file
+exists when the userland is configured. (ie: `--with-config=user`)
+
+A non-trivial number of people try to rebuild ZoL from the
+`/usr/src/zfs` tree, which is modified to better satisfy Debian
+packaging policy and contains only the module sources for DKMS.
+
+Regardless, local installations usually break managed installations,
+so this autotools test could be further enhanced to check whether
+ZFS has a DKMS registration.
+---
+ config/dkms.m4      |   14 ++++++++++++++
+ config/user.m4      |    1 +
+ config/zfs-build.m4 |    6 +++---
+ 3 files changed, 18 insertions(+), 3 deletions(-)
+ create mode 100644 config/dkms.m4
+
+Index: pkg-zfs/config/dkms.m4
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ pkg-zfs/config/dkms.m4	2015-07-18 18:57:21.540344935 +0200
+@@ -0,0 +1,14 @@
++dnl #
++dnl # Prevent manual building in DKMS source tree.
++dnl #
++AC_DEFUN([ZFS_AC_DKMS_INHIBIT], [
++	AC_MSG_CHECKING([for dkms.conf file])
++        AS_IF([test -e dkms.conf], [
++		AC_MSG_ERROR([
++	*** ZFS should not be manually built in the DKMS source tree.
++	*** Remove all ZFS packages before compiling the ZoL sources.
++	*** Running "make install" breaks ZFS packages.])
++        ], [
++		AC_MSG_RESULT([not found])
++        ])
++])
+Index: pkg-zfs/config/user.m4
+===================================================================
+--- pkg-zfs.orig/config/user.m4	2015-07-18 18:57:21.544344936 +0200
++++ pkg-zfs/config/user.m4	2015-07-18 18:57:21.540344935 +0200
+@@ -2,6 +2,7 @@
+ dnl # Default ZFS user configuration
+ dnl #
+ AC_DEFUN([ZFS_AC_CONFIG_USER], [
++	ZFS_AC_DKMS_INHIBIT
+ 	ZFS_AC_CONFIG_USER_MOUNT_HELPER
+ 	ZFS_AC_CONFIG_USER_UDEV
+ 	ZFS_AC_CONFIG_USER_SYSTEMD
+Index: pkg-zfs/config/zfs-build.m4
+===================================================================
+--- pkg-zfs.orig/config/zfs-build.m4	2015-07-18 18:57:21.544344936 +0200
++++ pkg-zfs/config/zfs-build.m4	2015-07-18 18:57:21.540344935 +0200
+@@ -87,10 +87,10 @@
+ 	ZFS_AC_CONFIG_ALWAYS
+ 
+ 	case "$ZFS_CONFIG" in
+-		kernel) ZFS_AC_CONFIG_KERNEL ;;
+ 		user)	ZFS_AC_CONFIG_USER   ;;
+-		all)    ZFS_AC_CONFIG_KERNEL
+-			ZFS_AC_CONFIG_USER   ;;
++		kernel) ZFS_AC_CONFIG_KERNEL ;;
++		all)    ZFS_AC_CONFIG_USER
++			ZFS_AC_CONFIG_KERNEL ;;
+ 		srpm)                        ;;
+ 		*)
+ 		AC_MSG_RESULT([Error!])
