@@ -1,0 +1,137 @@
+#!/bin/sh
+
+if [ x"$KVERS" = x ] ; then
+    echo "ERROR: no kernel version" >&2
+    echo "  ($KSRC/include/linux/version.h not found?)" >&2
+    echo UNKNOWN
+    exit 1
+fi
+
+case ${ARCH:-`uname -m`} in
+alpha)
+    case $KVERS in
+    2.2*)
+        echo alpha_linux_22
+        ;;
+    2.4*)
+        echo alpha_linux_24
+        ;;
+    2.6*)
+        echo alpha_linux_26
+        ;;
+    esac
+    ;;
+arm|armel|armhf|armv5tel)
+    case $KVERS in
+    2.4*)
+        echo arm_linux24
+        ;;
+    2.6*)
+        echo arm_linux26
+        ;;
+    esac
+    ;;
+i[3456]86)
+    case $KVERS in
+    2.2*)
+        echo i386_linux22
+        ;;
+    2.4*)
+        echo i386_linux24
+        ;;
+    2.6*)
+        echo i386_linux26
+        ;;
+    esac
+    ;;
+ia64)
+    case $KVERS in
+    2.4*)
+        echo ia64_linux24
+        ;;
+    2.6*)
+        echo ia64_linux26
+        ;;
+    esac
+    ;;
+ppc)
+    case $KVERS in
+    2.2*)
+        echo ppc_linux22
+        ;;
+    2.4*)
+        echo ppc_linux24
+        ;;
+    2.6)
+        echo ppc_linux26
+        ;;
+    esac
+    ;;
+ppc64)
+    case $KVERS in
+    2.4*)
+        echo ppc64_linux24
+        ;;
+    2.6*)
+        echo ppc64_linux26
+        ;;
+    esac
+    ;;
+s390)
+    case $KVERS in
+    2.4*)
+        echo s390_linux24
+        ;;
+    2.6*)
+        echo s390_linux26
+        ;;
+    esac
+    ;;
+s390x)
+    case $KVERS in
+    2.4*)
+        echo s390x_linux24
+        ;;
+    2.6*)
+        echo s390x_linux26
+        ;;
+    esac
+    ;;
+sparc)
+    case $KVERS in
+    2.2*)
+        echo sparc_linux22
+        ;;
+    2.4*)
+        echo sparc_linux24
+        ;;
+    esac
+    ;;
+sparc64)
+    case $KVERS in
+    2.2*)
+        echo sparc64_linux22
+        ;;
+    2.4*)
+        echo sparc64_linux24
+        ;;
+    2.6*)
+        echo sparc64_linux26
+        ;;
+    esac
+    ;;
+x86_64)
+    case $KVERS in
+    2.4*)
+        echo amd64_linux24
+        ;;
+    2.6*)
+        echo amd64_linux26
+        ;;
+    esac
+    ;;
+*)
+    echo "ERROR: unsupported architecture" >&2
+    echo UNKNOWN
+    exit 1
+esac

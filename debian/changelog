@@ -1,0 +1,723 @@
+zfs-linux (0.6.4-24-6bec43-wheezy) wheezy; urgency=low
+
+  * Remerge some PRs
+  * New upstream GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 18 Aug 2015 13:01:25 +0200
+
+zfs-linux (0.6.4-23-48511e-wheezy) wheezy; urgency=low
+
+  * Package zfs-modules-source needs to conflict and replace zfs-dkms
+    and vise versa.
+  * Merge in changes to the initrd and and zfs-functions scripts.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 28 Jul 2015 10:45:13 +0200
+
+zfs-linux (0.6.4-22-48511e-wheezy) wheezy; urgency=low
+
+  * New upstream GIT version.
+  * Remerge PR3559 and 3560.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 27 Jul 2015 18:11:02 +0200
+
+zfs-linux (0.6.4-21-53b1d9-wheezy) wheezy; urgency=low
+
+  * New upstream GIT version.
+  * Remove duplicate initramfs and bash completion scripts (left overs
+    from previous local merges).
+  * Include PR 3559 - Refactor SYSV init and initramfs (Phase 2).
+  * Include PR 3560 - Refactor SYSV init, initramfs and dracut (Phase 3).
+  * Update gbp.conf so that we generates a correct/up-to-date orig.tar.gz file.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 18 Jul 2015 18:39:06 +0200
+
+zfs-linux (0.6.4-20-16421a-wheezy) wheezy; urgency=low
+
+  * New upstream GIT version.
+  * Update initramfs scripts (PR 3338) due to changed defaults file.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 26 Jun 2015 00:21:30 +0200
+
+zfs-linux (0.6.4-19-72540e-wheezy) wheezy; urgency=low
+
+  * New upstream GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 23 Jun 2015 19:12:00 +0200
+
+zfs-linux (0.6.4-18-06358e-wheezy) wheezy; urgency=low
+
+  * New upstream GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 11 Jun 2015 20:29:25 +0200
+
+zfs-linux (0.6.4-17-c3520e-wheezy) wheezy; urgency=low
+
+  * New upstream GIT version.
+  * init scripts from PR 3337 is now applied.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 11 Jun 2015 09:59:05 +0200
+
+zfs-linux (0.6.4-16-544f71-wheezy) wheezy; urgency=low
+
+  * New upstream GIT version.
+  * New init scripts from PR 3337.
+  * Make sure we only get 'filesystem's when we're about to mount it/them.
+    This to filter out volumes (i.e. swap etc) and snapshots.
+    Thanx to 'kidmin' for fix.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 28 May 2015 15:01:54 +0200
+
+zfs-linux (0.6.4-15-7fec46-wheezy) wheezy; urgency=low
+
+  * New upstream GIT version.
+  * New init scripts from PR 3337.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 18 May 2015 17:51:11 +0200
+
+zfs-linux (0.6.4-14-63b33e-wheezy) wheezy; urgency=low
+
+  * New init scripts from PR 3337.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 15 May 2015 16:06:23 +0200
+
+zfs-linux (0.6.4-13-63b33e-wheezy) wheezy; urgency=low
+
+  * New upstream GIT version.
+  * New init scripts from PR 3337.
+    + Update dh_installinit lines in debian/rules to start the scripts
+      in better, more optimized places.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 12 May 2015 15:24:51 +0200
+
+zfs-linux (0.6.4-12-0c60cc-wheezy) wheezy; urgency=low
+
+  * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 04 May 2015 19:11:56 +0200
+
+zfs-linux (0.6.4-11-wheezy) wheezy; urgency=low
+
+  * New init scripts from PR 3337.
+  * Renumber to be higher than the released...
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 30 Apr 2015 15:29:03 +0200
+
+zfs-linux (0.6.4-1-10-wheezy) wheezy; urgency=low
+
+  * Change hierarchical naming of clones for boot-from-snapshot.
+    Thanx to 'bisector' for patch.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 30 Apr 2015 13:27:26 +0200
+
+zfs-linux (0.6.4-1-9-wheezy) wheezy; urgency=low
+
+  * Missing 'log_end_msg' command variable translation added to
+    init + initrd scripts.
+  * Move and fix the log begin message "Importing ZFS pool ..." to
+    improve readability.
+  * Some minor cleanups in verbose output in helper functions fixed.
+  * An erroneous DBG echo removed.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 29 Apr 2015 13:47:44 +0200
+
+zfs-linux (0.6.4-1-8-wheezy) wheezy; urgency=low
+
+  * New upstream GIT tag - zfs-0.6.4.1.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 24 Apr 2015 18:45:16 +0200
+
+zfs-linux (0.6.4-1-7-wheezy) wheezy; urgency=low
+
+  * Document all additional PRs and patches in README.Debian.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 23 Apr 2015 11:20:30 +0200
+
+zfs-linux (0.6.4-1-6-wheezy) wheezy; urgency=low
+
+  * Fix nfs.c:update_host_list() to not segfault on faulty options.
+    + To not share to world, if host is given.
+      Closes: #3319
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 20 Apr 2015 20:56:22 +0200
+
+zfs-linux (0.6.4-1-5-wheezy) wheezy; urgency=low
+
+  * Remove module builds etc from package. Instead, create a modules-source
+    package which can be used with module-assistant to build the binary module.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 18 Apr 2015 15:45:48 +0200
+
+zfs-linux (0.6.4-1-4-wheezy) wheezy; urgency=low
+
+  * Remove udeb build process.
+    Debian GNU/Linux isn't allowed to distribute binary modules.
+  * Find KVERS and KARCH correctly.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 18 Apr 2015 11:57:36 +0200
+
+zfs-linux (0.6.4-1-3-wheezy) wheezy; urgency=low
+
+  * Remove duplicate nfs.c:foreach_nfs_shareopt. It was renamed to
+    libshare.c:foreach_shareopt.
+  * Add support to rollback snapshot instead of cloning it and use the
+    clone as root filesystem.
+  * Add support to ask user for snapshot to boot from if root=...@<nul>.
+  * Ubuntu Trusty busybox thinks that 'destfs=${snap/@/_}' is a bad
+    substitution. Replace it with:  destfs=$(echo "$snap" | sed 's,@,_,').
+  * Don't treat ZFS_STDERR and ZFS_ERROR as local in import_pool().
+    Need them later if there's an error.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 12 Apr 2015 07:11:32 +0200
+
+zfs-linux (0.6.4-1-2-wheezy) wheezy; urgency=low
+
+  * Replace apparently broken nfs.c with one that works on my Primary.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 11 Apr 2015 15:37:43 +0200
+
+zfs-linux (0.6.4-1-1-wheezy) wheezy; urgency=low
+
+  * libshare/smb fix - remove check code from init to avail function.
+  * libshare/nfs fix - avoid segfault on unset variable.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 10 Apr 2015 21:52:35 +0200
+
+zfs-linux (0.6.4-1-wheezy) wheezy; urgency=low
+
+  * New upstream release.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 10 Apr 2015 01:20:57 +0200
+
+zfs-linux (0.6.3-44-40d06e-wheezy) wheezy; urgency=low
+
+  * Fix ordering of fstab entries.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 06 Apr 2015 06:56:37 +0200
+
+zfs-linux (0.6.3-43-40d06e-wheezy) wheezy; urgency=low
+
+  * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 04 Apr 2015 02:31:42 +0200
+
+zfs-linux (0.6.3-42-0f7d2a-wheezy) wheezy; urgency=low
+
+  * Update init script to mount legacy mounts from /etc/fstab.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 02 Apr 2015 10:09:23 +0200
+
+zfs-linux (0.6.3-41-0f7d2a-wheezy) wheezy; urgency=low
+
+  * Do not start or restart zfs.target on upgrade. Same behaviour as with
+    install init [scripts].
+  * Move 0.6.2 upgrade check from zfsutils.postinst to new zfsutils.config.
+    Partly to fix linitian error, but it makes sence to do that check earlier.
+  * Init script for zed needs/must support 'force-reload'.
+  * Add '${misc:Depends}' to the depends list for the zfs-modules-....
+  * Change my mail address to the Debian GNU/Linux one in 'Uploaders'.
+  * Don't run/call 'override_dh_installinit' from 'override_dh_install'. Being
+    run twice.
+  * Use chrpath to remove .rpath from libraries.
+  * Instead of copying the OPENSOLARIS.LICENSE file into every package,
+    create symlink to the real one in the zfsutils package.
+  * Fix the include files before package them.
+    See: https://github.com/zfsonlinux/zfs/issues/2903
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 01 Apr 2015 15:58:21 +0200
+
+zfs-linux (0.6.3-40-0f7d2a-wheezy) wheezy; urgency=low
+
+  * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 28 Mar 2015 16:08:47 +0100
+
+zfs-linux (0.6.3-39-7d90f5-wheezy) wheezy; urgency=low
+
+  * Prepare for correct upgrade path by changing version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 27 Mar 2015 23:29:06 +0100
+
+zfs-linux (0.6.3-38-7d90f5-wheezy) wheezy; urgency=low
+
+  * New upstream GIT tag.
+  * Rewrite the initrd script to better support recursive
+    snapshotting of root fs with separate children.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 26 Mar 2015 03:37:57 +0100
+
+zfs-linux (0.6.3-37-bc8886-wheezy) wheezy; urgency=low
+
+   * New upstream GIT tag.
+   * Debian patch to look in ../pkg-spl for spl first of all.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 22 Mar 2015 12:39:13 +0100
+
+zfs-linux (0.6.3-36-5c3f61-wheezy) wheezy; urgency=low
+
+   * New upstream GIT tag.
+   * Merge in PR 1867 - Adds support for property overrides (WIP)
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 20 Mar 2015 18:22:45 +0100
+
+zfs-linux (0.6.3-35-4c7b7e-wheezy) wheezy; urgency=low
+
+   * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 13 Mar 2015 17:35:01 +0100
+
+zfs-linux (0.6.3-34-417104-wheezy) wheezy; urgency=low
+
+   * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 07 Mar 2015 16:48:43 +0100
+
+zfs-linux (0.6.3-33-d14cfd-wheezy) wheezy; urgency=low
+
+   * New upstream GIT tag.
+   * Include arc_summary.py into zfsutils.deb
+   * Add python to zfsutils.deb dependency list.
+   * Rename zfs-modules*.in files to include ARCH.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 02 Mar 2015 22:09:27 +0100
+
+zfs-linux (0.6.3-32-fdc5d9-wheezy) wheezy; urgency=low
+
+   * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 01 Mar 2015 16:30:16 +0100
+
+zfs-linux (0.6.3-31-1d9663-wheezy) wheezy; urgency=low
+
+   * Fix Vcs lines in control
+     Thanx to rlaager for fix - #139
+   * Reenable dracut 'stuff'
+     Thanx to l1k for fix.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 22 Feb 2015 13:50:26 +0100
+
+zfs-linux (0.6.3-30-7d2868-wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+    * Update Debian patches
+    * Rename version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 16 Feb 2015 17:36:17 +0100
+
+zfs-linux (0.6.3-29~33b4de~wheezy) wheezy; urgency=low
+
+    * Merge latest PR 2087 updates.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 08 Feb 2015 19:51:31 +0100
+
+zfs-linux (0.6.3-28~33b4de~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+    * Fix "/usr/bin/deb-systemd-helper: error: unable to read zfs.target"
+    * Include the /etc/default/zfs file in the initrd.
+    * Merge PR 3084 to get kernel 3.19 support.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 07 Feb 2015 22:36:50 +0100
+
+zfs-linux (0.6.3-27~2c41df~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 31 Jan 2015 20:40:16 +0100
+
+zfs-linux (0.6.3-26~2d9d57~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 20 Dec 2014 12:25:22 +0100
+
+zfs-linux (0.6.3-25~c944be~wheezy) wheezy; urgency=low
+
+    * Merge latest ZoL and PR 2087.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 08 Dec 2014 15:22:39 +0100
+
+zfs-linux (0.6.3-24~7b2d78~wheezy) wheezy; urgency=low
+
+    * Merge latest version of initrd scripts
+      + Use /dev/disk/by-vdev before /dev/disk/by-*
+    * Note that ZFS_INITRD_ADDITIONAL_DATASETS and ZFS_POOL_EXCEPTIONS
+      is space separated.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 23 Nov 2014 23:31:07 +0100
+
+zfs-linux (0.6.3-23~7b2d78~wheezy) wheezy; urgency=low
+
+    * Add ZoL udev rules to zfsutils udeb.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 23 Nov 2014 23:31:07 +0100
+
+zfs-linux (0.6.3-22~7b2d78~wheezy) wheezy; urgency=low
+
+    * Add dh-systemd to build depends.
+    * Add space before a ] in the zfs-mount initscript.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 21 Nov 2014 22:46:35 +0100
+
+zfs-linux (0.6.3-21~7b2d78~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 18 Nov 2014 19:20:37 +0100
+
+zfs-linux (0.6.3-20~d94fd5~wheezy) wheezy; urgency=low
+
+    * Build udebs and modules (prepare for creating a ZoL boot image with
+      ZFS root support).
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 20 Oct 2014 23:46:36 +0200
+
+zfs-linux (0.6.3-19~d94fd5~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+    * Include https://github.com/FransUrbo/zfs/tree/iscsi
+    * Include https://github.com/FransUrbo/zfs/tree/smbfs_registry-shares
+    * Include https://github.com/FransUrbo/zfs/tree/sharenfs_rewrite
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 18 Oct 2014 17:57:53 +0200
+
+zfs-linux (0.6.3-18~e82cdc~wheezy) wheezy; urgency=low
+
+    * Build source packages and fix so that git-buildpackage works.
+    * Remove and update debian patches.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 16 Oct 2014 23:57:23 +0200
+
+zfs-linux (0.6.3-17~e82cdc~wheezy) wheezy; urgency=low
+
+    * Install systemd files.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 15 Oct 2014 21:47:50 +0200
+
+zfs-linux (0.6.3-16~e82cdc~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+    * Fix a problem with zfs-mount not mounting filesystems because
+      pool was not known to have been imported. This happens when
+      USE_DISK_BY_ID is unset AND there's no cache file.
+      + Don't create the lock file unless we know that pool is imported and
+        filesystems mounted.
+      Thanx to effgeee on #zfsonlinux for the help in tracking this down.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 15 Oct 2014 20:38:29 +0200
+
+zfs-linux (0.6.3-15~e66597~wheezy) wheezy; urgency=low
+
+    * Use /sbin/modprobe instead of built-in (BusyBox) modprobe.
+      This gets rid of the message "modprobe: can't load module zcommon".
+      Thanx to pcoultha for finding this.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 11 Oct 2014 20:41:57 +0200
+
+zfs-linux (0.6.3-14~e66597~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+    * Don't export pool if running a zfs root.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 08 Oct 2014 19:38:51 +0200
+
+zfs-linux (0.6.3-13~cd3939~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+    * Fix zfs-mount description.
+      Closes: zfsonlinux/pkg-zfs/#121
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 06 Sep 2014 20:25:50 +0200
+
+zfs-linux (0.6.3-12~194e56~wheezy) wheezy; urgency=low
+
+    * Dramatically improve the speed of snapshot listing in zfs_completion.bash.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 24 Aug 2014 17:23:45 +0200
+
+zfs-linux (0.6.3-11~194e56~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 15 Aug 2014 12:08:56 +0200
+
+zfs-linux (0.6.3-10~672692~wheezy) wheezy; urgency=low
+
+    * When trying /dev/disk/by-*, add /dev as a last ditch attempt.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 05 Aug 2014 12:44:04 +0200
+
+zfs-linux (0.6.3-9~672692~wheezy) wheezy; urgency=low
+
+    * Build with .nogitrelease to get the _exact_ pkg version in the module as well.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 31 Jul 2014 12:49:18 +0200
+
+zfs-linux (0.6.3-8~672692~wheezy) wheezy; urgency=low
+
+    * New upstream GIT tag.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 31 Jul 2014 12:08:22 +0200
+
+zfs-linux (0.6.3-7~wheezy) wheezy; urgency=low
+
+    * Modify the behavior of zfs-mount:do_import(). POOL_IMPORTED might be NULL,
+      so use '... -a -z $POOL_IMPORTED' instead of '... -a POOL_IMPORTED == 0'.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 29 Jul 2014 02:13:58 +0200
+
+zfs-linux (0.6.3-6~wheezy) wheezy; urgency=low
+
+    * Add exceptions to pool imports.
+      + Both for init and initrd script.
+    * Make sure that the zpool.cache file is actually copied onto the initrd!!
+    * Include /etc/modprobe.d/{zfs,spl}.conf in the initrd if they exist.
+    * Export all pools found after the modprobe - zfs_autoimport_disable=1'
+      don't seem to be working in >= 0.6.3.
+      + This snippet will go away as soon as I can figure out why it doesn't,
+        it's ugly!!
+    * Only try /dev/disk/by-* in the initrd if USE_DISK_BY_ID is set.
+      + Try this first, then fallback to using the cache file if that exist.
+    * Add libblkid-dev to build depends.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 28 Jul 2014 23:54:57 +0200
+
+zfs-linux (0.6.3-5~wheezy) wheezy; urgency=low
+
+    * Slight rewrite of the zfs-mount:do_import() part.
+      Get a list of all pools already imported. If USE_DISK_BY_ID, then
+      try to use each /dev/disk/by-* dir for import. BUT, only try to import
+      pools that isn't already imported.
+    * Support mounting additional filesystems (such as /var and /usr etc)
+      in the initrd using ZFS_INITRD_ADDITIONAL_DATASETS set in /etc/defaults/zfs.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 28 Jul 2014 12:46:53 +0200
+
+zfs-linux (0.6.3-4~wheezy) wheezy; urgency=low
+
+    * Update zfs-mount: Try a cache file import if cache file exist AND (not OR) pool not imported.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 19 Jul 2014 00:27:00 +0200
+
+zfs-linux (0.6.3-3~wheezy) wheezy; urgency=low
+
+    * Build-depend on libblkid-dev.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 16 Jul 2014 22:28:19 +0200
+
+zfs-linux (0.6.3-2~wheezy) wheezy; urgency=low
+
+    * Fallback to using cache file for import if /dev/disk/by-id fails..
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 14 Jul 2014 23:17:13 +0200
+
+zfs-linux (0.6.3-1~wheezy) wheezy; urgency=low
+
+    * New upstream release.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 13 Jun 2014 03:44:36 +0200
+
+zfs-linux (0.6.3-0.27~21b446~wheezy) wheezy; urgency=low
+
+    * Update to latest ZoL GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 08 Jun 2014 14:16:26 +0200
+
+zfs-linux (0.6.3-0.26~2c33b9~wheezy) wheezy; urgency=low
+
+    * Add a /etc/insserv.conf.d/zfs-mount file.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 23 May 2014 21:32:41 +0200
+
+zfs-linux (0.6.3-0.25~2c33b9~wheezy) wheezy; urgency=low
+
+    * Update to latest ZoL GIT version.
+    * Make sure that the zed init script is installed into the package later
+      (after zfs-{mount,share}). Insserv needs to install those links first.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 23 May 2014 13:05:14 +0200
+
+zfs-linux (0.6.3-0.24~2c33b9~wheezy) wheezy; urgency=low
+
+    * Update to latest ZoL GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 20 May 2014 07:40:58 +0200
+
+zfs-linux (0.6.3-0.23~7809eb~wheezy) wheezy; urgency=low
+
+    * Make sure zfs-share runs _after_ zfs-mount.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 15 May 2014 02:40:06 +0200
+
+zfs-linux (0.6.3-0.22~7809eb~wheezy) wheezy; urgency=low
+
+    * Install additional python scripts.
+    * Install zed startup script and configuration etc.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 15 May 2014 00:14:34 +0200
+
+zfs-linux (0.6.3-0.21~7809eb~wheezy) wheezy; urgency=low
+
+    * Update to latest ZoL GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 02 May 2014 20:19:23 +0200
+
+zfs-linux (0.6.3-0.20~175849~wheezy) wheezy; urgency=low
+
+    * Update to latest ZoL GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 28 Apr 2014 13:21:36 +0200
+
+zfs-linux (0.6.3-0.19~de39ec~wheezy) wheezy; urgency=low
+
+    * Update to latest ZoL GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 22 Apr 2014 19:04:27 +0200
+
+zfs-linux (0.6.3-0.18~b79e1f~wheezy) wheezy; urgency=low
+
+    * Update to latest ZoL GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 06 Apr 2014 18:26:39 +0200
+
+zfs-linux (0.6.3-0.17~4d8c78~wheezy) wheezy; urgency=low
+
+    * Update to latest ZoL GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 26 Mar 2014 08:47:04 +0100
+
+zfs-linux (0.6.3-0.16~a15dac~wheezy) wheezy; urgency=low
+
+    * Update to latest ZoL GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 21 Mar 2014 17:25:42 +0100
+
+zfs-linux (0.6.3-0.15~e2282e~wheezy) wheezy; urgency=low
+
+    * Update to latest ZoL GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sun, 16 Mar 2014 12:32:45 +0100
+
+zfs-linux (0.6.3-0.14~4e26f2~wheezy) wheezy; urgency=low
+
+    * Update to latest ZoL GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 11 Mar 2014 11:58:06 +0100
+
+zfs-linux (0.6.3-0.13~ga77c4c~wheezy) wheezy; urgency=low
+
+    * Check if /scripts/local-* is either file or directory -
+      should be dir, but just to be safe check both.
+    * Make wait_for_udev wait for 10 seconds.
+    * Add a configurable ZFS_INITRD_POST_MODPROBE_SLEEP (set in
+      /etc/default/zfs) after the modprobe.
+    * Update /etc/defaults/zfs file with more options missed in
+      recent updates.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 07 Mar 2014 19:03:19 +0100
+
+zfs-linux (0.6.3-0.12~ga77c4c~wheezy) wheezy; urgency=low
+
+    * Update to latest ZoL GIT version.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 07 Mar 2014 08:42:30 +0100
+
+zfs-linux (0.6.3-0.11~g0ad85e~wheezy) wheezy; urgency=low
+
+    * Fix some lintian errors.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 05 Mar 2014 12:38:09 +0100
+
+zfs-linux (0.6.3-0.10~g0ad85e~wheezy) wheezy; urgency=low
+
+    * Add support for only having 'root=pool/dataset' option.
+    * Checked '-n "ZFS_RPOOL"' - missed a dollar.
+    * Remove the use of setting 'ZFS_RPOOL=rpool'. No longer nessesary.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 05 Mar 2014 09:46:20 +0100
+
+zfs-linux (0.6.3-0.9~g0ad85e~wheezy) wheezy; urgency=low
+
+  * Merge some debian patches from snapshot/ubuntu/saucy/0.6.2-2_saucy_2.gbp46f6df.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 28 Feb 2014 12:08:39 +0100
+
+zfs-linux (0.6.3-0.8~g0ad85e~wheezy) wheezy; urgency=low
+
+  * Slight rewrite of the zfs initramfs boot script.
+    1. Add 'zfs_autoimport_disable=1' to the modprobe command line
+    2. Support the 'root=ZFS=....' parameter
+    3. When called with 'zfs:AUTO', get a list of pools available for import
+       and import them one at a time, looking for a 'bootfs' option. If found,
+       leave pool imported, otherwise export it.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 28 Feb 2014 05:01:35 +0100
+
+zfs-linux (0.6.3-0.7~g0ad85e~wheezy) wheezy; urgency=low
+
+  * Improve the warning from previous commit.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 27 Feb 2014 10:13:22 +0100
+
+zfs-linux (0.6.3-0.6~g0ad85e~wheezy) wheezy; urgency=low
+
+  * If upgrading from 0.6.2, make sure we issue a warning about 'missing' pool.
+    See more at https://github.com/zfsonlinux/zfs/issues/2145
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 27 Feb 2014 09:45:51 +0100
+
+zfs-linux (0.6.3-0.5~g0ad85e~wheezy) wheezy; urgency=low
+
+  * Update with latest init scripts https://github.com/zfsonlinux/zfs/pull/2106.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 26 Feb 2014 06:31:23 +0100
+
+zfs-linux (0.6.3-0.3~g0ad85e~wheezy) wheezy; urgency=low
+
+  * Update with latest initramfs tools from https://github.com/zfsonlinux/zfs/pull/2087.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 26 Feb 2014 06:31:23 +0100
+
+zfs-linux (0.6.3-0.2~g0ad85e~wheezy) wheezy; urgency=low
+
+  * SHLIB major version changed so rename packages accordingly.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 25 Feb 2014 08:22:07 +0100
+
+zfs-linux (0.6.3-0~g540ce4~wheezy) wheezy; urgency=low
+
+  * Preversion of latest GIT HEAD.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 25 Feb 2014 02:29:37 +0100
+
+zfs-linux (0.6.2-4~wheezy) wheezy; urgency=low
+
+  * Be smarter about how we find the kernel source directory for dkms.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 03 Jan 2014 10:51:20 +0100
+
+zfs-linux (0.6.2-3) wheezy; urgency=low
+
+  * Include the /etc/modprobe.d/{spl,zfs} files in the initrd if they exist.
+  * Don't load all crypto keys keys if booting on encrypted bootfs, just the
+    bootfs one (recursivly).
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 01 Jan 2014 12:12:13 +0100
+
+zfs-linux (0.6.2-2) wheezy; urgency=low
+
+  * Add 'file' as dependency to 'zfs-dkms'.
+    Closes: https://github.com/zfsonlinux/zfs/issues/1755
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 15 Oct 2013 13:58:24 +0200
+
+zfs-linux (0.6.2-1) wheezy; urgency=low
+
+  * New Release
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 11 Sep 2013 02:58:57 +0200
+
+zfs-linux (0.6.1-1~wheezy) wheezy; urgency=low
+
+  * Initial release.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 26 Mar 2013 21:48:56 -0500
