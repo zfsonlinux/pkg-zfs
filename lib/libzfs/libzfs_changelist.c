@@ -260,10 +260,19 @@ changelist_postfix(prop_changelist_t *clp)
 		 * if the filesystem is currently shared, so that we can
 		 * adopt any new options.
 		 */
-		if (((sharenfs || sharesmb) && mounted) || shareiscsi)
-			errors += zfs_share(cn->cn_handle);
+		if (sharenfs && mounted)
+			errors += zfs_share_nfs(cn->cn_handle);
 		else if (cn->cn_shared || clp->cl_waslegacy)
-			errors += zfs_unshare(cn->cn_handle);
+			errors += zfs_unshare_nfs(cn->cn_handle, NULL);
+		if (sharesmb && mounted)
+			errors += zfs_share_smb(cn->cn_handle);
+// zfs_unshare_smb() is called twice if setting 'sharesmb=off' once 'somewhere
+// else' and once here (this one AFTER the share have been unshared). This
+// which makes this one fail! Don't know if this is correct, but it works to
+// comment this...
+//		else if (cn->cn_shared || clp->cl_waslegacy) {
+//			errors += zfs_unshare_smb(cn->cn_handle, NULL);
+//		}
 	}
 
 	return (errors ? -1 : 0);
