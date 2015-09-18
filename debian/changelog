@@ -1,3 +1,10 @@
+zfs-linux (0.6.5-3-wheezy) wheezy; urgency=low
+
+  * Apply zfsonlinux/zfs#3798
+    Discard on zvols should not exceed the length of a block
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 18 Sep 2015 17:02:39 +0200
+
 zfs-linux (0.6.5-2-wheezy) wheezy; urgency=low
 
   * Fixes to the SYSV init scripts:
