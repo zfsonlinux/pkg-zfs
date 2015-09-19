@@ -1,3 +1,9 @@
+zfs-linux (0.6.5-2~wily) wily; urgency=high
+
+  * Add 0004-Discard-on-zvols-should-not-exceed-the-length-of-a-b.patch
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 18 Sep 2015 21:45:32 -0400
+
 zfs-linux (0.6.5-1~wily) wily; urgency=low
 
   * Initial release for Ubuntu 15.10 Wily Werewolf.
