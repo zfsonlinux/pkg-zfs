@@ -1,3 +1,9 @@
+zfs-linux (0.6.5-2~trusty) trusty; urgency=high
+
+  * Add 0004-Discard-on-zvols-should-not-exceed-the-length-of-a-b.patch
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 18 Sep 2015 21:49:02 -0400
+
 zfs-linux (0.6.5-1~trusty) trusty; urgency=low
 
   [ Tim Chase ]
