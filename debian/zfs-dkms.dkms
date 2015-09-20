@@ -14,8 +14,18 @@ PRE_BUILD="configure
 		   echo $moddir
 		fi)
   --with-linux-obj=${kernel_source_dir}
-  --with-spl=${source_tree}/spl-${PACKAGE_VERSION}
-  --with-spl-obj=${dkms_tree}/spl/${PACKAGE_VERSION}/${kernelver}/${arch}
+  --with-spl=${source_tree}/spl-$(subver=`echo ${PACKAGE_VERSION} | sed "s@\([0-9]\.[0-9]\.[0-9]\)\(\.[0-9]\)@\1@"`
+		if [ -e ${source_tree}/spl-${PACKAGE_VERSION} ]; then
+		   echo ${PACKAGE_VERSION}
+		elif [ -e ${source_tree}/spl-${subver} ]; then
+		   echo ${subver}
+		fi)
+  --with-spl-obj=${dkms_tree}/spl/$(subver=`echo ${PACKAGE_VERSION} | sed "s@\([0-9]\.[0-9]\.[0-9]\)\(\.[0-9]\)@\1@"`
+		if [ -e ${source_tree}/spl-${PACKAGE_VERSION} ]; then
+		   echo ${PACKAGE_VERSION}
+		elif [ -e ${source_tree}/spl-${subver} ]; then
+		   echo ${subver}
+		fi)/${kernelver}/${arch}
   $(
     [[ -r /etc/default/zfs ]] \
     && source /etc/default/zfs \
