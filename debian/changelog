@@ -1,3 +1,20 @@
+zfs-linux (0.6.5.1-1~wily) wily; urgency=low
+
+  [ Richard Yao ]
+  * Discard on zvols should not exceed the length of a block
+
+  [ Brian Behlendorf ]
+  * Fix NULL as mount(2) syscall data parameter
+
+  [ Ned Bass ]
+  * Honor xattr=sa dataset property
+  * Tag zfs-0.6.5.1
+
+  [ Darik Horn ]
+  * Revert "Add 0004-Discard-on-zvols-should-not-exceed-the-length-of-a-b.patch"
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 21 Sep 2015 21:00:27 -0400
+
 zfs-linux (0.6.5-2~wily) wily; urgency=high
 
   * Add 0004-Discard-on-zvols-should-not-exceed-the-length-of-a-b.patch
