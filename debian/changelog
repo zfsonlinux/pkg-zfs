@@ -1,3 +1,10 @@
+zfs-linux (0.6.5.1-4-wheezy) wheezy; urgency=low
+
+  * Finish fix for update-rc.d commands in postinst.
+    THanx to kcook769 @ GitHub for fix.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 23 Sep 2015 15:27:14 +0200
+
 zfs-linux (0.6.5.1-3-wheezy) wheezy; urgency=low
 
   * Fix update-rc.d commands in postinst.

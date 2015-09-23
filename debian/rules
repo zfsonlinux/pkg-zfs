@@ -170,10 +170,6 @@ override_dh_installinit:
 	@# Install the common init script.
 	install -m 644 $(CURDIR)/contrib/shell-common/zfs-functions $(CURDIR)/debian/zfsutils/etc/zfs/
 
-	@# Install the ZED init file.
-	dh_installinit -pzfsutils --onlyscripts --name=zfs-zed \
-	  --no-restart-on-upgrade --no-start -- start 07 2 3 4 5 . stop 08 0 1 6 .
-
 	@# Install the /etc/init.d/zfs-import script.
 ifeq ($(LSB_DISTRIBUTOR),Debian)
 	dh_installinit -pzfsutils --onlyscripts --name=zfs-import \
@@ -192,6 +188,10 @@ else
 	dh_installinit -pzfsutils --onlyscripts --name=zfs-mount \
 	  --no-restart-on-upgrade --no-start
 endif
+
+	@# Install the ZED init file.
+	dh_installinit -pzfsutils --onlyscripts --name=zfs-zed \
+	  --no-restart-on-upgrade --no-start -- start 07 2 3 4 5 . stop 08 0 1 6 .
 
 	@# Install the /etc/init.d/zfs-share script.
 ifeq ($(LSB_DISTRIBUTOR),Debian)
