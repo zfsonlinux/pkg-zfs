@@ -172,7 +172,7 @@ override_dh_installinit:
 
 	@# Install the ZED init file.
 	dh_installinit -pzfsutils --onlyscripts --name=zfs-zed \
-	  --no-restart-on-upgrade --no-start -- start 07 S .       stop 08 0 1 6 .
+	  --no-restart-on-upgrade --no-start -- start 07 2 3 4 5 . stop 08 0 1 6 .
 
 	@# Install the /etc/init.d/zfs-import script.
 ifeq ($(LSB_DISTRIBUTOR),Debian)
