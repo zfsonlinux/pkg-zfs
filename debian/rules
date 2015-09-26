@@ -212,6 +212,9 @@ endif
 	dh_systemd_start --no-restart-on-upgrade --no-start \
 	  -pzfsutils etc/systemd/system/zfs.target
 
+	@# Add a dummy (link to /dev/null) for zfs-import.service
+	ln -s /dev/null $(CURDIR)/debian/zfsutils/lib/systemd/system/zfs-import.service
+
 override_dh_dkms:
 	dh_dkms -V $(VERSION)
 

@@ -39,4 +39,7 @@ from Illumos.
      * Default to --with-blkid in packaging
        https://github.com/zfsonlinux/zfs/pull/2512
 
+     * Rename 'zed.service' to 'zfs-zed.service'
+       https://github.com/zfsonlinux/zfs/pull/3824
+
  -- Turbo Fredriksson <turbo@bayour.com>  Sat, 18 Jul 2015 22:07:44 +0200
