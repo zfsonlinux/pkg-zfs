@@ -1,3 +1,15 @@
+zfs-linux (0.6.5.1-5) wheezy; urgency=low
+
+  * Make sure that systemd isn't auto generating a service file
+    for/etc/init.d/zfs-import - we already have service files
+    that are appropriate.
+    Closes: zfsonlinux/zfs#3837
+    Replaces: zfsonlinux/zfs#3839
+  * Merge PR 3824 - Rename 'zed.service' to 'zfs-zed.service'
+    Closes: zfsonlinux/zfs#3837, zfsonlinux/pkg-zfs#172
+
+ -- Turbo Fredriksson <turbo@debian.org>  Sat, 26 Sep 2015 12:51:39 +0200
+
 zfs-linux (0.6.5.1-4) wheezy; urgency=low
 
   * Finish fix for update-rc.d commands in postinst.
