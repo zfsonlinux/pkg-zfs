@@ -723,14 +723,18 @@ import_pool()
 		if [ "${ZFS_ERROR}" != 0 ]
 		then
 			disable_plymouth
-			echo ""
-			echo "Command: ${ZFS_CMD}"
-			echo "Message: ${ZFS_STDERR}"
-			echo "Error: ${ZFS_ERROR}"
-			echo ""
-			echo "Failed to import pool '${pool}'."
-			echo "Manually import the pool and exit."
-			emergency_shell
+			if [ "$?" -ne "123" ]; then
+				echo ""
+				echo "Command: ${ZFS_CMD}"
+				echo "Message: ${ZFS_STDERR}"
+				echo "Error: ${ZFS_ERROR}"
+				echo ""
+				echo "Failed to import pool '${pool}'."
+				echo "Manually import the pool and exit."
+				emergency_shell
+			else
+				return 1
+			fi
 		else
 			return 1
 		fi
@@ -795,14 +799,18 @@ mount_fs()
 	if [ "${ZFS_ERROR}" != 0 ]
 	then
 		disable_plymouth
-		echo ""
-		echo "Command: ${ZFS_CMD}"
-		echo "Message: ${ZFS_STDERR}"
-		echo "Error: ${ZFS_ERROR}"
-		echo ""
-		echo "Failed to mount ${fs} on ${rootmnt}/${mountpoint}."
-		echo "Manually mount the filesystem and exit."
-		emergency_shell
+		if [ "$?" -ne "123" ]; then
+			echo ""
+			echo "Command: ${ZFS_CMD}"
+			echo "Message: ${ZFS_STDERR}"
+			echo "Error: ${ZFS_ERROR}"
+			echo ""
+			echo "Failed to mount ${fs} on ${rootmnt}/${mountpoint}."
+			echo "Manually mount the filesystem and exit."
+			emergency_shell
+		else
+			return 1
+		fi
 	else
 		return 1
 	fi
@@ -832,16 +840,20 @@ decrypt_fs()
 		if [ "${ZFS_ERROR}" != 0 ]
 		then
 			disable_plymouth
-			echo ""
-			echo "Command: ${ZFS_CMD}"
-			echo "Message: ${ZFS_STDERR}"
-			echo "Error: ${ZFS_ERROR}"
-			echo ""
-			echo "Failed to load ${mod} module."
-			echo "Please verify that it is availible on the initrd image"
-			echo "(without it it won't be possible to unlock the filesystem)"
-			echo "and rerun:  ${ZFS_CMD}"
-			emergency_shell
+			if [ "$?" -ne "123" ]; then
+				echo ""
+				echo "Command: ${ZFS_CMD}"
+				echo "Message: ${ZFS_STDERR}"
+				echo "Error: ${ZFS_ERROR}"
+				echo ""
+				echo "Failed to load ${mod} module."
+				echo "Please verify that it is availible on the initrd image"
+				echo "(without it it won't be possible to unlock the filesystem)"
+				echo "and rerun:  ${ZFS_CMD}"
+				emergency_shell
+			else
+				return 1
+			fi
 		else
 			return 1
 		fi
@@ -853,15 +865,19 @@ decrypt_fs()
 	if [ "${ZFS_ERROR}" != 0 ]
 	then
 		disable_plymouth
-		echo ""
-		echo "Command: ${ZFS_CMD}"
-		echo "Message: ${ZFS_STDERR}"
-		echo "Error: ${ZFS_ERROR}"
-		echo ""
-		echo "Failed to load zfs encryption wrapper key (s)."
-		echo "Please verify dataset property 'keysource' for datasets"
-		echo "and rerun:  ${ZFS_CMD}"
-		emergency_shell
+		if [ "$?" -ne "123" ]; then
+			echo ""
+			echo "Command: ${ZFS_CMD}"
+			echo "Message: ${ZFS_STDERR}"
+			echo "Error: ${ZFS_ERROR}"
+			echo ""
+			echo "Failed to load zfs encryption wrapper key (s)."
+			echo "Please verify dataset property 'keysource' for datasets"
+			echo "and rerun:  ${ZFS_CMD}"
+			emergency_shell
+		else
+			return 1
+		fi
 	else
 		return 1
 	fi
@@ -878,15 +894,19 @@ destroy_fs()
 	if [ "${ZFS_ERROR}" != 0 ]
 	then
 		disable_plymouth
-		echo ""
-		echo "Command: ${ZFS_CMD}"
-		echo "Message: ${ZFS_STDERR}"
-		echo "Error: ${ZFS_ERROR}"
-		echo ""
-		echo "Failed to destroy '${fs}'. Please make sure that '${fs}' is not availible."
-		echo "Hint: Try:  zfs destroy -Rfn ${fs}"
-		echo "If this dryrun looks good, then remove the 'n' from '-Rfn' and try again."
-		emergency_shell
+		if [ "$?" -ne "123" ]; then
+			echo ""
+			echo "Command: ${ZFS_CMD}"
+			echo "Message: ${ZFS_STDERR}"
+			echo "Error: ${ZFS_ERROR}"
+			echo ""
+			echo "Failed to destroy '${fs}'. Please make sure that '${fs}' is not availible."
+			echo "Hint: Try:  zfs destroy -Rfn ${fs}"
+			echo "If this dryrun looks good, then remove the 'n' from '-Rfn' and try again."
+			emergency_shell
+		else
+			return 1
+		fi
 	else
 		return 1
 	fi
@@ -916,15 +936,19 @@ clone_snap()
 	if [ "${ZFS_ERROR}" != 0 ]
 	then
 		disable_plymouth
-		echo ""
-		echo "Command: ${ZFS_CMD}"
-		echo "Message: ${ZFS_STDERR}"
-		echo "Error: ${ZFS_ERROR}"
-		echo ""
-		echo "Failed to clone snapshot."
-		echo "Make sure that the any problems are corrected and then make sure"
-		echo "that the dataset '${destfs}' exists and is bootable."
-		emergency_shell
+		if [ "$?" -ne "123" ]; then
+			echo ""
+			echo "Command: ${ZFS_CMD}"
+			echo "Message: ${ZFS_STDERR}"
+			echo "Error: ${ZFS_ERROR}"
+			echo ""
+			echo "Failed to clone snapshot."
+			echo "Make sure that the any problems are corrected and then make sure"
+			echo "that the dataset '${destfs}' exists and is bootable."
+			emergency_shell
+		else
+			return 1
+		fi
 	else
 		return 1
 	fi
@@ -941,13 +965,17 @@ rollback_snap()
 	if [ "${ZFS_ERROR}" != 0 ]
 	then
 		disable_plymouth
-		echo ""
-		echo "Command: ${ZFS_CMD}"
-		echo "Message: ${ZFS_STDERR}"
-		echo "Error: ${ZFS_ERROR}"
-		echo ""
-		echo "Failed to rollback snapshot."
-		emergency_shell
+		if [ "$?" -ne "123" ]; then
+			echo ""
+			echo "Command: ${ZFS_CMD}"
+			echo "Message: ${ZFS_STDERR}"
+			echo "Error: ${ZFS_ERROR}"
+			echo ""
+			echo "Failed to rollback snapshot."
+			emergency_shell
+		else
+			return 1
+		fi
 	else
 		return 1
 	fi
@@ -1115,14 +1143,14 @@ disable_plymouth()
 	then
 		/bin/plymouth hide-splash >/dev/null 2>&1
 	else
-		# No plymouth. Return a high number that shouldn't
-		# mean anything to anyone but us.
-		return 999
+		# Return a value we know isn't something plymouth would return
+		return 123
 	fi
 }
 
-# For some reason, some functions in the library have a problem
-# with a changed IFS, so this function goes around that.
+# For some reason, the init function library have a problem
+# with a changed IFS, so this function goes around that by
+# using a temporary global variable (TMP_IFS).
 zfs_set_ifs() {
 	local tIFS="$1"
 	if [ -n "${tIFS}" ]
