@@ -1,3 +1,36 @@
+zfs-linux (0.6.5.2-1~trusty) trusty; urgency=low
+
+  [ yuina822 ]
+  * Add extra_started_commands because reload function is not default
+  * Fixed --signal typo
+
+  [ Lukas Wunner ]
+  * Linux 4.3 compat: bio_end_io_t / BIO_UPTODATE
+
+  [ Brian Behlendorf ]
+  * Allow NFS activity to defer snapshot unmounts
+  * Disable zpl_nr_cached_objects() callback
+  * Avoid blocking in arc_reclaim_thread()
+  * Fix synchronous behavior in __vdev_disk_physio()
+  * Revert "dmu_objset_userquota_get_ids uses dn_bonus unsafely"
+
+  [ Richard Yao ]
+  * Userspace can pass zero length segments via writev/readv
+
+  [ Chunwei Chen ]
+  * Fix uioskip crash when skip to end
+
+  [ Turbo Fredriksson ]
+  * Init script fixes
+
+  [ Nathaniel Clark ]
+  * Always remove during spl-dkms uninstall/update
+
+  [ Ned Bass ]
+  * Prepare to tag zfs-0.6.5.2
+
+ -- Darik Horn <dajhorn@vanadac.com>  Wed, 30 Sep 2015 14:17:43 -0400
+
 zfs-linux (0.6.5.1-1~trusty) trusty; urgency=low
 
   [ Richard Yao ]
