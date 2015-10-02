@@ -1,3 +1,11 @@
+zfs-linux (0.6.5.2-2-wheezy) wheezy; urgency=low
+
+  * Fixing return variable from a bunch of assist functions.
+    Returned false when they should have returned true!
+    Thanx to markdesouza @ GitHub for help findind this.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Fri, 02 Oct 2015 13:12:11 +0200
+
 zfs-linux (0.6.5.2-1-wheezy) wheezy; urgency=low
 
   * New upstream release.
