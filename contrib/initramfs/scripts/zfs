@@ -107,7 +107,11 @@ mountroot()
 	then
 		ZFS_DEBUG=1
 		mkdir /var/log
-		#exec 2> /var/log/boot.debug
+
+		# Close and reopen STDERR and redirect it.
+		exec 2<&-
+		exec 2> /var/log/zfs-boot.debug
+
 		set -x
 	fi
 

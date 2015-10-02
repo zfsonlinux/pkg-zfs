@@ -418,7 +418,9 @@ recursive_mount_filesystems()
 
 	# Go through the complete list (recursivly) of all filesystems
 	# below the first (root) dataset.
+	zfs_set_ifs " "
 	filesystems="$("${ZFS}" list -oname -tfilesystem -H -r "${fs}")"
+	zfs_set_ifs "${OLD_IFS}"
 	for f in ${filesystems} ${ZFS_INITRD_ADDITIONAL_DATASETS}
 	do
 		# Ignore the first (root) fs. Should already be
@@ -735,8 +737,6 @@ import_pool()
 			else
 				return 1
 			fi
-		else
-			return 1
 		fi
 	fi
 
@@ -811,8 +811,6 @@ mount_fs()
 		else
 			return 1
 		fi
-	else
-		return 1
 	fi
 
 	return 0
@@ -854,8 +852,6 @@ decrypt_fs()
 			else
 				return 1
 			fi
-		else
-			return 1
 		fi
 	done
 
@@ -878,8 +874,6 @@ decrypt_fs()
 		else
 			return 1
 		fi
-	else
-		return 1
 	fi
 
 	return 0
@@ -907,8 +901,6 @@ destroy_fs()
 		else
 			return 1
 		fi
-	else
-		return 1
 	fi
 
 	return 0
@@ -949,8 +941,6 @@ clone_snap()
 		else
 			return 1
 		fi
-	else
-		return 1
 	fi
 
 	return 0
@@ -976,8 +966,6 @@ rollback_snap()
 		else
 			return 1
 		fi
-	else
-		return 1
 	fi
 
 	return 0
