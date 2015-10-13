@@ -160,6 +160,9 @@ chmod u+x ${RPM_BUILD_ROOT}%{kmodinstdir_prefix}/*/extra/*/*/*
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Tue Oct 13 2015 Ned Bass <bass6@llnl.gov> - 0.6.5.3-1
+- Fix CPU hotplug zfsonlinux/spl#482
+- Disable dynamic taskqs by default to avoid deadlock zfsonlinux/spl#484
 * Tue Sep 29 2015 Ned Bass <bass6@llnl.gov> - 0.6.5.2-1
 - Released 0.6.5.2-1
 - Fix PAX Patch/Grsec SLAB_USERCOPY panic zfsonlinux/zfs#3796
