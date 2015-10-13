@@ -160,6 +160,12 @@ chmod u+x ${RPM_BUILD_ROOT}%{kmodinstdir_prefix}/*/extra/*/*/*
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Fri Jan  8 2016 Ned Bass <bass6@llnl.gov> - 0.6.5.4-1
+- Build fixes on SPARC and some kernels
+- Fix taskq dynamic spawning deadlock
+- Fix builtin kernel builds
+- Fix crash due to overflow in P2ROUNDUP macro
+- Fix deadlock during direct memory reclaim
 * Tue Oct 13 2015 Ned Bass <bass6@llnl.gov> - 0.6.5.3-1
 - Fix CPU hotplug zfsonlinux/spl#482
 - Disable dynamic taskqs by default to avoid deadlock zfsonlinux/spl#484
