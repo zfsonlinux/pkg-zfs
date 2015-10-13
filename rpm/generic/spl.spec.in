@@ -38,6 +38,13 @@ make install DESTDIR=%{?buildroot}
 %{_mandir}/man5/*
 
 %changelog
+* Wed Mar 9 2016 Ned Bass <bass6@llnl.gov> - 0.6.5.5-1
+- Linux 4.5 compatibility zfsonlinux/spl#524
+- Create working debuginfo packages on Red Hat zfsonlinux/zfs#4224
+- Allow copy-builtin to run multiple times zfsonlinux/spl#526
+- Use safer flags for in-kernel memory allocations zfsonlinux/spl#523
+- Fix potential deadlock in cv_wait() zfsonlinux/zfs#4106
+- Fix livelock in shrinker zfsonlinux/zfs#3936
 * Fri Jan  8 2016 Ned Bass <bass6@llnl.gov> - 0.6.5.4-1
 - Build fixes on SPARC and some kernels
 - Fix taskq dynamic spawning deadlock
