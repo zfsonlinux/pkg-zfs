@@ -32,7 +32,7 @@ module_param(spl_taskq_thread_bind, int, 0644);
 MODULE_PARM_DESC(spl_taskq_thread_bind, "Bind taskq thread to CPU by default");
 
 
-int spl_taskq_thread_dynamic = 1;
+int spl_taskq_thread_dynamic = 0;
 module_param(spl_taskq_thread_dynamic, int, 0644);
 MODULE_PARM_DESC(spl_taskq_thread_dynamic, "Allow dynamic taskq threads");
 
