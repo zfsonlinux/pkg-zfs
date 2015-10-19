@@ -1,3 +1,19 @@
+zfs-linux (0.6.5.3-1~precise) precise; urgency=low
+
+  [ James Lee ]
+  * zfs-import: Perform verbatim import using cache file
+
+  [ Chunwei Chen ]
+  * Fix use-after-free in vdev_disk_physio_completion
+
+  [ Justin T. Gibbs ]
+  * Illumos 6267 - dn_bonus evicted too early
+
+  [ Ned Bass ]
+  * Prepare to tag zfs-0.6.5.3
+
+ -- Darik Horn <dajhorn@vanadac.com>  Mon, 19 Oct 2015 19:33:04 -0400
+
 zfs-linux (0.6.5.2-1~precise) precise; urgency=low
 
   [ Ned Bass ]
