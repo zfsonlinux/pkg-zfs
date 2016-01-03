@@ -25,9 +25,6 @@ AC_DEFUN([ZFS_AC_CONFIG_KERNEL], [
 	ZFS_AC_KERNEL_BIO_END_IO_T_ARGS
 	ZFS_AC_KERNEL_BIO_RW_BARRIER
 	ZFS_AC_KERNEL_BIO_RW_DISCARD
-	ZFS_AC_KERNEL_BIO_RW_SYNC
-	ZFS_AC_KERNEL_BIO_RW_SYNCIO
-	ZFS_AC_KERNEL_REQ_SYNC
 	ZFS_AC_KERNEL_BLK_QUEUE_FLUSH
 	ZFS_AC_KERNEL_BLK_QUEUE_MAX_HW_SECTORS
 	ZFS_AC_KERNEL_BLK_QUEUE_MAX_SEGMENTS
@@ -94,6 +91,7 @@ AC_DEFUN([ZFS_AC_CONFIG_KERNEL], [
 	ZFS_AC_KERNEL_KMAP_ATOMIC_ARGS
 	ZFS_AC_KERNEL_FOLLOW_DOWN_ONE
 	ZFS_AC_KERNEL_MAKE_REQUEST_FN
+	ZFS_AC_KERNEL_GENERIC_IO_ACCT
 
 	AS_IF([test "$LINUX_OBJ" != "$LINUX"], [
 		KERNELMAKE_PARAMS="$KERNELMAKE_PARAMS O=$LINUX_OBJ"
@@ -450,16 +448,18 @@ dnl # detected at configure time and cause a build failure.  Otherwise
 dnl # modules may be successfully built that behave incorrectly.
 dnl #
 AC_DEFUN([ZFS_AC_KERNEL_CONFIG], [
-	AC_RUN_IFELSE([
-		AC_LANG_PROGRAM([
-			#include "$LINUX/include/linux/license.h"
+	AS_IF([test "x$cross_compiling" != xyes], [
+		AC_RUN_IFELSE([
+			AC_LANG_PROGRAM([
+				#include "$LINUX/include/linux/license.h"
+			], [
+				return !license_is_gpl_compatible("$ZFS_META_LICENSE");
+			])
 		], [
-			return !license_is_gpl_compatible("$ZFS_META_LICENSE");
+			AC_DEFINE([ZFS_IS_GPL_COMPATIBLE], [1],
+			    [Define to 1 if GPL-only symbols can be used])
+		], [
 		])
-	], [
-		AC_DEFINE([ZFS_IS_GPL_COMPATIBLE], [1],
-		    [Define to 1 if GPL-only symbols can be used])
-	], [
 	])
 
 	ZFS_AC_KERNEL_CONFIG_DEBUG_LOCK_ALLOC

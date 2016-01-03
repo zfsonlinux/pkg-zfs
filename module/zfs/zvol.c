@@ -50,6 +50,7 @@
 
 unsigned int zvol_inhibit_dev = 0;
 unsigned int zvol_major = ZVOL_MAJOR;
+unsigned int zvol_prefetch_bytes = (128 * 1024);
 unsigned long zvol_max_discard_blocks = 16384;
 
 static kmutex_t zvol_state_lock;
@@ -661,6 +662,7 @@ zvol_discard(struct bio *bio)
 	if (!(bio->bi_rw & REQ_SECURE)) {
 		start = P2ROUNDUP(start, zv->zv_volblocksize);
 		end = P2ALIGN(end, zv->zv_volblocksize);
+		size = end - start;
 	}
 #endif
 
@@ -713,6 +715,10 @@ zvol_request(struct request_queue *q, struct bio *bio)
 	fstrans_cookie_t cookie = spl_fstrans_mark();
 	uint64_t offset = BIO_BI_SECTOR(bio);
 	unsigned int sectors = bio_sectors(bio);
+	int rw = bio_data_dir(bio);
+#ifdef HAVE_GENERIC_IO_ACCT
+	unsigned long start = jiffies;
+#endif
 	int error = 0;
 
 	if (bio_has_data(bio) && offset + sectors >
@@ -723,29 +729,35 @@ zvol_request(struct request_queue *q, struct bio *bio)
 		    (long long unsigned)offset,
 		    (long unsigned)sectors);
 		error = SET_ERROR(EIO);
-		goto out;
+		goto out1;
 	}
 
-	if (bio_data_dir(bio) == WRITE) {
+	generic_start_io_acct(rw, sectors, &zv->zv_disk->part0);
+
+	if (rw == WRITE) {
 		if (unlikely(zv->zv_flags & ZVOL_RDONLY)) {
 			error = SET_ERROR(EROFS);
-			goto out;
+			goto out2;
 		}
 
 		if (bio->bi_rw & VDEV_REQ_DISCARD) {
 			error = zvol_discard(bio);
-			goto out;
+			goto out2;
 		}
 
 		error = zvol_write(bio);
 	} else
 		error = zvol_read(bio);
 
-out:
-	bio_endio(bio, -error);
+out2:
+	generic_end_io_acct(rw, &zv->zv_disk->part0, start);
+out1:
+	BIO_END_IO(bio, -error);
 	spl_fstrans_unmark(cookie);
 #ifdef HAVE_MAKE_REQUEST_FN_RET_INT
 	return (0);
+#elif defined(HAVE_MAKE_REQUEST_FN_RET_QC)
+	return (BLK_QC_T_NONE);
 #endif
 }
 
@@ -1288,6 +1300,7 @@ __zvol_create_minor(const char *name, boolean_t ignore_snapdev)
 	objset_t *os;
 	dmu_object_info_t *doi;
 	uint64_t volsize;
+	uint64_t len;
 	unsigned minor = 0;
 	int error = 0;
 
@@ -1359,6 +1372,18 @@ __zvol_create_minor(const char *name, boolean_t ignore_snapdev)
 			zil_destroy(dmu_objset_zil(os), B_FALSE);
 		else
 			zil_replay(os, zv, zvol_replay_vector);
+	}
+
+	/*
+	 * When udev detects the addition of the device it will immediately
+	 * invoke blkid(8) to determine the type of content on the device.
+	 * Prefetching the blocks commonly scanned by blkid(8) will speed
+	 * up this process.
+	 */
+	len = MIN(MAX(zvol_prefetch_bytes, 0), SPA_MAXBLOCKSIZE);
+	if (len > 0) {
+		dmu_prefetch(os, ZVOL_OBJ, 0, len);
+		dmu_prefetch(os, ZVOL_OBJ, volsize - len, len);
 	}
 
 	zv->zv_objset = NULL;
@@ -1617,3 +1642,6 @@ MODULE_PARM_DESC(zvol_major, "Major number for zvol device");
 
 module_param(zvol_max_discard_blocks, ulong, 0444);
 MODULE_PARM_DESC(zvol_max_discard_blocks, "Max number of blocks to discard");
+
+module_param(zvol_prefetch_bytes, uint, 0644);
+MODULE_PARM_DESC(zvol_prefetch_bytes, "Prefetch N bytes at zvol start+end");

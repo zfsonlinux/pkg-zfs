@@ -1601,6 +1601,23 @@ Default value: \fB0\fR.
 .sp
 .ne 2
 .na
+\fBzio_taskq_batch_pct\fR (uint)
+.ad
+.RS 12n
+Percentage of online CPUs (or CPU cores, etc) which will run a worker thread
+for IO. These workers are responsible for IO work such as compression and
+checksum calculations. Fractional number of CPUs will be rounded down.
+.sp
+The default value of 75 was chosen to avoid using all CPUs which can result in
+latency issues and inconsistent application performance, especially when high
+compression is enabled.
+.sp
+Default value: \fB75\fR.
+.RE
+
+.sp
+.ne 2
+.na
 \fBzvol_inhibit_dev\fR (uint)
 .ad
 .RS 12n
@@ -1629,6 +1646,21 @@ Default value: \fB230\fR.
 Max number of blocks to discard at once
 .sp
 Default value: \fB16,384\fR.
+.RE
+
+.sp
+.ne 2
+.na
+\fBzvol_prefetch_bytes\fR (uint)
+.ad
+.RS 12n
+When adding a zvol to the system prefetch \fBzvol_prefetch_bytes\fR
+from the start and end of the volume.  Prefetching these regions
+of the volume is desirable because they are likely to be accessed
+immediately by \fBblkid(8)\fR or by the kernel scanning for a partition
+table.
+.sp
+Default value: \fB131,072\fR.
 .RE
 
 .SH ZFS I/O SCHEDULER

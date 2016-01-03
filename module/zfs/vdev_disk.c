@@ -42,9 +42,9 @@ static void *zfs_vdev_holder = VDEV_HOLDER;
  */
 typedef struct dio_request {
 	struct completion	dr_comp;	/* Completion for sync IO */
-	atomic_t		dr_ref;		/* References */
 	zio_t			*dr_zio;	/* Parent ZIO */
-	int			dr_rw;		/* Read/Write */
+	atomic_t		dr_ref;		/* References */
+	int			dr_wait;	/* Wait for IO */
 	int			dr_error;	/* Bio error */
 	int			dr_bio_count;	/* Count of bio's */
 	struct bio		*dr_bio[0];	/* Attached bio's */
@@ -369,27 +369,6 @@ vdev_disk_dio_free(dio_request_t *dr)
 	    sizeof (struct bio *) * dr->dr_bio_count);
 }
 
-static int
-vdev_disk_dio_is_sync(dio_request_t *dr)
-{
-#ifdef HAVE_BIO_RW_SYNC
-	/* BIO_RW_SYNC preferred interface from 2.6.12-2.6.29 */
-	return (dr->dr_rw & (1 << BIO_RW_SYNC));
-#else
-#ifdef HAVE_BIO_RW_SYNCIO
-	/* BIO_RW_SYNCIO preferred interface from 2.6.30-2.6.35 */
-	return (dr->dr_rw & (1 << BIO_RW_SYNCIO));
-#else
-#ifdef HAVE_REQ_SYNC
-	/* REQ_SYNC preferred interface from 2.6.36-2.6.xx */
-	return (dr->dr_rw & REQ_SYNC);
-#else
-#error "Unable to determine bio sync flag"
-#endif /* HAVE_REQ_SYNC */
-#endif /* HAVE_BIO_RW_SYNC */
-#endif /* HAVE_BIO_RW_SYNCIO */
-}
-
 static void
 vdev_disk_dio_get(dio_request_t *dr)
 {
@@ -424,30 +403,30 @@ vdev_disk_dio_put(dio_request_t *dr)
 	return (rc);
 }
 
-BIO_END_IO_PROTO(vdev_disk_physio_completion, bio, size, error)
+BIO_END_IO_PROTO(vdev_disk_physio_completion, bio, error)
 {
 	dio_request_t *dr = bio->bi_private;
 	int rc;
+	int wait;
 
-#ifndef HAVE_2ARGS_BIO_END_IO_T
-	if (BIO_BI_SIZE(bio))
-		return (1);
-#endif /* HAVE_2ARGS_BIO_END_IO_T */
+	if (dr->dr_error == 0) {
+#ifdef HAVE_1ARG_BIO_END_IO_T
+		dr->dr_error = -(bio->bi_error);
+#else
+		if (error)
+			dr->dr_error = -(error);
+		else if (!test_bit(BIO_UPTODATE, &bio->bi_flags))
+			dr->dr_error = EIO;
+#endif
+	}
 
-	if (error == 0 && !test_bit(BIO_UPTODATE, &bio->bi_flags))
-		error = (-EIO);
-
-	if (dr->dr_error == 0)
-		dr->dr_error = -error;
-
+	wait = dr->dr_wait;
 	/* Drop reference aquired by __vdev_disk_physio */
 	rc = vdev_disk_dio_put(dr);
 
 	/* Wake up synchronous waiter this is the last outstanding bio */
-	if ((rc == 1) && vdev_disk_dio_is_sync(dr))
+	if (wait && rc == 1)
 		complete(&dr->dr_comp);
-
-	BIO_END_IO_RETURN(0);
 }
 
 static inline unsigned long
@@ -514,12 +493,12 @@ vdev_submit_bio(int rw, struct bio *bio)
 
 static int
 __vdev_disk_physio(struct block_device *bdev, zio_t *zio, caddr_t kbuf_ptr,
-    size_t kbuf_size, uint64_t kbuf_offset, int flags)
+    size_t kbuf_size, uint64_t kbuf_offset, int flags, int wait)
 {
 	dio_request_t *dr;
 	caddr_t bio_ptr;
 	uint64_t bio_offset;
-	int bio_size, bio_count = 16;
+	int rw, bio_size, bio_count = 16;
 	int i = 0, error = 0;
 
 	ASSERT3U(kbuf_offset + kbuf_size, <=, bdev->bd_inode->i_size);
@@ -532,8 +511,9 @@ retry:
 	if (zio && !(zio->io_flags & (ZIO_FLAG_IO_RETRY | ZIO_FLAG_TRYHARD)))
 		bio_set_flags_failfast(bdev, &flags);
 
+	rw = flags;
 	dr->dr_zio = zio;
-	dr->dr_rw = flags;
+	dr->dr_wait = wait;
 
 	/*
 	 * When the IO size exceeds the maximum bio size for the request
@@ -575,7 +555,7 @@ retry:
 
 		dr->dr_bio[i]->bi_bdev = bdev;
 		BIO_BI_SECTOR(dr->dr_bio[i]) = bio_offset >> 9;
-		dr->dr_bio[i]->bi_rw = dr->dr_rw;
+		dr->dr_bio[i]->bi_rw = rw;
 		dr->dr_bio[i]->bi_end_io = vdev_disk_physio_completion;
 		dr->dr_bio[i]->bi_private = dr;
 
@@ -595,7 +575,7 @@ retry:
 	/* Submit all bio's associated with this dio */
 	for (i = 0; i < dr->dr_bio_count; i++)
 		if (dr->dr_bio[i])
-			vdev_submit_bio(dr->dr_rw, dr->dr_bio[i]);
+			vdev_submit_bio(rw, dr->dr_bio[i]);
 
 	/*
 	 * On synchronous blocking requests we wait for all bio the completion
@@ -605,7 +585,7 @@ retry:
 	 * only synchronous consumer is vdev_disk_read_rootlabel() all other
 	 * IO originating from vdev_disk_io_start() is asynchronous.
 	 */
-	if (vdev_disk_dio_is_sync(dr)) {
+	if (wait) {
 		wait_for_completion(&dr->dr_comp);
 		error = dr->dr_error;
 		ASSERT3S(atomic_read(&dr->dr_ref), ==, 1);
@@ -621,12 +601,15 @@ vdev_disk_physio(struct block_device *bdev, caddr_t kbuf,
     size_t size, uint64_t offset, int flags)
 {
 	bio_set_flags_failfast(bdev, &flags);
-	return (__vdev_disk_physio(bdev, NULL, kbuf, size, offset, flags));
+	return (__vdev_disk_physio(bdev, NULL, kbuf, size, offset, flags, 1));
 }
 
-BIO_END_IO_PROTO(vdev_disk_io_flush_completion, bio, size, rc)
+BIO_END_IO_PROTO(vdev_disk_io_flush_completion, bio, rc)
 {
 	zio_t *zio = bio->bi_private;
+#ifdef HAVE_1ARG_BIO_END_IO_T
+	int rc = bio->bi_error;
+#endif
 
 	zio->io_delay = jiffies_64 - zio->io_delay;
 	zio->io_error = -rc;
@@ -638,8 +621,6 @@ BIO_END_IO_PROTO(vdev_disk_io_flush_completion, bio, size, rc)
 	if (zio->io_error)
 		vdev_disk_error(zio);
 	zio_interrupt(zio);
-
-	BIO_END_IO_RETURN(0);
 }
 
 static int
@@ -672,6 +653,7 @@ vdev_disk_io_start(zio_t *zio)
 {
 	vdev_t *v = zio->io_vd;
 	vdev_disk_t *vd = v->vdev_tsd;
+	zio_priority_t pri = zio->io_priority;
 	int flags, error;
 
 	switch (zio->io_type) {
@@ -711,14 +693,14 @@ vdev_disk_io_start(zio_t *zio)
 		zio_execute(zio);
 		return;
 	case ZIO_TYPE_WRITE:
-		if (zio->io_priority == ZIO_PRIORITY_SYNC_WRITE)
+		if ((pri == ZIO_PRIORITY_SYNC_WRITE) && (v->vdev_nonrot))
 			flags = WRITE_SYNC;
 		else
 			flags = WRITE;
 		break;
 
 	case ZIO_TYPE_READ:
-		if (zio->io_priority == ZIO_PRIORITY_SYNC_READ)
+		if ((pri == ZIO_PRIORITY_SYNC_READ) && (v->vdev_nonrot))
 			flags = READ_SYNC;
 		else
 			flags = READ;
@@ -731,7 +713,7 @@ vdev_disk_io_start(zio_t *zio)
 	}
 
 	error = __vdev_disk_physio(vd->vd_bdev, zio, zio->io_data,
-	    zio->io_size, zio->io_offset, flags);
+	    zio->io_size, zio->io_offset, flags, 0);
 	if (error) {
 		zio->io_error = error;
 		zio_interrupt(zio);
