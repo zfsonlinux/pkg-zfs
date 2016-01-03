@@ -1,3 +1,140 @@
+zfs-linux (0.6.5.3-2~wily~1.gbp1321f2) wily; urgency=low
+
+  ** SNAPSHOT build @1321f22f20317d998e5246e7b059e093e7e10681 **
+
+  [ SenH ]
+  * Force create /run/sendsigs.omit.d link when starting zed
+
+  [ Richard Yao ]
+  * Reintroduce IO accounting on zvols on Linux 3.19+
+
+  [ Brian Behlendorf ]
+  * Prefetch start and end of volumes
+
+  [ Arne Jansen ]
+  * Illumos 6214 - zpools going south
+
+  [ Brian Behlendorf ]
+  * Tag zfs-0.6.5
+
+  [ Richard Yao ]
+  * Discard on zvols should not exceed the length of a block
+
+  [ Brian Behlendorf ]
+  * Fix NULL as mount(2) syscall data parameter
+
+  [ Ned Bass ]
+  * Honor xattr=sa dataset property
+  * Tag zfs-0.6.5.1
+  * Honor xattr=sa dataset property
+  * Tag zfs-0.6.5.1
+
+  [ yuina822 ]
+  * Add extra_started_commands because reload function is not default
+  * Fixed --signal typo
+
+  [ Lukas Wunner ]
+  * Linux 4.3 compat: bio_end_io_t / BIO_UPTODATE
+
+  [ Brian Behlendorf ]
+  * Allow NFS activity to defer snapshot unmounts
+  * Disable zpl_nr_cached_objects() callback
+  * Avoid blocking in arc_reclaim_thread()
+  * Fix synchronous behavior in __vdev_disk_physio()
+  * Revert "dmu_objset_userquota_get_ids uses dn_bonus unsafely"
+
+  [ Richard Yao ]
+  * Userspace can pass zero length segments via writev/readv
+
+  [ Chunwei Chen ]
+  * Fix uioskip crash when skip to end
+
+  [ Turbo Fredriksson ]
+  * Init script fixes
+
+  [ Nathaniel Clark ]
+  * Always remove during spl-dkms uninstall/update
+
+  [ Ned Bass ]
+  * Prepare to tag zfs-0.6.5.2
+
+  [ James Lee ]
+  * zfs-import: Perform verbatim import using cache file
+
+  [ Chunwei Chen ]
+  * Fix use-after-free in vdev_disk_physio_completion
+
+  [ Justin T. Gibbs ]
+  * Illumos 6267 - dn_bonus evicted too early
+
+  [ Ned Bass ]
+  * Prepare to tag zfs-0.6.5.3
+
+  [ Chunwei Chen ]
+  * Linux 4.4 compat: make_request_fn returns blk_qc_t
+  * Linux 4.4 compat: xattr operations takes xattr_handler
+
+  [ DHE ]
+  * Make zio_taskq_batch_pct user configurable
+
+  [ Kamil Domański ]
+  * Skip GPL-only symbols test when cross-compiling
+
+  [ Brian Behlendorf ]
+  * Fix vdev_queue_aggregate() deadlock
+  * Set 'zfs_expire_snapshot=0' to disable auto-unmount
+
+  [ Chunwei Chen ]
+  * Fix snapshot automount behavior when concurrent or fail
+  * Use spa as key besides objsetid for snapentry
+
+  [ Brian Behlendorf ]
+  * Change zfs_snapshot_lock from mutex to rw lock
+
+  [ Chunwei Chen ]
+  * Fix snapshot automount race cause EREMOTE
+
+  [ Brian Behlendorf ]
+  * Hold the zfs_snapentry_t before dispatch
+  * Either _ILP32 or _LP64 must be defined
+  * Fix zfsctl_lookup_objset() deadlock
+
+  [ Olaf Faaland ]
+  * Remove "index" column from dbufstat.py
+
+  [ cable2999 ]
+  * Update arcstat.py to remove deprecated rmis reference.
+
+  [ Brian Behlendorf ]
+  * Add zap_prefetch() interface
+
+  [ tuxoko ]
+  * Prevent rm modules.* when make install
+
+  [ Brian Behlendorf ]
+  * Fix --enable-linux-builtin
+
+  [ tuxoko ]
+  * Fix null pointer in arc_kmem_reap_now on 32-bit
+  * Fix zfs_dirty_data_max overflow on 32-bit
+
+  [ Brian Behlendorf ]
+  * Add TEST configuration file for buildbot
+  * Follow 0/-E convention for module load errors
+
+  [ Jason Zaman ]
+  * sysmacros: Make P2ROUNDUP not trigger int overflow
+
+  [ Brian Behlendorf ]
+  * Fix z_xattr_lock/z_teardown_lock inversion
+
+  [ Chunwei Chen ]
+  * Fix fail path in zfs_znode_alloc
+  * Fix empty xattr dir causing lockup
+  * Make xattr dir truncate and remove in one tx
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 02 Jan 2016 19:14:44 -0500
+
 zfs-linux (0.6.4.2-2~wily~3.gbp0e31b1) wily; urgency=low
 
   ** SNAPSHOT build @0e31b1191866032d9cd5b77f72cd0aa554501423 **
