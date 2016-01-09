@@ -1,3 +1,73 @@
+zfs-linux (0.6.5.4-1~trusty) trusty; urgency=low
+
+  [ Chunwei Chen ]
+  * Linux 4.4 compat: make_request_fn returns blk_qc_t
+  * Linux 4.4 compat: xattr operations takes xattr_handler
+
+  [ DHE ]
+  * Make zio_taskq_batch_pct user configurable
+
+  [ Kamil Domański ]
+  * Skip GPL-only symbols test when cross-compiling
+
+  [ Brian Behlendorf ]
+  * Fix vdev_queue_aggregate() deadlock
+  * Set 'zfs_expire_snapshot=0' to disable auto-unmount
+
+  [ Chunwei Chen ]
+  * Fix snapshot automount behavior when concurrent or fail
+  * Use spa as key besides objsetid for snapentry
+
+  [ Brian Behlendorf ]
+  * Change zfs_snapshot_lock from mutex to rw lock
+
+  [ Chunwei Chen ]
+  * Fix snapshot automount race cause EREMOTE
+
+  [ Brian Behlendorf ]
+  * Hold the zfs_snapentry_t before dispatch
+  * Either _ILP32 or _LP64 must be defined
+  * Fix zfsctl_lookup_objset() deadlock
+
+  [ Olaf Faaland ]
+  * Remove "index" column from dbufstat.py
+
+  [ cable2999 ]
+  * Update arcstat.py to remove deprecated rmis reference.
+
+  [ Brian Behlendorf ]
+  * Add zap_prefetch() interface
+
+  [ tuxoko ]
+  * Prevent rm modules.* when make install
+
+  [ Brian Behlendorf ]
+  * Fix --enable-linux-builtin
+
+  [ tuxoko ]
+  * Fix null pointer in arc_kmem_reap_now on 32-bit
+  * Fix zfs_dirty_data_max overflow on 32-bit
+
+  [ Brian Behlendorf ]
+  * Add TEST configuration file for buildbot
+  * Follow 0/-E convention for module load errors
+
+  [ Jason Zaman ]
+  * sysmacros: Make P2ROUNDUP not trigger int overflow
+
+  [ Brian Behlendorf ]
+  * Fix z_xattr_lock/z_teardown_lock inversion
+
+  [ Chunwei Chen ]
+  * Fix fail path in zfs_znode_alloc
+  * Fix empty xattr dir causing lockup
+  * Make xattr dir truncate and remove in one tx
+
+  [ Ned Bass ]
+  * Prepare to tag zfs-0.6.5.4
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 08 Jan 2016 21:56:39 -0500
+
 zfs-linux (0.6.5.3-1~trusty) trusty; urgency=low
 
   [ James Lee ]
