@@ -3373,6 +3373,11 @@ arc_kmem_reap_now(void)
 	}
 
 	for (i = 0; i < SPA_MAXBLOCKSIZE >> SPA_MINBLOCKSHIFT; i++) {
+#ifdef _ILP32
+		/* reach upper limit of cache size on 32-bit */
+		if (zio_buf_cache[i] == NULL)
+			break;
+#endif
 		if (zio_buf_cache[i] != prev_cache) {
 			prev_cache = zio_buf_cache[i];
 			kmem_cache_reap_now(zio_buf_cache[i]);
@@ -5473,11 +5478,11 @@ arc_init(void)
 	 * zfs_dirty_data_max_max (default 25% of physical memory).
 	 */
 	if (zfs_dirty_data_max_max == 0)
-		zfs_dirty_data_max_max = physmem * PAGESIZE *
+		zfs_dirty_data_max_max = (uint64_t)physmem * PAGESIZE *
 		    zfs_dirty_data_max_max_percent / 100;
 
 	if (zfs_dirty_data_max == 0) {
-		zfs_dirty_data_max = physmem * PAGESIZE *
+		zfs_dirty_data_max = (uint64_t)physmem * PAGESIZE *
 		    zfs_dirty_data_max_percent / 100;
 		zfs_dirty_data_max = MIN(zfs_dirty_data_max,
 		    zfs_dirty_data_max_max);
