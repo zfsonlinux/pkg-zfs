@@ -1,3 +1,39 @@
+zfs-linux (0.6.5.5-1~precise) precise; urgency=low
+
+  [ Ned Bass ]
+  * Prevent SA length overflow
+
+  [ Brian Behlendorf ]
+  * Add zfs_object_mutex_size module option
+  * Fix zsb->z_hold_mtx deadlock
+  * Close possible zfs_znode_held() race
+
+  [ Chunwei Chen ]
+  * Prevent duplicated xattr between SA and dir
+
+  [ Tim Chase ]
+  * Prevent arc_c collapse (Closes: #3904, #4161)
+
+  [ Christian Neukirchen ]
+  * mount.zfs: use getopt_long instead of getopt to guarantee permutation of argv.
+
+  [ Hajo Möller ]
+  * Make arc_summary.py and dbufstat.py compatible with python3
+
+  [ Olaf Faaland ]
+  * Create zfs-kmod-debuginfo rpm with redhat spec file
+
+  [ Brian Behlendorf ]
+  * Linux 4.5 compat: get_link() / put_link()
+  * Linux 4.5 compat: xattr list handler
+  * Linux 4.5 compat: pfn_t typedef
+  * Fix maybe uninitialized
+
+  [ Ned Bass ]
+  * Prepare to tag zfs-0.6.5.5
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 10 Mar 2016 20:38:13 -0500
+
 zfs-linux (0.6.5.4-1~precise) precise; urgency=low
 
   [ Chunwei Chen ]
