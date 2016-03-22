@@ -162,6 +162,8 @@ chmod u+x ${RPM_BUILD_ROOT}%{kmodinstdir_prefix}/*/extra/*/*/*
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+* Thu May 12 2016 Ned Bass <bass6@llnl.gov> - 0.6.5.7-1
+- Fix PPC build failure zfsonlinux/spl#516
 * Tue Mar 22 2016 Ned Bass <bass6@llnl.gov> - 0.6.5.6-1
 - Remove artificial architecture restrictions in packaging
 - Add support for s390[x] zfsonlinux/spl#537
