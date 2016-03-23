@@ -31,6 +31,7 @@
 #include <sys/dmu_objset.h>
 #include <sys/vfs.h>
 #include <sys/zpl.h>
+#include <sys/file.h>
 
 
 static struct dentry *
@@ -44,13 +45,26 @@ zpl_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
 	struct inode *ip;
 	int error;
 	fstrans_cookie_t cookie;
+	pathname_t *ppn = NULL;
+	pathname_t pn;
+	int zfs_flags = 0;
+	zfs_sb_t *zsb = dentry->d_sb->s_fs_info;
 
 	if (dlen(dentry) > ZFS_MAXNAMELEN)
 		return (ERR_PTR(-ENAMETOOLONG));
 
 	crhold(cr);
 	cookie = spl_fstrans_mark();
-	error = -zfs_lookup(dir, dname(dentry), &ip, 0, cr, NULL, NULL);
+
+	/* If we are a case insensitive fs, we need the real name */
+	if (zsb->z_case == ZFS_CASE_INSENSITIVE) {
+		zfs_flags = FIGNORECASE;
+		pn.pn_bufsize = ZFS_MAXNAMELEN;
+		pn.pn_buf = kmem_zalloc(ZFS_MAXNAMELEN, KM_SLEEP);
+		ppn = &pn;
+	}
+
+	error = -zfs_lookup(dir, dname(dentry), &ip, zfs_flags, cr, NULL, ppn);
 	spl_fstrans_unmark(cookie);
 	ASSERT3S(error, <=, 0);
 	crfree(cr);
@@ -63,13 +77,39 @@ zpl_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
 	spin_unlock(&dentry->d_lock);
 
 	if (error) {
+		/*
+		 * If we have a case sensitive fs, we do not want to
+		 * insert negative entries, so return NULL for ENOENT.
+		 * Fall through if the error is not ENOENT. Also free memory.
+		 */
+		if (ppn) {
+			kmem_free(pn.pn_buf, ZFS_MAXNAMELEN);
+			if (error == -ENOENT)
+				return (NULL);
+		}
+
 		if (error == -ENOENT)
 			return (d_splice_alias(NULL, dentry));
 		else
 			return (ERR_PTR(error));
 	}
 
-	return (d_splice_alias(ip, dentry));
+	/*
+	 * If we are case insensitive, call the correct function
+	 * to install the name.
+	 */
+	if (ppn) {
+		struct dentry *new_dentry;
+		struct qstr ci_name;
+
+		ci_name.name = pn.pn_buf;
+		ci_name.len = strlen(pn.pn_buf);
+		new_dentry = d_add_ci(dentry, ip, &ci_name);
+		kmem_free(pn.pn_buf, ZFS_MAXNAMELEN);
+		return (new_dentry);
+	} else {
+		return (d_splice_alias(ip, dentry));
+	}
 }
 
 void
@@ -177,10 +217,19 @@ zpl_unlink(struct inode *dir, struct dentry *dentry)
 	cred_t *cr = CRED();
 	int error;
 	fstrans_cookie_t cookie;
+	zfs_sb_t *zsb = dentry->d_sb->s_fs_info;
 
 	crhold(cr);
 	cookie = spl_fstrans_mark();
 	error = -zfs_remove(dir, dname(dentry), cr);
+
+	/*
+	 * For a CI FS we must invalidate the dentry to prevent the
+	 * creation of negative entries.
+	 */
+	if (error == 0 && zsb->z_case == ZFS_CASE_INSENSITIVE)
+		d_invalidate(dentry);
+
 	spl_fstrans_unmark(cookie);
 	crfree(cr);
 	ASSERT3S(error, <=, 0);
@@ -228,10 +277,19 @@ zpl_rmdir(struct inode * dir, struct dentry *dentry)
 	cred_t *cr = CRED();
 	int error;
 	fstrans_cookie_t cookie;
+	zfs_sb_t *zsb = dentry->d_sb->s_fs_info;
 
 	crhold(cr);
 	cookie = spl_fstrans_mark();
 	error = -zfs_rmdir(dir, dname(dentry), NULL, cr, 0);
+
+	/*
+	 * For a CI FS we must invalidate the dentry to prevent the
+	 * creation of negative entries.
+	 */
+	if (error == 0 && zsb->z_case == ZFS_CASE_INSENSITIVE)
+		d_invalidate(dentry);
+
 	spl_fstrans_unmark(cookie);
 	crfree(cr);
 	ASSERT3S(error, <=, 0);
