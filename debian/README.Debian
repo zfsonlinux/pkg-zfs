@@ -21,9 +21,11 @@ from Illumos.
 
      * Include my own iSCSI pull request
        https://github.com/zfsonlinux/zfs/pull/1099
+       https://github.com/FransUrbo/zfs/tree/iscsi
 
      * Include my own SMBFS rewrite pull request
        https://github.com/zfsonlinux/zfs/pull/1476
+       https://github.com/FransUrbo/zfs/tree/smbfs_registry-shares
 
      * Include my own NFS modifications
        https://github.com/zfsonlinux/zfs/pull/2790
@@ -38,10 +40,16 @@ from Illumos.
      * Fix include files before package them
        https://github.com/zfsonlinux/zfs/issues/2903
 
-     * Default to --with-blkid in packaging
-       https://github.com/zfsonlinux/zfs/pull/2512
+     * Allow for "zfs receive" to skip existing snapshots
+       https://github.com/zfsonlinux/zfs/pull/2668
 
-     * Rename 'zed.service' to 'zfs-zed.service'
-       https://github.com/zfsonlinux/zfs/pull/3824
+     * Allow "zfs unshare <proto> -a" much like "zfs share <proto> -a"
+       https://github.com/zfsonlinux/zfs/pull/3238
 
- -- Turbo Fredriksson <turbo@bayour.com>  Sat, 18 Jul 2015 22:07:44 +0200
+     * Allow for '-o feature@<feature>=disable' on the command line
+       https://github.com/zfsonlinux/zfs/pull/3465
+
+     * Refactor systemd and use /etc/default/zfs if available
+       https://github.com/zfsonlinux/zfs/pull/3884
+
+ -- Turbo Fredriksson <turbo@bayour.com>  Tue, 29 Mar 2016 14:55:37 +0200

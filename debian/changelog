@@ -1,3 +1,19 @@
+zfs-linux (0.6.5.6-1) wheezy; urgency=low
+
+  * New upstream release.
+  * Merge PR 1099 - iSCSI support for ZoL.
+  * Merge PR 1476 - Change sharesmb to use REGISTRY shares.
+  * Merge PR 1867 - Adds support for property overrides.
+  * Merge PR 2668 - Allow for "zfs receive" to skip existing snapshots
+  * Merge PR 2790 - Rewrite of nfs.c to keep options per host separated.
+  * Merge PR 3238 - Allow "zfs unshare <proto> -a" much like "zfs share <proto> -a".
+  * Merge PR 3465 - Allow for '-o feature@<feature>=disable' on the command line.
+  * Merge PR 3559 - Refactor SYSV init and initramfs (Phase 2).
+  * Merge PR 3560 - Refactor SYSV init, initramfs and dracut (Phase 3).
+  * Merge PR 3884 - Refactor systemd and use /etc/default/zfs if available
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 29 Mar 2016 14:51:39 +0200
+
 zfs-linux (0.6.5.2-2) wheezy; urgency=low
 
   * Fixing return variable from a bunch of assist functions.
