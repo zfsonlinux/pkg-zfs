@@ -1,0 +1,3 @@
+../tmp/sbin/*	/sbin
+../tmp/lib/udev/*_id    /lib/udev
+../tmp/lib/udev/rules.d	/lib/udev

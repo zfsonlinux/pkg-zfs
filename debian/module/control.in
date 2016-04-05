@@ -1,0 +1,18 @@
+Source: zfs-modules
+Section: kernel
+Priority: optional
+Maintainer: Turbo Fredriksson <turbo@bayour.com>
+Build-Depends: debhelper (>= 8)
+Standards-Version: 3.9.1
+
+Package: zfs-modules-=KVERS
+Provides: zfs-dkms, zfs-modules
+Architecture: amd64
+Recommends: linux-image-=KVERS
+Description: Native ZFS filesystem kernel modules for Linux
+ The Z file system is a pooled filesystem designed for maximum data
+ integrity, supporting data snapshots, multiple copies, and data
+ checksums.
+ .
+ This package provides the compiled AFS kernel module for kernel
+ version =KVERS.

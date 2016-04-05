@@ -52,3 +52,9 @@ cscope.*
 *.rpm
 *.deb
 *.tar.gz
+
+#
+# Stuff to ignore
+#
+debian/control
+debian/lib*.install
