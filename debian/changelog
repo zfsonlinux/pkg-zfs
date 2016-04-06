@@ -1,3 +1,10 @@
+zfs-linux (0.6.5.6-2) wheezy; urgency=low
+
+  * Update PR 3559.
+    Fixes https://github.com/zfsonlinux/pkg-zfs/issues/200
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 06 Apr 2016 16:39:17 +0200
+
 zfs-linux (0.6.5.6-1) wheezy; urgency=low
 
   * New upstream release.
