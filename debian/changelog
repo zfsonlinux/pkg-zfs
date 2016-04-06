@@ -1,3 +1,10 @@
+zfs-linux (0.6.5.6-3) jessie; urgency=low
+
+  * Update PR 3559.
+    Fixed unterminated string.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 06 Apr 2016 17:32:44 +0200
+
 zfs-linux (0.6.5.6-2) wheezy; urgency=low
 
   * Update PR 3559.
