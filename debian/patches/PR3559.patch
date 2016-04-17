@@ -168,8 +168,8 @@ Date:   Wed Jul 1 17:20:57 2015 +0200
 
 Index: pkg-zfs/contrib/Makefile.am
 ===================================================================
---- pkg-zfs.orig/contrib/Makefile.am	2016-04-17 15:54:35.963440498 +0200
-+++ pkg-zfs/contrib/Makefile.am	2016-04-17 15:56:30.145835398 +0200
+--- pkg-zfs.orig/contrib/Makefile.am	2016-04-17 20:47:27.299584606 +0100
++++ pkg-zfs/contrib/Makefile.am	2016-04-17 20:54:04.828592117 +0100
 @@ -1,2 +1,2 @@
 -SUBDIRS = bash_completion.d dracut initramfs
 -DIST_SUBDIRS = bash_completion.d dracut initramfs
@@ -177,8 +177,8 @@ Index: pkg-zfs/contrib/Makefile.am
 +DIST_SUBDIRS = bash_completion.d dracut initramfs sysv-init shell-common
 Index: pkg-zfs/contrib/initramfs/scripts/zfs
 ===================================================================
---- pkg-zfs.orig/contrib/initramfs/scripts/zfs	2016-04-17 15:54:35.963440498 +0200
-+++ pkg-zfs/contrib/initramfs/scripts/zfs	2016-04-17 16:01:24.227817015 +0200
+--- pkg-zfs.orig/contrib/initramfs/scripts/zfs	2016-04-17 20:47:27.299584606 +0100
++++ pkg-zfs/contrib/initramfs/scripts/zfs	2016-04-17 20:54:04.828592117 +0100
 @@ -16,6 +16,10 @@
  ZPOOL_CACHE="/etc/zfs/zpool.cache"
  export ZFS ZPOOL ZPOOL_CACHE
@@ -971,7 +971,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  	then
  		# Do auto detect. Do this by 'cheating' - set 'root=zfs:AUTO'
  		# which will be caught later
-@@ -820,33 +234,35 @@
+@@ -820,33 +234,39 @@
  	# F I N D   A N D   I M P O R T   C O R R E C T   P O O L
  
  	# ------------
@@ -1006,9 +1006,13 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  
 -			import_pool "$pool"
 -			find_rootfs "$pool"
++			# Only (re)set what fs to use for boot if it's not
++			# already set. Kernel command line is supposed to
++			# correct!
 +			import_pool "${pool}" && \
-+				rfs="$(find_rootfs "${pool}")" && \
-+					ZFS_BOOTFS="${rfs}"
++				[ -z "${ZFS_BOOTFS}" ] && \
++					rfs="$(find_rootfs "${pool}")" && \
++						ZFS_BOOTFS="${rfs}"
 +			[ -n "${ZFS_BOOTFS}" ] && break
  		done
 -		IFS="$OLD_IFS"
@@ -1019,7 +1023,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  	else
  		# No auto - use value from the command line option.
  
-@@ -858,15 +274,11 @@
+@@ -858,15 +278,14 @@
  	fi
  
  	# Import the pool (if not already done so in the AUTO check above).
@@ -1033,13 +1037,16 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
 -		find_rootfs "${ZFS_RPOOL}"
 -
 -		[ "$quiet" != "y" ] && zfs_log_end_msg
++		# Only (re)set what fs to use for boot if it's not already
++		# set. Kernel command line is supposed to correct!
 +		import_pool "${ZFS_RPOOL}" && \
-+			rfs="$(find_rootfs "${ZFS_RPOOL}")" && \
-+				ZFS_BOOTFS="${rfs}"
++			[ -z "${ZFS_BOOTFS}" ] && \
++				rfs="$(find_rootfs "${ZFS_RPOOL}")" && \
++					ZFS_BOOTFS="${rfs}"
  	fi
  
  	if [ -z "${POOL_IMPORTED}" ]
-@@ -874,14 +286,14 @@
+@@ -874,14 +293,14 @@
  		# No pool imported, this is serious!
  		disable_plymouth
  		echo ""
@@ -1058,7 +1065,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  	fi
  
  	# ----------------------------------------------------------------
-@@ -893,7 +305,8 @@
+@@ -893,7 +312,8 @@
  		# Will overwrite the ZFS_BOOTFS variable like so:
  		#   rpool/ROOT/debian@snap2 => rpool/ROOT/debian_snap2
  		echo "${ZFS_BOOTFS}" | grep -q '@' && \
@@ -1068,7 +1075,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  	fi
  
  	if [ -z "${ZFS_BOOTFS}" ]
-@@ -904,9 +317,9 @@
+@@ -904,9 +324,9 @@
  		echo "Error: Unknown root filesystem - no 'bootfs' pool property and"
  		echo "       not specified on the kernel command line."
  		echo ""
@@ -1081,7 +1088,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  	fi
  
  	# ----------------------------------------------------------------
-@@ -914,7 +327,7 @@
+@@ -914,7 +334,7 @@
  
  	# * Ideally, the root filesystem would be mounted like this:
  	#
@@ -1090,7 +1097,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  	#     zfs mount -o mountpoint=/ "${ZFS_BOOTFS}"
  	#
  	#   but the MOUNTPOINT prefix is preserved on descendent filesystem
-@@ -925,14 +338,21 @@
+@@ -925,14 +345,21 @@
  	#   Such as /usr, /var, /usr/local etc.
  	#   NOTE: Mounted in the order specified in the
  	#         ZFS_INITRD_ADDITIONAL_DATASETS variable so take care!
@@ -1120,7 +1127,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  
  	# ------------
  	# Debugging information
-@@ -952,8 +372,8 @@
+@@ -952,8 +379,8 @@
  		echo -n "   'c' for shell, 'r' for reboot, 'ENTER' to continue. "
  		read b
  
@@ -1131,7 +1138,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  
  		set +x
  	fi
-@@ -963,9 +383,9 @@
+@@ -963,9 +390,9 @@
  	if type run_scripts > /dev/null 2>&1 && \
  	    [ -f "/scripts/local-bottom" -o -d "/scripts/local-bottom" ]
  	then
@@ -1146,14 +1153,14 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
 Index: pkg-zfs/contrib/shell-common/.gitignore
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/shell-common/.gitignore	2016-04-17 15:56:30.145835398 +0200
++++ pkg-zfs/contrib/shell-common/.gitignore	2016-04-17 20:54:04.828592117 +0100
 @@ -0,0 +1,2 @@
 +zfs-functions
 +zfs
 Index: pkg-zfs/contrib/shell-common/Makefile.am
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/shell-common/Makefile.am	2016-04-17 15:56:30.149836381 +0200
++++ pkg-zfs/contrib/shell-common/Makefile.am	2016-04-17 20:54:04.828592117 +0100
 @@ -0,0 +1,23 @@
 +zfsfuncsdir = $(sysconfdir)/zfs
 +zfsfuncs_SCRIPTS = zfs-functions
@@ -1181,8 +1188,8 @@ Index: pkg-zfs/contrib/shell-common/Makefile.am
 Index: pkg-zfs/contrib/shell-common/zfs-functions.in
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/shell-common/zfs-functions.in	2016-04-17 16:00:19.821273861 +0200
-@@ -0,0 +1,1160 @@
++++ pkg-zfs/contrib/shell-common/zfs-functions.in	2016-04-17 20:54:35.600430998 +0100
+@@ -0,0 +1,1162 @@
 +# This is a script with common functions etc used by zfs-import, zfs-mount,
 +# zfs-share and zfs-zed.
 +#
@@ -1320,7 +1327,8 @@ Index: pkg-zfs/contrib/shell-common/zfs-functions.in
 +#
 +# Returns whatever the command returns.
 +#
-+# Uses 'lowlevel' zfs_run_cmd() above to capture return code and stderr+stdout.
++# Uses 'lowlevel' zfs_run_cmd() above to capture return code and
++# stderr+stdout.
 +zfs_action()
 +{
 +	zfs_set_ifs " "
@@ -1331,7 +1339,7 @@ Index: pkg-zfs/contrib/shell-common/zfs-functions.in
 +	check_boolean "${quiet}" && \
 +		zfs_log_begin_msg "${MSG} "
 +	check_zfs_debug && \
-+		zfs_log_begin_msg "CMD: '${cmd}'"
++		zfs_log_begin_msg "CMD: '${CMD}'"
 +
 +	zfs_run_cmd "${CMD}"
 +
@@ -2250,11 +2258,12 @@ Index: pkg-zfs/contrib/shell-common/zfs-functions.in
 +	if ! grep -qiE '(^|[^\\](\\\\)* )(rollback)=(on|yes|true|1)( |$)' /proc/cmdline
 +	then
 +		# If the destination dataset for the clone
-+		# already exists, destroy it. Recursivly
++		# already exists, destroy it. Recursivly.
 +		if [ $(get_fs_value "${rootfs}_${snapname}" type) ]; then
-+			filesystems="$("${ZFS}" list -oname -tfilesystem -H \
-+			    -r -Sname "${ZFS_BOOTFS}")"
-+			for fs in ${filesystems}; do
++			"${ZFS}" list -oname -tfilesystem -H -r -Sname \
++				"${ZFS_BOOTFS}" | \
++			while read fs
++			do
 +				destroy_fs "${fs}"
 +			done
 +		fi
@@ -2346,7 +2355,7 @@ Index: pkg-zfs/contrib/shell-common/zfs-functions.in
 Index: pkg-zfs/contrib/shell-common/zfs.in
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/shell-common/zfs.in	2016-04-17 15:56:30.149836381 +0200
++++ pkg-zfs/contrib/shell-common/zfs.in	2016-04-17 20:54:04.832590540 +0100
 @@ -0,0 +1,132 @@
 +# ZoL userland configuration.
 +
@@ -2483,7 +2492,7 @@ Index: pkg-zfs/contrib/shell-common/zfs.in
 Index: pkg-zfs/contrib/sysv-init/.gitignore
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/sysv-init/.gitignore	2016-04-17 15:56:30.149836381 +0200
++++ pkg-zfs/contrib/sysv-init/.gitignore	2016-04-17 20:54:04.832590540 +0100
 @@ -0,0 +1,4 @@
 +zfs-import
 +zfs-mount
@@ -2492,7 +2501,7 @@ Index: pkg-zfs/contrib/sysv-init/.gitignore
 Index: pkg-zfs/contrib/sysv-init/Makefile.am
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/sysv-init/Makefile.am	2016-04-17 15:56:30.149836381 +0200
++++ pkg-zfs/contrib/sysv-init/Makefile.am	2016-04-17 20:54:04.832590540 +0100
 @@ -0,0 +1,36 @@
 +initdir = $(DEFAULT_INIT_DIR)
 +init_SCRIPTS = zfs-import zfs-mount zfs-share zfs-zed
@@ -2533,7 +2542,7 @@ Index: pkg-zfs/contrib/sysv-init/Makefile.am
 Index: pkg-zfs/contrib/sysv-init/README.md
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/sysv-init/README.md	2016-04-17 15:56:30.149836381 +0200
++++ pkg-zfs/contrib/sysv-init/README.md	2016-04-17 20:54:04.832590540 +0100
 @@ -0,0 +1,72 @@
 +DESCRIPTION
 +  These script were written with the primary intention of being portable and
@@ -2610,7 +2619,7 @@ Index: pkg-zfs/contrib/sysv-init/README.md
 Index: pkg-zfs/contrib/sysv-init/zfs-import.in
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/sysv-init/zfs-import.in	2016-04-17 15:56:30.149836381 +0200
++++ pkg-zfs/contrib/sysv-init/zfs-import.in	2016-04-17 20:54:04.832590540 +0100
 @@ -0,0 +1,216 @@
 +#!@SHELL@
 +#
@@ -2831,7 +2840,7 @@ Index: pkg-zfs/contrib/sysv-init/zfs-import.in
 Index: pkg-zfs/contrib/sysv-init/zfs-mount.in
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/sysv-init/zfs-mount.in	2016-04-17 15:56:30.149836381 +0200
++++ pkg-zfs/contrib/sysv-init/zfs-mount.in	2016-04-17 20:54:04.832590540 +0100
 @@ -0,0 +1,219 @@
 +#!@SHELL@
 +#
@@ -3055,7 +3064,7 @@ Index: pkg-zfs/contrib/sysv-init/zfs-mount.in
 Index: pkg-zfs/contrib/sysv-init/zfs-share.in
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/sysv-init/zfs-share.in	2016-04-17 15:56:30.149836381 +0200
++++ pkg-zfs/contrib/sysv-init/zfs-share.in	2016-04-17 20:54:04.836588963 +0100
 @@ -0,0 +1,85 @@
 +#!@SHELL@
 +#
@@ -3145,7 +3154,7 @@ Index: pkg-zfs/contrib/sysv-init/zfs-share.in
 Index: pkg-zfs/contrib/sysv-init/zfs-zed.in
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/sysv-init/zfs-zed.in	2016-04-17 15:56:30.153837364 +0200
++++ pkg-zfs/contrib/sysv-init/zfs-zed.in	2016-04-17 20:54:04.836588963 +0100
 @@ -0,0 +1,134 @@
 +#!@SHELL@
 +#
@@ -3283,8 +3292,8 @@ Index: pkg-zfs/contrib/sysv-init/zfs-zed.in
 +fi
 Index: pkg-zfs/etc/Makefile.am
 ===================================================================
---- pkg-zfs.orig/etc/Makefile.am	2016-04-17 15:54:35.963440498 +0200
-+++ pkg-zfs/etc/Makefile.am	2016-04-17 15:56:30.153837364 +0200
+--- pkg-zfs.orig/etc/Makefile.am	2016-04-17 20:47:27.299584606 +0100
++++ pkg-zfs/etc/Makefile.am	2016-04-17 20:54:04.836588963 +0100
 @@ -1,2 +1,2 @@
 -SUBDIRS = zfs $(ZFS_INIT_SYSTEMD) $(ZFS_INIT_SYSV) $(ZFS_MODULE_LOAD)
 -DIST_SUBDIRS = init.d zfs systemd modules-load.d
@@ -3292,7 +3301,7 @@ Index: pkg-zfs/etc/Makefile.am
 +DIST_SUBDIRS = zfs systemd modules-load.d
 Index: pkg-zfs/etc/init.d/.gitignore
 ===================================================================
---- pkg-zfs.orig/etc/init.d/.gitignore	2016-04-17 15:56:22.848042989 +0200
+--- pkg-zfs.orig/etc/init.d/.gitignore	2016-04-17 20:54:01.010100582 +0100
 +++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1,6 +0,0 @@
 -zfs-functions
@@ -3303,7 +3312,7 @@ Index: pkg-zfs/etc/init.d/.gitignore
 -zfs
 Index: pkg-zfs/etc/init.d/Makefile.am
 ===================================================================
---- pkg-zfs.orig/etc/init.d/Makefile.am	2016-04-17 15:54:35.963440498 +0200
+--- pkg-zfs.orig/etc/init.d/Makefile.am	2016-04-17 20:47:27.299584606 +0100
 +++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1,44 +0,0 @@
 -initdir = $(DEFAULT_INIT_DIR)
@@ -3352,7 +3361,7 @@ Index: pkg-zfs/etc/init.d/Makefile.am
 -	-$(RM) $(init_SCRIPTS) $(initcommon_SCRIPTS) $(initconf_SCRIPTS)
 Index: pkg-zfs/etc/init.d/README.md
 ===================================================================
---- pkg-zfs.orig/etc/init.d/README.md	2016-04-17 15:54:35.963440498 +0200
+--- pkg-zfs.orig/etc/init.d/README.md	2016-04-17 20:47:27.299584606 +0100
 +++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1,72 +0,0 @@
 -DESCRIPTION
@@ -3429,7 +3438,7 @@ Index: pkg-zfs/etc/init.d/README.md
 -  Finally, we share filesystems configured with the share\* property.
 Index: pkg-zfs/etc/init.d/zfs-functions.in
 ===================================================================
---- pkg-zfs.orig/etc/init.d/zfs-functions.in	2016-04-17 15:54:35.963440498 +0200
+--- pkg-zfs.orig/etc/init.d/zfs-functions.in	2016-04-17 20:47:27.299584606 +0100
 +++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1,429 +0,0 @@
 -# This is a script with common functions etc used by zfs-import, zfs-mount,
@@ -3863,7 +3872,7 @@ Index: pkg-zfs/etc/init.d/zfs-functions.in
 -}
 Index: pkg-zfs/etc/init.d/zfs-import.in
 ===================================================================
---- pkg-zfs.orig/etc/init.d/zfs-import.in	2016-04-17 15:54:35.963440498 +0200
+--- pkg-zfs.orig/etc/init.d/zfs-import.in	2016-04-17 20:47:27.299584606 +0100
 +++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1,339 +0,0 @@
 -#!@SHELL@
@@ -4207,7 +4216,7 @@ Index: pkg-zfs/etc/init.d/zfs-import.in
 -fi
 Index: pkg-zfs/etc/init.d/zfs-mount.in
 ===================================================================
---- pkg-zfs.orig/etc/init.d/zfs-mount.in	2016-04-17 15:54:35.963440498 +0200
+--- pkg-zfs.orig/etc/init.d/zfs-mount.in	2016-04-17 20:47:27.299584606 +0100
 +++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1,227 +0,0 @@
 -#!@SHELL@
@@ -4439,7 +4448,7 @@ Index: pkg-zfs/etc/init.d/zfs-mount.in
 -fi
 Index: pkg-zfs/etc/init.d/zfs-share.in
 ===================================================================
---- pkg-zfs.orig/etc/init.d/zfs-share.in	2016-04-17 15:54:35.963440498 +0200
+--- pkg-zfs.orig/etc/init.d/zfs-share.in	2016-04-17 20:47:27.299584606 +0100
 +++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1,85 +0,0 @@
 -#!@SHELL@
@@ -4529,7 +4538,7 @@ Index: pkg-zfs/etc/init.d/zfs-share.in
 -fi
 Index: pkg-zfs/etc/init.d/zfs-zed.in
 ===================================================================
---- pkg-zfs.orig/etc/init.d/zfs-zed.in	2016-04-17 15:54:35.963440498 +0200
+--- pkg-zfs.orig/etc/init.d/zfs-zed.in	2016-04-17 20:47:27.299584606 +0100
 +++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1,134 +0,0 @@
 -#!@SHELL@
@@ -4668,7 +4677,7 @@ Index: pkg-zfs/etc/init.d/zfs-zed.in
 -fi
 Index: pkg-zfs/etc/init.d/zfs.in
 ===================================================================
---- pkg-zfs.orig/etc/init.d/zfs.in	2016-04-17 15:54:35.963440498 +0200
+--- pkg-zfs.orig/etc/init.d/zfs.in	2016-04-17 20:47:27.299584606 +0100
 +++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1,132 +0,0 @@
 -# ZoL userland configuration.
