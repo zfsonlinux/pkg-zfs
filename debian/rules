@@ -161,7 +161,7 @@ override_dh_auto_install:
 
 override_dh_installinit:
 	@# Install systemd files
-	dh_systemd_enable -pzfsutils etc/systemd/system/zfs.target
+	dh_systemd_enable -pzfsutils contrib/systemd/system/zfs.target
 
 	@# Install the /etc/default/zfs options file.
 	install -m 644 $(CURDIR)/contrib/shell-common/zfs $(CURDIR)/debian/zfsutils/etc/default/
@@ -210,7 +210,7 @@ endif
 
 	@# Add systemd snippets to post/pre inst/rm files
 	dh_systemd_start --no-restart-on-upgrade --no-start \
-	  -pzfsutils etc/systemd/system/zfs.target
+	  -pzfsutils contrib/systemd/system/zfs.target
 
 	@# Add a dummy (link to /dev/null) for zfs-import.service
 	ln -s /dev/null $(CURDIR)/debian/zfsutils/lib/systemd/system/zfs-import.service
