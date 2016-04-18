@@ -14,8 +14,8 @@ Build-Depends: autotools-dev,
  uuid-dev,
  zlib1g-dev,
 Standards-Version: 3.9.5
-Vcs-Git: git://github.com/dajhorn/pkg-zfs.git
-Vcs-Browser: http://github.com/dajhorn/pkg-zfs
+Vcs-Git: git://github.com/zfsonlinux/pkg-zfs.git
+Vcs-Browser: http://github.com/zfsonlinux/pkg-zfs
 
 Package: libnvpair1
 Section: libs
