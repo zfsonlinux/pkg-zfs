@@ -1,3 +1,18 @@
+zfs-linux (0.6.5.6-7) jessie; urgency=low
+
+  * Update PR 3559.
+    + Tighten the retrieval of snapshots.
+      Closes: https://github.com/zfsonlinux/pkg-zfs/issues/206
+
+    + Fix ask_user_snap() to properly work with zfs_debug=1 by properly
+      disable debugging before asking what snap to use.
+      Closes: https://github.com/zfsonlinux/pkg-zfs/issues/207
+
+    + Fix ask_user_snap() to properly work with no available snapshots
+      Closes: https://github.com/zfsonlinux/pkg-zfs/issues/207
+
+ -- Turbo Fredriksson <turbo@debian.org>  Mon, 18 Apr 2016 12:34:42 +0100
+
 zfs-linux (0.6.5.6-6) jessie; urgency=low
 
   * Update PR 3559.
@@ -430,7 +445,7 @@ zfs-linux (0.6.3-27~1d9663~jessie) jessie; urgency=low
      Thanx to l1k for fix.
 
  -- Turbo Fredriksson <turbo@debian.org>  Sun, 22 Feb 2015 14:14:35 +0100
-		
+
 zfs-linux (0.6.3-26~33b4de~jessie) jessie; urgency=low
 
     * New upstream GIT tag.
