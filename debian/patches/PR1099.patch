@@ -74,8 +74,8 @@ Date:   Sat Dec 21 07:28:03 2013 +0000
 
 Index: pkg-zfs/cmd/zfs/zfs_main.c
 ===================================================================
---- pkg-zfs.orig/cmd/zfs/zfs_main.c	2016-05-07 18:55:20.000000000 +0000
-+++ pkg-zfs/cmd/zfs/zfs_main.c	2016-05-07 18:55:56.192805251 +0000
+--- pkg-zfs.orig/cmd/zfs/zfs_main.c	2016-05-10 22:52:18.000000000 +0000
++++ pkg-zfs/cmd/zfs/zfs_main.c	2016-05-10 22:53:08.627294026 +0000
 @@ -3508,6 +3508,7 @@
  			    "but unable to remount filesystem\n"));
  			break;
@@ -825,8 +825,8 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  		zfs_close(zhp);
 Index: pkg-zfs/include/libzfs.h
 ===================================================================
---- pkg-zfs.orig/include/libzfs.h	2016-05-07 18:55:20.000000000 +0000
-+++ pkg-zfs/include/libzfs.h	2016-05-07 18:55:56.196805200 +0000
+--- pkg-zfs.orig/include/libzfs.h	2016-05-10 22:52:18.000000000 +0000
++++ pkg-zfs/include/libzfs.h	2016-05-10 22:53:08.627294026 +0000
 @@ -144,6 +144,8 @@
  	EZFS_DIFF,		/* general failure of zfs diff */
  	EZFS_DIFFDATA,		/* bad zfs diff data */
@@ -864,8 +864,8 @@ Index: pkg-zfs/include/libzfs.h
  extern int zfs_deleg_share_nfs(libzfs_handle_t *, char *, char *, char *,
 Index: pkg-zfs/include/libzfs_impl.h
 ===================================================================
---- pkg-zfs.orig/include/libzfs_impl.h	2016-05-07 18:55:20.000000000 +0000
-+++ pkg-zfs/include/libzfs_impl.h	2016-05-07 18:55:56.200805150 +0000
+--- pkg-zfs.orig/include/libzfs_impl.h	2016-05-10 22:52:18.000000000 +0000
++++ pkg-zfs/include/libzfs_impl.h	2016-05-10 22:53:08.667293524 +0000
 @@ -118,7 +118,8 @@
  typedef enum {
  	PROTO_NFS = 0,
@@ -888,8 +888,8 @@ Index: pkg-zfs/include/libzfs_impl.h
  int zfs_error(libzfs_handle_t *, int, const char *);
 Index: pkg-zfs/include/sys/fs/zfs.h
 ===================================================================
---- pkg-zfs.orig/include/sys/fs/zfs.h	2016-05-07 18:55:20.000000000 +0000
-+++ pkg-zfs/include/sys/fs/zfs.h	2016-05-07 18:56:26.068429663 +0000
+--- pkg-zfs.orig/include/sys/fs/zfs.h	2016-05-10 22:52:18.000000000 +0000
++++ pkg-zfs/include/sys/fs/zfs.h	2016-05-10 22:53:08.667293524 +0000
 @@ -156,6 +156,7 @@
  	ZFS_PROP_REDUNDANT_METADATA,
  	ZFS_PROP_OVERLAY,
@@ -911,8 +911,8 @@ Index: pkg-zfs/include/sys/fs/zfs.h
  typedef enum zfs_smb_acl_op {
 Index: pkg-zfs/lib/libshare/Makefile.am
 ===================================================================
---- pkg-zfs.orig/lib/libshare/Makefile.am	2016-05-07 18:55:20.000000000 +0000
-+++ pkg-zfs/lib/libshare/Makefile.am	2016-05-07 18:55:56.236804697 +0000
+--- pkg-zfs.orig/lib/libshare/Makefile.am	2016-05-10 22:52:18.000000000 +0000
++++ pkg-zfs/lib/libshare/Makefile.am	2016-05-10 22:53:08.671293473 +0000
 @@ -12,7 +12,13 @@
  	nfs.c \
  	nfs.h \
@@ -931,7 +931,7 @@ Index: pkg-zfs/lib/libshare/Makefile.am
 Index: pkg-zfs/lib/libshare/README_iscsi.txt
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/README_iscsi.txt	2016-05-07 18:55:56.240804647 +0000
++++ pkg-zfs/lib/libshare/README_iscsi.txt	2016-05-10 22:53:08.671293473 +0000
 @@ -0,0 +1,124 @@
 +This is iSCSI support for the IET, SCST and STGT iSCSI target implementations.
 +
@@ -1060,7 +1060,7 @@ Index: pkg-zfs/lib/libshare/README_iscsi.txt
 Index: pkg-zfs/lib/libshare/destroy_lio.sh
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/destroy_lio.sh	2016-05-07 18:55:56.244804597 +0000
++++ pkg-zfs/lib/libshare/destroy_lio.sh	2016-05-10 22:53:08.671293473 +0000
 @@ -0,0 +1,29 @@
 +#!/bin/sh
 +
@@ -1094,7 +1094,7 @@ Index: pkg-zfs/lib/libshare/destroy_lio.sh
 Index: pkg-zfs/lib/libshare/destroy_scst.sh
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/destroy_scst.sh	2016-05-07 18:55:56.244804597 +0000
++++ pkg-zfs/lib/libshare/destroy_scst.sh	2016-05-10 22:53:08.703293071 +0000
 @@ -0,0 +1,32 @@
 +#!/bin/sh
 +
@@ -1131,7 +1131,7 @@ Index: pkg-zfs/lib/libshare/destroy_scst.sh
 Index: pkg-zfs/lib/libshare/iscsi.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/iscsi.c	2016-05-07 18:55:56.248804547 +0000
++++ pkg-zfs/lib/libshare/iscsi.c	2016-05-10 22:53:08.703293071 +0000
 @@ -0,0 +1,1219 @@
 +/*
 + * CDDL HEADER START
@@ -2355,7 +2355,7 @@ Index: pkg-zfs/lib/libshare/iscsi.c
 Index: pkg-zfs/lib/libshare/iscsi.h
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/iscsi.h	2016-05-07 18:55:56.260804396 +0000
++++ pkg-zfs/lib/libshare/iscsi.h	2016-05-10 22:53:08.707293021 +0000
 @@ -0,0 +1,142 @@
 +/*
 + * CDDL HEADER START
@@ -2502,7 +2502,7 @@ Index: pkg-zfs/lib/libshare/iscsi.h
 Index: pkg-zfs/lib/libshare/iscsi_iet.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/iscsi_iet.c	2016-05-07 18:55:56.260804396 +0000
++++ pkg-zfs/lib/libshare/iscsi_iet.c	2016-05-10 22:53:08.707293021 +0000
 @@ -0,0 +1,604 @@
 +/*
 + * CDDL HEADER START
@@ -3111,7 +3111,7 @@ Index: pkg-zfs/lib/libshare/iscsi_iet.c
 Index: pkg-zfs/lib/libshare/iscsi_lio.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/iscsi_lio.c	2016-05-07 18:55:56.264804345 +0000
++++ pkg-zfs/lib/libshare/iscsi_lio.c	2016-05-10 22:53:08.711292970 +0000
 @@ -0,0 +1,1017 @@
 +/*
 + * CDDL HEADER START
@@ -4133,7 +4133,7 @@ Index: pkg-zfs/lib/libshare/iscsi_lio.c
 Index: pkg-zfs/lib/libshare/iscsi_scst.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/iscsi_scst.c	2016-05-07 18:55:56.268804295 +0000
++++ pkg-zfs/lib/libshare/iscsi_scst.c	2016-05-10 22:53:08.723292820 +0000
 @@ -0,0 +1,818 @@
 +/*
 + * CDDL HEADER START
@@ -4956,7 +4956,7 @@ Index: pkg-zfs/lib/libshare/iscsi_scst.c
 Index: pkg-zfs/lib/libshare/iscsi_stgt.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/iscsi_stgt.c	2016-05-07 18:55:56.276804195 +0000
++++ pkg-zfs/lib/libshare/iscsi_stgt.c	2016-05-10 22:53:08.727292769 +0000
 @@ -0,0 +1,759 @@
 +/*
 + * CDDL HEADER START
@@ -5719,8 +5719,8 @@ Index: pkg-zfs/lib/libshare/iscsi_stgt.c
 +}
 Index: pkg-zfs/lib/libshare/libshare.c
 ===================================================================
---- pkg-zfs.orig/lib/libshare/libshare.c	2016-05-07 18:55:20.000000000 +0000
-+++ pkg-zfs/lib/libshare/libshare.c	2016-05-07 18:55:56.276804195 +0000
+--- pkg-zfs.orig/lib/libshare/libshare.c	2016-05-10 22:52:18.000000000 +0000
++++ pkg-zfs/lib/libshare/libshare.c	2016-05-10 22:53:08.739292618 +0000
 @@ -37,6 +37,7 @@
  #include "libshare_impl.h"
  #include "nfs.h"
@@ -5913,8 +5913,8 @@ Index: pkg-zfs/lib/libshare/libshare.c
  	}
 Index: pkg-zfs/lib/libshare/libshare_impl.h
 ===================================================================
---- pkg-zfs.orig/lib/libshare/libshare_impl.h	2016-05-07 18:55:20.000000000 +0000
-+++ pkg-zfs/lib/libshare/libshare_impl.h	2016-05-07 18:55:56.280804144 +0000
+--- pkg-zfs.orig/lib/libshare/libshare_impl.h	2016-05-10 22:52:18.000000000 +0000
++++ pkg-zfs/lib/libshare/libshare_impl.h	2016-05-10 22:53:08.739292618 +0000
 @@ -67,4 +67,10 @@
  	sa_share_impl_t shares;
  } *sa_handle_impl_t;
@@ -5930,7 +5930,7 @@ Index: pkg-zfs/lib/libshare/libshare_impl.h
 Index: pkg-zfs/lib/libshare/list_iet.sh
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/list_iet.sh	2016-05-07 18:55:56.280804144 +0000
++++ pkg-zfs/lib/libshare/list_iet.sh	2016-05-10 22:53:08.743292568 +0000
 @@ -0,0 +1,3 @@
 +#!/bin/sh
 +
@@ -5938,7 +5938,7 @@ Index: pkg-zfs/lib/libshare/list_iet.sh
 Index: pkg-zfs/lib/libshare/list_lio.sh
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/list_lio.sh	2016-05-07 18:55:56.280804144 +0000
++++ pkg-zfs/lib/libshare/list_lio.sh	2016-05-10 22:53:08.743292568 +0000
 @@ -0,0 +1,3 @@
 +#!/bin/sh
 +
@@ -5946,7 +5946,7 @@ Index: pkg-zfs/lib/libshare/list_lio.sh
 Index: pkg-zfs/lib/libshare/list_scst.sh
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/list_scst.sh	2016-05-07 18:55:56.308803792 +0000
++++ pkg-zfs/lib/libshare/list_scst.sh	2016-05-10 22:53:08.743292568 +0000
 @@ -0,0 +1,55 @@
 +#!/bin/sh
 +
@@ -6006,15 +6006,15 @@ Index: pkg-zfs/lib/libshare/list_scst.sh
 Index: pkg-zfs/lib/libshare/list_stgt.sh
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/list_stgt.sh	2016-05-07 18:55:56.308803792 +0000
++++ pkg-zfs/lib/libshare/list_stgt.sh	2016-05-10 22:53:08.747292518 +0000
 @@ -0,0 +1,3 @@
 +#!/bin/sh
 +
 +tgtadm --lld iscsi --op show --mode target
 Index: pkg-zfs/lib/libshare/nfs.c
 ===================================================================
---- pkg-zfs.orig/lib/libshare/nfs.c	2016-05-07 18:55:20.000000000 +0000
-+++ pkg-zfs/lib/libshare/nfs.c	2016-05-07 18:55:56.312803742 +0000
+--- pkg-zfs.orig/lib/libshare/nfs.c	2016-05-10 22:52:18.000000000 +0000
++++ pkg-zfs/lib/libshare/nfs.c	2016-05-10 22:53:08.747292518 +0000
 @@ -44,72 +44,9 @@
   */
  static int nfs_exportfs_temp_fd = -1;
@@ -6110,7 +6110,7 @@ Index: pkg-zfs/lib/libshare/nfs.c
 Index: pkg-zfs/lib/libshare/zfs_share_iscsi.iet
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/zfs_share_iscsi.iet	2016-05-07 18:55:56.312803742 +0000
++++ pkg-zfs/lib/libshare/zfs_share_iscsi.iet	2016-05-10 22:53:08.751292468 +0000
 @@ -0,0 +1,44 @@
 +#!/bin/sh
 +
@@ -6159,7 +6159,7 @@ Index: pkg-zfs/lib/libshare/zfs_share_iscsi.iet
 Index: pkg-zfs/lib/libshare/zfs_share_iscsi.lio
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/zfs_share_iscsi.lio	2016-05-07 18:55:56.316803692 +0000
++++ pkg-zfs/lib/libshare/zfs_share_iscsi.lio	2016-05-10 22:53:08.751292468 +0000
 @@ -0,0 +1,118 @@
 +#!/bin/bash
 +
@@ -6282,7 +6282,7 @@ Index: pkg-zfs/lib/libshare/zfs_share_iscsi.lio
 Index: pkg-zfs/lib/libshare/zfs_share_iscsi.scst
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/zfs_share_iscsi.scst	2016-05-07 18:55:56.316803692 +0000
++++ pkg-zfs/lib/libshare/zfs_share_iscsi.scst	2016-05-10 22:53:08.755292417 +0000
 @@ -0,0 +1,61 @@
 +#!/bin/sh
 +
@@ -6348,7 +6348,7 @@ Index: pkg-zfs/lib/libshare/zfs_share_iscsi.scst
 Index: pkg-zfs/lib/libshare/zfs_share_iscsi.stgt
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/zfs_share_iscsi.stgt	2016-05-07 18:55:56.316803692 +0000
++++ pkg-zfs/lib/libshare/zfs_share_iscsi.stgt	2016-05-10 22:53:08.755292417 +0000
 @@ -0,0 +1,71 @@
 +#!/bin/sh
 +
@@ -6423,8 +6423,8 @@ Index: pkg-zfs/lib/libshare/zfs_share_iscsi.stgt
 +exit 0
 Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
 ===================================================================
---- pkg-zfs.orig/lib/libzfs/libzfs_changelist.c	2016-05-07 18:55:20.789250334 +0000
-+++ pkg-zfs/lib/libzfs/libzfs_changelist.c	2016-05-07 18:55:56.320803641 +0000
+--- pkg-zfs.orig/lib/libzfs/libzfs_changelist.c	2016-05-10 22:52:18.375925772 +0000
++++ pkg-zfs/lib/libzfs/libzfs_changelist.c	2016-05-10 22:53:08.755292417 +0000
 @@ -72,7 +72,8 @@
  struct prop_changelist {
  	zfs_prop_t		cl_prop;
@@ -6585,8 +6585,8 @@ Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
  	else if (clp->cl_prop == ZFS_PROP_SHARESMB)
 Index: pkg-zfs/lib/libzfs/libzfs_dataset.c
 ===================================================================
---- pkg-zfs.orig/lib/libzfs/libzfs_dataset.c	2016-05-07 18:55:20.000000000 +0000
-+++ pkg-zfs/lib/libzfs/libzfs_dataset.c	2016-05-07 18:57:16.435796460 +0000
+--- pkg-zfs.orig/lib/libzfs/libzfs_dataset.c	2016-05-10 22:52:18.000000000 +0000
++++ pkg-zfs/lib/libzfs/libzfs_dataset.c	2016-05-10 22:53:08.763292317 +0000
 @@ -1175,6 +1175,7 @@
  
  		case ZFS_PROP_SHARESMB:
@@ -6623,7 +6623,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_dataset.c
  					proto = PROTO_SMB;
  				else
  					proto = PROTO_NFS;
-@@ -4056,6 +4061,14 @@
+@@ -4059,6 +4064,14 @@
  			(void) changelist_postfix(cl);
  	} else {
  		if (cl != NULL) {
@@ -6640,8 +6640,8 @@ Index: pkg-zfs/lib/libzfs/libzfs_dataset.c
  		}
 Index: pkg-zfs/lib/libzfs/libzfs_mount.c
 ===================================================================
---- pkg-zfs.orig/lib/libzfs/libzfs_mount.c	2016-05-07 18:55:20.793250283 +0000
-+++ pkg-zfs/lib/libzfs/libzfs_mount.c	2016-05-07 18:55:56.356803189 +0000
+--- pkg-zfs.orig/lib/libzfs/libzfs_mount.c	2016-05-10 22:52:18.375925772 +0000
++++ pkg-zfs/lib/libzfs/libzfs_mount.c	2016-05-10 22:53:08.767292266 +0000
 @@ -45,12 +45,15 @@
   *
   * 	zfs_is_shared_nfs()
@@ -6903,8 +6903,8 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  	return (zfs_unshareall_proto(zhp, share_all_proto));
 Index: pkg-zfs/lib/libzfs/libzfs_util.c
 ===================================================================
---- pkg-zfs.orig/lib/libzfs/libzfs_util.c	2016-05-07 18:55:20.000000000 +0000
-+++ pkg-zfs/lib/libzfs/libzfs_util.c	2016-05-07 18:55:56.360803139 +0000
+--- pkg-zfs.orig/lib/libzfs/libzfs_util.c	2016-05-10 22:52:18.000000000 +0000
++++ pkg-zfs/lib/libzfs/libzfs_util.c	2016-05-10 22:53:08.787292015 +0000
 @@ -168,6 +168,10 @@
  		return (dgettext(TEXT_DOMAIN, "smb remove share failed"));
  	case EZFS_SHARESMBFAILED:
@@ -6918,8 +6918,8 @@ Index: pkg-zfs/lib/libzfs/libzfs_util.c
  	case EZFS_NOSPC:
 Index: pkg-zfs/man/man8/zfs.8
 ===================================================================
---- pkg-zfs.orig/man/man8/zfs.8	2016-05-07 18:55:20.000000000 +0000
-+++ pkg-zfs/man/man8/zfs.8	2016-05-07 19:02:00.632223627 +0000
+--- pkg-zfs.orig/man/man8/zfs.8	2016-05-10 22:52:18.000000000 +0000
++++ pkg-zfs/man/man8/zfs.8	2016-05-10 22:53:08.791291965 +0000
 @@ -1220,6 +1220,348 @@
  .ne 2
  .mk
@@ -7430,8 +7430,8 @@ Index: pkg-zfs/man/man8/zfs.8
 +\fBchmod\fR(2), \fBfsync\fR(2), \fBgzip\fR(1), \fBmount\fR(8), \fBssh\fR(1), \fBstat\fR(2), \fBwrite\fR(2), \fBzpool\fR(8), \fBietd.conf\fR(8), \fBietadm\fR(8), \fBtgtadm\fR()
 Index: pkg-zfs/module/zcommon/zfs_prop.c
 ===================================================================
---- pkg-zfs.orig/module/zcommon/zfs_prop.c	2016-05-07 18:55:20.000000000 +0000
-+++ pkg-zfs/module/zcommon/zfs_prop.c	2016-05-07 18:55:56.404802585 +0000
+--- pkg-zfs.orig/module/zcommon/zfs_prop.c	2016-05-10 22:52:18.000000000 +0000
++++ pkg-zfs/module/zcommon/zfs_prop.c	2016-05-10 22:53:08.799291864 +0000
 @@ -360,6 +360,9 @@
  	zprop_register_string(ZFS_PROP_SELINUX_ROOTCONTEXT, "rootcontext",
  	    "none", PROP_DEFAULT, ZFS_TYPE_DATASET, "<selinux rootcontext>",
@@ -7444,19 +7444,18 @@ Index: pkg-zfs/module/zcommon/zfs_prop.c
  	zprop_register_number(ZFS_PROP_USED, "used", 0, PROP_READONLY,
 Index: pkg-zfs/scripts/Makefile.am
 ===================================================================
---- pkg-zfs.orig/scripts/Makefile.am	2016-05-07 18:55:20.000000000 +0000
-+++ pkg-zfs/scripts/Makefile.am	2016-05-07 18:57:57.303282686 +0000
-@@ -15,4 +15,5 @@
- 	$(top_srcdir)/scripts/zpios.sh \
+--- pkg-zfs.orig/scripts/Makefile.am	2016-05-10 22:52:18.000000000 +0000
++++ pkg-zfs/scripts/Makefile.am	2016-05-10 23:00:21.025858040 +0000
+@@ -16,4 +16,5 @@
  	$(top_srcdir)/scripts/zpios-sanity.sh \
  	$(top_srcdir)/scripts/zpios-survey.sh \
--	$(top_srcdir)/scripts/smb.sh
-+	$(top_srcdir)/scripts/smb.sh \
-+	$(top_srcdir)/scripts/iscsi.sh
+ 	$(top_srcdir)/scripts/smb.sh \
++	$(top_srcdir)/scripts/iscsi.sh \
+ 	$(top_srcdir)/scripts/zfs-helpers.sh
 Index: pkg-zfs/scripts/iscsi.sh
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/scripts/iscsi.sh	2016-05-07 18:55:56.408802535 +0000
++++ pkg-zfs/scripts/iscsi.sh	2016-05-10 22:53:08.835291412 +0000
 @@ -0,0 +1,172 @@
 +#!/bin/bash
 +
