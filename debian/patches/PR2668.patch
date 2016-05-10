@@ -1,0 +1,175 @@
+commit e108a795efad9b7c5e83d3cb3cb45301f9fb58f9
+Author: Turbo Fredriksson <turbo@bayour.com>
+Date:   Fri Sep 5 23:29:36 2014 +0200
+
+    Allow for "zfs receive" to skip existing snapshots
+    by adding the option "-s" to zfs receive.
+    
+    Signed-off-by: Turbo Fredriksson <turbo@bayour.com>
+    
+    Closes: #2666
+
+Index: pkg-zfs/cmd/zfs/zfs_main.c
+===================================================================
+--- pkg-zfs.orig/cmd/zfs/zfs_main.c	2016-05-10 14:07:07.000000000 +0000
++++ pkg-zfs/cmd/zfs/zfs_main.c	2016-05-10 14:10:14.657718239 +0000
+@@ -248,9 +248,9 @@
+ 	case HELP_PROMOTE:
+ 		return (gettext("\tpromote <clone-filesystem>\n"));
+ 	case HELP_RECEIVE:
+-		return (gettext("\treceive [-vnFu] <filesystem|volume|"
++		return (gettext("\treceive [-vnFus] <filesystem|volume|"
+ 		    "snapshot>\n"
+-		    "\treceive [-vnFu] [-o origin=<snapshot>] [-d | -e] "
++		    "\treceive [-vnFus] [-o origin=<snapshot>] [-d | -e] "
+ 		    "<filesystem>\n"));
+ 	case HELP_RENAME:
+ 		return (gettext("\trename [-f] <filesystem|volume|snapshot> "
+@@ -3889,7 +3889,7 @@
+ }
+ 
+ /*
+- * zfs receive [-vnFu] [-d | -e] <fs@snap>
++ * zfs receive [-vnFus] [-d | -e] <fs@snap>
+  *
+  * Restore a backup stream from stdin.
+  */
+@@ -3905,7 +3905,7 @@
+ 		nomem();
+ 
+ 	/* check options */
+-	while ((c = getopt(argc, argv, ":o:denuvF")) != -1) {
++	while ((c = getopt(argc, argv, ":o:denuvFs")) != -1) {
+ 		switch (c) {
+ 		case 'o':
+ 			if (parseprop(props, optarg) != 0)
+@@ -3921,6 +3921,9 @@
+ 		case 'n':
+ 			flags.dryrun = B_TRUE;
+ 			break;
++		case 's':
++			flags.skip = B_TRUE;
++			break;
+ 		case 'u':
+ 			flags.nomount = B_TRUE;
+ 			break;
+Index: pkg-zfs/include/libzfs.h
+===================================================================
+--- pkg-zfs.orig/include/libzfs.h	2016-05-10 14:07:07.000000000 +0000
++++ pkg-zfs/include/libzfs.h	2016-05-10 14:07:14.791979457 +0000
+@@ -690,6 +690,9 @@
+ 
+ 	/* do not mount file systems as they are extracted (private) */
+ 	boolean_t nomount;
++
++	/* skip existing snapshots */
++	boolean_t skip;
+ } recvflags_t;
+ 
+ extern int zfs_receive(libzfs_handle_t *, const char *, nvlist_t *,
+Index: pkg-zfs/lib/libzfs/libzfs_sendrecv.c
+===================================================================
+--- pkg-zfs.orig/lib/libzfs/libzfs_sendrecv.c	2016-05-10 14:06:55.000000000 +0000
++++ pkg-zfs/lib/libzfs/libzfs_sendrecv.c	2016-05-10 14:09:37.154189722 +0000
+@@ -2876,13 +2876,14 @@
+ 		zfs_handle_t *zhp;
+ 
+ 		/*
+-		 * Destination fs exists.  Therefore this should either
++		 * Destination fs exists (and we have not been asked to
++		 * skip existing snapshots). Therefore this should either
+ 		 * be an incremental, or the stream specifies a new fs
+ 		 * (full stream or clone) and they want us to blow it
+ 		 * away (and have therefore specified -F and removed any
+ 		 * snapshots).
+ 		 */
+-		if (stream_wantsnewfs) {
++		if (stream_wantsnewfs && !flags->skip) {
+ 			if (!flags->force) {
+ 				zcmd_free_nvlists(&zc);
+ 				zfs_error_aux(hdl, dgettext(TEXT_DOMAIN,
+@@ -2970,6 +2971,17 @@
+ 	zc.zc_begin_record = drr_noswap->drr_u.drr_begin;
+ 	zc.zc_cookie = infd;
+ 	zc.zc_guid = flags->force;
++
++	if (zfs_dataset_exists(hdl, zc.zc_value, ZFS_TYPE_SNAPSHOT) &&
++	    flags->skip) {
++		(void) printf("skipping snapshot %s - %s already exists\n",
++				drrb->drr_toname, zc.zc_value);
++		(void) fflush(stdout);
++
++		zcmd_free_nvlists(&zc);
++		return (recv_skip(hdl, infd, flags->byteswap));
++	}
++
+ 	if (flags->verbose) {
+ 		(void) printf("%s %s stream of %s into %s\n",
+ 		    flags->dryrun ? "would receive" : "receiving",
+Index: pkg-zfs/man/man8/zfs.8
+===================================================================
+--- pkg-zfs.orig/man/man8/zfs.8	2016-05-10 14:07:07.000000000 +0000
++++ pkg-zfs/man/man8/zfs.8	2016-05-10 14:08:44.066857120 +0000
+@@ -184,12 +184,12 @@
+ 
+ .LP
+ .nf
+-\fBzfs\fR \fBreceive\fR [\fB-vnFu\fR] [\fB-o origin\fR=\fIsnapshot\fR] \fIfilesystem\fR|\fIvolume\fR|\fIsnapshot\fR
++\fBzfs\fR \fBreceive\fR [\fB-vnFus\fR] [\fB-o origin\fR=\fIsnapshot\fR] \fIfilesystem\fR|\fIvolume\fR|\fIsnapshot\fR
+ .fi
+ 
+ .LP
+ .nf
+-\fBzfs\fR \fBreceive\fR [\fB-vnFu\fR] [\fB-d\fR|\fB-e\fR] [\fB-o origin\fR=\fIsnapshot\fR] \fIfilesystem\fR
++\fBzfs\fR \fBreceive\fR [\fB-vnFus\fR] [\fB-d\fR|\fB-e\fR] [\fB-o origin\fR=\fIsnapshot\fR] \fIfilesystem\fR
+ .fi
+ 
+ .LP
+@@ -3358,11 +3358,11 @@
+ .ne 2
+ .mk
+ .na
+-\fB\fBzfs receive\fR [\fB-vnFu\fR] [\fB-o origin\fR=\fIsnapshot\fR] \fIfilesystem\fR|\fIvolume\fR|\fIsnapshot\fR\fR
++\fB\fBzfs receive\fR [\fB-vnFus\fR] [\fB-o origin\fR=\fIsnapshot\fR] \fIfilesystem\fR|\fIvolume\fR|\fIsnapshot\fR\fR
+ .ad
+ .br
+ .na
+-\fB\fBzfs receive\fR [\fB-vnFu\fR] [\fB-d\fR|\fB-e\fR] [\fB-o origin\fR=\fIsnapshot\fR] \fIfilesystem\fR\fR
++\fB\fBzfs receive\fR [\fB-vnFus\fR] [\fB-d\fR|\fB-e\fR] [\fB-o origin\fR=\fIsnapshot\fR] \fIfilesystem\fR\fR
+ .ad
+ .sp .6
+ .RS 4n
+@@ -3452,6 +3452,33 @@
+ Force a rollback of the file system to the most recent snapshot before performing the receive operation. If receiving an incremental replication stream (for example, one generated by \fBzfs send -R -[iI]\fR), destroy snapshots and file systems that do not exist on the sending side.
+ .RE
+ 
++.sp
++.ne 2
++.na
++\fB\fB-e\fR\fR
++.ad
++.sp .6
++.RS 4n
++Generate a more compact stream by using WRITE_EMBEDDED records for blocks
++which are stored more compactly on disk by the \fBembedded_data\fR pool
++feature.  This flag has no effect if the \fBembedded_data\fR feature is
++disabled.  The receiving system must have the \fBembedded_data\fR feature
++enabled.  If the \fBlz4_compress\fR feature is active on the sending system,
++then the receiving system must have that feature enabled as well. See
++\fBzpool-features\fR(5) for details on ZFS feature flags and the
++\fBembedded_data\fR feature.
++.RE
++
++.sp
++.ne 2
++.mk
++.na
++\fB\fB-s\fR\fR
++.ad
++.sp .6
++.RS 4n
++Skip existing snapshots in a stream.
++.RE
+ .RE
+ 
+ .sp

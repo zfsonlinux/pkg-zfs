@@ -1,0 +1,13 @@
+0002-Prevent-manual-builds-in-the-DKMS-source.patch
+0005-Remove-userland-dist-rules.patch
+libzfs-dependencies
+PR1099.patch
+PR1476.patch
+#PR1867.patch
+PR2668.patch
+PR2790.patch
+PR3238.patch
+PR3465.patch
+PR3559.patch
+PR3560.patch
+PR3884.patch

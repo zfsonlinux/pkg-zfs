@@ -1,0 +1,547 @@
+commit c07cfb251ecc1853cf55933b24fdc6f0121f1ecd
+Author: Turbo Fredriksson <turbo@bayour.com>
+Date:   Mon Jul 6 00:24:11 2015 +0200
+
+    Add functionality that exists in initramfs to dracut.
+    
+    * Support 'zfs:<rootfs>' import and mounting.
+      This was for some reason removed in eda3d4e1de94cd3a9247bb90a64413a89e736847.
+    * Support booting from snapshots.
+    * Support mounting recursive filesystems.
+    * Support mounting of additional filesystems.
+    * Support mounting nativly encrypted filesystems.
+    
+    Signed-off-by: Turbo Fredriksson <turbo@bayour.com>
+
+commit 74b0807329dd4ad402cc9953fcb0e5d7274e9d20
+Author: Turbo Fredriksson <turbo@bayour.com>
+Date:   Tue Jul 7 21:59:06 2015 +0200
+
+    Only build the dracut package if /usr/lib/dracut exists.
+    
+    Signed-off-by: Turbo Fredriksson <turbo@bayour.com>
+
+commit fde5e515273d2dd657a9a670cad785345d0464bc
+Author: Turbo Fredriksson <turbo@bayour.com>
+Date:   Mon Jul 6 00:07:23 2015 +0200
+
+    Refactoring of common code between the SYSV init, initramfs and dracut scripts.
+    
+    Move code from the dracut scripts that is better served in a common code base
+    library (zfs-functions).
+    
+    Signed-off-by: Turbo Fredriksson <turbo@bayour.com>
+
+Index: pkg-zfs/config/zfs-build.m4
+===================================================================
+--- pkg-zfs.orig/config/zfs-build.m4	2016-05-10 13:42:50.000000000 +0000
++++ pkg-zfs/config/zfs-build.m4	2016-05-10 13:49:39.489246409 +0000
+@@ -143,7 +143,7 @@
+ 	])
+ 
+ 	RPM_DEFINE_COMMON='--define "$(DEBUG_ZFS) 1" --define "$(DEBUG_DMU_TX) 1"'
+-	RPM_DEFINE_UTIL='--define "_dracutdir $(dracutdir)" --define "_udevdir $(udevdir)" --define "_udevruledir $(udevruledir)" --define "_initconfdir $(DEFAULT_INITCONF_DIR)" $(DEFINE_INITRAMFS)'
++	RPM_DEFINE_UTIL='--define "_dracutdir $(dracutdir)" --define "_udevdir $(udevdir)" --define "_udevruledir $(udevruledir)" --define "_initconfdir $(DEFAULT_INITCONF_DIR)" $(DEFINE_INITRAMFS) $(DEFINE_DRACUT)'
+ 	RPM_DEFINE_KMOD='--define "kernels $(LINUX_VERSION)" --define "require_spldir $(SPL)" --define "require_splobj $(SPL_OBJ)" --define "ksrc $(LINUX)" --define "kobj $(LINUX_OBJ)"'
+ 	RPM_DEFINE_DKMS=
+ 
+@@ -342,6 +342,16 @@
+ 		AC_MSG_RESULT([no])
+ 	fi
+ 	AC_SUBST(DEFINE_INITRAMFS)
++
++	AC_MSG_CHECKING([whether dracut is available])
++	if test -d /usr/lib/dracut ; then
++		DEFINE_DRACUT='--define "_dracut 1"'
++		AC_MSG_RESULT([yes])
++	else
++		DEFINE_DRACUT=''
++		AC_MSG_RESULT([no])
++	fi
++	AC_SUBST(DEFINE_DRACUT)
+ ])
+ 
+ dnl #
+Index: pkg-zfs/contrib/dracut/90zfs/Makefile.am
+===================================================================
+--- pkg-zfs.orig/contrib/dracut/90zfs/Makefile.am	2016-05-10 13:42:50.000000000 +0000
++++ pkg-zfs/contrib/dracut/90zfs/Makefile.am	2016-05-10 13:51:26.971895169 +0000
+@@ -1,19 +1,18 @@
++defconfdir = $(DEFAULT_INITCONF_DIR)
+ pkgdracutdir = $(dracutdir)/modules.d/90zfs
+ pkgdracut_SCRIPTS = \
+ 	export-zfs.sh \
+ 	module-setup.sh \
+ 	mount-zfs.sh \
+ 	parse-zfs.sh \
+-	zfs-generator.sh \
+-	zfs-lib.sh
++	zfs-generator.sh
+ 
+ EXTRA_DIST = \
+ 	$(top_srcdir)/contrib/dracut/90zfs/export-zfs.sh.in \
+ 	$(top_srcdir)/contrib/dracut/90zfs/module-setup.sh.in \
+ 	$(top_srcdir)/contrib/dracut/90zfs/mount-zfs.sh.in \
+ 	$(top_srcdir)/contrib/dracut/90zfs/parse-zfs.sh.in \
+-	$(top_srcdir)/contrib/dracut/90zfs/zfs-generator.sh.in \
+-	$(top_srcdir)/contrib/dracut/90zfs/zfs-lib.sh.in
++	$(top_srcdir)/contrib/dracut/90zfs/zfs-generator.sh.in
+ 
+ $(pkgdracut_SCRIPTS):
+ 	-$(SED) -e 's,@bindir\@,$(bindir),g' \
+@@ -22,6 +21,7 @@
+ 		-e 's,@udevruledir\@,$(udevruledir),g' \
+ 		-e 's,@sysconfdir\@,$(sysconfdir),g' \
+ 		-e 's,@systemdunitdir\@,$(systemdunitdir),g' \
++		-e 's,@initconfdir\@,$(defconfdir),g' \
+ 		"$(top_srcdir)/contrib/dracut/90zfs/$@.in" >'$@'
+ 
+ distclean-local::
+Index: pkg-zfs/contrib/dracut/90zfs/export-zfs.sh.in
+===================================================================
+--- pkg-zfs.orig/contrib/dracut/90zfs/export-zfs.sh.in	2016-05-10 13:42:50.000000000 +0000
++++ pkg-zfs/contrib/dracut/90zfs/export-zfs.sh.in	2016-05-10 13:49:39.513246108 +0000
+@@ -12,7 +12,7 @@
+ 	fi
+ 
+ 	info "Exporting ZFS storage pools."
+-	export_all ${opts} || ret=$?
++	export_pools ${opts} || ret=$?
+ 
+ 	if [ "x${final}" != "x" ]; then
+ 		info "zpool list"
+Index: pkg-zfs/contrib/dracut/90zfs/module-setup.sh.in
+===================================================================
+--- pkg-zfs.orig/contrib/dracut/90zfs/module-setup.sh.in	2016-05-10 13:42:50.000000000 +0000
++++ pkg-zfs/contrib/dracut/90zfs/module-setup.sh.in	2016-05-10 13:50:44.140433634 +0000
+@@ -1,12 +1,14 @@
+ #!/bin/sh
+ 
++# Source the common init script
++. @sysconfdir@/zfs/zfs-functions
++
+ check() {
+ 	# We depend on udev-rules being loaded
+ 	[ "${1}" = "-d" ] && return 0
+ 
+ 	# Verify the zfs tool chain
+-	which zpool >/dev/null 2>&1 || return 1
+-	which zfs >/dev/null 2>&1 || return 1
++	zfs_installed || return 1
+ 
+ 	return 0
+ }
+@@ -39,6 +41,8 @@
+ 	dracut_install hostid
+ 	dracut_install awk
+ 	dracut_install head
++	dracut_install sort
++	dracut_install grep
+ 	inst_hook cmdline 95 "${moddir}/parse-zfs.sh"
+ 	if [ -n "$systemdutildir" ] ; then
+ 		inst_script "${moddir}/zfs-generator.sh" "$systemdutildir"/system-generators/dracut-zfs-generator
+@@ -47,7 +51,8 @@
+ 	fi
+ 	inst_hook shutdown 30 "${moddir}/export-zfs.sh"
+ 
+-	inst_simple "${moddir}/zfs-lib.sh" "/lib/dracut-zfs-lib.sh"
++	inst_simple "@sysconfdir@/zfs/zfs-functions" "/lib/dracut-zfs-lib.sh"
++	inst "@initconfdir@/zfs"
+ 	if [ -e @sysconfdir@/zfs/zpool.cache ]; then
+ 		inst @sysconfdir@/zfs/zpool.cache
+ 		type mark_hostonly >/dev/null 2>&1 && mark_hostonly @sysconfdir@/zfs/zpool.cache
+@@ -58,6 +63,10 @@
+ 		type mark_hostonly >/dev/null 2>&1 && mark_hostonly @sysconfdir@/zfs/vdev_id.conf
+ 	fi
+ 
++	for file in /etc/modprobe.d/{zfs,spl}.conf; do
++		[ -e "$file" ] && inst "$file"
++	done
++
+ 	# Synchronize initramfs and system hostid
+ 	AA=`hostid | cut -b 1,2`
+ 	BB=`hostid | cut -b 3,4`
+Index: pkg-zfs/contrib/dracut/90zfs/mount-zfs.sh.in
+===================================================================
+--- pkg-zfs.orig/contrib/dracut/90zfs/mount-zfs.sh.in	2016-05-10 13:42:50.000000000 +0000
++++ pkg-zfs/contrib/dracut/90zfs/mount-zfs.sh.in	2016-05-10 13:49:39.517246057 +0000
+@@ -2,41 +2,70 @@
+ 
+ . /lib/dracut-zfs-lib.sh
+ 
+-ZFS_DATASET=""
+-ZFS_POOL=""
+-
+ case "${root}" in
+ 	zfs:*) ;;
+ 	*) return ;;
+ esac
+ 
++# 'rootmnt' is used in mount_fs() to figure out where to
++# mount the filesystem.
++[ -n "$NEWROOT" ] && rootmnt=${NEWROOT}
++
+ # Delay until all required block devices are present.
+-udevadm settle
++udev_trigger
+ 
+ if [ "${root}" = "zfs:AUTO" ] ; then
+-	ZFS_DATASET="$(find_bootfs)"
+-	if [ $? -ne 0 ] ; then
+-		zpool import -N -a ${ZPOOL_IMPORT_OPTS}
+-		ZFS_DATASET="$(find_bootfs)"
+-		if [ $? -ne 0 ] ; then
+-			warn "ZFS: No bootfs attribute found in importable pools."
+-			export_all || export_all "-f"
++	POOLS=$(get_pools)
++	IFS=";"
+ 
+-			rootok=0
+-			return 1
++	for pool in $POOLS
++	do
++		[ -z "$pool" ] && continue
++		ZFS_BOOTFS=""
++
++		# No 'else' or return below - if there's more pools, we try
++		# them. If not, we'll drop through and go to the end
++		# where we need a reboot because we couldn't find a root fs.
++		if zfs_action "Importing pool ${pool}" import_pool "${pool}"
++		then
++			if find_rootfs "${pool}"; then
++				if recursive_mount_filesystems \
++				    "Using '${ZFS_BOOTFS}' as root." \
++				    "${ZFS_BOOTFS}"
++				then
++					IFS="$OLD_IFS"
++					rootok=1
++					return 0
++				fi
++			fi
+ 		fi
+-	fi
+-	info "ZFS: Using ${ZFS_DATASET} as root."
+-fi
+-
+-ZFS_DATASET="${ZFS_DATASET:-${root#zfs:}}"
+-ZFS_POOL="${ZFS_DATASET%%/*}"
+-
+-if import_pool "${ZFS_POOL}" ; then
+-	info "ZFS: Mounting dataset ${ZFS_DATASET}..."
+-	if mount_dataset "${ZFS_DATASET}" ; then
+-		ROOTFS_MOUNTED=yes
+-		return 0
++	done
++else
++	# Because of the case at the top, it's either 'zfs:AUTO' or
++	# 'zfs:<rootfs>'. Import the pool from rootfs and mount it.
++	root="${root#zfs:}"	# Remove leading 'zfs:'
++	pool="${root%%/*}"	# Remove everything after first slash.
++	ZFS_BOOTFS="${root}"	# For zfs-functions.
++	if zfs_action "Importing pool ${pool}" import_pool "${pool}"; then
++		info "ZFS: Using ${pool} as root pool."
++
++		# Will be overwritten in clone_snap() if we're booting from
++		# a snapshot.
++		ZFS_BOOTFS_ORIG="$ZFS_BOOTFS"
++
++		# Booting from a snapshot? Updates ZFS_BOOTFS_ORIG and ZFS_BOOTFS...
++		echo "${root}" | grep -q '@' && setup_snapshot_booting
++		root="$ZFS_BOOTFS"
++
++		if recursive_mount_filesystems "Using '${root}' as root." \
++		    "${root}"
++		then
++			rootok=1
++			return 0
++		fi
++	else
++		warn "ZFS: Can't import '${pool}'."
++		# Fallthrough
+ 	fi
+ fi
+ 
+Index: pkg-zfs/contrib/dracut/90zfs/zfs-lib.sh.in
+===================================================================
+--- pkg-zfs.orig/contrib/dracut/90zfs/zfs-lib.sh.in	2016-05-10 13:42:50.000000000 +0000
++++ /dev/null	1970-01-01 00:00:00.000000000 +0000
+@@ -1,87 +0,0 @@
+-#!/bin/sh
+-
+-command -v getarg >/dev/null || . /lib/dracut-lib.sh
+-
+-OLDIFS="${IFS}"
+-NEWLINE="
+-"
+-
+-ZPOOL_IMPORT_OPTS=""
+-if getargbool 0 zfs_force -y zfs.force -y zfsforce ; then
+-	warn "ZFS: Will force-import pools if necessary."
+-	ZPOOL_IMPORT_OPTS="${ZPOOL_IMPORT_OPTS} -f"
+-fi
+-
+-# find_bootfs
+-#   returns the first dataset with the bootfs attribute.
+-find_bootfs() {
+-	IFS="${NEWLINE}"
+-	for dataset in $(zpool list -H -o bootfs); do
+-		case "${dataset}" in
+-			"" | "-")
+-				continue
+-				;;
+-			"no pools available")
+-				IFS="${OLDIFS}"
+-				return 1
+-				;;
+-			*)
+-				IFS="${OLDIFS}"
+-				echo "${dataset}"
+-				return 0
+-				;;
+-		esac
+-	done
+-
+-	IFS="${OLDIFS}"
+-	return 1
+-}
+-
+-# import_pool POOL
+-#   imports the given zfs pool if it isn't imported already.
+-import_pool() {
+-	local pool="${1}"
+-
+-	if ! zpool list -H "${pool}" 2>&1 > /dev/null ; then
+-		info "ZFS: Importing pool ${pool}..."
+-		if ! zpool import -N ${ZPOOL_IMPORT_OPTS} "${pool}" ; then
+-			warn "ZFS: Unable to import pool ${pool}"
+-			return 1
+-		fi
+-	fi
+-
+-	return 0
+-}
+-
+-# mount_dataset DATASET
+-#   mounts the given zfs dataset.
+-mount_dataset() {
+-	local dataset="${1}"
+-	local mountpoint="$(zfs get -H -o value mountpoint "${dataset}")"
+-
+-	# We need zfsutil for non-legacy mounts and not for legacy mounts.
+-	if [ "${mountpoint}" = "legacy" ] ; then
+-		mount -t zfs "${dataset}" "${NEWROOT}"
+-	else
+-		mount -o zfsutil -t zfs "${dataset}" "${NEWROOT}"
+-	fi
+-
+-	return $?
+-}
+-
+-# export_all OPTS
+-#   exports all imported zfs pools.
+-export_all() {
+-	local opts="${1}"
+-	local ret=0
+-
+-	IFS="${NEWLINE}"
+-	for pool in `zpool list -H -o name` ; do
+-		if zpool list -H "${pool}" 2>&1 > /dev/null ; then
+-			zpool export "${pool}" ${opts} || ret=$?
+-		fi
+-	done
+-	IFS="${OLDIFS}"
+-
+-	return ${ret}
+-}
+Index: pkg-zfs/contrib/dracut/README.dracut.markdown
+===================================================================
+--- pkg-zfs.orig/contrib/dracut/README.dracut.markdown	2016-05-10 13:42:50.534387668 +0000
++++ pkg-zfs/contrib/dracut/README.dracut.markdown	2016-05-10 13:49:39.521246007 +0000
+@@ -42,6 +42,31 @@
+ * `root=...`: If not set, importable pools are searched for a bootfs
+ attribute.  If an explicitly set root is desired, you may use
+ `root=ZFS:pool/dataset`
++  * It is also possible to boot from a snapshot (technically, a clone of
++    the snapshot) using `root=ZFS:pool/dataset@snapshot`.
++  * If the actual snapshot isn't specified, only the at (@) character,
++    the user will be asked for a snapshot to boot from.
++  * With the extra parameter `rollback=(on,yes,1)`, instead of doing a
++    clone and boot from that, the code will rollback the filesystem up
++    to the snapshot specified.
++  * Even though there is no freely availible native encryption for any
++    opensource ZFS implementation, the hope is that one day have one.
++    This code supports the native encryption that Solaris have, using
++    the `zfs key` option.
++  * Supports both 'native' and 'legacy' filesystems.
++  * Supports 'recursive filesystems'. That is, if the root file system
++    is something like `rpool/ROOT/fedora17`, it is possible to have
++    `rpool/ROOT/fedora17/var`, `rpool/ROOT/fedora17/usr` etc.
++    It is not important that the 'mountpoint' property is set or correct,
++    the 'base filesystem' will be removed from the full path of the filesystem.
++    This means, that with the root fs as `rpool/ROOT/fedora17` and the sub-
++    filesystem as `rpool/ROOT/fedora17/var`, the result would be `/var`,
++    where it will be mounted.
++  * In addition to 'recursive filesystems', it is possible to have other
++    filesystems mounted by setting the ZFS_INITRD_ADDITIONAL_DATASETS variable
++    in /etc/sysconfig/zfs. Here, it is imparative that the 'mountpoint'
++    property is correct for each of these filesystems, since each filesystem
++    will use this to correctly mount it.
+ 
+ * `zfs_force=0`: If set to 1, the initramfs will run `zpool import -f` when
+ attempting to import pools if the required pool isn't automatically imported
+@@ -77,8 +102,6 @@
+ 
+ * `90-zfs.rules`: udev rules which trigger loading of the ZFS modules at boot.
+ 
+-* `zfs-lib.sh`: Utility functions used by the other files.
+-
+ * `parse-zfs.sh`: Run early in the initramfs boot process to parse kernel
+ command line and determine if ZFS is the active root filesystem.
+ 
+@@ -88,7 +111,11 @@
+ * `export-zfs.sh`: Run on shutdown after dracut has restored the initramfs
+ and pivoted to it, allowing for a clean unmount and export of the ZFS root.
+ 
+-`zfs-lib.sh`
++* Many of the scripts uses the file /etc/zfs/zfs-functions (in the source
++  directory, `contrib/shell-common/zfs-functions`) as the utility functions
++  script.
++
++`contrib/shell-common/zfs-functions`
+ ------------
+ 
+ This file provides a few handy functions for working with ZFS. Those
+Index: pkg-zfs/contrib/shell-common/zfs-functions.in
+===================================================================
+--- pkg-zfs.orig/contrib/shell-common/zfs-functions.in	2016-05-10 13:49:22.000000000 +0000
++++ pkg-zfs/contrib/shell-common/zfs-functions.in	2016-05-10 13:49:39.525245957 +0000
+@@ -25,6 +25,9 @@
+ elif [ -f /lib/lsb/init-functions ]; then
+ 	# LSB, Debian GNU/Linux and derivates
+ 	. /lib/lsb/init-functions
++elif [ -f /lib/dracut-lib.sh ]; then
++	# Dracut initrd
++	. /lib/dracut-lib.sh
+ fi
+ 
+ # Of course the functions we need are called differently
+@@ -63,6 +66,12 @@
+ 	zfs_log_failure_msg() { eend "$1"; }
+ #	zfs_log_progress_msg() { echo -n "$1"; }
+ 	zfs_log_progress_msg() { echo -n; }
++elif type info > /dev/null 2>&1 ; then
++	# Dracut functions
++	zfs_log_begin_msg() { info "ZFS: $1"; }
++	zfs_log_end_msg() { echo -n; }
++	zfs_log_failure_msg() { warn "ZFS: $1"; }
++	zfs_log_progress_msg() { echo -n; }
+ else
+ 	# Unknown - simple substitues.
+ 	zfs_log_begin_msg() { echo -n "$1"; }
+@@ -108,6 +117,13 @@
+ 	. @initconfdir@/zfs
+ fi
+ 
++if [ -f /lib/dracut-lib.sh ]; then
++	if getargbool 0 zfs_force -y zfs.force -y zfsforce ; then
++		warn "ZFS: Will force-import pools if necessary."
++		ZPOOL_IMPORT_OPTS="${ZPOOL_IMPORT_OPTS} -f"
++	fi
++fi
++
+ # ----------------------------------------------------
+ 
+ # Run a command, capture STDOUT, STDERR and exit code.
+@@ -1194,6 +1210,23 @@
+ 	return 1
+ }
+ 
++# export_pools [OPTS]
++#   exports all imported zfs pools.
++export_pools() {
++	local opts="${1}"
++	local ret=0
++
++	IFS="${NEWLINE}"
++	for pool in `zpool list -H -o name` ; do
++		if zpool list -H "${pool}" 2>&1 > /dev/null ; then
++			zpool export "${pool}" ${opts} || ret=$?
++		fi
++	done
++	IFS="${OLD_IFS}"
++
++	return ${ret}
++}
++
+ # If plymouth is availible, hide the splash image.
+ disable_plymouth()
+ {
+Index: pkg-zfs/rpm/generic/zfs.spec.in
+===================================================================
+--- pkg-zfs.orig/rpm/generic/zfs.spec.in	2016-05-10 13:42:50.000000000 +0000
++++ pkg-zfs/rpm/generic/zfs.spec.in	2016-05-10 13:49:39.545245705 +0000
+@@ -19,13 +19,19 @@
+ %endif
+ %endif
+ 
++%if 0%{?_dracut}
+ # Set the default dracut directory based on distribution.
+ %if %{undefined _dracutdir}
+ %if 0%{?fedora} >= 17 || 0%{?rhel} >= 7 || 0%{?centos} >= 7
+-%global _dracutdir  %{_prefix}/lib/dracut
++%global _dracutopt  --with-dracutdir=%{_prefix}/lib/dracut
+ %else
+-%global _dracutdir  %{_prefix}/share/dracut
++%global _dracutopt  --with-dracutdir=%{_prefix}/share/dracut
+ %endif
++%else
++%global _dracutopt  --with-dracutdir=%{_dracutdir}
++%endif
++%else
++%global _dracutopt ''
+ %endif
+ 
+ # Set the default _initconfdir when undefined.
+@@ -177,15 +183,18 @@
+ This package contains test infrastructure and support scripts for
+ validating the file system.
+ 
++%if 0%{?_dracut}
+ %package dracut
+ Summary:        Dracut module
+ Group:          System Environment/Kernel
+ Requires:       %{name}%{?_isa} = %{version}-%{release}
++Requires:       %{name} = %{version}-%{release}
+ Requires:       dracut
+ 
+ %description dracut
+ This package contains a dracut module used to construct an initramfs
+ image which is ZFS aware.
++%endif
+ 
+ %if 0%{?_initramfs}
+ %package initramfs
+@@ -219,8 +228,8 @@
+     --with-config=user \
+     --with-udevdir=%{_udevdir} \
+     --with-udevruledir=%{_udevruledir} \
+-    --with-dracutdir=%{_dracutdir} \
+     --disable-static \
++    %{_dracutopt} \
+     %{debug} \
+     %{systemd}
+ make %{?_smp_mflags}
+@@ -304,9 +313,13 @@
+ %files test
+ %{_datadir}/%{name}
+ 
++%if 0%{?_dracut}
+ %files dracut
+ %doc contrib/dracut/README.dracut.markdown
+ %{_dracutdir}/modules.d/*
++%else
++%exclude %{_dracutdir}
++%endif
+ 
+ %if 0%{?_initramfs}
+ %files initramfs
