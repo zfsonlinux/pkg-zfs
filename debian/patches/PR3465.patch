@@ -1,0 +1,166 @@
+commit 2d6ae3bd48bea80114f13374c8f038330ef87834
+Author: Turbo Fredriksson <turbo@bayour.com>
+Date:   Tue Jun 2 18:52:39 2015 +0200
+
+    Allow for '-o feature@<feature>=disable' on the command line.
+    
+    Sometimes it is desired to specifically disable or enable a feature
+    directly on the 'zpool create' command line.
+    
+    If a disable have been specified, the default for all not mentioned
+    features is 'enabled'.
+    
+    If a enable have been specified, the default for all the not mentioned
+    features is 'disabled'.
+    
+    Signed-off-by: Turbo Fredriksson turbo@bayour.com
+    Closes #3460
+
+Index: pkg-zfs/cmd/zpool/zpool_main.c
+===================================================================
+--- pkg-zfs.orig/cmd/zpool/zpool_main.c	2016-05-07 19:52:01.362499338 +0000
++++ pkg-zfs/cmd/zpool/zpool_main.c	2016-05-07 19:55:22.823966625 +0000
+@@ -501,6 +501,96 @@
+ 	return (add_prop_list(propname, propval, props, B_TRUE));
+ }
+ 
++static boolean_t
++setup_prop_list(const char *propname, char *propval, nvlist_t **props,
++    int call)
++{
++	spa_feature_t i;
++	char *prop;
++
++	/* String WITHOUT the 'feature@' part */
++	char *res = strstr(propname, "@") + 1;
++
++	if ((strcmp(propval, "disable") == 0 ||
++	    strcmp(propval, "disabled") == 0)) {
++		/*
++		 * Because we've choosen to disable (a) feature(s) we first
++		 * need to make sure we enable ALL features...
++		 * I.e. default=enabled
++		 */
++		if (call == 0) {
++			for (i = 0; i < SPA_FEATURES; i++) {
++				/* String WITH the 'feature@' part */
++				prop = safe_malloc(
++				    strlen(spa_feature_table[i].fi_uname)
++				    + 9);
++
++				strcpy(prop, "feature@");
++				strcat(prop, spa_feature_table[i].fi_uname);
++				prop[strlen(prop)] = '\0';
++
++				if (!nvlist_exists(*props,
++				    spa_feature_table[i].fi_uname) ||
++				    !nvlist_exists(*props, prop)) {
++					if (add_prop_list(prop,
++					    ZFS_FEATURE_ENABLED, props,
++					    B_TRUE))
++						return (B_TRUE);
++				}
++			}
++		}
++
++
++		/*
++		 * ... then we disable all BUT the one(s) we choosed to
++		 * disable.
++		 */
++		for (i = 0; i < SPA_FEATURES; i++) {
++			/* String WITH the 'feature@' part */
++			prop = safe_malloc(
++			    strlen(spa_feature_table[i].fi_uname) + 9);
++
++			strcpy(prop, "feature@");
++			strcat(prop, spa_feature_table[i].fi_uname);
++			prop[strlen(prop)] = '\0';
++
++			if (strcmp(prop, propname) == 0)
++				(void) nvlist_remove_all(*props, prop);
++		}
++	} else if ((strcmp(propval, "enable") == 0 ||
++		    strcmp(propval, "enabled") == 0)) {
++		/*
++		 * Because we've choosen to enable (a) feature(s) we first
++		 * need to make sure we disable ALL features, then we enable
++		 * only the one(s) we've choosed to enable.
++		 *
++		 * I.e. default=disabled
++		 */
++		for (i = 0; i < SPA_FEATURES; i++) {
++			/* String WITH the 'feature@' part */
++			char *prop = safe_malloc(
++			    strlen(spa_feature_table[i].fi_uname) + 9);
++
++			strcpy(prop, "feature@");
++			strcat(prop, spa_feature_table[i].fi_uname);
++			prop[strlen(prop)] = '\0';
++
++			if (!nvlist_exists(*props,
++			    spa_feature_table[i].fi_uname) ||
++			    !nvlist_exists(*props, prop))
++				(void) nvlist_remove_all(*props, prop);
++
++			if (strcmp(spa_feature_table[i].fi_uname, res) == 0) {
++				if (add_prop_list(prop, ZFS_FEATURE_ENABLED,
++				    props, B_TRUE))
++					return (B_TRUE);
++			}
++		}
++	}
++
++	return (B_FALSE);
++}
++
+ /*
+  * zpool add [-fgLnP] [-o property=value] <pool> <vdev> ...
+  *
+@@ -861,7 +951,7 @@
+ 	nvlist_t *nvroot = NULL;
+ 	char *poolname;
+ 	char *tname = NULL;
+-	int ret = 1;
++	int ret = 1, call = 0;
+ 	char *altroot = NULL;
+ 	char *mountpoint = NULL;
+ 	nvlist_t *fsprops = NULL;
+@@ -902,7 +992,15 @@
+ 			*propval = '\0';
+ 			propval++;
+ 
+-			if (add_prop_list(optarg, propval, &props, B_TRUE))
++			if (zpool_prop_feature(optarg)) {
++				if (setup_prop_list(optarg, propval, &props,
++				    call))
++					goto errout;
++				else
++					enable_all_pool_feat = B_FALSE;
++				call++;
++			} else if (add_prop_list(optarg, propval, &props,
++			    B_TRUE))
+ 				goto errout;
+ 
+ 			/*
+Index: pkg-zfs/configure.ac
+===================================================================
+--- pkg-zfs.orig/configure.ac	2016-05-07 19:52:01.362499338 +0000
++++ pkg-zfs/configure.ac	2016-05-07 19:55:22.823966625 +0000
+@@ -61,7 +61,6 @@
+ 	udev/Makefile
+ 	udev/rules.d/Makefile
+ 	etc/Makefile
+-	etc/init.d/Makefile
+ 	etc/zfs/Makefile
+ 	etc/systemd/Makefile
+ 	etc/systemd/system/Makefile
+@@ -117,6 +116,8 @@
+ 	contrib/dracut/02zfsexpandknowledge/Makefile
+ 	contrib/dracut/90zfs/Makefile
+ 	contrib/initramfs/Makefile
++	contrib/sysv-init/Makefile
++	contrib/shell-common/Makefile
+ 	module/Makefile
+ 	module/avl/Makefile
+ 	module/nvpair/Makefile

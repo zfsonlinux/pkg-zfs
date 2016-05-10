@@ -1,0 +1,350 @@
+commit 128b319bd2583bbfee908e2a3535b1702def9383
+Author: Steven Hartland <steven.hartland@multiplay.co.uk>
+Date:   Thu Nov 14 09:37:37 2013 -0800
+
+    Adds support for property overrides (WIP)
+    
+    Adds support for property overrides (-o property=value), property
+    excludes (-x property) and dataset limits (-l <volume|filesystem>)
+    to zfs receive.
+    
+    Both -o and -x options mirror the functionality already available
+    in Oracle's ZFS implementation which is also mentioned in the
+    upstream feature request #2745:
+    
+    The -l option allows receive to be limited to specific datasets within
+    the stream effectively allowing partial restores from a multi dataset
+    stream.
+    
+    References:
+      https://www.illumos.org/issues/2745
+    
+    Ported-by: Milan-Benes
+    Issue #1350
+    
+    NOTES: Man page updates missing and must be added, see patch:
+    http://blog.multiplay.co.uk/dropzone/freebsd/zfs-recv-properties.patch
+
+Index: pkg-zfs/cmd/zfs/zfs_main.c
+===================================================================
+--- pkg-zfs.orig/cmd/zfs/zfs_main.c	2016-05-07 19:12:30.000000000 +0000
++++ pkg-zfs/cmd/zfs/zfs_main.c	2016-05-07 19:24:39.499140356 +0000
+@@ -248,10 +248,9 @@
+ 	case HELP_PROMOTE:
+ 		return (gettext("\tpromote <clone-filesystem>\n"));
+ 	case HELP_RECEIVE:
+-		return (gettext("\treceive [-vnFu] <filesystem|volume|"
+-		    "snapshot>\n"
+-		    "\treceive [-vnFu] [-o origin=<snapshot>] [-d | -e] "
+-		    "<filesystem>\n"));
++		return (gettext("\treceive [-vnFu] [-d | -e] [-z <property>] "
++		    "[-o origin=<snapshot>] "
++		    "<filesystem|volume|snapshot>\n"));
+ 	case HELP_RENAME:
+ 		return (gettext("\trename [-f] <filesystem|volume|snapshot> "
+ 		    "<filesystem|volume|snapshot>\n"
+@@ -485,6 +484,21 @@
+  * Modifies the argument inplace.
+  */
+ static int
++parsepropname(nvlist_t *props)
++{
++	char *propname = optarg;
++
++	if (nvlist_lookup_string(props, propname, NULL) == 0) {
++		(void) fprintf(stderr, gettext("property '%s' "
++		    "specified multiple times\n"), propname);
++		return (-1);
++	}
++	if (nvlist_add_boolean(props, propname))
++		nomem();
++	return (0);
++}
++
++static int
+ parseprop(nvlist_t *props, char *propname)
+ {
+ 	char *propval, *strval;
+@@ -3889,13 +3903,15 @@
+ }
+ 
+ /*
+- * zfs receive [-vnFu] [-d | -e] <fs@snap>
++ * zfs receive [-vnFu] [-d | -e] [-l <volume|filesystem>] ...
++ * [-z property=value] ... [-x property] ... <volume|filesytem|snapshot>
+  *
+  * Restore a backup stream from stdin.
+  */
+ static int
+ zfs_do_receive(int argc, char **argv)
+ {
++	nvlist_t *props, *limitds;
+ 	int c, err;
+ 	recvflags_t flags = { 0 };
+ 	nvlist_t *props;
+@@ -3903,9 +3919,11 @@
+ 
+ 	if (nvlist_alloc(&props, NV_UNIQUE_NAME, 0) != 0)
+ 		nomem();
++	if (nvlist_alloc(&limitds, NV_UNIQUE_NAME, 0) != 0)
++		nomem();
+ 
+ 	/* check options */
+-	while ((c = getopt(argc, argv, ":o:denuvF")) != -1) {
++	while ((c = getopt(argc, argv, ":o:denuvFl:xz:")) != -1) {
+ 		switch (c) {
+ 		case 'o':
+ 			if (parseprop(props, optarg) != 0)
+@@ -3918,6 +3936,12 @@
+ 			flags.isprefix = B_TRUE;
+ 			flags.istail = B_TRUE;
+ 			break;
++		case 'l':
++			if (parsepropname(limitds)) {
++				err = 1;
++				goto recverror;
++			}
++			break;
+ 		case 'n':
+ 			flags.dryrun = B_TRUE;
+ 			break;
+@@ -3927,6 +3951,17 @@
+ 		case 'v':
+ 			flags.verbose = B_TRUE;
+ 			break;
++		case 'x':
++			if (parsepropname(props)) {
++				err = 1;
++				goto recverror;
++			}
++		case 'z':
++			if (parseprop(props)) {
++				err = 1;
++				goto recverror;
++			}
++			break;
+ 		case 'F':
+ 			flags.force = B_TRUE;
+ 			break;
+@@ -3970,7 +4005,24 @@
+ 		return (1);
+ 	}
+ 
+-	err = zfs_receive(g_zfs, argv[0], props, &flags, STDIN_FILENO, NULL);
++	if (nvlist_empty(props)) {
++		nvlist_free(props);
++		props = NULL;
++	}
++
++	if (nvlist_empty(limitds)) {
++		nvlist_free(limitds);
++		limitds = NULL;
++	}
++
++	err = zfs_receive(g_zfs, argv[0], &flags, STDIN_FILENO, props, limitds, NULL);
++
++recverror:
++	if (props != NULL)
++		nvlist_free(props);
++
++	if (limitds != NULL)
++		nvlist_free(limitds);
+ 
+ 	return (err != 0);
+ }
+Index: pkg-zfs/include/libzfs_impl.h
+===================================================================
+--- pkg-zfs.orig/include/libzfs_impl.h	2016-05-07 19:12:30.000000000 +0000
++++ pkg-zfs/include/libzfs_impl.h	2016-05-07 19:12:43.496141733 +0000
+@@ -184,6 +184,8 @@
+ 
+ void remove_mountpoint(zfs_handle_t *);
+ int create_parents(libzfs_handle_t *, char *, int);
++int check_parents(libzfs_handle_t *hdl, const char *path, uint64_t *zoned,
++    boolean_t accept_ancestor, int *prefixlen);
+ boolean_t isa_child_of(const char *dataset, const char *parent);
+ 
+ zfs_handle_t *make_dataset_handle(libzfs_handle_t *, const char *);
+Index: pkg-zfs/lib/libzfs/libzfs_dataset.c
+===================================================================
+--- pkg-zfs.orig/lib/libzfs/libzfs_dataset.c	2016-05-07 19:12:30.000000000 +0000
++++ pkg-zfs/lib/libzfs/libzfs_dataset.c	2016-05-07 19:12:43.556140978 +0000
+@@ -3004,7 +3004,7 @@
+  * 'zoned' property, which is used to validate property settings when creating
+  * new datasets.
+  */
+-static int
++int
+ check_parents(libzfs_handle_t *hdl, const char *path, uint64_t *zoned,
+     boolean_t accept_ancestor, int *prefixlen)
+ {
+Index: pkg-zfs/lib/libzfs/libzfs_sendrecv.c
+===================================================================
+--- pkg-zfs.orig/lib/libzfs/libzfs_sendrecv.c	2016-05-07 18:06:34.000000000 +0000
++++ pkg-zfs/lib/libzfs/libzfs_sendrecv.c	2016-05-07 19:12:43.580140677 +0000
+@@ -2047,7 +2047,7 @@
+ static int
+ recv_incremental_replication(libzfs_handle_t *hdl, const char *tofs,
+     recvflags_t *flags, nvlist_t *stream_nv, avl_tree_t *stream_avl,
+-    nvlist_t *renamed)
++    nvlist_t *renamed, nvlist_t *limitds)
+ {
+ 	nvlist_t *local_nv, *deleted = NULL;
+ 	avl_tree_t *local_avl;
+@@ -2099,6 +2099,12 @@
+ 		    &parent_fromsnap_guid));
+ 		(void) nvlist_lookup_uint64(nvfs, "origin", &originguid);
+ 
++		if (limitds && !nvlist_exists(limitds, fsname)) {
++			if (flags->verbose)
++				(void) printf("skipping replication of %s\n", fsname);
++			continue;
++		}
++
+ 		/*
+ 		 * First find the stream's fs, so we can check for
+ 		 * a different origin (due to "zfs promote")
+@@ -2358,8 +2364,9 @@
+ 
+ static int
+ zfs_receive_package(libzfs_handle_t *hdl, int fd, const char *destname,
+-    recvflags_t *flags, dmu_replay_record_t *drr, zio_cksum_t *zc,
+-    char **top_zfs, int cleanup_fd, uint64_t *action_handlep)
++    recvflags_t *flags, nvlist_t *props, nvlist_t *limitds,
++    dmu_replay_record_t *drr, zio_cksum_t *zc, char **top_zfs, int cleanup_fd,
++    uint64_t *action_handlep)
+ {
+ 	nvlist_t *stream_nv = NULL;
+ 	avl_tree_t *stream_avl = NULL;
+@@ -2479,7 +2486,7 @@
+ 			}
+ 
+ 			softerr = recv_incremental_replication(hdl, tofs, flags,
+-			    stream_nv, stream_avl, renamed);
++			    stream_nv, stream_avl, renamed, limitds);
+ 
+ 			/* Unmount renamed filesystems before receiving. */
+ 			while ((pair = nvlist_next_nvpair(renamed,
+@@ -2540,7 +2547,7 @@
+ 		 * renames again.
+ 		 */
+ 		softerr = recv_incremental_replication(hdl, tofs, flags,
+-		    stream_nv, stream_avl, NULL);
++		    stream_nv, stream_avl, NULL, limitds);
+ 	}
+ 
+ out:
+@@ -2674,8 +2681,10 @@
+ 	uint64_t parent_snapguid = 0;
+ 	prop_changelist_t *clp = NULL;
+ 	nvlist_t *snapprops_nvlist = NULL;
++	nvlist_t *props = NULL;
++	nvlist_t *nprops = NULL;
+ 	zprop_errflags_t prop_errflags;
+-	boolean_t recursive;
++	boolean_t recursive, has_exprops;
+ 
+ 	begin_time = time(NULL);
+ 
+@@ -2687,10 +2696,9 @@
+ 
+ 	if (stream_avl != NULL) {
+ 		char *snapname;
++		nvlist_t *snapprops;
+ 		nvlist_t *fs = fsavl_find(stream_avl, drrb->drr_toguid,
+ 		    &snapname);
+-		nvlist_t *props;
+-		int ret;
+ 
+ 		(void) nvlist_lookup_uint64(fs, "parentfromsnap",
+ 		    &parent_snapguid);
+@@ -2702,11 +2710,15 @@
+ 			VERIFY(0 == nvlist_add_uint64(props,
+ 			    zfs_prop_to_name(ZFS_PROP_CANMOUNT), 0));
+ 		}
+-		ret = zcmd_write_src_nvlist(hdl, &zc, props);
+-		if (err)
++
++		if (err) {
+ 			nvlist_free(props);
+-		if (ret != 0)
+-			return (-1);
++			props = NULL;
++		}
++		if (0 == nvlist_lookup_nvlist(fs, "snapprops", &snapprops)) {
++			VERIFY(0 == nvlist_lookup_nvlist(snapprops,
++			    snapname, &snapprops_nvlist));
++		}
+ 	}
+ 
+ 	cp = NULL;
+@@ -2872,6 +2884,11 @@
+ 	(void) strcpy(zc.zc_name, zc.zc_value);
+ 	*strchr(zc.zc_name, '@') = '\0';
+ 
++	(void) strcpy(dsname, drrb->drr_toname);
++	*strchr(dsname, '@') = '\0';
++
++	has_exprops = !nvlist_empty(exprops);
++
+ 	if (zfs_dataset_exists(hdl, zc.zc_name, ZFS_TYPE_DATASET)) {
+ 		zfs_handle_t *zhp;
+ 
+@@ -2965,20 +2982,39 @@
+ 		}
+ 
+ 		newfs = B_TRUE;
++		if (has_exprops) {
++			/* Create an override set of properties if needed */
++			uint64_t zoned = 0;
++			if (flags->isprefix && !flags->istail && !flags->dryrun) {
++				/* Check if we're zoned or not */
++				if (check_parents(hdl, zc.zc_value, &zoned, B_FALSE, NULL) != 0) {
++					zcmd_free_nvlists(&zc);
++					return (-1);
++				}
++			}
++
++			if (props_override(dsname, props, exprops, &nprops, flags,
++			    hdl, ZFS_TYPE_DATASET, zoned, NULL, errbuf) != 0) {
++				zcmd_free_nvlists(&zc);
++				return (-1);
++			}
++		}
+ 	}
+ 
+ 	zc.zc_begin_record = drr_noswap->drr_u.drr_begin;
+ 	zc.zc_cookie = infd;
+ 	zc.zc_guid = flags->force;
++	skip = limitds && !nvlist_exists(limitds, dsname);
+ 	if (flags->verbose) {
+ 		(void) printf("%s %s stream of %s into %s\n",
+-		    flags->dryrun ? "would receive" : "receiving",
++		    skip ? (flags->dryrun ? "would skip" : "skipping") :
++		    (flags->dryrun ? "would receive" : "receiving"),
+ 		    drrb->drr_fromguid ? "incremental" : "full",
+ 		    drrb->drr_toname, zc.zc_value);
+ 		(void) fflush(stdout);
+ 	}
+ 
+-	if (flags->dryrun) {
++	if (flags->dryrun || skip) {
+ 		zcmd_free_nvlists(&zc);
+ 		return (recv_skip(hdl, infd, flags->byteswap));
+ 	}
+@@ -2988,6 +3024,15 @@
+ 	zc.zc_cleanup_fd = cleanup_fd;
+ 	zc.zc_action_handle = *action_handlep;
+ 
++	if (nprops) {
++		if (zcmd_write_src_nvlist(hdl, &zc, nprops) != 0) {
++			nvlist_free(nprops);
++			return (-1);
++		}
++		nvlist_free(nprops);
++	} else if (props && zcmd_write_src_nvlist(hdl, &zc, props) != 0)
++		return (-1);
++
+ 	err = ioctl_err = zfs_ioctl(hdl, ZFS_IOC_RECV, &zc);
+ 	ioctl_errno = errno;
+ 	prop_errflags = (zprop_errflags_t)zc.zc_obj;

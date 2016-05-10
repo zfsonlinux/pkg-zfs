@@ -1,0 +1,10 @@
+Index: pkg-zfs/contrib/dracut/02zfsexpandknowledge/module-setup.sh.in
+===================================================================
+--- pkg-zfs.orig/contrib/dracut/02zfsexpandknowledge/module-setup.sh.in
++++ pkg-zfs/contrib/dracut/02zfsexpandknowledge/module-setup.sh.in
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ 
+ get_devtype() {
+   local typ
