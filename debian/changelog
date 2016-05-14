@@ -1,3 +1,44 @@
+zfs-linux (0.6.5.7-1~trusty) trusty; urgency=low
+
+  [ Gordan Bobic ]
+  * Fix aarch64 compilation
+
+  [ Brian Behlendorf ]
+  * Fix user namespaces uid/gid mapping
+
+  [ Chunwei Chen ]
+  * Linux 4.5 compat: Use xattr_handler->name for acl
+
+  [ Ned Bass ]
+  * Fix ZPL miswrite of default POSIX ACL
+
+  [ Brian Behlendorf ]
+  * Create unique partition labels
+
+  [ Colin Ian King ]
+  * Fix inverted logic on none elevator comparison
+
+  [ Brian Behlendorf ]
+  * Linux 4.6 compat: PAGE_CACHE_SIZE removal
+
+  [ Colin Ian King ]
+  * Add support 32 bit FS_IOC32_{GET|SET}FLAGS compat ioctls
+
+  [ Chunwei Chen ]
+  * Remove wrong ASSERT in annotate_ecksum
+
+  [ Brian Behlendorf ]
+  * Fix 'zpool import' blkid device names
+  * Use udev for partition detection
+
+  [ Tim Chase ]
+  * Enable PF_FSTRANS for ioctl secpolicy callbacks (#4571)
+
+  [ Ned Bass ]
+  * Prepare to tag zfs-0.6.5.7
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 13 May 2016 21:19:04 -0400
+
 zfs-linux (0.6.5.6-1~trusty) trusty; urgency=low
 
   [ Paul Dagnelie ]
