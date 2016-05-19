@@ -4,11 +4,11 @@ Date:   Mon Mar 30 18:05:19 2015 +0000
 
     Allow "zfs unshare <proto> -a" much like "zfs share <proto> -a".
 
-Index: pkg-zfs/cmd/zfs/zfs_main.c
+Index: wheezy/cmd/zfs/zfs_main.c
 ===================================================================
---- pkg-zfs.orig/cmd/zfs/zfs_main.c	2016-03-29 17:37:22.333547866 +0200
-+++ pkg-zfs/cmd/zfs/zfs_main.c	2016-03-29 17:41:41.677541626 +0200
-@@ -6282,7 +6282,7 @@
+--- wheezy.orig/cmd/zfs/zfs_main.c	2016-05-19 10:03:07.792475452 +0000
++++ wheezy/cmd/zfs/zfs_main.c	2016-05-19 10:03:07.880474346 +0000
+@@ -6262,7 +6262,7 @@
  			(void) fprintf(stderr, gettext("cannot unshare '%s': "
  			    "not currently shared\n"), path);
  		} else {
@@ -17,7 +17,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  		}
  	} else {
  		char mtpt_prop[ZFS_MAXPROPLEN];
-@@ -6324,7 +6324,7 @@
+@@ -6304,7 +6304,7 @@
  	char sharesmb[ZFS_MAXPROPLEN];
  
  	/* check options */
@@ -26,7 +26,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  		switch (c) {
  		case 'a':
  			do_all = 1;
-@@ -6332,6 +6332,11 @@
+@@ -6312,6 +6312,11 @@
  		case 'f':
  			flags = MS_FORCE;
  			break;
@@ -38,7 +38,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  		case '?':
  			(void) fprintf(stderr, gettext("invalid option '%c'\n"),
  			    optopt);
-@@ -6363,6 +6368,19 @@
+@@ -6343,6 +6348,19 @@
  		unshare_unmount_node_t *node;
  		uu_avl_index_t idx;
  		uu_avl_walk_t *walk;
@@ -58,7 +58,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  
  		if (argc != 0) {
  			(void) fprintf(stderr, gettext("too many arguments\n"));
-@@ -6459,7 +6477,7 @@
+@@ -6439,7 +6457,7 @@
  			switch (op) {
  			case OP_SHARE:
  				if (zfs_unshareall_bypath(node->un_zhp,
@@ -67,11 +67,11 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  					ret = 1;
  				break;
  
-Index: pkg-zfs/include/libzfs.h
+Index: wheezy/include/libzfs.h
 ===================================================================
---- pkg-zfs.orig/include/libzfs.h	2016-03-29 17:37:22.333547866 +0200
-+++ pkg-zfs/include/libzfs.h	2016-03-29 17:42:13.297540865 +0200
-@@ -750,7 +750,7 @@
+--- wheezy.orig/include/libzfs.h	2016-05-19 10:03:07.792475452 +0000
++++ wheezy/include/libzfs.h	2016-05-19 10:03:07.884474296 +0000
+@@ -752,7 +752,7 @@
  extern int zfs_unshareall_nfs(zfs_handle_t *);
  extern int zfs_unshareall_smb(zfs_handle_t *);
  extern int zfs_unshareall_iscsi(zfs_handle_t *);
@@ -80,11 +80,11 @@ Index: pkg-zfs/include/libzfs.h
  extern int zfs_unshareall(zfs_handle_t *);
  extern int zfs_deleg_share_nfs(libzfs_handle_t *, char *, char *, char *,
      void *, void *, int, zfs_share_op_t);
-Index: pkg-zfs/lib/libzfs/libzfs_mount.c
+Index: wheezy/lib/libzfs/libzfs_mount.c
 ===================================================================
---- pkg-zfs.orig/lib/libzfs/libzfs_mount.c	2016-03-29 17:37:22.245547868 +0200
-+++ pkg-zfs/lib/libzfs/libzfs_mount.c	2016-03-29 17:41:41.681541626 +0200
-@@ -1037,9 +1037,21 @@
+--- wheezy.orig/lib/libzfs/libzfs_mount.c	2016-05-19 10:03:07.680476860 +0000
++++ wheezy/lib/libzfs/libzfs_mount.c	2016-05-19 10:03:07.884474296 +0000
+@@ -1048,9 +1048,21 @@
  }
  
  int

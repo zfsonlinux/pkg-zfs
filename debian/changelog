@@ -1,3 +1,9 @@
+zfs-linux (0.6.5.990-281-gbc2d809-wheezy-daily) wheezy-daily; urgency=low
+
+  * New daily release - bc2d809.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Thu, 19 May 2016 01:34:41 +0000
+
 zfs-linux (0.6.5-243-gb3744ae-wheezy-daily) wheezy-daily; urgency=low
 
   * New upstream daily release - b3744ae.

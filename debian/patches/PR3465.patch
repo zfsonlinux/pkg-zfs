@@ -16,11 +16,11 @@ Date:   Tue Jun 2 18:52:39 2015 +0200
     Signed-off-by: Turbo Fredriksson turbo@bayour.com
     Closes #3460
 
-Index: pkg-zfs/cmd/zpool/zpool_main.c
+Index: wheezy/cmd/zpool/zpool_main.c
 ===================================================================
---- pkg-zfs.orig/cmd/zpool/zpool_main.c	2016-05-07 19:52:01.362499338 +0000
-+++ pkg-zfs/cmd/zpool/zpool_main.c	2016-05-07 19:55:22.823966625 +0000
-@@ -501,6 +501,96 @@
+--- wheezy.orig/cmd/zpool/zpool_main.c	2016-05-19 10:03:03.620527901 +0000
++++ wheezy/cmd/zpool/zpool_main.c	2016-05-19 10:03:12.220419785 +0000
+@@ -520,6 +520,96 @@
  	return (add_prop_list(propname, propval, props, B_TRUE));
  }
  
@@ -117,7 +117,7 @@ Index: pkg-zfs/cmd/zpool/zpool_main.c
  /*
   * zpool add [-fgLnP] [-o property=value] <pool> <vdev> ...
   *
-@@ -861,7 +951,7 @@
+@@ -880,7 +970,7 @@
  	nvlist_t *nvroot = NULL;
  	char *poolname;
  	char *tname = NULL;
@@ -126,7 +126,7 @@ Index: pkg-zfs/cmd/zpool/zpool_main.c
  	char *altroot = NULL;
  	char *mountpoint = NULL;
  	nvlist_t *fsprops = NULL;
-@@ -902,7 +992,15 @@
+@@ -921,7 +1011,15 @@
  			*propval = '\0';
  			propval++;
  
@@ -143,10 +143,10 @@ Index: pkg-zfs/cmd/zpool/zpool_main.c
  				goto errout;
  
  			/*
-Index: pkg-zfs/configure.ac
+Index: wheezy/configure.ac
 ===================================================================
---- pkg-zfs.orig/configure.ac	2016-05-07 19:52:01.362499338 +0000
-+++ pkg-zfs/configure.ac	2016-05-07 19:55:22.823966625 +0000
+--- wheezy.orig/configure.ac	2016-05-19 10:03:03.620527901 +0000
++++ wheezy/configure.ac	2016-05-19 10:03:12.224419735 +0000
 @@ -61,7 +61,6 @@
  	udev/Makefile
  	udev/rules.d/Makefile
