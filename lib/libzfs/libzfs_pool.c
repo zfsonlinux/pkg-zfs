@@ -4095,29 +4095,6 @@ find_start_block(nvlist_t *config)
 }
 
 int
-zpool_label_disk_wait(char *path, int timeout)
-{
-	struct stat64 statbuf;
-	int i;
-
-	/*
-	 * Wait timeout miliseconds for a newly created device to be available
-	 * from the given path.  There is a small window when a /dev/ device
-	 * will exist and the udev link will not, so we must wait for the
-	 * symlink.  Depending on the udev rules this may take a few seconds.
-	 */
-	for (i = 0; i < timeout; i++) {
-		usleep(1000);
-
-		errno = 0;
-		if ((stat64(path, &statbuf) == 0) && (errno == 0))
-			return (0);
-	}
-
-	return (ENOENT);
-}
-
-int
 zpool_label_disk_check(char *path)
 {
 	struct dk_gpt *vtoc;
@@ -4140,6 +4117,32 @@ zpool_label_disk_check(char *path)
 	efi_free(vtoc);
 	(void) close(fd);
 	return (0);
+}
+
+/*
+ * Generate a unique partition name for the ZFS member.  Partitions must
+ * have unique names to ensure udev will be able to create symlinks under
+ * /dev/disk/by-partlabel/ for all pool members.  The partition names are
+ * of the form <pool>-<unique-id>.
+ */
+static void
+zpool_label_name(char *label_name, int label_size)
+{
+	uint64_t id = 0;
+	int fd;
+
+	fd = open("/dev/urandom", O_RDONLY);
+	if (fd > 0) {
+		if (read(fd, &id, sizeof (id)) != sizeof (id))
+			id = 0;
+
+		close(fd);
+	}
+
+	if (id == 0)
+		id = (((uint64_t)rand()) << 32) | (uint64_t)rand();
+
+	snprintf(label_name, label_size, "zfs-%016llx", (u_longlong_t) id);
 }
 
 /*
@@ -4232,7 +4235,7 @@ zpool_label_disk(libzfs_handle_t *hdl, zpool_handle_t *zhp, char *name)
 	 * can get, in the absence of V_OTHER.
 	 */
 	vtoc->efi_parts[0].p_tag = V_USR;
-	(void) strcpy(vtoc->efi_parts[0].p_name, "zfs");
+	zpool_label_name(vtoc->efi_parts[0].p_name, EFI_PART_NAME_LEN);
 
 	vtoc->efi_parts[8].p_start = slice_size + start_block;
 	vtoc->efi_parts[8].p_size = resv;
@@ -4256,12 +4259,11 @@ zpool_label_disk(libzfs_handle_t *hdl, zpool_handle_t *zhp, char *name)
 	(void) close(fd);
 	efi_free(vtoc);
 
-	/* Wait for the first expected partition to appear. */
-
 	(void) snprintf(path, sizeof (path), "%s/%s", DISK_ROOT, name);
 	(void) zfs_append_partition(path, MAXPATHLEN);
 
-	rval = zpool_label_disk_wait(path, 3000);
+	/* Wait to udev to signal use the device has settled. */
+	rval = zpool_label_disk_wait(path, DISK_LABEL_WAIT);
 	if (rval) {
 		zfs_error_aux(hdl, dgettext(TEXT_DOMAIN, "failed to "
 		    "detect device partitions on '%s': %d"), path, rval);
