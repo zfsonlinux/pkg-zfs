@@ -28,6 +28,7 @@
  *   Rohan Puri <rohan.puri15@gmail.com>
  *   Brian Behlendorf <behlendorf1@llnl.gov>
  * Copyright (c) 2013 by Delphix. All rights reserved.
+ * Copyright 2015, OmniTI Computer Consulting, Inc. All rights reserved.
  */
 
 /*
@@ -476,6 +477,7 @@ zfsctl_inode_alloc(zfs_sb_t *zsb, uint64_t id,
 	zp->z_blksz = 0;
 	zp->z_seq = 0;
 	zp->z_mapcnt = 0;
+	zp->z_gen = 0;
 	zp->z_size = 0;
 	zp->z_links = 0;
 	zp->z_pflags = 0;
@@ -483,12 +485,10 @@ zfsctl_inode_alloc(zfs_sb_t *zsb, uint64_t id,
 	zp->z_gid = 0;
 	zp->z_mode = 0;
 	zp->z_sync_cnt = 0;
-	zp->z_is_zvol = B_FALSE;
 	zp->z_is_mapped = B_FALSE;
 	zp->z_is_ctldir = B_TRUE;
 	zp->z_is_sa = B_FALSE;
 	zp->z_is_stale = B_FALSE;
-	ip->i_generation = 0;
 	ip->i_ino = id;
 	ip->i_mode = (S_IFDIR | S_IRUGO | S_IXUGO);
 	ip->i_uid = SUID_TO_KUID(0);
@@ -1245,20 +1245,15 @@ zfsctl_shares_lookup(struct inode *dip, char *name, struct inode **ipp,
 		return (SET_ERROR(ENOTSUP));
 	}
 
-	error = zfs_zget(zsb, zsb->z_shares_dir, &dzp);
-	if (error) {
-		ZFS_EXIT(zsb);
-		return (error);
+	if ((error = zfs_zget(zsb, zsb->z_shares_dir, &dzp)) == 0) {
+		error = zfs_lookup(ZTOI(dzp), name, &ip, 0, cr, NULL, NULL);
+		iput(ZTOI(dzp));
 	}
 
-	error = zfs_lookup(ZTOI(dzp), name, &ip, 0, cr, NULL, NULL);
-
-	iput(ZTOI(dzp));
 	ZFS_EXIT(zsb);
 
 	return (error);
 }
-
 
 /*
  * Initialize the various pieces we'll need to create and manipulate .zfs
