@@ -51,10 +51,10 @@ Date:   Sun Oct 4 15:37:50 2015 +0200
     
     Signed-off-by: Turbo Fredriksson <turbo@bayour.com>
 
-Index: pkg-zfs/configure.ac
+Index: wheezy/configure.ac
 ===================================================================
---- pkg-zfs.orig/configure.ac	2016-05-10 13:52:18.000000000 +0000
-+++ pkg-zfs/configure.ac	2016-05-10 13:52:27.347136150 +0000
+--- wheezy.orig/configure.ac	2016-05-19 09:59:28.000000000 +0000
++++ wheezy/configure.ac	2016-05-19 09:59:39.983087970 +0000
 @@ -62,8 +62,6 @@
  	udev/rules.d/Makefile
  	etc/Makefile
@@ -73,40 +73,40 @@ Index: pkg-zfs/configure.ac
  	module/Makefile
  	module/avl/Makefile
  	module/nvpair/Makefile
-Index: pkg-zfs/contrib/Makefile.am
+Index: wheezy/contrib/Makefile.am
 ===================================================================
---- pkg-zfs.orig/contrib/Makefile.am	2016-05-10 13:52:18.000000000 +0000
-+++ pkg-zfs/contrib/Makefile.am	2016-05-10 13:52:27.347136150 +0000
+--- wheezy.orig/contrib/Makefile.am	2016-05-19 09:59:28.000000000 +0000
++++ wheezy/contrib/Makefile.am	2016-05-19 09:59:39.983087970 +0000
 @@ -1,2 +1,2 @@
 -SUBDIRS = bash_completion.d dracut initramfs sysv-init shell-common
 -DIST_SUBDIRS = bash_completion.d dracut initramfs sysv-init shell-common
 +SUBDIRS = bash_completion.d dracut initramfs sysv-init systemd shell-common
 +DIST_SUBDIRS = bash_completion.d dracut initramfs sysv-init systemd shell-common
-Index: pkg-zfs/contrib/systemd/Makefile.am
+Index: wheezy/contrib/systemd/Makefile.am
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/systemd/Makefile.am	2016-05-10 13:52:27.379135748 +0000
++++ wheezy/contrib/systemd/Makefile.am	2016-05-19 09:59:39.987087920 +0000
 @@ -0,0 +1 @@
 +SUBDIRS = system
-Index: pkg-zfs/contrib/systemd/system/.gitignore
+Index: wheezy/contrib/systemd/system/.gitignore
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/systemd/system/.gitignore	2016-05-10 13:52:27.379135748 +0000
++++ wheezy/contrib/systemd/system/.gitignore	2016-05-19 09:59:39.987087920 +0000
 @@ -0,0 +1,3 @@
 +*.service
 +*.target
 +*.preset
-Index: pkg-zfs/contrib/systemd/system/50-zfs.preset.in
+Index: wheezy/contrib/systemd/system/50-zfs.preset.in
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/systemd/system/50-zfs.preset.in	2016-05-10 13:52:27.383135697 +0000
++++ wheezy/contrib/systemd/system/50-zfs.preset.in	2016-05-19 09:59:39.991087870 +0000
 @@ -0,0 +1,2 @@
 +# ZFS is enabled by default
 +enable zfs.*
-Index: pkg-zfs/contrib/systemd/system/Makefile.am
+Index: wheezy/contrib/systemd/system/Makefile.am
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/systemd/system/Makefile.am	2016-05-10 13:52:27.383135697 +0000
++++ wheezy/contrib/systemd/system/Makefile.am	2016-05-19 09:59:39.991087870 +0000
 @@ -0,0 +1,36 @@
 +systemdpreset_DATA = \
 +	50-zfs.preset
@@ -144,17 +144,18 @@ Index: pkg-zfs/contrib/systemd/system/Makefile.am
 +
 +distclean-local::
 +	-$(RM) $(systemdunit_DATA) $(systemdpreset_DATA)
-Index: pkg-zfs/contrib/systemd/system/zfs-import-cache.service.in
+Index: wheezy/contrib/systemd/system/zfs-import-cache.service.in
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/systemd/system/zfs-import-cache.service.in	2016-05-10 13:52:27.383135697 +0000
-@@ -0,0 +1,13 @@
++++ wheezy/contrib/systemd/system/zfs-import-cache.service.in	2016-05-19 10:00:40.358328951 +0000
+@@ -0,0 +1,14 @@
 +[Unit]
 +Description=Import ZFS pools by cache file
 +DefaultDependencies=no
 +Requires=systemd-udev-settle.service
 +After=systemd-udev-settle.service
 +After=cryptsetup.target
++Before=dracut-mount.service
 +ConditionPathExists=@sysconfdir@/zfs/zpool.cache
 +
 +[Service]
@@ -162,17 +163,18 @@ Index: pkg-zfs/contrib/systemd/system/zfs-import-cache.service.in
 +RemainAfterExit=yes
 +ExecStartPre=/sbin/modprobe zfs
 +ExecStart=@sbindir@/zpool import -c @sysconfdir@/zfs/zpool.cache -aN
-Index: pkg-zfs/contrib/systemd/system/zfs-import-scan.service.in
+Index: wheezy/contrib/systemd/system/zfs-import-scan.service.in
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/systemd/system/zfs-import-scan.service.in	2016-05-10 13:52:27.383135697 +0000
-@@ -0,0 +1,13 @@
++++ wheezy/contrib/systemd/system/zfs-import-scan.service.in	2016-05-19 10:01:19.269839767 +0000
+@@ -0,0 +1,14 @@
 +[Unit]
 +Description=Import ZFS pools by device scanning
 +DefaultDependencies=no
 +Requires=systemd-udev-settle.service
 +After=systemd-udev-settle.service
 +After=cryptsetup.target
++Before=dracut-mount.service
 +ConditionPathExists=!@sysconfdir@/zfs/zpool.cache
 +
 +[Service]
@@ -180,10 +182,10 @@ Index: pkg-zfs/contrib/systemd/system/zfs-import-scan.service.in
 +RemainAfterExit=yes
 +ExecStartPre=/sbin/modprobe zfs
 +ExecStart=@sbindir@/zpool import -d /dev/disk/by-id -aN
-Index: pkg-zfs/contrib/systemd/system/zfs-mount.service.in
+Index: wheezy/contrib/systemd/system/zfs-mount.service.in
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/systemd/system/zfs-mount.service.in	2016-05-10 13:52:27.387135647 +0000
++++ wheezy/contrib/systemd/system/zfs-mount.service.in	2016-05-19 09:59:39.995087819 +0000
 @@ -0,0 +1,16 @@
 +[Unit]
 +Description=Mount ZFS filesystems
@@ -201,10 +203,10 @@ Index: pkg-zfs/contrib/systemd/system/zfs-mount.service.in
 +Type=oneshot
 +RemainAfterExit=yes
 +ExecStart=@sbindir@/zfs mount -a
-Index: pkg-zfs/contrib/systemd/system/zfs-share.service.in
+Index: wheezy/contrib/systemd/system/zfs-share.service.in
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/systemd/system/zfs-share.service.in	2016-05-10 13:52:27.391135597 +0000
++++ wheezy/contrib/systemd/system/zfs-share.service.in	2016-05-19 09:59:39.995087819 +0000
 @@ -0,0 +1,14 @@
 +[Unit]
 +Description=ZFS file system shares
@@ -220,10 +222,10 @@ Index: pkg-zfs/contrib/systemd/system/zfs-share.service.in
 +RemainAfterExit=yes
 +ExecStartPre=-@bindir@/rm /etc/dfs/sharetab
 +ExecStart=@sbindir@/zfs share -a
-Index: pkg-zfs/contrib/systemd/system/zfs-zed.service.in
+Index: wheezy/contrib/systemd/system/zfs-zed.service.in
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/systemd/system/zfs-zed.service.in	2016-05-10 13:52:27.391135597 +0000
++++ wheezy/contrib/systemd/system/zfs-zed.service.in	2016-05-19 09:59:39.995087819 +0000
 @@ -0,0 +1,12 @@
 +[Unit]
 +Description=ZFS Event Daemon (zed)
@@ -237,10 +239,10 @@ Index: pkg-zfs/contrib/systemd/system/zfs-zed.service.in
 +
 +[Install]
 +Alias=zed.service
-Index: pkg-zfs/contrib/systemd/system/zfs.target.in
+Index: wheezy/contrib/systemd/system/zfs.target.in
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/contrib/systemd/system/zfs.target.in	2016-05-10 13:52:27.391135597 +0000
++++ wheezy/contrib/systemd/system/zfs.target.in	2016-05-19 09:59:40.003087719 +0000
 @@ -0,0 +1,8 @@
 +[Unit]
 +Description=ZFS startup target
@@ -250,75 +252,39 @@ Index: pkg-zfs/contrib/systemd/system/zfs.target.in
 +
 +[Install]
 +WantedBy=multi-user.target
-Index: pkg-zfs/etc/Makefile.am
+Index: wheezy/etc/Makefile.am
 ===================================================================
---- pkg-zfs.orig/etc/Makefile.am	2016-05-10 13:52:18.000000000 +0000
-+++ pkg-zfs/etc/Makefile.am	2016-05-10 13:52:27.395135546 +0000
+--- wheezy.orig/etc/Makefile.am	2016-05-19 09:59:28.000000000 +0000
++++ wheezy/etc/Makefile.am	2016-05-19 09:59:40.003087719 +0000
 @@ -1,2 +1,2 @@
 -SUBDIRS = zfs $(ZFS_INIT_SYSTEMD) $(ZFS_MODULE_LOAD)
 -DIST_SUBDIRS = zfs systemd modules-load.d
 +SUBDIRS = zfs $(ZFS_MODULE_LOAD)
 +DIST_SUBDIRS = zfs $(ZFS_MODULE_LOAD)
-Index: pkg-zfs/etc/systemd/Makefile.am
+Index: wheezy/etc/systemd/Makefile.am
 ===================================================================
---- pkg-zfs.orig/etc/systemd/Makefile.am	2016-05-10 13:42:50.000000000 +0000
+--- wheezy.orig/etc/systemd/Makefile.am	2016-05-19 01:34:34.000000000 +0000
 +++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1 +0,0 @@
 -SUBDIRS = system
-Index: pkg-zfs/etc/systemd/system/.gitignore
+Index: wheezy/etc/systemd/system/.gitignore
 ===================================================================
---- pkg-zfs.orig/etc/systemd/system/.gitignore	2016-05-10 13:45:02.000000000 +0000
+--- wheezy.orig/etc/systemd/system/.gitignore	2016-05-19 09:59:25.000000000 +0000
 +++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1,3 +0,0 @@
 -*.service
 -*.target
 -*.preset
-Index: pkg-zfs/etc/systemd/system/50-zfs.preset.in
+Index: wheezy/etc/systemd/system/50-zfs.preset.in
 ===================================================================
---- pkg-zfs.orig/etc/systemd/system/50-zfs.preset.in	2016-05-10 13:42:50.000000000 +0000
+--- wheezy.orig/etc/systemd/system/50-zfs.preset.in	2016-05-19 01:34:34.000000000 +0000
 +++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1,2 +0,0 @@
 -# ZFS is enabled by default
 -enable zfs.*
-Index: pkg-zfs/etc/systemd/system/zfs-import-cache.service.in
+Index: wheezy/etc/systemd/system/zfs-mount.service.in
 ===================================================================
---- pkg-zfs.orig/etc/systemd/system/zfs-import-cache.service.in	2016-05-10 13:42:50.000000000 +0000
-+++ /dev/null	1970-01-01 00:00:00.000000000 +0000
-@@ -1,13 +0,0 @@
--[Unit]
--Description=Import ZFS pools by cache file
--DefaultDependencies=no
--Requires=systemd-udev-settle.service
--After=systemd-udev-settle.service
--After=cryptsetup.target
--ConditionPathExists=@sysconfdir@/zfs/zpool.cache
--
--[Service]
--Type=oneshot
--RemainAfterExit=yes
--ExecStartPre=/sbin/modprobe zfs
--ExecStart=@sbindir@/zpool import -c @sysconfdir@/zfs/zpool.cache -aN
-Index: pkg-zfs/etc/systemd/system/zfs-import-scan.service.in
-===================================================================
---- pkg-zfs.orig/etc/systemd/system/zfs-import-scan.service.in	2016-05-10 13:42:50.000000000 +0000
-+++ /dev/null	1970-01-01 00:00:00.000000000 +0000
-@@ -1,13 +0,0 @@
--[Unit]
--Description=Import ZFS pools by device scanning
--DefaultDependencies=no
--Requires=systemd-udev-settle.service
--After=systemd-udev-settle.service
--After=cryptsetup.target
--ConditionPathExists=!@sysconfdir@/zfs/zpool.cache
--
--[Service]
--Type=oneshot
--RemainAfterExit=yes
--ExecStartPre=/sbin/modprobe zfs
--ExecStart=@sbindir@/zpool import -d /dev/disk/by-id -aN
-Index: pkg-zfs/etc/systemd/system/zfs-mount.service.in
-===================================================================
---- pkg-zfs.orig/etc/systemd/system/zfs-mount.service.in	2016-05-10 13:42:50.000000000 +0000
+--- wheezy.orig/etc/systemd/system/zfs-mount.service.in	2016-05-19 01:34:34.000000000 +0000
 +++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1,15 +0,0 @@
 -[Unit]

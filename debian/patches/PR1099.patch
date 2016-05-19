@@ -72,11 +72,11 @@ Date:   Sat Dec 21 07:28:03 2013 +0000
     
       So some more discussion might be needed..
 
-Index: pkg-zfs/cmd/zfs/zfs_main.c
+Index: wheezy/cmd/zfs/zfs_main.c
 ===================================================================
---- pkg-zfs.orig/cmd/zfs/zfs_main.c
-+++ pkg-zfs/cmd/zfs/zfs_main.c
-@@ -3508,6 +3508,7 @@ set_callback(zfs_handle_t *zhp, void *da
+--- wheezy.orig/cmd/zfs/zfs_main.c	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/cmd/zfs/zfs_main.c	2016-05-19 09:43:42.891120246 +0000
+@@ -3508,6 +3508,7 @@
  			    "but unable to remount filesystem\n"));
  			break;
  		case EZFS_SHARENFSFAILED:
@@ -84,7 +84,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  			(void) fprintf(stderr, gettext("property may be set "
  			    "but unable to reshare filesystem\n"));
  			break;
-@@ -5638,7 +5639,8 @@ get_one_dataset(zfs_handle_t *zhp, void
+@@ -5638,7 +5639,8 @@
  	/*
  	 * Iterate over any nested datasets.
  	 */
@@ -94,7 +94,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  		zfs_close(zhp);
  		return (1);
  	}
-@@ -5646,7 +5648,7 @@ get_one_dataset(zfs_handle_t *zhp, void
+@@ -5646,7 +5648,7 @@
  	/*
  	 * Skip any datasets whose type does not match.
  	 */
@@ -103,7 +103,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  		zfs_close(zhp);
  		return (0);
  	}
-@@ -5657,9 +5659,11 @@ get_one_dataset(zfs_handle_t *zhp, void
+@@ -5657,9 +5659,11 @@
  }
  
  static void
@@ -116,7 +116,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  	cb.cb_verbose = verbose;
  	cb.cb_getone = get_one_dataset;
  
-@@ -5696,178 +5700,217 @@ share_mount_one(zfs_handle_t *zhp, int o
+@@ -5696,178 +5700,217 @@
  	struct mnttab mnt;
  	uint64_t zoned, canmount;
  	boolean_t shared_nfs, shared_smb;
@@ -470,7 +470,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  	}
  
  	return (0);
-@@ -5930,7 +5973,7 @@ share_mount(int op, int argc, char **arg
+@@ -5930,7 +5973,7 @@
  	boolean_t verbose = B_FALSE;
  	int c, ret = 0;
  	char *options = NULL;
@@ -479,7 +479,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  
  	/* check options */
  	while ((c = getopt(argc, argv, op == OP_MOUNT ? ":avo:O" : "a"))
-@@ -5979,16 +6022,24 @@ share_mount(int op, int argc, char **arg
+@@ -5979,16 +6022,24 @@
  		size_t i, count = 0;
  		char *protocol = NULL;
  
@@ -506,7 +506,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  		}
  
  		if (argc != 0) {
-@@ -5997,7 +6048,7 @@ share_mount(int op, int argc, char **arg
+@@ -5997,7 +6048,7 @@
  		}
  
  		start_progress_timer();
@@ -515,7 +515,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  
  		if (count == 0)
  			return (0);
-@@ -6046,14 +6097,17 @@ share_mount(int op, int argc, char **arg
+@@ -6046,14 +6097,17 @@
  	} else {
  		zfs_handle_t *zhp;
  
@@ -535,7 +535,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  			ret = 1;
  		} else {
  			ret = share_mount_one(zhp, op, flags, NULL, B_TRUE,
-@@ -6078,7 +6132,7 @@ zfs_do_mount(int argc, char **argv)
+@@ -6078,7 +6132,7 @@
  }
  
  /*
@@ -544,7 +544,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
   * zfs share filesystem
   *
   * Share all filesystems, or share the given filesystem.
-@@ -6184,18 +6238,23 @@ unshare_unmount_path(int op, char *path,
+@@ -6184,18 +6238,23 @@
  	if (op == OP_SHARE) {
  		char nfs_mnt_prop[ZFS_MAXPROPLEN];
  		char smbshare_prop[ZFS_MAXPROPLEN];
@@ -571,7 +571,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  		} else if (!zfs_is_shared(zhp)) {
  			(void) fprintf(stderr, gettext("cannot unshare '%s': "
  			    "not currently shared\n"), path);
-@@ -6236,9 +6295,9 @@ unshare_unmount(int op, int argc, char *
+@@ -6236,9 +6295,9 @@
  	int do_all = 0;
  	int flags = 0;
  	int ret = 0;
@@ -583,7 +583,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  	char sharesmb[ZFS_MAXPROPLEN];
  
  	/* check options */
-@@ -6299,9 +6358,8 @@ unshare_unmount(int op, int argc, char *
+@@ -6299,9 +6358,8 @@
  			return (ENOENT);
  
  		while (getmntent(mnttab_file, &entry) == 0) {
@@ -594,7 +594,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  				continue;
  
  			/* ignore snapshots */
-@@ -6317,30 +6375,34 @@ unshare_unmount(int op, int argc, char *
+@@ -6317,30 +6375,34 @@
  			switch (op) {
  			case OP_SHARE:
  				verify(zfs_prop_get(zhp, ZFS_PROP_SHARENFS,
@@ -638,7 +638,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  			default:
  				break;
  			}
-@@ -6394,7 +6456,45 @@ unshare_unmount(int op, int argc, char *
+@@ -6394,7 +6456,45 @@
  		uu_avl_destroy(tree);
  		uu_avl_pool_destroy(pool);
  
@@ -684,7 +684,7 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  		if (argc != 1) {
  			if (argc == 0)
  				(void) fprintf(stderr,
-@@ -6415,63 +6515,93 @@ unshare_unmount(int op, int argc, char *
+@@ -6415,63 +6515,93 @@
  			return (unshare_unmount_path(op, argv[0],
  			    flags, B_FALSE));
  
@@ -823,11 +823,11 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  		}
  
  		zfs_close(zhp);
-Index: pkg-zfs/include/libzfs.h
+Index: wheezy/include/libzfs.h
 ===================================================================
---- pkg-zfs.orig/include/libzfs.h
-+++ pkg-zfs/include/libzfs.h
-@@ -144,6 +144,8 @@ typedef enum zfs_error {
+--- wheezy.orig/include/libzfs.h	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/include/libzfs.h	2016-05-19 09:43:42.895120195 +0000
+@@ -144,6 +144,8 @@
  	EZFS_DIFF,		/* general failure of zfs diff */
  	EZFS_DIFFDATA,		/* bad zfs diff data */
  	EZFS_POOLREADONLY,	/* pool is in read-only mode */
@@ -836,7 +836,7 @@ Index: pkg-zfs/include/libzfs.h
  	EZFS_UNKNOWN
  } zfs_error_t;
  
-@@ -579,6 +581,7 @@ typedef struct get_all_cb {
+@@ -577,6 +579,7 @@
  	zfs_handle_t	**cb_handles;
  	size_t		cb_alloc;
  	size_t		cb_used;
@@ -844,7 +844,7 @@ Index: pkg-zfs/include/libzfs.h
  	boolean_t	cb_verbose;
  	int		(*cb_getone)(zfs_handle_t *, void *);
  } get_all_cb_t;
-@@ -737,13 +740,17 @@ extern int zfs_unshare(zfs_handle_t *);
+@@ -735,13 +738,17 @@
   */
  extern boolean_t zfs_is_shared_nfs(zfs_handle_t *, char **);
  extern boolean_t zfs_is_shared_smb(zfs_handle_t *, char **);
@@ -862,11 +862,11 @@ Index: pkg-zfs/include/libzfs.h
  extern int zfs_unshareall_bypath(zfs_handle_t *, const char *);
  extern int zfs_unshareall(zfs_handle_t *);
  extern int zfs_deleg_share_nfs(libzfs_handle_t *, char *, char *, char *,
-Index: pkg-zfs/include/libzfs_impl.h
+Index: wheezy/include/libzfs_impl.h
 ===================================================================
---- pkg-zfs.orig/include/libzfs_impl.h
-+++ pkg-zfs/include/libzfs_impl.h
-@@ -118,7 +118,8 @@ struct zpool_handle {
+--- wheezy.orig/include/libzfs_impl.h	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/include/libzfs_impl.h	2016-05-19 09:43:42.907120044 +0000
+@@ -118,7 +118,8 @@
  typedef enum {
  	PROTO_NFS = 0,
  	PROTO_SMB = 1,
@@ -876,7 +876,7 @@ Index: pkg-zfs/include/libzfs_impl.h
  } zfs_share_proto_t;
  
  /*
-@@ -128,7 +129,8 @@ typedef enum {
+@@ -128,7 +129,8 @@
  typedef enum {
  	SHARED_NOT_SHARED = 0x0,
  	SHARED_NFS = 0x2,
@@ -886,11 +886,11 @@ Index: pkg-zfs/include/libzfs_impl.h
  } zfs_share_type_t;
  
  int zfs_error(libzfs_handle_t *, int, const char *);
-Index: pkg-zfs/include/sys/fs/zfs.h
+Index: wheezy/include/sys/fs/zfs.h
 ===================================================================
---- pkg-zfs.orig/include/sys/fs/zfs.h
-+++ pkg-zfs/include/sys/fs/zfs.h
-@@ -156,6 +156,7 @@ typedef enum {
+--- wheezy.orig/include/sys/fs/zfs.h	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/include/sys/fs/zfs.h	2016-05-19 09:43:42.911119994 +0000
+@@ -157,6 +157,7 @@
  	ZFS_PROP_REDUNDANT_METADATA,
  	ZFS_PROP_OVERLAY,
  	ZFS_PROP_PREV_SNAP,
@@ -898,7 +898,7 @@ Index: pkg-zfs/include/sys/fs/zfs.h
  	ZFS_NUM_PROPS
  } zfs_prop_t;
  
-@@ -332,7 +333,9 @@ typedef enum zfs_share_op {
+@@ -333,7 +334,9 @@
  	ZFS_SHARE_NFS = 0,
  	ZFS_UNSHARE_NFS = 1,
  	ZFS_SHARE_SMB = 2,
@@ -909,11 +909,11 @@ Index: pkg-zfs/include/sys/fs/zfs.h
  } zfs_share_op_t;
  
  typedef enum zfs_smb_acl_op {
-Index: pkg-zfs/lib/libshare/Makefile.am
+Index: wheezy/lib/libshare/Makefile.am
 ===================================================================
---- pkg-zfs.orig/lib/libshare/Makefile.am
-+++ pkg-zfs/lib/libshare/Makefile.am
-@@ -12,7 +12,13 @@ USER_C = \
+--- wheezy.orig/lib/libshare/Makefile.am	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/lib/libshare/Makefile.am	2016-05-19 09:43:42.915119944 +0000
+@@ -12,7 +12,13 @@
  	nfs.c \
  	nfs.h \
  	smb.c \
@@ -928,10 +928,10 @@ Index: pkg-zfs/lib/libshare/Makefile.am
  
  KERNEL_C =
  
-Index: pkg-zfs/lib/libshare/README_iscsi.txt
+Index: wheezy/lib/libshare/README_iscsi.txt
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/README_iscsi.txt
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/README_iscsi.txt	2016-05-19 09:43:42.915119944 +0000
 @@ -0,0 +1,124 @@
 +This is iSCSI support for the IET, SCST and STGT iSCSI target implementations.
 +
@@ -1057,10 +1057,10 @@ Index: pkg-zfs/lib/libshare/README_iscsi.txt
 +
 +    NOTE: This is only required if the IQN haven't been set in the
 +    	  /etc/iscsi_target_id file!
-Index: pkg-zfs/lib/libshare/destroy_lio.sh
+Index: wheezy/lib/libshare/destroy_lio.sh
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/destroy_lio.sh
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/destroy_lio.sh	2016-05-19 09:43:42.915119944 +0000
 @@ -0,0 +1,29 @@
 +#!/bin/sh
 +
@@ -1091,10 +1091,10 @@ Index: pkg-zfs/lib/libshare/destroy_lio.sh
 +    rmdir $SYSFS/core/iblock_$tid/$name
 +    rmdir $SYSFS/core/iblock_$tid
 +done
-Index: pkg-zfs/lib/libshare/destroy_scst.sh
+Index: wheezy/lib/libshare/destroy_scst.sh
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/destroy_scst.sh
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/destroy_scst.sh	2016-05-19 09:43:42.919119894 +0000
 @@ -0,0 +1,32 @@
 +#!/bin/sh
 +
@@ -1128,10 +1128,10 @@ Index: pkg-zfs/lib/libshare/destroy_scst.sh
 +	echo "Can't destroy $name - have sessions"
 +    fi
 +done
-Index: pkg-zfs/lib/libshare/iscsi.c
+Index: wheezy/lib/libshare/iscsi.c
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/iscsi.c
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/iscsi.c	2016-05-19 09:43:42.939119642 +0000
 @@ -0,0 +1,1219 @@
 +/*
 + * CDDL HEADER START
@@ -2352,10 +2352,10 @@ Index: pkg-zfs/lib/libshare/iscsi.c
 +	if (iscsi_available())
 +		iscsi_fstype = register_fstype("iscsi", &iscsi_shareops);
 +}
-Index: pkg-zfs/lib/libshare/iscsi.h
+Index: wheezy/lib/libshare/iscsi.h
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/iscsi.h
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/iscsi.h	2016-05-19 09:43:42.939119642 +0000
 @@ -0,0 +1,142 @@
 +/*
 + * CDDL HEADER START
@@ -2499,10 +2499,10 @@ Index: pkg-zfs/lib/libshare/iscsi.h
 +int iscsi_write_sysfs_value(char *, char *);
 +list_t *iscsi_look_for_stuff(char *, const char *, boolean_t, int);
 +list_t *iscsi_parse_initiator(iscsi_shareopts_t *);
-Index: pkg-zfs/lib/libshare/iscsi_iet.c
+Index: wheezy/lib/libshare/iscsi_iet.c
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/iscsi_iet.c
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/iscsi_iet.c	2016-05-19 09:43:42.943119592 +0000
 @@ -0,0 +1,604 @@
 +/*
 + * CDDL HEADER START
@@ -3108,10 +3108,10 @@ Index: pkg-zfs/lib/libshare/iscsi_iet.c
 +	else
 +		return (SA_OK);
 +}
-Index: pkg-zfs/lib/libshare/iscsi_lio.c
+Index: wheezy/lib/libshare/iscsi_lio.c
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/iscsi_lio.c
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/iscsi_lio.c	2016-05-19 09:43:42.947119542 +0000
 @@ -0,0 +1,1017 @@
 +/*
 + * CDDL HEADER START
@@ -4130,10 +4130,10 @@ Index: pkg-zfs/lib/libshare/iscsi_lio.c
 +
 +	return (SA_OK);
 +}
-Index: pkg-zfs/lib/libshare/iscsi_scst.c
+Index: wheezy/lib/libshare/iscsi_scst.c
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/iscsi_scst.c
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/iscsi_scst.c	2016-05-19 09:43:42.971119240 +0000
 @@ -0,0 +1,818 @@
 +/*
 + * CDDL HEADER START
@@ -4953,10 +4953,10 @@ Index: pkg-zfs/lib/libshare/iscsi_scst.c
 +
 +	return (SA_OK);
 +}
-Index: pkg-zfs/lib/libshare/iscsi_stgt.c
+Index: wheezy/lib/libshare/iscsi_stgt.c
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/iscsi_stgt.c
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/iscsi_stgt.c	2016-05-19 09:43:42.975119190 +0000
 @@ -0,0 +1,759 @@
 +/*
 + * CDDL HEADER START
@@ -5717,10 +5717,10 @@ Index: pkg-zfs/lib/libshare/iscsi_stgt.c
 +	else
 +		return (SA_OK);
 +}
-Index: pkg-zfs/lib/libshare/libshare.c
+Index: wheezy/lib/libshare/libshare.c
 ===================================================================
---- pkg-zfs.orig/lib/libshare/libshare.c
-+++ pkg-zfs/lib/libshare/libshare.c
+--- wheezy.orig/lib/libshare/libshare.c	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/lib/libshare/libshare.c	2016-05-19 09:43:42.999118888 +0000
 @@ -37,6 +37,7 @@
  #include "libshare_impl.h"
  #include "nfs.h"
@@ -5729,7 +5729,7 @@ Index: pkg-zfs/lib/libshare/libshare.c
  
  static sa_share_impl_t find_share(sa_handle_impl_t handle,
      const char *sharepath);
-@@ -56,6 +57,66 @@ static int update_zfs_shares(sa_handle_i
+@@ -56,6 +57,66 @@
  static int fstypes_count;
  static sa_fstype_t *fstypes;
  
@@ -5796,7 +5796,7 @@ Index: pkg-zfs/lib/libshare/libshare.c
  sa_fstype_t *
  register_fstype(const char *name, const sa_share_ops_t *ops)
  {
-@@ -105,6 +166,7 @@ libshare_init(void)
+@@ -105,6 +166,7 @@
  {
  	libshare_nfs_init();
  	libshare_smb_init();
@@ -5804,7 +5804,7 @@ Index: pkg-zfs/lib/libshare/libshare.c
  }
  
  static void
-@@ -238,13 +300,14 @@ update_zfs_shares_cb(zfs_handle_t *zhp,
+@@ -238,13 +300,14 @@
  		return (1);
  	}
  
@@ -5822,7 +5822,7 @@ Index: pkg-zfs/lib/libshare/libshare.c
  		zfs_close(zhp);
  		return (0);
  	}
-@@ -256,7 +319,16 @@ update_zfs_shares_cb(zfs_handle_t *zhp,
+@@ -256,7 +319,16 @@
  		return (0);
  	}
  
@@ -5840,7 +5840,7 @@ Index: pkg-zfs/lib/libshare/libshare.c
  		zfs_close(zhp);
  		return (0);
  	}
-@@ -277,6 +349,14 @@ update_zfs_shares_cb(zfs_handle_t *zhp,
+@@ -277,6 +349,14 @@
  		    "smb", shareopts, NULL, dataset, B_FALSE);
  	}
  
@@ -5855,7 +5855,7 @@ Index: pkg-zfs/lib/libshare/libshare.c
  	zfs_close(zhp);
  
  	return (0);
-@@ -295,7 +375,7 @@ update_zfs_share(sa_share_impl_t impl_sh
+@@ -295,7 +375,7 @@
  	assert(impl_share->dataset != NULL);
  
  	zhp = zfs_open(impl_share->handle->zfs_libhandle, impl_share->dataset,
@@ -5864,7 +5864,7 @@ Index: pkg-zfs/lib/libshare/libshare.c
  
  	if (zhp == NULL)
  		return (SA_SYSTEM_ERR);
-@@ -337,14 +417,24 @@ process_share(sa_handle_impl_t impl_hand
+@@ -337,14 +417,24 @@
  
  	new_share = B_FALSE;
  
@@ -5892,7 +5892,7 @@ Index: pkg-zfs/lib/libshare/libshare.c
  		impl_share = alloc_share(pathname);
  
  		if (impl_share == NULL) {
-@@ -404,7 +494,6 @@ process_share(sa_handle_impl_t impl_hand
+@@ -404,7 +494,6 @@
  
  		impl_share->next = impl_handle->shares;
  		impl_handle->shares = impl_share;
@@ -5900,7 +5900,7 @@ Index: pkg-zfs/lib/libshare/libshare.c
  	}
  
  err:
-@@ -472,9 +561,8 @@ find_share(sa_handle_impl_t impl_handle,
+@@ -472,9 +561,8 @@
  
  	impl_share = impl_handle->shares;
  	while (impl_share != NULL) {
@@ -5911,11 +5911,11 @@ Index: pkg-zfs/lib/libshare/libshare.c
  
  		impl_share = impl_share->next;
  	}
-Index: pkg-zfs/lib/libshare/libshare_impl.h
+Index: wheezy/lib/libshare/libshare_impl.h
 ===================================================================
---- pkg-zfs.orig/lib/libshare/libshare_impl.h
-+++ pkg-zfs/lib/libshare/libshare_impl.h
-@@ -67,4 +67,10 @@ typedef struct sa_handle_impl {
+--- wheezy.orig/lib/libshare/libshare_impl.h	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/lib/libshare/libshare_impl.h	2016-05-19 09:43:42.999118888 +0000
+@@ -67,4 +67,10 @@
  	sa_share_impl_t shares;
  } *sa_handle_impl_t;
  
@@ -5927,26 +5927,26 @@ Index: pkg-zfs/lib/libshare/libshare_impl.h
 +			const sa_share_ops_t *ops);
 +int foreach_shareopt(const char *shareopts,
 +		shareopt_callback_t callback, void *cookie);
-Index: pkg-zfs/lib/libshare/list_iet.sh
+Index: wheezy/lib/libshare/list_iet.sh
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/list_iet.sh
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/list_iet.sh	2016-05-19 09:43:42.999118888 +0000
 @@ -0,0 +1,3 @@
 +#!/bin/sh
 +
 +cat /proc/net/iet/volume
-Index: pkg-zfs/lib/libshare/list_lio.sh
+Index: wheezy/lib/libshare/list_lio.sh
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/list_lio.sh
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/list_lio.sh	2016-05-19 09:43:43.003118838 +0000
 @@ -0,0 +1,3 @@
 +#!/bin/sh
 +
 +echo "/ ls" | targetcli
-Index: pkg-zfs/lib/libshare/list_scst.sh
+Index: wheezy/lib/libshare/list_scst.sh
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/list_scst.sh
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/list_scst.sh	2016-05-19 09:43:43.003118838 +0000
 @@ -0,0 +1,55 @@
 +#!/bin/sh
 +
@@ -6003,19 +6003,19 @@ Index: pkg-zfs/lib/libshare/list_scst.sh
 +    done
 +done
 +
-Index: pkg-zfs/lib/libshare/list_stgt.sh
+Index: wheezy/lib/libshare/list_stgt.sh
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/list_stgt.sh
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/list_stgt.sh	2016-05-19 09:43:43.003118838 +0000
 @@ -0,0 +1,3 @@
 +#!/bin/sh
 +
 +tgtadm --lld iscsi --op show --mode target
-Index: pkg-zfs/lib/libshare/nfs.c
+Index: wheezy/lib/libshare/nfs.c
 ===================================================================
---- pkg-zfs.orig/lib/libshare/nfs.c
-+++ pkg-zfs/lib/libshare/nfs.c
-@@ -44,72 +44,9 @@ static sa_fstype_t *nfs_fstype;
+--- wheezy.orig/lib/libshare/nfs.c	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/lib/libshare/nfs.c	2016-05-19 09:43:43.003118838 +0000
+@@ -44,72 +44,9 @@
   */
  static int nfs_exportfs_temp_fd = -1;
  
@@ -6088,7 +6088,7 @@ Index: pkg-zfs/lib/libshare/nfs.c
  typedef struct nfs_host_cookie_s {
  	nfs_host_callback_t callback;
  	const char *sharepath;
-@@ -192,7 +129,7 @@ foreach_nfs_host(sa_share_impl_t impl_sh
+@@ -192,7 +129,7 @@
  
  	shareopts = FSINFO(impl_share, nfs_fstype)->shareopts;
  
@@ -6097,7 +6097,7 @@ Index: pkg-zfs/lib/libshare/nfs.c
  	    &udata);
  }
  
-@@ -390,8 +327,7 @@ get_linux_shareopts(const char *shareopt
+@@ -390,8 +327,7 @@
  	(void) add_linux_shareopt(plinux_opts, "no_root_squash", NULL);
  	(void) add_linux_shareopt(plinux_opts, "mountpoint", NULL);
  
@@ -6107,10 +6107,10 @@ Index: pkg-zfs/lib/libshare/nfs.c
  
  	if (rc != SA_OK) {
  		free(*plinux_opts);
-Index: pkg-zfs/lib/libshare/zfs_share_iscsi.iet
+Index: wheezy/lib/libshare/zfs_share_iscsi.iet
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/zfs_share_iscsi.iet
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/zfs_share_iscsi.iet	2016-05-19 09:43:43.007118787 +0000
 @@ -0,0 +1,44 @@
 +#!/bin/sh
 +
@@ -6156,10 +6156,10 @@ Index: pkg-zfs/lib/libshare/zfs_share_iscsi.iet
 +target_mod QueuedCommands 32
 +
 +exit 0
-Index: pkg-zfs/lib/libshare/zfs_share_iscsi.lio
+Index: wheezy/lib/libshare/zfs_share_iscsi.lio
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/zfs_share_iscsi.lio
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/zfs_share_iscsi.lio	2016-05-19 09:43:43.007118787 +0000
 @@ -0,0 +1,118 @@
 +#!/bin/bash
 +
@@ -6279,10 +6279,10 @@ Index: pkg-zfs/lib/libshare/zfs_share_iscsi.lio
 +#tcm_mod emulate_model_alias		0
 +
 +exit 0
-Index: pkg-zfs/lib/libshare/zfs_share_iscsi.scst
+Index: wheezy/lib/libshare/zfs_share_iscsi.scst
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/zfs_share_iscsi.scst
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/zfs_share_iscsi.scst	2016-05-19 09:43:43.011118737 +0000
 @@ -0,0 +1,61 @@
 +#!/bin/sh
 +
@@ -6345,10 +6345,10 @@ Index: pkg-zfs/lib/libshare/zfs_share_iscsi.scst
 +target_mod DataDigest			None
 +
 +exit 0
-Index: pkg-zfs/lib/libshare/zfs_share_iscsi.stgt
+Index: wheezy/lib/libshare/zfs_share_iscsi.stgt
 ===================================================================
---- /dev/null
-+++ pkg-zfs/lib/libshare/zfs_share_iscsi.stgt
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/lib/libshare/zfs_share_iscsi.stgt	2016-05-19 09:43:43.011118737 +0000
 @@ -0,0 +1,71 @@
 +#!/bin/sh
 +
@@ -6421,11 +6421,11 @@ Index: pkg-zfs/lib/libshare/zfs_share_iscsi.stgt
 +#bind_mod 127.0.0.1
 +
 +exit 0
-Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
+Index: wheezy/lib/libzfs/libzfs_changelist.c
 ===================================================================
---- pkg-zfs.orig/lib/libzfs/libzfs_changelist.c
-+++ pkg-zfs/lib/libzfs/libzfs_changelist.c
-@@ -72,7 +72,8 @@ typedef struct prop_changenode {
+--- wheezy.orig/lib/libzfs/libzfs_changelist.c	2016-05-19 09:43:19.043420052 +0000
++++ wheezy/lib/libzfs/libzfs_changelist.c	2016-05-19 09:43:43.015118687 +0000
+@@ -72,7 +72,8 @@
  struct prop_changelist {
  	zfs_prop_t		cl_prop;
  	zfs_prop_t		cl_realprop;
@@ -6435,7 +6435,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
  	uu_list_pool_t		*cl_pool;
  	uu_list_t		*cl_list;
  	boolean_t		cl_waslegacy;
-@@ -86,9 +87,10 @@ struct prop_changelist {
+@@ -86,9 +87,10 @@
  
  /*
   * If the property is 'mountpoint', go through and unmount filesystems as
@@ -6449,7 +6449,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
   */
  int
  changelist_prefix(prop_changelist_t *clp)
-@@ -97,7 +99,8 @@ changelist_prefix(prop_changelist_t *clp
+@@ -97,7 +99,8 @@
  	int ret = 0;
  
  	if (clp->cl_prop != ZFS_PROP_MOUNTPOINT &&
@@ -6459,7 +6459,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
  		return (0);
  
  	for (cn = uu_list_first(clp->cl_list); cn != NULL;
-@@ -134,6 +137,17 @@ changelist_prefix(prop_changelist_t *clp
+@@ -134,6 +137,17 @@
  			default:
  				break;
  			}
@@ -6477,7 +6477,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
  		}
  	}
  
-@@ -144,10 +158,11 @@ changelist_prefix(prop_changelist_t *clp
+@@ -144,10 +158,11 @@
  }
  
  /*
@@ -6493,7 +6493,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
   * For non-legacy properties, we only remount/reshare the filesystem if it was
   * previously mounted/shared.  Otherwise, we always remount/reshare the
   * filesystem.
-@@ -195,6 +210,7 @@ changelist_postfix(prop_changelist_t *cl
+@@ -195,6 +210,7 @@
  
  		boolean_t sharenfs;
  		boolean_t sharesmb;
@@ -6501,7 +6501,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
  		boolean_t mounted;
  
  		/*
-@@ -211,9 +227,6 @@ changelist_postfix(prop_changelist_t *cl
+@@ -211,9 +227,6 @@
  
  		zfs_refresh_properties(cn->cn_handle);
  
@@ -6511,7 +6511,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
  		/*
  		 * Remount if previously mounted or mountpoint was legacy,
  		 * or sharenfs or sharesmb  property is set.
-@@ -226,13 +239,16 @@ changelist_postfix(prop_changelist_t *cl
+@@ -226,13 +239,16 @@
  		    shareopts, sizeof (shareopts), NULL, NULL, 0,
  		    B_FALSE) == 0) && (strcmp(shareopts, "off") != 0));
  
@@ -6529,7 +6529,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
  			if (zfs_mount(cn->cn_handle, NULL, 0) != 0)
  				errors++;
  			else
-@@ -244,14 +260,10 @@ changelist_postfix(prop_changelist_t *cl
+@@ -244,14 +260,10 @@
  		 * if the filesystem is currently shared, so that we can
  		 * adopt any new options.
  		 */
@@ -6547,7 +6547,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
  	}
  
  	return (errors ? -1 : 0);
-@@ -321,7 +333,8 @@ changelist_unshare(prop_changelist_t *cl
+@@ -321,7 +333,8 @@
  	int ret = 0;
  
  	if (clp->cl_prop != ZFS_PROP_SHARENFS &&
@@ -6557,7 +6557,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
  		return (0);
  
  	for (cn = uu_list_first(clp->cl_list); cn != NULL;
-@@ -417,7 +430,7 @@ change_one(zfs_handle_t *zhp, void *data
+@@ -417,7 +430,7 @@
  	}
  
  	/*
@@ -6566,7 +6566,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
  	 * then check out the companion property which is tracked
  	 * in cl_shareprop
  	 */
-@@ -611,13 +624,15 @@ changelist_gather(zfs_handle_t *zhp, zfs
+@@ -611,13 +624,15 @@
  
  	if (clp->cl_prop != ZFS_PROP_MOUNTPOINT &&
  	    clp->cl_prop != ZFS_PROP_SHARENFS &&
@@ -6583,11 +6583,11 @@ Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
  	if (clp->cl_prop == ZFS_PROP_SHARENFS)
  		clp->cl_shareprop = ZFS_PROP_SHARESMB;
  	else if (clp->cl_prop == ZFS_PROP_SHARESMB)
-Index: pkg-zfs/lib/libzfs/libzfs_dataset.c
+Index: wheezy/lib/libzfs/libzfs_dataset.c
 ===================================================================
---- pkg-zfs.orig/lib/libzfs/libzfs_dataset.c
-+++ pkg-zfs/lib/libzfs/libzfs_dataset.c
-@@ -1175,6 +1175,7 @@ badlabel:
+--- wheezy.orig/lib/libzfs/libzfs_dataset.c	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/lib/libzfs/libzfs_dataset.c	2016-05-19 09:43:43.019118636 +0000
+@@ -1175,6 +1175,7 @@
  
  		case ZFS_PROP_SHARESMB:
  		case ZFS_PROP_SHARENFS:
@@ -6595,7 +6595,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_dataset.c
  			/*
  			 * For the mountpoint and sharenfs or sharesmb
  			 * properties, check if it can be set in a
-@@ -1201,7 +1202,8 @@ badlabel:
+@@ -1201,7 +1202,8 @@
  					    errbuf);
  					goto error;
  				} else if (prop == ZFS_PROP_SHARENFS ||
@@ -6605,7 +6605,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_dataset.c
  					zfs_error_aux(hdl, dgettext(TEXT_DOMAIN,
  					    "'%s' cannot be set in "
  					    "a non-global zone"), propname);
-@@ -1227,12 +1229,15 @@ badlabel:
+@@ -1227,12 +1229,15 @@
  			 * property value is valid if it is sharenfs.
  			 */
  			if ((prop == ZFS_PROP_SHARENFS ||
@@ -6623,7 +6623,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_dataset.c
  					proto = PROTO_SMB;
  				else
  					proto = PROTO_NFS;
-@@ -4059,6 +4064,14 @@ zfs_rename(zfs_handle_t *zhp, const char
+@@ -4059,6 +4064,14 @@
  			(void) changelist_postfix(cl);
  	} else {
  		if (cl != NULL) {
@@ -6638,10 +6638,10 @@ Index: pkg-zfs/lib/libzfs/libzfs_dataset.c
  			changelist_rename(cl, zfs_get_name(zhp), target);
  			ret = changelist_postfix(cl);
  		}
-Index: pkg-zfs/lib/libzfs/libzfs_mount.c
+Index: wheezy/lib/libzfs/libzfs_mount.c
 ===================================================================
---- pkg-zfs.orig/lib/libzfs/libzfs_mount.c
-+++ pkg-zfs/lib/libzfs/libzfs_mount.c
+--- wheezy.orig/lib/libzfs/libzfs_mount.c	2016-05-19 09:43:19.043420052 +0000
++++ wheezy/lib/libzfs/libzfs_mount.c	2016-05-19 09:43:43.027118536 +0000
 @@ -45,12 +45,15 @@
   *
   * 	zfs_is_shared_nfs()
@@ -6658,7 +6658,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
   *	zfs_unshareall()
   *	zfs_unshareall_bypath()
   *
-@@ -101,6 +104,8 @@ typedef struct {
+@@ -101,6 +104,8 @@
  proto_table_t proto_table[PROTO_END] = {
  	{ZFS_PROP_SHARENFS, "nfs", EZFS_SHARENFSFAILED, EZFS_UNSHARENFSFAILED},
  	{ZFS_PROP_SHARESMB, "smb", EZFS_SHARESMBFAILED, EZFS_UNSHARESMBFAILED},
@@ -6667,7 +6667,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  };
  
  zfs_share_proto_t nfs_only[] = {
-@@ -112,9 +117,15 @@ zfs_share_proto_t smb_only[] = {
+@@ -112,9 +117,15 @@
  	PROTO_SMB,
  	PROTO_END
  };
@@ -6683,7 +6683,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  	PROTO_END
  };
  
-@@ -134,7 +145,6 @@ is_shared(libzfs_handle_t *hdl, const ch
+@@ -134,7 +145,6 @@
  	(void) fseek(hdl->libzfs_sharetab, 0, SEEK_SET);
  
  	while (fgets(buf, sizeof (buf), hdl->libzfs_sharetab) != NULL) {
@@ -6691,7 +6691,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  		/* the mountpoint is the first entry on each line */
  		if ((tab = strchr(buf, '\t')) == NULL)
  			continue;
-@@ -153,12 +163,14 @@ is_shared(libzfs_handle_t *hdl, const ch
+@@ -153,12 +163,14 @@
  				continue;
  			*tab = '\0';
  			if (strcmp(ptr,
@@ -6707,7 +6707,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  				default:
  					return (0);
  				}
-@@ -548,15 +560,21 @@ zfs_unmount(zfs_handle_t *zhp, const cha
+@@ -548,15 +560,21 @@
  	char *mntpt = NULL;
  
  	/* check to see if we need to unmount the filesystem */
@@ -6732,7 +6732,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  			mntpt = zfs_strdup(hdl, entry.mnt_mountp);
  		else
  			mntpt = zfs_strdup(hdl, mountpoint);
-@@ -564,10 +582,22 @@ zfs_unmount(zfs_handle_t *zhp, const cha
+@@ -564,10 +582,22 @@
  		/*
  		 * Unshare and unmount the filesystem
  		 */
@@ -6758,7 +6758,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  			free(mntpt);
  			(void) zfs_shareall(zhp);
  			return (-1);
-@@ -606,9 +636,6 @@ zfs_is_shared(zfs_handle_t *zhp)
+@@ -606,9 +636,6 @@
  	zfs_share_type_t rc = 0;
  	zfs_share_proto_t *curr_proto;
  
@@ -6768,7 +6768,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  	for (curr_proto = share_all_proto; *curr_proto != PROTO_END;
  	    curr_proto++)
  		rc |= zfs_is_shared_proto(zhp, NULL, *curr_proto);
-@@ -619,14 +646,12 @@ zfs_is_shared(zfs_handle_t *zhp)
+@@ -619,14 +646,12 @@
  int
  zfs_share(zfs_handle_t *zhp)
  {
@@ -6783,7 +6783,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  	return (zfs_unshareall(zhp));
  }
  
-@@ -639,7 +664,12 @@ zfs_is_shared_proto(zfs_handle_t *zhp, c
+@@ -639,7 +664,12 @@
  	char *mountpoint;
  	zfs_share_type_t rc;
  
@@ -6797,7 +6797,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  		return (SHARED_NOT_SHARED);
  
  	if ((rc = is_shared(zhp->zfs_hdl, mountpoint, proto))) {
-@@ -668,6 +698,13 @@ zfs_is_shared_smb(zfs_handle_t *zhp, cha
+@@ -668,6 +698,13 @@
  	    PROTO_SMB) != SHARED_NOT_SHARED);
  }
  
@@ -6811,7 +6811,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  /*
   * zfs_init_libshare(zhandle, service)
   *
-@@ -736,8 +773,8 @@ zfs_parse_options(char *options, zfs_sha
+@@ -736,8 +773,8 @@
  
  /*
   * Share the given filesystem according to the options in the specified
@@ -6822,7 +6822,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
   */
  static int
  zfs_share_proto(zfs_handle_t *zhp, zfs_share_proto_t *proto)
-@@ -751,7 +788,10 @@ zfs_share_proto(zfs_handle_t *zhp, zfs_s
+@@ -751,7 +788,10 @@
  	zprop_source_t sourcetype;
  	int ret;
  
@@ -6834,7 +6834,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  		return (0);
  
  	for (curr_proto = proto; *curr_proto != PROTO_END; curr_proto++) {
-@@ -843,6 +883,12 @@ zfs_share_smb(zfs_handle_t *zhp)
+@@ -843,6 +883,12 @@
  }
  
  int
@@ -6847,7 +6847,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  zfs_shareall(zfs_handle_t *zhp)
  {
  	return (zfs_share_proto(zhp, share_all_proto));
-@@ -858,6 +904,7 @@ unshare_one(libzfs_handle_t *hdl, const
+@@ -858,6 +904,7 @@
  	sa_share_t share;
  	int err;
  	char *mntpt;
@@ -6855,7 +6855,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  	/*
  	 * Mountpoint could get trashed if libshare calls getmntany
  	 * which it does during API initialization, so strdup the
-@@ -905,9 +952,17 @@ zfs_unshare_proto(zfs_handle_t *zhp, con
+@@ -905,9 +952,17 @@
  	/* check to see if need to unmount the filesystem */
  	if (mountpoint != NULL)
  		mountpoint = mntpt = zfs_strdup(hdl, mountpoint);
@@ -6875,7 +6875,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  		zfs_share_proto_t *curr_proto;
  
  		if (mountpoint == NULL)
-@@ -943,6 +998,12 @@ zfs_unshare_smb(zfs_handle_t *zhp, const
+@@ -943,6 +998,12 @@
  	return (zfs_unshare_proto(zhp, mountpoint, smb_only));
  }
  
@@ -6888,7 +6888,7 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  /*
   * Same as zfs_unmountall(), but for NFS and SMB unshares.
   */
-@@ -975,6 +1036,12 @@ zfs_unshareall_smb(zfs_handle_t *zhp)
+@@ -975,6 +1036,12 @@
  }
  
  int
@@ -6901,11 +6901,11 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  zfs_unshareall(zfs_handle_t *zhp)
  {
  	return (zfs_unshareall_proto(zhp, share_all_proto));
-Index: pkg-zfs/lib/libzfs/libzfs_util.c
+Index: wheezy/lib/libzfs/libzfs_util.c
 ===================================================================
---- pkg-zfs.orig/lib/libzfs/libzfs_util.c
-+++ pkg-zfs/lib/libzfs/libzfs_util.c
-@@ -168,6 +168,10 @@ libzfs_error_description(libzfs_handle_t
+--- wheezy.orig/lib/libzfs/libzfs_util.c	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/lib/libzfs/libzfs_util.c	2016-05-19 09:43:43.027118536 +0000
+@@ -168,6 +168,10 @@
  		return (dgettext(TEXT_DOMAIN, "smb remove share failed"));
  	case EZFS_SHARESMBFAILED:
  		return (dgettext(TEXT_DOMAIN, "smb add share failed"));
@@ -6916,13 +6916,13 @@ Index: pkg-zfs/lib/libzfs/libzfs_util.c
  	case EZFS_PERM:
  		return (dgettext(TEXT_DOMAIN, "permission denied"));
  	case EZFS_NOSPC:
-Index: pkg-zfs/man/man8/zfs.8
+Index: wheezy/man/man8/zfs.8
 ===================================================================
---- pkg-zfs.orig/man/man8/zfs.8
-+++ pkg-zfs/man/man8/zfs.8
-@@ -1220,6 +1220,348 @@ Controls whether the set-\fBUID\fR bit i
+--- wheezy.orig/man/man8/zfs.8	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/man/man8/zfs.8	2016-05-19 09:45:00.722141777 +0000
+@@ -1207,6 +1207,348 @@
+ .sp
  .ne 2
- .mk
  .na
 +\fB\fBshareiscsi\fR=\fBon\fR | \fBoff\fR\fR | \fIopts\fR\fR
 +.ad
@@ -7266,10 +7266,10 @@ Index: pkg-zfs/man/man8/zfs.8
 +.ne 2
 +.mk
 +.na
- \fB\fBsharesmb\fR=\fBon\fR | \fBoff\fR
+ \fB\fBsharesmb\fR=\fBoff\fR | \fBon\fR
  .ad
  .sp .6
-@@ -3867,6 +4209,152 @@ be used instead of snapshot in send stre
+@@ -3742,6 +4084,152 @@
  .in -2
  .sp
  
@@ -7422,17 +7422,19 @@ Index: pkg-zfs/man/man8/zfs.8
  .SH "ENVIRONMENT VARIABLES"
  .TP
  .B "ZFS_ABORT
-@@ -3910,4 +4398,4 @@ Invalid command line options were specif
+@@ -3782,6 +4270,6 @@
  
  .SH SEE ALSO
  .LP
--\fBchmod\fR(2), \fBfsync\fR(2), \fBgzip\fR(1), \fBmount\fR(8), \fBssh\fR(1), \fBstat\fR(2), \fBwrite\fR(2), \fBzpool\fR(8)
-+\fBchmod\fR(2), \fBfsync\fR(2), \fBgzip\fR(1), \fBmount\fR(8), \fBssh\fR(1), \fBstat\fR(2), \fBwrite\fR(2), \fBzpool\fR(8), \fBietd.conf\fR(8), \fBietadm\fR(8), \fBtgtadm\fR()
-Index: pkg-zfs/module/zcommon/zfs_prop.c
+-\fBchmod\fR(2), \fBfsync\fR(2), \fBgzip\fR(1), \fBls\fR(1), \fBmount\fR(8), \fBopen\fR(2), \fBreaddir\fR(3), \fBssh\fR(1), \fBstat\fR(2), \fBwrite\fR(2), \fBzpool\fR(8)
++\fBchmod\fR(2), \fBfsync\fR(2), \fBgzip\fR(1), \fBls\fR(1), \fBmount\fR(8), \fBopen\fR(2), \fBreaddir\fR(3), \fBssh\fR(1), \fBstat\fR(2), \fBwrite\fR(2), \fBzpool\fR(8), \fBietd.conf\fR(8), \fBietadm\fR(8), \fBtgtadm\fR()
+ .sp
+ On Solaris: \fBdfstab(4)\fR, \fBiscsitadm(1M)\fR, \fBmount(1M)\fR, \fBshare(1M)\fR, \fBsharemgr(1M)\fR, \fBunshare(1M)\fR
+Index: wheezy/module/zcommon/zfs_prop.c
 ===================================================================
---- pkg-zfs.orig/module/zcommon/zfs_prop.c
-+++ pkg-zfs/module/zcommon/zfs_prop.c
-@@ -360,6 +360,9 @@ zfs_prop_init(void)
+--- wheezy.orig/module/zcommon/zfs_prop.c	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/module/zcommon/zfs_prop.c	2016-05-19 09:43:43.059118134 +0000
+@@ -360,6 +360,9 @@
  	zprop_register_string(ZFS_PROP_SELINUX_ROOTCONTEXT, "rootcontext",
  	    "none", PROP_DEFAULT, ZFS_TYPE_DATASET, "<selinux rootcontext>",
  	    "ROOTCONTEXT");
@@ -7442,20 +7444,20 @@ Index: pkg-zfs/module/zcommon/zfs_prop.c
  
  	/* readonly number properties */
  	zprop_register_number(ZFS_PROP_USED, "used", 0, PROP_READONLY,
-Index: pkg-zfs/scripts/Makefile.am
+Index: wheezy/scripts/Makefile.am
 ===================================================================
---- pkg-zfs.orig/scripts/Makefile.am
-+++ pkg-zfs/scripts/Makefile.am
-@@ -16,4 +16,5 @@ dist_pkgdata_SCRIPTS = \
+--- wheezy.orig/scripts/Makefile.am	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/scripts/Makefile.am	2016-05-19 09:43:43.063118083 +0000
+@@ -16,4 +16,5 @@
  	$(top_srcdir)/scripts/zpios-sanity.sh \
  	$(top_srcdir)/scripts/zpios-survey.sh \
  	$(top_srcdir)/scripts/smb.sh \
 +	$(top_srcdir)/scripts/iscsi.sh \
  	$(top_srcdir)/scripts/zfs-helpers.sh
-Index: pkg-zfs/scripts/iscsi.sh
+Index: wheezy/scripts/iscsi.sh
 ===================================================================
---- /dev/null
-+++ pkg-zfs/scripts/iscsi.sh
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wheezy/scripts/iscsi.sh	2016-05-19 09:43:43.063118083 +0000
 @@ -0,0 +1,172 @@
 +#!/bin/bash
 +
