@@ -287,8 +287,6 @@ extern int zpool_label_disk(libzfs_handle_t *, zpool_handle_t *, char *);
  */
 extern int zpool_set_prop(zpool_handle_t *, const char *, const char *);
 extern int zpool_get_prop(zpool_handle_t *, zpool_prop_t, char *,
-    size_t proplen, zprop_source_t *);
-extern int zpool_get_prop_literal(zpool_handle_t *, zpool_prop_t, char *,
     size_t proplen, zprop_source_t *, boolean_t literal);
 extern uint64_t zpool_get_prop_int(zpool_handle_t *, zpool_prop_t,
     zprop_source_t *);
@@ -749,10 +747,21 @@ extern int zfs_unshareall(zfs_handle_t *);
 extern int zfs_deleg_share_nfs(libzfs_handle_t *, char *, char *, char *,
     void *, void *, int, zfs_share_op_t);
 
+enum zfs_nicenum_format {
+	ZFS_NICENUM_1024 = 0,
+	ZFS_NICENUM_TIME = 1,
+	ZFS_NICENUM_RAW = 2
+};
+
 /*
  * Utility function to convert a number to a human-readable form.
  */
 extern void zfs_nicenum(uint64_t, char *, size_t);
+extern void zfs_nicenum_format(uint64_t num, char *buf, size_t buflen,
+    enum zfs_nicenum_format type);
+
+
+extern void zfs_nicetime(uint64_t, char *, size_t);
 extern int zfs_nicestrtonum(libzfs_handle_t *, const char *, uint64_t *);
 
 /*
