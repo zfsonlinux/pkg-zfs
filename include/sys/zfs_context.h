@@ -25,7 +25,7 @@
 /*
  * Copyright 2011 Nexenta Systems, Inc. All rights reserved.
  * Copyright (c) 2012, Joyent, Inc. All rights reserved.
- * Copyright (c) 2012, 2014 by Delphix. All rights reserved.
+ * Copyright (c) 2012, 2015 by Delphix. All rights reserved.
  */
 
 #ifndef _SYS_ZFS_CONTEXT_H
@@ -353,6 +353,7 @@ typedef struct kcondvar {
 } kcondvar_t;
 
 #define	CV_DEFAULT	0
+#define	CALLOUT_FLAG_ABSOLUTE	0x2
 
 extern void cv_init(kcondvar_t *cv, char *name, int type, void *arg);
 extern void cv_destroy(kcondvar_t *cv);
@@ -365,6 +366,8 @@ extern void cv_broadcast(kcondvar_t *cv);
 #define	cv_timedwait_sig(cv, mp, at)		cv_timedwait(cv, mp, at)
 #define	cv_wait_sig(cv, mp)			cv_wait(cv, mp)
 #define	cv_wait_io(cv, mp)			cv_wait(cv, mp)
+#define	cv_timedwait_sig_hires(cv, mp, t, r, f) \
+	cv_timedwait_hires(cv, mp, t, r, f)
 
 /*
  * Thread-specific data
@@ -647,6 +650,7 @@ extern void delay(clock_t ticks);
 extern uint64_t physmem;
 
 extern int highbit64(uint64_t i);
+extern int lowbit64(uint64_t i);
 extern int random_get_bytes(uint8_t *ptr, size_t len);
 extern int random_get_pseudo_bytes(uint8_t *ptr, size_t len);
 
