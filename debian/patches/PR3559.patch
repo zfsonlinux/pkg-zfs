@@ -168,8 +168,8 @@ Date:   Wed Jul 1 17:20:57 2015 +0200
 
 Index: pkg-zfs/contrib/Makefile.am
 ===================================================================
---- pkg-zfs.orig/contrib/Makefile.am
-+++ pkg-zfs/contrib/Makefile.am
+--- pkg-zfs.orig/contrib/Makefile.am	2016-05-10 13:45:02.000000000 +0000
++++ pkg-zfs/contrib/Makefile.am	2016-05-10 13:45:16.648550764 +0000
 @@ -1,2 +1,2 @@
 -SUBDIRS = bash_completion.d dracut initramfs
 -DIST_SUBDIRS = bash_completion.d dracut initramfs
@@ -177,9 +177,9 @@ Index: pkg-zfs/contrib/Makefile.am
 +DIST_SUBDIRS = bash_completion.d dracut initramfs sysv-init shell-common
 Index: pkg-zfs/contrib/initramfs/scripts/zfs
 ===================================================================
---- pkg-zfs.orig/contrib/initramfs/scripts/zfs
-+++ pkg-zfs/contrib/initramfs/scripts/zfs
-@@ -16,6 +16,10 @@ ZPOOL="/sbin/zpool"
+--- pkg-zfs.orig/contrib/initramfs/scripts/zfs	2016-05-10 13:45:02.000000000 +0000
++++ pkg-zfs/contrib/initramfs/scripts/zfs	2016-05-10 13:45:16.652550714 +0000
+@@ -16,6 +16,10 @@
  ZPOOL_CACHE="/etc/zfs/zpool.cache"
  export ZFS ZPOOL ZPOOL_CACHE
  
@@ -190,7 +190,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  # This runs any scripts that should run before we start importing
  # pools and mounting any filesystems.
  pre_mountroot()
-@@ -23,247 +27,20 @@ pre_mountroot()
+@@ -23,247 +27,20 @@
  	if type run_scripts > /dev/null 2>&1 && \
  	    [ -f "/scripts/local-top" -o -d "/scripts/local-top" ]
  	then
@@ -442,7 +442,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  }
  
  # Load ZFS modules
-@@ -271,14 +48,13 @@ import_pool()
+@@ -271,14 +48,13 @@
  # with more logging etc.
  load_module_initrd()
  {
@@ -462,7 +462,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  	fi
  
  	# Wait for all of the /dev/{hd,sd}[a-z] device nodes to appear.
-@@ -295,391 +71,24 @@ load_module_initrd()
+@@ -295,391 +71,24 @@
  	# Load the module
  	load_module "zfs" || return 1
  
@@ -860,7 +860,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  
  	# ----------------------------------------------------------------
  	# I N I T I A L   S E T U P
-@@ -694,13 +103,7 @@ mountroot()
+@@ -694,13 +103,7 @@
  
  	# ------------
  	# Support debug option
@@ -875,7 +875,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  
  	# ------------
  	# Load ZFS module etc.
-@@ -709,22 +112,22 @@ mountroot()
+@@ -709,22 +112,22 @@
  		echo ""
  		echo "Failed to load ZFS modules."
  		echo "Manually load the modules and exit."
@@ -903,7 +903,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  	fi
  
  	# ------------
-@@ -732,19 +135,20 @@ mountroot()
+@@ -732,19 +135,20 @@
  	# Compatibility: 'rootmnt' is for Debian GNU/Linux (etc),
  	#		 'NEWROOT' is for RedHat/Fedora (etc),
  	#		 'NEW_ROOT' is for Gentoo
@@ -929,7 +929,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  
  	# ----------------------------------------------------------------
  	# P A R S E   C O M M A N D   L I N E   O P T I O N S
-@@ -782,19 +186,19 @@ mountroot()
+@@ -782,19 +186,19 @@
  
  	# ------------
  	# Look for 'rpool' and 'bootfs' parameter
@@ -953,7 +953,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  	then
  		# The ${zfs-bootfs} variable is set at the kernel commmand
  		# line, usually by GRUB, but it cannot be referenced here
-@@ -804,12 +208,12 @@ mountroot()
+@@ -804,12 +208,12 @@
  		# Reassign the variable by dumping the environment and
  		# stripping the zfs-bootfs= prefix.  Let the shell handle
  		# quoting through the eval command.
@@ -968,7 +968,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  	then
  		# Do auto detect. Do this by 'cheating' - set 'root=zfs:AUTO'
  		# which will be caught later
-@@ -820,33 +224,39 @@ mountroot()
+@@ -820,33 +224,39 @@
  	# F I N D   A N D   I M P O R T   C O R R E C T   P O O L
  
  	# ------------
@@ -1020,7 +1020,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  	else
  		# No auto - use value from the command line option.
  
-@@ -858,15 +268,14 @@ mountroot()
+@@ -858,15 +268,14 @@
  	fi
  
  	# Import the pool (if not already done so in the AUTO check above).
@@ -1043,7 +1043,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  	fi
  
  	if [ -z "${POOL_IMPORTED}" ]
-@@ -874,14 +283,14 @@ mountroot()
+@@ -874,14 +283,14 @@
  		# No pool imported, this is serious!
  		disable_plymouth
  		echo ""
@@ -1062,7 +1062,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  	fi
  
  	# ----------------------------------------------------------------
-@@ -892,8 +301,7 @@ mountroot()
+@@ -892,8 +301,7 @@
  		# Booting from a snapshot?
  		# Will overwrite the ZFS_BOOTFS variable like so:
  		#   rpool/ROOT/debian@snap2 => rpool/ROOT/debian_snap2
@@ -1072,7 +1072,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  	fi
  
  	if [ -z "${ZFS_BOOTFS}" ]
-@@ -904,9 +312,9 @@ mountroot()
+@@ -904,9 +312,9 @@
  		echo "Error: Unknown root filesystem - no 'bootfs' pool property and"
  		echo "       not specified on the kernel command line."
  		echo ""
@@ -1085,7 +1085,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  	fi
  
  	# ----------------------------------------------------------------
-@@ -914,7 +322,7 @@ mountroot()
+@@ -914,7 +322,7 @@
  
  	# * Ideally, the root filesystem would be mounted like this:
  	#
@@ -1094,7 +1094,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  	#     zfs mount -o mountpoint=/ "${ZFS_BOOTFS}"
  	#
  	#   but the MOUNTPOINT prefix is preserved on descendent filesystem
-@@ -925,20 +333,27 @@ mountroot()
+@@ -925,20 +333,27 @@
  	#   Such as /usr, /var, /usr/local etc.
  	#   NOTE: Mounted in the order specified in the
  	#         ZFS_INITRD_ADDITIONAL_DATASETS variable so take care!
@@ -1132,7 +1132,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  
  		echo "DEBUG: imported pools:"
  		"${ZPOOL}" list -H
-@@ -949,11 +364,11 @@ mountroot()
+@@ -949,11 +364,11 @@
  		echo
  
  		echo "=> waiting for ENTER before continuing because of 'zfsdebug=1'. "
@@ -1148,7 +1148,7 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  
  		set +x
  	fi
-@@ -963,9 +378,9 @@ mountroot()
+@@ -963,9 +378,9 @@
  	if type run_scripts > /dev/null 2>&1 && \
  	    [ -f "/scripts/local-bottom" -o -d "/scripts/local-bottom" ]
  	then
@@ -1162,15 +1162,15 @@ Index: pkg-zfs/contrib/initramfs/scripts/zfs
  }
 Index: pkg-zfs/contrib/shell-common/.gitignore
 ===================================================================
---- /dev/null
-+++ pkg-zfs/contrib/shell-common/.gitignore
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ pkg-zfs/contrib/shell-common/.gitignore	2016-05-10 13:45:16.656550664 +0000
 @@ -0,0 +1,2 @@
 +zfs-functions
 +zfs
 Index: pkg-zfs/contrib/shell-common/Makefile.am
 ===================================================================
---- /dev/null
-+++ pkg-zfs/contrib/shell-common/Makefile.am
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ pkg-zfs/contrib/shell-common/Makefile.am	2016-05-10 13:45:16.656550664 +0000
 @@ -0,0 +1,23 @@
 +zfsfuncsdir = $(sysconfdir)/zfs
 +zfsfuncs_SCRIPTS = zfs-functions
@@ -1197,8 +1197,8 @@ Index: pkg-zfs/contrib/shell-common/Makefile.am
 +	-$(RM) $(defconf_SCRIPTS)  $(zfsfuncs_SCRIPTS)
 Index: pkg-zfs/contrib/shell-common/zfs-functions.in
 ===================================================================
---- /dev/null
-+++ pkg-zfs/contrib/shell-common/zfs-functions.in
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ pkg-zfs/contrib/shell-common/zfs-functions.in	2016-05-10 13:45:16.656550664 +0000
 @@ -0,0 +1,1219 @@
 +# This is a script with common functions etc used by zfs-import, zfs-mount,
 +# zfs-share and zfs-zed.
@@ -2421,8 +2421,8 @@ Index: pkg-zfs/contrib/shell-common/zfs-functions.in
 +}
 Index: pkg-zfs/contrib/shell-common/zfs.in
 ===================================================================
---- /dev/null
-+++ pkg-zfs/contrib/shell-common/zfs.in
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ pkg-zfs/contrib/shell-common/zfs.in	2016-05-10 13:45:16.712549960 +0000
 @@ -0,0 +1,132 @@
 +# ZoL userland configuration.
 +
@@ -2558,8 +2558,8 @@ Index: pkg-zfs/contrib/shell-common/zfs.in
 +#ZED_ARGS="-M"
 Index: pkg-zfs/contrib/sysv-init/.gitignore
 ===================================================================
---- /dev/null
-+++ pkg-zfs/contrib/sysv-init/.gitignore
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ pkg-zfs/contrib/sysv-init/.gitignore	2016-05-10 13:45:16.712549960 +0000
 @@ -0,0 +1,4 @@
 +zfs-import
 +zfs-mount
@@ -2567,8 +2567,8 @@ Index: pkg-zfs/contrib/sysv-init/.gitignore
 +zfs-zed
 Index: pkg-zfs/contrib/sysv-init/Makefile.am
 ===================================================================
---- /dev/null
-+++ pkg-zfs/contrib/sysv-init/Makefile.am
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ pkg-zfs/contrib/sysv-init/Makefile.am	2016-05-10 13:45:16.716549909 +0000
 @@ -0,0 +1,36 @@
 +initdir = $(DEFAULT_INIT_DIR)
 +init_SCRIPTS = zfs-import zfs-mount zfs-share zfs-zed
@@ -2608,8 +2608,8 @@ Index: pkg-zfs/contrib/sysv-init/Makefile.am
 +	-$(RM) $(init_SCRIPTS) $(initconf_SCRIPTS)
 Index: pkg-zfs/contrib/sysv-init/README.md
 ===================================================================
---- /dev/null
-+++ pkg-zfs/contrib/sysv-init/README.md
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ pkg-zfs/contrib/sysv-init/README.md	2016-05-10 13:45:16.716549909 +0000
 @@ -0,0 +1,72 @@
 +DESCRIPTION
 +  These script were written with the primary intention of being portable and
@@ -2685,9 +2685,9 @@ Index: pkg-zfs/contrib/sysv-init/README.md
 +  Finally, we share filesystems configured with the share\* property.
 Index: pkg-zfs/contrib/sysv-init/zfs-import.in
 ===================================================================
---- /dev/null
-+++ pkg-zfs/contrib/sysv-init/zfs-import.in
-@@ -0,0 +1,219 @@
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ pkg-zfs/contrib/sysv-init/zfs-import.in	2016-05-10 13:45:16.716549909 +0000
+@@ -0,0 +1,216 @@
 +#!@SHELL@
 +#
 +# zfs-import    This script will import ZFS pools
@@ -2723,9 +2723,6 @@ Index: pkg-zfs/contrib/sysv-init/zfs-import.in
 +
 +# Source the common init script
 +. @sysconfdir@/zfs/zfs-functions
-+
-+# Source the LSB init functions
-+. /lib/lsb/init-functions
 +
 +# ----------------------------------------------------
 +
@@ -2909,9 +2906,9 @@ Index: pkg-zfs/contrib/sysv-init/zfs-import.in
 +fi
 Index: pkg-zfs/contrib/sysv-init/zfs-mount.in
 ===================================================================
---- /dev/null
-+++ pkg-zfs/contrib/sysv-init/zfs-mount.in
-@@ -0,0 +1,222 @@
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ pkg-zfs/contrib/sysv-init/zfs-mount.in	2016-05-10 13:45:16.720549859 +0000
+@@ -0,0 +1,219 @@
 +#!@SHELL@
 +#
 +# zfs-mount     This script will mount/umount the zfs filesystems.
@@ -2944,9 +2941,6 @@ Index: pkg-zfs/contrib/sysv-init/zfs-mount.in
 +
 +# Source the common init script
 +. @sysconfdir@/zfs/zfs-functions
-+
-+# Source the LSB init functions
-+. /lib/lsb/init-functions
 +
 +# ----------------------------------------------------
 +
@@ -3136,9 +3130,9 @@ Index: pkg-zfs/contrib/sysv-init/zfs-mount.in
 +fi
 Index: pkg-zfs/contrib/sysv-init/zfs-share.in
 ===================================================================
---- /dev/null
-+++ pkg-zfs/contrib/sysv-init/zfs-share.in
-@@ -0,0 +1,88 @@
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ pkg-zfs/contrib/sysv-init/zfs-share.in	2016-05-10 13:45:16.720549859 +0000
+@@ -0,0 +1,85 @@
 +#!@SHELL@
 +#
 +# zfs-share     This script will network share zfs filesystems and volumes.
@@ -3170,9 +3164,6 @@ Index: pkg-zfs/contrib/sysv-init/zfs-share.in
 +
 +# Source the common init script
 +. @sysconfdir@/zfs/zfs-functions
-+
-+# Source the LSB init functions
-+. /lib/lsb/init-functions
 +
 +# ----------------------------------------------------
 +
@@ -3229,9 +3220,9 @@ Index: pkg-zfs/contrib/sysv-init/zfs-share.in
 +fi
 Index: pkg-zfs/contrib/sysv-init/zfs-zed.in
 ===================================================================
---- /dev/null
-+++ pkg-zfs/contrib/sysv-init/zfs-zed.in
-@@ -0,0 +1,137 @@
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ pkg-zfs/contrib/sysv-init/zfs-zed.in	2016-05-10 13:45:16.724549809 +0000
+@@ -0,0 +1,134 @@
 +#!@SHELL@
 +#
 +# zfs-zed
@@ -3242,8 +3233,8 @@ Index: pkg-zfs/contrib/sysv-init/zfs-zed.in
 +#
 +### BEGIN INIT INFO
 +# Provides:          zfs-zed
-+# Required-Start:    $local_fs zfs-mount
-+# Required-Stop:     $local_fs zfs-mount
++# Required-Start:    zfs-mount
++# Required-Stop:     zfs-mount
 +# Default-Start:     2 3 4 5
 +# Default-Stop:      0 1 6
 +# X-Stop-After:      zfs-share
@@ -3270,9 +3261,6 @@ Index: pkg-zfs/contrib/sysv-init/zfs-zed.in
 +
 +# Exit if the package is not installed
 +[ -x "${ZED}" ] || exit 0
-+
-+# Source the LSB init functions
-+. /lib/lsb/init-functions
 +
 +# ----------------------------------------------------
 +
@@ -3371,8 +3359,8 @@ Index: pkg-zfs/contrib/sysv-init/zfs-zed.in
 +fi
 Index: pkg-zfs/etc/Makefile.am
 ===================================================================
---- pkg-zfs.orig/etc/Makefile.am
-+++ pkg-zfs/etc/Makefile.am
+--- pkg-zfs.orig/etc/Makefile.am	2016-05-10 13:45:02.000000000 +0000
++++ pkg-zfs/etc/Makefile.am	2016-05-10 13:45:16.724549809 +0000
 @@ -1,2 +1,2 @@
 -SUBDIRS = zfs $(ZFS_INIT_SYSTEMD) $(ZFS_INIT_SYSV) $(ZFS_MODULE_LOAD)
 -DIST_SUBDIRS = init.d zfs systemd modules-load.d
@@ -3380,8 +3368,8 @@ Index: pkg-zfs/etc/Makefile.am
 +DIST_SUBDIRS = zfs systemd modules-load.d
 Index: pkg-zfs/etc/init.d/.gitignore
 ===================================================================
---- pkg-zfs.orig/etc/init.d/.gitignore
-+++ /dev/null
+--- pkg-zfs.orig/etc/init.d/.gitignore	2016-05-10 13:45:02.000000000 +0000
++++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1,6 +0,0 @@
 -zfs-functions
 -zfs-import
@@ -3391,8 +3379,8 @@ Index: pkg-zfs/etc/init.d/.gitignore
 -zfs
 Index: pkg-zfs/etc/init.d/README.md
 ===================================================================
---- pkg-zfs.orig/etc/init.d/README.md
-+++ /dev/null
+--- pkg-zfs.orig/etc/init.d/README.md	2016-05-10 13:45:02.000000000 +0000
++++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1,72 +0,0 @@
 -DESCRIPTION
 -  These script were written with the primary intention of being portable and
@@ -3468,8 +3456,8 @@ Index: pkg-zfs/etc/init.d/README.md
 -  Finally, we share filesystems configured with the share\* property.
 Index: pkg-zfs/etc/init.d/zfs-functions.in
 ===================================================================
---- pkg-zfs.orig/etc/init.d/zfs-functions.in
-+++ /dev/null
+--- pkg-zfs.orig/etc/init.d/zfs-functions.in	2016-05-10 13:45:02.000000000 +0000
++++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1,429 +0,0 @@
 -# This is a script with common functions etc used by zfs-import, zfs-mount,
 -# zfs-share and zfs-zed.
@@ -3902,8 +3890,8 @@ Index: pkg-zfs/etc/init.d/zfs-functions.in
 -}
 Index: pkg-zfs/etc/init.d/zfs.in
 ===================================================================
---- pkg-zfs.orig/etc/init.d/zfs.in
-+++ /dev/null
+--- pkg-zfs.orig/etc/init.d/zfs.in	2016-05-10 13:45:02.000000000 +0000
++++ /dev/null	1970-01-01 00:00:00.000000000 +0000
 @@ -1,132 +0,0 @@
 -# ZoL userland configuration.
 -
