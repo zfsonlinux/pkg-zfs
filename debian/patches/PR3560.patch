@@ -32,10 +32,10 @@ Date:   Mon Jul 6 00:07:23 2015 +0200
     
     Signed-off-by: Turbo Fredriksson <turbo@bayour.com>
 
-Index: pkg-zfs/config/zfs-build.m4
+Index: wheezy/config/zfs-build.m4
 ===================================================================
---- pkg-zfs.orig/config/zfs-build.m4	2016-05-10 13:42:50.000000000 +0000
-+++ pkg-zfs/config/zfs-build.m4	2016-05-10 13:49:39.489246409 +0000
+--- wheezy.orig/config/zfs-build.m4	2016-05-19 09:53:54.000000000 +0000
++++ wheezy/config/zfs-build.m4	2016-05-19 09:54:35.198919626 +0000
 @@ -143,7 +143,7 @@
  	])
  
@@ -62,10 +62,10 @@ Index: pkg-zfs/config/zfs-build.m4
  ])
  
  dnl #
-Index: pkg-zfs/contrib/dracut/90zfs/Makefile.am
+Index: wheezy/contrib/dracut/90zfs/Makefile.am
 ===================================================================
---- pkg-zfs.orig/contrib/dracut/90zfs/Makefile.am	2016-05-10 13:42:50.000000000 +0000
-+++ pkg-zfs/contrib/dracut/90zfs/Makefile.am	2016-05-10 13:51:26.971895169 +0000
+--- wheezy.orig/contrib/dracut/90zfs/Makefile.am	2016-05-19 09:53:54.000000000 +0000
++++ wheezy/contrib/dracut/90zfs/Makefile.am	2016-05-19 09:54:35.202919576 +0000
 @@ -1,19 +1,18 @@
 +defconfdir = $(DEFAULT_INITCONF_DIR)
  pkgdracutdir = $(dracutdir)/modules.d/90zfs
@@ -97,10 +97,10 @@ Index: pkg-zfs/contrib/dracut/90zfs/Makefile.am
  		"$(top_srcdir)/contrib/dracut/90zfs/$@.in" >'$@'
  
  distclean-local::
-Index: pkg-zfs/contrib/dracut/90zfs/export-zfs.sh.in
+Index: wheezy/contrib/dracut/90zfs/export-zfs.sh.in
 ===================================================================
---- pkg-zfs.orig/contrib/dracut/90zfs/export-zfs.sh.in	2016-05-10 13:42:50.000000000 +0000
-+++ pkg-zfs/contrib/dracut/90zfs/export-zfs.sh.in	2016-05-10 13:49:39.513246108 +0000
+--- wheezy.orig/contrib/dracut/90zfs/export-zfs.sh.in	2016-05-19 09:53:54.000000000 +0000
++++ wheezy/contrib/dracut/90zfs/export-zfs.sh.in	2016-05-19 09:54:35.202919576 +0000
 @@ -12,7 +12,7 @@
  	fi
  
@@ -110,11 +110,11 @@ Index: pkg-zfs/contrib/dracut/90zfs/export-zfs.sh.in
  
  	if [ "x${final}" != "x" ]; then
  		info "zpool list"
-Index: pkg-zfs/contrib/dracut/90zfs/module-setup.sh.in
+Index: wheezy/contrib/dracut/90zfs/module-setup.sh.in
 ===================================================================
---- pkg-zfs.orig/contrib/dracut/90zfs/module-setup.sh.in	2016-05-10 13:42:50.000000000 +0000
-+++ pkg-zfs/contrib/dracut/90zfs/module-setup.sh.in	2016-05-10 13:50:44.140433634 +0000
-@@ -1,12 +1,14 @@
+--- wheezy.orig/contrib/dracut/90zfs/module-setup.sh.in	2016-05-19 09:53:54.000000000 +0000
++++ wheezy/contrib/dracut/90zfs/module-setup.sh.in	2016-05-19 09:58:48.487735354 +0000
+@@ -1,13 +1,15 @@
  #!/bin/sh
  
 +# Source the common init script
@@ -125,23 +125,24 @@ Index: pkg-zfs/contrib/dracut/90zfs/module-setup.sh.in
  	[ "${1}" = "-d" ] && return 0
  
  	# Verify the zfs tool chain
--	which zpool >/dev/null 2>&1 || return 1
--	which zfs >/dev/null 2>&1 || return 1
+-	for tool in "@sbindir@/zpool" "@sbindir@/zfs" "@sbindir@/mount.zfs" ; do
+-		test -x "$tool" || return 1
+-	done
 +	zfs_installed || return 1
++
+ 	# Verify grep exists
+ 	which grep >/dev/null 2>&1 || return 1
  
- 	return 0
- }
-@@ -39,6 +41,8 @@
+@@ -36,6 +38,7 @@
+ 	inst_rules @udevruledir@/60-zvol.rules
  	dracut_install hostid
- 	dracut_install awk
- 	dracut_install head
+ 	dracut_install grep
 +	dracut_install sort
-+	dracut_install grep
- 	inst_hook cmdline 95 "${moddir}/parse-zfs.sh"
- 	if [ -n "$systemdutildir" ] ; then
- 		inst_script "${moddir}/zfs-generator.sh" "$systemdutildir"/system-generators/dracut-zfs-generator
-@@ -47,7 +51,8 @@
- 	fi
+ 	dracut_install @sbindir@/zfs
+ 	dracut_install @sbindir@/zpool
+ 	dracut_install @sbindir@/mount.zfs
+@@ -48,7 +51,8 @@
+ 	inst_hook mount 98 "${moddir}/mount-zfs.sh"
  	inst_hook shutdown 30 "${moddir}/export-zfs.sh"
  
 -	inst_simple "${moddir}/zfs-lib.sh" "/lib/dracut-zfs-lib.sh"
@@ -150,7 +151,7 @@ Index: pkg-zfs/contrib/dracut/90zfs/module-setup.sh.in
  	if [ -e @sysconfdir@/zfs/zpool.cache ]; then
  		inst @sysconfdir@/zfs/zpool.cache
  		type mark_hostonly >/dev/null 2>&1 && mark_hostonly @sysconfdir@/zfs/zpool.cache
-@@ -58,6 +63,10 @@
+@@ -59,6 +63,10 @@
  		type mark_hostonly >/dev/null 2>&1 && mark_hostonly @sysconfdir@/zfs/vdev_id.conf
  	fi
  
@@ -161,11 +162,11 @@ Index: pkg-zfs/contrib/dracut/90zfs/module-setup.sh.in
  	# Synchronize initramfs and system hostid
  	AA=`hostid | cut -b 1,2`
  	BB=`hostid | cut -b 3,4`
-Index: pkg-zfs/contrib/dracut/90zfs/mount-zfs.sh.in
+Index: wheezy/contrib/dracut/90zfs/mount-zfs.sh.in
 ===================================================================
---- pkg-zfs.orig/contrib/dracut/90zfs/mount-zfs.sh.in	2016-05-10 13:42:50.000000000 +0000
-+++ pkg-zfs/contrib/dracut/90zfs/mount-zfs.sh.in	2016-05-10 13:49:39.517246057 +0000
-@@ -2,41 +2,70 @@
+--- wheezy.orig/contrib/dracut/90zfs/mount-zfs.sh.in	2016-05-19 09:53:54.000000000 +0000
++++ wheezy/contrib/dracut/90zfs/mount-zfs.sh.in	2016-05-19 09:57:27.492753599 +0000
+@@ -2,14 +2,15 @@
  
  . /lib/dracut-zfs-lib.sh
  
@@ -181,6 +182,12 @@ Index: pkg-zfs/contrib/dracut/90zfs/mount-zfs.sh.in
 +# mount the filesystem.
 +[ -n "$NEWROOT" ] && rootmnt=${NEWROOT}
 +
+ # If sysroot.mount exists, the initial RAM disk configured
+ # it to mount ZFS on root.  In that case, we bail early.
+ loadstate="$(systemctl --system --show -p LoadState sysroot.mount || true)"
+@@ -21,32 +22,60 @@
+ fi
+ 
  # Delay until all required block devices are present.
 -udevadm settle
 +udev_trigger
@@ -261,102 +268,10 @@ Index: pkg-zfs/contrib/dracut/90zfs/mount-zfs.sh.in
  	fi
  fi
  
-Index: pkg-zfs/contrib/dracut/90zfs/zfs-lib.sh.in
+Index: wheezy/contrib/dracut/README.dracut.markdown
 ===================================================================
---- pkg-zfs.orig/contrib/dracut/90zfs/zfs-lib.sh.in	2016-05-10 13:42:50.000000000 +0000
-+++ /dev/null	1970-01-01 00:00:00.000000000 +0000
-@@ -1,87 +0,0 @@
--#!/bin/sh
--
--command -v getarg >/dev/null || . /lib/dracut-lib.sh
--
--OLDIFS="${IFS}"
--NEWLINE="
--"
--
--ZPOOL_IMPORT_OPTS=""
--if getargbool 0 zfs_force -y zfs.force -y zfsforce ; then
--	warn "ZFS: Will force-import pools if necessary."
--	ZPOOL_IMPORT_OPTS="${ZPOOL_IMPORT_OPTS} -f"
--fi
--
--# find_bootfs
--#   returns the first dataset with the bootfs attribute.
--find_bootfs() {
--	IFS="${NEWLINE}"
--	for dataset in $(zpool list -H -o bootfs); do
--		case "${dataset}" in
--			"" | "-")
--				continue
--				;;
--			"no pools available")
--				IFS="${OLDIFS}"
--				return 1
--				;;
--			*)
--				IFS="${OLDIFS}"
--				echo "${dataset}"
--				return 0
--				;;
--		esac
--	done
--
--	IFS="${OLDIFS}"
--	return 1
--}
--
--# import_pool POOL
--#   imports the given zfs pool if it isn't imported already.
--import_pool() {
--	local pool="${1}"
--
--	if ! zpool list -H "${pool}" 2>&1 > /dev/null ; then
--		info "ZFS: Importing pool ${pool}..."
--		if ! zpool import -N ${ZPOOL_IMPORT_OPTS} "${pool}" ; then
--			warn "ZFS: Unable to import pool ${pool}"
--			return 1
--		fi
--	fi
--
--	return 0
--}
--
--# mount_dataset DATASET
--#   mounts the given zfs dataset.
--mount_dataset() {
--	local dataset="${1}"
--	local mountpoint="$(zfs get -H -o value mountpoint "${dataset}")"
--
--	# We need zfsutil for non-legacy mounts and not for legacy mounts.
--	if [ "${mountpoint}" = "legacy" ] ; then
--		mount -t zfs "${dataset}" "${NEWROOT}"
--	else
--		mount -o zfsutil -t zfs "${dataset}" "${NEWROOT}"
--	fi
--
--	return $?
--}
--
--# export_all OPTS
--#   exports all imported zfs pools.
--export_all() {
--	local opts="${1}"
--	local ret=0
--
--	IFS="${NEWLINE}"
--	for pool in `zpool list -H -o name` ; do
--		if zpool list -H "${pool}" 2>&1 > /dev/null ; then
--			zpool export "${pool}" ${opts} || ret=$?
--		fi
--	done
--	IFS="${OLDIFS}"
--
--	return ${ret}
--}
-Index: pkg-zfs/contrib/dracut/README.dracut.markdown
-===================================================================
---- pkg-zfs.orig/contrib/dracut/README.dracut.markdown	2016-05-10 13:42:50.534387668 +0000
-+++ pkg-zfs/contrib/dracut/README.dracut.markdown	2016-05-10 13:49:39.521246007 +0000
+--- wheezy.orig/contrib/dracut/README.dracut.markdown	2016-05-19 09:53:54.651429377 +0000
++++ wheezy/contrib/dracut/README.dracut.markdown	2016-05-19 09:54:35.210919475 +0000
 @@ -42,6 +42,31 @@
  * `root=...`: If not set, importable pools are searched for a bootfs
  attribute.  If an explicitly set root is desired, you may use
@@ -411,10 +326,10 @@ Index: pkg-zfs/contrib/dracut/README.dracut.markdown
  ------------
  
  This file provides a few handy functions for working with ZFS. Those
-Index: pkg-zfs/contrib/shell-common/zfs-functions.in
+Index: wheezy/contrib/shell-common/zfs-functions.in
 ===================================================================
---- pkg-zfs.orig/contrib/shell-common/zfs-functions.in	2016-05-10 13:49:22.000000000 +0000
-+++ pkg-zfs/contrib/shell-common/zfs-functions.in	2016-05-10 13:49:39.525245957 +0000
+--- wheezy.orig/contrib/shell-common/zfs-functions.in	2016-05-19 09:54:18.000000000 +0000
++++ wheezy/contrib/shell-common/zfs-functions.in	2016-05-19 09:54:35.262918821 +0000
 @@ -25,6 +25,9 @@
  elif [ -f /lib/lsb/init-functions ]; then
  	# LSB, Debian GNU/Linux and derivates
@@ -476,10 +391,10 @@ Index: pkg-zfs/contrib/shell-common/zfs-functions.in
  # If plymouth is availible, hide the splash image.
  disable_plymouth()
  {
-Index: pkg-zfs/rpm/generic/zfs.spec.in
+Index: wheezy/rpm/generic/zfs.spec.in
 ===================================================================
---- pkg-zfs.orig/rpm/generic/zfs.spec.in	2016-05-10 13:42:50.000000000 +0000
-+++ pkg-zfs/rpm/generic/zfs.spec.in	2016-05-10 13:49:39.545245705 +0000
+--- wheezy.orig/rpm/generic/zfs.spec.in	2016-05-19 09:53:54.000000000 +0000
++++ wheezy/rpm/generic/zfs.spec.in	2016-05-19 09:54:35.266918771 +0000
 @@ -19,13 +19,19 @@
  %endif
  %endif

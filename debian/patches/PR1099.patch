@@ -72,10 +72,10 @@ Date:   Sat Dec 21 07:28:03 2013 +0000
     
       So some more discussion might be needed..
 
-Index: pkg-zfs/cmd/zfs/zfs_main.c
+Index: wheezy/cmd/zfs/zfs_main.c
 ===================================================================
---- pkg-zfs.orig/cmd/zfs/zfs_main.c	2016-05-10 22:52:18.000000000 +0000
-+++ pkg-zfs/cmd/zfs/zfs_main.c	2016-05-10 22:53:08.627294026 +0000
+--- wheezy.orig/cmd/zfs/zfs_main.c	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/cmd/zfs/zfs_main.c	2016-05-19 09:43:42.891120246 +0000
 @@ -3508,6 +3508,7 @@
  			    "but unable to remount filesystem\n"));
  			break;
@@ -823,10 +823,10 @@ Index: pkg-zfs/cmd/zfs/zfs_main.c
  		}
  
  		zfs_close(zhp);
-Index: pkg-zfs/include/libzfs.h
+Index: wheezy/include/libzfs.h
 ===================================================================
---- pkg-zfs.orig/include/libzfs.h	2016-05-10 22:52:18.000000000 +0000
-+++ pkg-zfs/include/libzfs.h	2016-05-10 22:53:08.627294026 +0000
+--- wheezy.orig/include/libzfs.h	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/include/libzfs.h	2016-05-19 09:43:42.895120195 +0000
 @@ -144,6 +144,8 @@
  	EZFS_DIFF,		/* general failure of zfs diff */
  	EZFS_DIFFDATA,		/* bad zfs diff data */
@@ -836,7 +836,7 @@ Index: pkg-zfs/include/libzfs.h
  	EZFS_UNKNOWN
  } zfs_error_t;
  
-@@ -579,6 +581,7 @@
+@@ -577,6 +579,7 @@
  	zfs_handle_t	**cb_handles;
  	size_t		cb_alloc;
  	size_t		cb_used;
@@ -844,7 +844,7 @@ Index: pkg-zfs/include/libzfs.h
  	boolean_t	cb_verbose;
  	int		(*cb_getone)(zfs_handle_t *, void *);
  } get_all_cb_t;
-@@ -737,13 +740,17 @@
+@@ -735,13 +738,17 @@
   */
  extern boolean_t zfs_is_shared_nfs(zfs_handle_t *, char **);
  extern boolean_t zfs_is_shared_smb(zfs_handle_t *, char **);
@@ -862,10 +862,10 @@ Index: pkg-zfs/include/libzfs.h
  extern int zfs_unshareall_bypath(zfs_handle_t *, const char *);
  extern int zfs_unshareall(zfs_handle_t *);
  extern int zfs_deleg_share_nfs(libzfs_handle_t *, char *, char *, char *,
-Index: pkg-zfs/include/libzfs_impl.h
+Index: wheezy/include/libzfs_impl.h
 ===================================================================
---- pkg-zfs.orig/include/libzfs_impl.h	2016-05-10 22:52:18.000000000 +0000
-+++ pkg-zfs/include/libzfs_impl.h	2016-05-10 22:53:08.667293524 +0000
+--- wheezy.orig/include/libzfs_impl.h	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/include/libzfs_impl.h	2016-05-19 09:43:42.907120044 +0000
 @@ -118,7 +118,8 @@
  typedef enum {
  	PROTO_NFS = 0,
@@ -886,11 +886,11 @@ Index: pkg-zfs/include/libzfs_impl.h
  } zfs_share_type_t;
  
  int zfs_error(libzfs_handle_t *, int, const char *);
-Index: pkg-zfs/include/sys/fs/zfs.h
+Index: wheezy/include/sys/fs/zfs.h
 ===================================================================
---- pkg-zfs.orig/include/sys/fs/zfs.h	2016-05-10 22:52:18.000000000 +0000
-+++ pkg-zfs/include/sys/fs/zfs.h	2016-05-10 22:53:08.667293524 +0000
-@@ -156,6 +156,7 @@
+--- wheezy.orig/include/sys/fs/zfs.h	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/include/sys/fs/zfs.h	2016-05-19 09:43:42.911119994 +0000
+@@ -157,6 +157,7 @@
  	ZFS_PROP_REDUNDANT_METADATA,
  	ZFS_PROP_OVERLAY,
  	ZFS_PROP_PREV_SNAP,
@@ -898,7 +898,7 @@ Index: pkg-zfs/include/sys/fs/zfs.h
  	ZFS_NUM_PROPS
  } zfs_prop_t;
  
-@@ -332,7 +333,9 @@
+@@ -333,7 +334,9 @@
  	ZFS_SHARE_NFS = 0,
  	ZFS_UNSHARE_NFS = 1,
  	ZFS_SHARE_SMB = 2,
@@ -909,10 +909,10 @@ Index: pkg-zfs/include/sys/fs/zfs.h
  } zfs_share_op_t;
  
  typedef enum zfs_smb_acl_op {
-Index: pkg-zfs/lib/libshare/Makefile.am
+Index: wheezy/lib/libshare/Makefile.am
 ===================================================================
---- pkg-zfs.orig/lib/libshare/Makefile.am	2016-05-10 22:52:18.000000000 +0000
-+++ pkg-zfs/lib/libshare/Makefile.am	2016-05-10 22:53:08.671293473 +0000
+--- wheezy.orig/lib/libshare/Makefile.am	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/lib/libshare/Makefile.am	2016-05-19 09:43:42.915119944 +0000
 @@ -12,7 +12,13 @@
  	nfs.c \
  	nfs.h \
@@ -928,10 +928,10 @@ Index: pkg-zfs/lib/libshare/Makefile.am
  
  KERNEL_C =
  
-Index: pkg-zfs/lib/libshare/README_iscsi.txt
+Index: wheezy/lib/libshare/README_iscsi.txt
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/README_iscsi.txt	2016-05-10 22:53:08.671293473 +0000
++++ wheezy/lib/libshare/README_iscsi.txt	2016-05-19 09:43:42.915119944 +0000
 @@ -0,0 +1,124 @@
 +This is iSCSI support for the IET, SCST and STGT iSCSI target implementations.
 +
@@ -1057,10 +1057,10 @@ Index: pkg-zfs/lib/libshare/README_iscsi.txt
 +
 +    NOTE: This is only required if the IQN haven't been set in the
 +    	  /etc/iscsi_target_id file!
-Index: pkg-zfs/lib/libshare/destroy_lio.sh
+Index: wheezy/lib/libshare/destroy_lio.sh
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/destroy_lio.sh	2016-05-10 22:53:08.671293473 +0000
++++ wheezy/lib/libshare/destroy_lio.sh	2016-05-19 09:43:42.915119944 +0000
 @@ -0,0 +1,29 @@
 +#!/bin/sh
 +
@@ -1091,10 +1091,10 @@ Index: pkg-zfs/lib/libshare/destroy_lio.sh
 +    rmdir $SYSFS/core/iblock_$tid/$name
 +    rmdir $SYSFS/core/iblock_$tid
 +done
-Index: pkg-zfs/lib/libshare/destroy_scst.sh
+Index: wheezy/lib/libshare/destroy_scst.sh
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/destroy_scst.sh	2016-05-10 22:53:08.703293071 +0000
++++ wheezy/lib/libshare/destroy_scst.sh	2016-05-19 09:43:42.919119894 +0000
 @@ -0,0 +1,32 @@
 +#!/bin/sh
 +
@@ -1128,10 +1128,10 @@ Index: pkg-zfs/lib/libshare/destroy_scst.sh
 +	echo "Can't destroy $name - have sessions"
 +    fi
 +done
-Index: pkg-zfs/lib/libshare/iscsi.c
+Index: wheezy/lib/libshare/iscsi.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/iscsi.c	2016-05-10 22:53:08.703293071 +0000
++++ wheezy/lib/libshare/iscsi.c	2016-05-19 09:43:42.939119642 +0000
 @@ -0,0 +1,1219 @@
 +/*
 + * CDDL HEADER START
@@ -2352,10 +2352,10 @@ Index: pkg-zfs/lib/libshare/iscsi.c
 +	if (iscsi_available())
 +		iscsi_fstype = register_fstype("iscsi", &iscsi_shareops);
 +}
-Index: pkg-zfs/lib/libshare/iscsi.h
+Index: wheezy/lib/libshare/iscsi.h
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/iscsi.h	2016-05-10 22:53:08.707293021 +0000
++++ wheezy/lib/libshare/iscsi.h	2016-05-19 09:43:42.939119642 +0000
 @@ -0,0 +1,142 @@
 +/*
 + * CDDL HEADER START
@@ -2499,10 +2499,10 @@ Index: pkg-zfs/lib/libshare/iscsi.h
 +int iscsi_write_sysfs_value(char *, char *);
 +list_t *iscsi_look_for_stuff(char *, const char *, boolean_t, int);
 +list_t *iscsi_parse_initiator(iscsi_shareopts_t *);
-Index: pkg-zfs/lib/libshare/iscsi_iet.c
+Index: wheezy/lib/libshare/iscsi_iet.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/iscsi_iet.c	2016-05-10 22:53:08.707293021 +0000
++++ wheezy/lib/libshare/iscsi_iet.c	2016-05-19 09:43:42.943119592 +0000
 @@ -0,0 +1,604 @@
 +/*
 + * CDDL HEADER START
@@ -3108,10 +3108,10 @@ Index: pkg-zfs/lib/libshare/iscsi_iet.c
 +	else
 +		return (SA_OK);
 +}
-Index: pkg-zfs/lib/libshare/iscsi_lio.c
+Index: wheezy/lib/libshare/iscsi_lio.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/iscsi_lio.c	2016-05-10 22:53:08.711292970 +0000
++++ wheezy/lib/libshare/iscsi_lio.c	2016-05-19 09:43:42.947119542 +0000
 @@ -0,0 +1,1017 @@
 +/*
 + * CDDL HEADER START
@@ -4130,10 +4130,10 @@ Index: pkg-zfs/lib/libshare/iscsi_lio.c
 +
 +	return (SA_OK);
 +}
-Index: pkg-zfs/lib/libshare/iscsi_scst.c
+Index: wheezy/lib/libshare/iscsi_scst.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/iscsi_scst.c	2016-05-10 22:53:08.723292820 +0000
++++ wheezy/lib/libshare/iscsi_scst.c	2016-05-19 09:43:42.971119240 +0000
 @@ -0,0 +1,818 @@
 +/*
 + * CDDL HEADER START
@@ -4953,10 +4953,10 @@ Index: pkg-zfs/lib/libshare/iscsi_scst.c
 +
 +	return (SA_OK);
 +}
-Index: pkg-zfs/lib/libshare/iscsi_stgt.c
+Index: wheezy/lib/libshare/iscsi_stgt.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/iscsi_stgt.c	2016-05-10 22:53:08.727292769 +0000
++++ wheezy/lib/libshare/iscsi_stgt.c	2016-05-19 09:43:42.975119190 +0000
 @@ -0,0 +1,759 @@
 +/*
 + * CDDL HEADER START
@@ -5717,10 +5717,10 @@ Index: pkg-zfs/lib/libshare/iscsi_stgt.c
 +	else
 +		return (SA_OK);
 +}
-Index: pkg-zfs/lib/libshare/libshare.c
+Index: wheezy/lib/libshare/libshare.c
 ===================================================================
---- pkg-zfs.orig/lib/libshare/libshare.c	2016-05-10 22:52:18.000000000 +0000
-+++ pkg-zfs/lib/libshare/libshare.c	2016-05-10 22:53:08.739292618 +0000
+--- wheezy.orig/lib/libshare/libshare.c	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/lib/libshare/libshare.c	2016-05-19 09:43:42.999118888 +0000
 @@ -37,6 +37,7 @@
  #include "libshare_impl.h"
  #include "nfs.h"
@@ -5911,10 +5911,10 @@ Index: pkg-zfs/lib/libshare/libshare.c
  
  		impl_share = impl_share->next;
  	}
-Index: pkg-zfs/lib/libshare/libshare_impl.h
+Index: wheezy/lib/libshare/libshare_impl.h
 ===================================================================
---- pkg-zfs.orig/lib/libshare/libshare_impl.h	2016-05-10 22:52:18.000000000 +0000
-+++ pkg-zfs/lib/libshare/libshare_impl.h	2016-05-10 22:53:08.739292618 +0000
+--- wheezy.orig/lib/libshare/libshare_impl.h	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/lib/libshare/libshare_impl.h	2016-05-19 09:43:42.999118888 +0000
 @@ -67,4 +67,10 @@
  	sa_share_impl_t shares;
  } *sa_handle_impl_t;
@@ -5927,26 +5927,26 @@ Index: pkg-zfs/lib/libshare/libshare_impl.h
 +			const sa_share_ops_t *ops);
 +int foreach_shareopt(const char *shareopts,
 +		shareopt_callback_t callback, void *cookie);
-Index: pkg-zfs/lib/libshare/list_iet.sh
+Index: wheezy/lib/libshare/list_iet.sh
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/list_iet.sh	2016-05-10 22:53:08.743292568 +0000
++++ wheezy/lib/libshare/list_iet.sh	2016-05-19 09:43:42.999118888 +0000
 @@ -0,0 +1,3 @@
 +#!/bin/sh
 +
 +cat /proc/net/iet/volume
-Index: pkg-zfs/lib/libshare/list_lio.sh
+Index: wheezy/lib/libshare/list_lio.sh
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/list_lio.sh	2016-05-10 22:53:08.743292568 +0000
++++ wheezy/lib/libshare/list_lio.sh	2016-05-19 09:43:43.003118838 +0000
 @@ -0,0 +1,3 @@
 +#!/bin/sh
 +
 +echo "/ ls" | targetcli
-Index: pkg-zfs/lib/libshare/list_scst.sh
+Index: wheezy/lib/libshare/list_scst.sh
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/list_scst.sh	2016-05-10 22:53:08.743292568 +0000
++++ wheezy/lib/libshare/list_scst.sh	2016-05-19 09:43:43.003118838 +0000
 @@ -0,0 +1,55 @@
 +#!/bin/sh
 +
@@ -6003,18 +6003,18 @@ Index: pkg-zfs/lib/libshare/list_scst.sh
 +    done
 +done
 +
-Index: pkg-zfs/lib/libshare/list_stgt.sh
+Index: wheezy/lib/libshare/list_stgt.sh
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/list_stgt.sh	2016-05-10 22:53:08.747292518 +0000
++++ wheezy/lib/libshare/list_stgt.sh	2016-05-19 09:43:43.003118838 +0000
 @@ -0,0 +1,3 @@
 +#!/bin/sh
 +
 +tgtadm --lld iscsi --op show --mode target
-Index: pkg-zfs/lib/libshare/nfs.c
+Index: wheezy/lib/libshare/nfs.c
 ===================================================================
---- pkg-zfs.orig/lib/libshare/nfs.c	2016-05-10 22:52:18.000000000 +0000
-+++ pkg-zfs/lib/libshare/nfs.c	2016-05-10 22:53:08.747292518 +0000
+--- wheezy.orig/lib/libshare/nfs.c	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/lib/libshare/nfs.c	2016-05-19 09:43:43.003118838 +0000
 @@ -44,72 +44,9 @@
   */
  static int nfs_exportfs_temp_fd = -1;
@@ -6107,10 +6107,10 @@ Index: pkg-zfs/lib/libshare/nfs.c
  
  	if (rc != SA_OK) {
  		free(*plinux_opts);
-Index: pkg-zfs/lib/libshare/zfs_share_iscsi.iet
+Index: wheezy/lib/libshare/zfs_share_iscsi.iet
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/zfs_share_iscsi.iet	2016-05-10 22:53:08.751292468 +0000
++++ wheezy/lib/libshare/zfs_share_iscsi.iet	2016-05-19 09:43:43.007118787 +0000
 @@ -0,0 +1,44 @@
 +#!/bin/sh
 +
@@ -6156,10 +6156,10 @@ Index: pkg-zfs/lib/libshare/zfs_share_iscsi.iet
 +target_mod QueuedCommands 32
 +
 +exit 0
-Index: pkg-zfs/lib/libshare/zfs_share_iscsi.lio
+Index: wheezy/lib/libshare/zfs_share_iscsi.lio
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/zfs_share_iscsi.lio	2016-05-10 22:53:08.751292468 +0000
++++ wheezy/lib/libshare/zfs_share_iscsi.lio	2016-05-19 09:43:43.007118787 +0000
 @@ -0,0 +1,118 @@
 +#!/bin/bash
 +
@@ -6279,10 +6279,10 @@ Index: pkg-zfs/lib/libshare/zfs_share_iscsi.lio
 +#tcm_mod emulate_model_alias		0
 +
 +exit 0
-Index: pkg-zfs/lib/libshare/zfs_share_iscsi.scst
+Index: wheezy/lib/libshare/zfs_share_iscsi.scst
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/zfs_share_iscsi.scst	2016-05-10 22:53:08.755292417 +0000
++++ wheezy/lib/libshare/zfs_share_iscsi.scst	2016-05-19 09:43:43.011118737 +0000
 @@ -0,0 +1,61 @@
 +#!/bin/sh
 +
@@ -6345,10 +6345,10 @@ Index: pkg-zfs/lib/libshare/zfs_share_iscsi.scst
 +target_mod DataDigest			None
 +
 +exit 0
-Index: pkg-zfs/lib/libshare/zfs_share_iscsi.stgt
+Index: wheezy/lib/libshare/zfs_share_iscsi.stgt
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/lib/libshare/zfs_share_iscsi.stgt	2016-05-10 22:53:08.755292417 +0000
++++ wheezy/lib/libshare/zfs_share_iscsi.stgt	2016-05-19 09:43:43.011118737 +0000
 @@ -0,0 +1,71 @@
 +#!/bin/sh
 +
@@ -6421,10 +6421,10 @@ Index: pkg-zfs/lib/libshare/zfs_share_iscsi.stgt
 +#bind_mod 127.0.0.1
 +
 +exit 0
-Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
+Index: wheezy/lib/libzfs/libzfs_changelist.c
 ===================================================================
---- pkg-zfs.orig/lib/libzfs/libzfs_changelist.c	2016-05-10 22:52:18.375925772 +0000
-+++ pkg-zfs/lib/libzfs/libzfs_changelist.c	2016-05-10 22:53:08.755292417 +0000
+--- wheezy.orig/lib/libzfs/libzfs_changelist.c	2016-05-19 09:43:19.043420052 +0000
++++ wheezy/lib/libzfs/libzfs_changelist.c	2016-05-19 09:43:43.015118687 +0000
 @@ -72,7 +72,8 @@
  struct prop_changelist {
  	zfs_prop_t		cl_prop;
@@ -6583,10 +6583,10 @@ Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
  	if (clp->cl_prop == ZFS_PROP_SHARENFS)
  		clp->cl_shareprop = ZFS_PROP_SHARESMB;
  	else if (clp->cl_prop == ZFS_PROP_SHARESMB)
-Index: pkg-zfs/lib/libzfs/libzfs_dataset.c
+Index: wheezy/lib/libzfs/libzfs_dataset.c
 ===================================================================
---- pkg-zfs.orig/lib/libzfs/libzfs_dataset.c	2016-05-10 22:52:18.000000000 +0000
-+++ pkg-zfs/lib/libzfs/libzfs_dataset.c	2016-05-10 22:53:08.763292317 +0000
+--- wheezy.orig/lib/libzfs/libzfs_dataset.c	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/lib/libzfs/libzfs_dataset.c	2016-05-19 09:43:43.019118636 +0000
 @@ -1175,6 +1175,7 @@
  
  		case ZFS_PROP_SHARESMB:
@@ -6638,10 +6638,10 @@ Index: pkg-zfs/lib/libzfs/libzfs_dataset.c
  			changelist_rename(cl, zfs_get_name(zhp), target);
  			ret = changelist_postfix(cl);
  		}
-Index: pkg-zfs/lib/libzfs/libzfs_mount.c
+Index: wheezy/lib/libzfs/libzfs_mount.c
 ===================================================================
---- pkg-zfs.orig/lib/libzfs/libzfs_mount.c	2016-05-10 22:52:18.375925772 +0000
-+++ pkg-zfs/lib/libzfs/libzfs_mount.c	2016-05-10 22:53:08.767292266 +0000
+--- wheezy.orig/lib/libzfs/libzfs_mount.c	2016-05-19 09:43:19.043420052 +0000
++++ wheezy/lib/libzfs/libzfs_mount.c	2016-05-19 09:43:43.027118536 +0000
 @@ -45,12 +45,15 @@
   *
   * 	zfs_is_shared_nfs()
@@ -6901,10 +6901,10 @@ Index: pkg-zfs/lib/libzfs/libzfs_mount.c
  zfs_unshareall(zfs_handle_t *zhp)
  {
  	return (zfs_unshareall_proto(zhp, share_all_proto));
-Index: pkg-zfs/lib/libzfs/libzfs_util.c
+Index: wheezy/lib/libzfs/libzfs_util.c
 ===================================================================
---- pkg-zfs.orig/lib/libzfs/libzfs_util.c	2016-05-10 22:52:18.000000000 +0000
-+++ pkg-zfs/lib/libzfs/libzfs_util.c	2016-05-10 22:53:08.787292015 +0000
+--- wheezy.orig/lib/libzfs/libzfs_util.c	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/lib/libzfs/libzfs_util.c	2016-05-19 09:43:43.027118536 +0000
 @@ -168,6 +168,10 @@
  		return (dgettext(TEXT_DOMAIN, "smb remove share failed"));
  	case EZFS_SHARESMBFAILED:
@@ -6916,13 +6916,13 @@ Index: pkg-zfs/lib/libzfs/libzfs_util.c
  	case EZFS_PERM:
  		return (dgettext(TEXT_DOMAIN, "permission denied"));
  	case EZFS_NOSPC:
-Index: pkg-zfs/man/man8/zfs.8
+Index: wheezy/man/man8/zfs.8
 ===================================================================
---- pkg-zfs.orig/man/man8/zfs.8	2016-05-10 22:52:18.000000000 +0000
-+++ pkg-zfs/man/man8/zfs.8	2016-05-10 22:53:08.791291965 +0000
-@@ -1220,6 +1220,348 @@
+--- wheezy.orig/man/man8/zfs.8	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/man/man8/zfs.8	2016-05-19 09:45:00.722141777 +0000
+@@ -1207,6 +1207,348 @@
+ .sp
  .ne 2
- .mk
  .na
 +\fB\fBshareiscsi\fR=\fBon\fR | \fBoff\fR\fR | \fIopts\fR\fR
 +.ad
@@ -7266,10 +7266,10 @@ Index: pkg-zfs/man/man8/zfs.8
 +.ne 2
 +.mk
 +.na
- \fB\fBsharesmb\fR=\fBon\fR | \fBoff\fR
+ \fB\fBsharesmb\fR=\fBoff\fR | \fBon\fR
  .ad
  .sp .6
-@@ -3867,6 +4209,152 @@
+@@ -3742,6 +4084,152 @@
  .in -2
  .sp
  
@@ -7422,16 +7422,18 @@ Index: pkg-zfs/man/man8/zfs.8
  .SH "ENVIRONMENT VARIABLES"
  .TP
  .B "ZFS_ABORT
-@@ -3910,4 +4398,4 @@
+@@ -3782,6 +4270,6 @@
  
  .SH SEE ALSO
  .LP
--\fBchmod\fR(2), \fBfsync\fR(2), \fBgzip\fR(1), \fBmount\fR(8), \fBssh\fR(1), \fBstat\fR(2), \fBwrite\fR(2), \fBzpool\fR(8)
-+\fBchmod\fR(2), \fBfsync\fR(2), \fBgzip\fR(1), \fBmount\fR(8), \fBssh\fR(1), \fBstat\fR(2), \fBwrite\fR(2), \fBzpool\fR(8), \fBietd.conf\fR(8), \fBietadm\fR(8), \fBtgtadm\fR()
-Index: pkg-zfs/module/zcommon/zfs_prop.c
+-\fBchmod\fR(2), \fBfsync\fR(2), \fBgzip\fR(1), \fBls\fR(1), \fBmount\fR(8), \fBopen\fR(2), \fBreaddir\fR(3), \fBssh\fR(1), \fBstat\fR(2), \fBwrite\fR(2), \fBzpool\fR(8)
++\fBchmod\fR(2), \fBfsync\fR(2), \fBgzip\fR(1), \fBls\fR(1), \fBmount\fR(8), \fBopen\fR(2), \fBreaddir\fR(3), \fBssh\fR(1), \fBstat\fR(2), \fBwrite\fR(2), \fBzpool\fR(8), \fBietd.conf\fR(8), \fBietadm\fR(8), \fBtgtadm\fR()
+ .sp
+ On Solaris: \fBdfstab(4)\fR, \fBiscsitadm(1M)\fR, \fBmount(1M)\fR, \fBshare(1M)\fR, \fBsharemgr(1M)\fR, \fBunshare(1M)\fR
+Index: wheezy/module/zcommon/zfs_prop.c
 ===================================================================
---- pkg-zfs.orig/module/zcommon/zfs_prop.c	2016-05-10 22:52:18.000000000 +0000
-+++ pkg-zfs/module/zcommon/zfs_prop.c	2016-05-10 22:53:08.799291864 +0000
+--- wheezy.orig/module/zcommon/zfs_prop.c	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/module/zcommon/zfs_prop.c	2016-05-19 09:43:43.059118134 +0000
 @@ -360,6 +360,9 @@
  	zprop_register_string(ZFS_PROP_SELINUX_ROOTCONTEXT, "rootcontext",
  	    "none", PROP_DEFAULT, ZFS_TYPE_DATASET, "<selinux rootcontext>",
@@ -7442,20 +7444,20 @@ Index: pkg-zfs/module/zcommon/zfs_prop.c
  
  	/* readonly number properties */
  	zprop_register_number(ZFS_PROP_USED, "used", 0, PROP_READONLY,
-Index: pkg-zfs/scripts/Makefile.am
+Index: wheezy/scripts/Makefile.am
 ===================================================================
---- pkg-zfs.orig/scripts/Makefile.am	2016-05-10 22:52:18.000000000 +0000
-+++ pkg-zfs/scripts/Makefile.am	2016-05-10 23:00:21.025858040 +0000
+--- wheezy.orig/scripts/Makefile.am	2016-05-19 09:43:19.000000000 +0000
++++ wheezy/scripts/Makefile.am	2016-05-19 09:43:43.063118083 +0000
 @@ -16,4 +16,5 @@
  	$(top_srcdir)/scripts/zpios-sanity.sh \
  	$(top_srcdir)/scripts/zpios-survey.sh \
  	$(top_srcdir)/scripts/smb.sh \
 +	$(top_srcdir)/scripts/iscsi.sh \
  	$(top_srcdir)/scripts/zfs-helpers.sh
-Index: pkg-zfs/scripts/iscsi.sh
+Index: wheezy/scripts/iscsi.sh
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ pkg-zfs/scripts/iscsi.sh	2016-05-10 22:53:08.835291412 +0000
++++ wheezy/scripts/iscsi.sh	2016-05-19 09:43:43.063118083 +0000
 @@ -0,0 +1,172 @@
 +#!/bin/bash
 +
