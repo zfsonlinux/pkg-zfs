@@ -738,11 +738,12 @@ taskq_thread_spawn_task(void *arg)
 {
 	taskq_t *tq = (taskq_t *)arg;
 
-	(void) taskq_thread_create(tq);
-
-	spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
-	tq->tq_nspawn--;
-	spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
+	if (taskq_thread_create(tq) == NULL) {
+		/* restore spawning count if failed */
+		spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
+		tq->tq_nspawn--;
+		spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
+	}
 }
 
 /*
@@ -820,6 +821,14 @@ taskq_thread(void *args)
 	flush_signals(current);
 
 	spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
+	/*
+	 * If we are dynamically spawned, decrease spawning count. Note that
+	 * we could be created during taskq_create, in which case we shouldn't
+	 * do the decrement. But it's fine because taskq_create will reset
+	 * tq_nspawn later.
+	 */
+	if (tq->tq_flags & TASKQ_DYNAMIC)
+		tq->tq_nspawn--;
 
 	/* Immediately exit if more threads than allowed were created. */
 	if (tq->tq_nthreads >= tq->tq_maxthreads)
@@ -1020,6 +1029,11 @@ taskq_create(const char *name, int nthreads, pri_t pri,
 
 	/* Wait for all threads to be started before potential destroy */
 	wait_event(tq->tq_wait_waitq, tq->tq_nthreads == count);
+	/*
+	 * taskq_thread might have touched nspawn, but we don't want them to
+	 * because they're not dynamically spawned. So we reset it to 0
+	 */
+	tq->tq_nspawn = 0;
 
 	if (rc) {
 		taskq_destroy(tq);
@@ -1052,6 +1066,12 @@ taskq_destroy(taskq_t *tq)
 	taskq_wait(tq);
 
 	spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
+	/* wait for spawning threads to insert themselves to the list */
+	while (tq->tq_nspawn) {
+		spin_unlock_irqrestore(&tq->tq_lock, tq->tq_lock_flags);
+		schedule_timeout_interruptible(1);
+		spin_lock_irqsave(&tq->tq_lock, tq->tq_lock_flags);
+	}
 
 	/*
 	 * Signal each thread to exit and block until it does.  Each thread
