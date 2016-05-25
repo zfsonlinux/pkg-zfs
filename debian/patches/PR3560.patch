@@ -32,10 +32,10 @@ Date:   Mon Jul 6 00:07:23 2015 +0200
     
     Signed-off-by: Turbo Fredriksson <turbo@bayour.com>
 
-Index: wheezy/config/zfs-build.m4
+Index: pkg-zfs/config/zfs-build.m4
 ===================================================================
---- wheezy.orig/config/zfs-build.m4	2016-05-19 09:53:54.000000000 +0000
-+++ wheezy/config/zfs-build.m4	2016-05-19 09:54:35.198919626 +0000
+--- pkg-zfs.orig/config/zfs-build.m4	2016-05-25 15:45:55.569441168 +0000
++++ pkg-zfs/config/zfs-build.m4	2016-05-25 15:46:04.209332550 +0000
 @@ -143,7 +143,7 @@
  	])
  
@@ -62,10 +62,10 @@ Index: wheezy/config/zfs-build.m4
  ])
  
  dnl #
-Index: wheezy/contrib/dracut/90zfs/Makefile.am
+Index: pkg-zfs/contrib/dracut/90zfs/Makefile.am
 ===================================================================
---- wheezy.orig/contrib/dracut/90zfs/Makefile.am	2016-05-19 09:53:54.000000000 +0000
-+++ wheezy/contrib/dracut/90zfs/Makefile.am	2016-05-19 09:54:35.202919576 +0000
+--- pkg-zfs.orig/contrib/dracut/90zfs/Makefile.am	2016-05-25 15:45:55.569441168 +0000
++++ pkg-zfs/contrib/dracut/90zfs/Makefile.am	2016-05-25 15:46:04.209332550 +0000
 @@ -1,19 +1,18 @@
 +defconfdir = $(DEFAULT_INITCONF_DIR)
  pkgdracutdir = $(dracutdir)/modules.d/90zfs
@@ -97,10 +97,10 @@ Index: wheezy/contrib/dracut/90zfs/Makefile.am
  		"$(top_srcdir)/contrib/dracut/90zfs/$@.in" >'$@'
  
  distclean-local::
-Index: wheezy/contrib/dracut/90zfs/export-zfs.sh.in
+Index: pkg-zfs/contrib/dracut/90zfs/export-zfs.sh.in
 ===================================================================
---- wheezy.orig/contrib/dracut/90zfs/export-zfs.sh.in	2016-05-19 09:53:54.000000000 +0000
-+++ wheezy/contrib/dracut/90zfs/export-zfs.sh.in	2016-05-19 09:54:35.202919576 +0000
+--- pkg-zfs.orig/contrib/dracut/90zfs/export-zfs.sh.in	2016-05-25 15:45:55.569441168 +0000
++++ pkg-zfs/contrib/dracut/90zfs/export-zfs.sh.in	2016-05-25 15:46:04.213332500 +0000
 @@ -12,7 +12,7 @@
  	fi
  
@@ -110,10 +110,10 @@ Index: wheezy/contrib/dracut/90zfs/export-zfs.sh.in
  
  	if [ "x${final}" != "x" ]; then
  		info "zpool list"
-Index: wheezy/contrib/dracut/90zfs/module-setup.sh.in
+Index: pkg-zfs/contrib/dracut/90zfs/module-setup.sh.in
 ===================================================================
---- wheezy.orig/contrib/dracut/90zfs/module-setup.sh.in	2016-05-19 09:53:54.000000000 +0000
-+++ wheezy/contrib/dracut/90zfs/module-setup.sh.in	2016-05-19 09:58:48.487735354 +0000
+--- pkg-zfs.orig/contrib/dracut/90zfs/module-setup.sh.in	2016-05-25 15:45:55.569441168 +0000
++++ pkg-zfs/contrib/dracut/90zfs/module-setup.sh.in	2016-05-25 15:46:04.225332349 +0000
 @@ -1,13 +1,15 @@
  #!/bin/sh
  
@@ -162,10 +162,10 @@ Index: wheezy/contrib/dracut/90zfs/module-setup.sh.in
  	# Synchronize initramfs and system hostid
  	AA=`hostid | cut -b 1,2`
  	BB=`hostid | cut -b 3,4`
-Index: wheezy/contrib/dracut/90zfs/mount-zfs.sh.in
+Index: pkg-zfs/contrib/dracut/90zfs/mount-zfs.sh.in
 ===================================================================
---- wheezy.orig/contrib/dracut/90zfs/mount-zfs.sh.in	2016-05-19 09:53:54.000000000 +0000
-+++ wheezy/contrib/dracut/90zfs/mount-zfs.sh.in	2016-05-19 09:57:27.492753599 +0000
+--- pkg-zfs.orig/contrib/dracut/90zfs/mount-zfs.sh.in	2016-05-25 15:45:55.569441168 +0000
++++ pkg-zfs/contrib/dracut/90zfs/mount-zfs.sh.in	2016-05-25 15:46:04.229332299 +0000
 @@ -2,14 +2,15 @@
  
  . /lib/dracut-zfs-lib.sh
@@ -268,10 +268,10 @@ Index: wheezy/contrib/dracut/90zfs/mount-zfs.sh.in
  	fi
  fi
  
-Index: wheezy/contrib/dracut/README.dracut.markdown
+Index: pkg-zfs/contrib/dracut/README.dracut.markdown
 ===================================================================
---- wheezy.orig/contrib/dracut/README.dracut.markdown	2016-05-19 09:53:54.651429377 +0000
-+++ wheezy/contrib/dracut/README.dracut.markdown	2016-05-19 09:54:35.210919475 +0000
+--- pkg-zfs.orig/contrib/dracut/README.dracut.markdown	2016-05-25 15:45:55.569441168 +0000
++++ pkg-zfs/contrib/dracut/README.dracut.markdown	2016-05-25 15:46:04.229332299 +0000
 @@ -42,6 +42,31 @@
  * `root=...`: If not set, importable pools are searched for a bootfs
  attribute.  If an explicitly set root is desired, you may use
@@ -326,10 +326,10 @@ Index: wheezy/contrib/dracut/README.dracut.markdown
  ------------
  
  This file provides a few handy functions for working with ZFS. Those
-Index: wheezy/contrib/shell-common/zfs-functions.in
+Index: pkg-zfs/contrib/shell-common/zfs-functions.in
 ===================================================================
---- wheezy.orig/contrib/shell-common/zfs-functions.in	2016-05-19 09:54:18.000000000 +0000
-+++ wheezy/contrib/shell-common/zfs-functions.in	2016-05-19 09:54:35.262918821 +0000
+--- pkg-zfs.orig/contrib/shell-common/zfs-functions.in	2016-05-25 15:46:04.173333003 +0000
++++ pkg-zfs/contrib/shell-common/zfs-functions.in	2016-05-25 15:46:04.229332299 +0000
 @@ -25,6 +25,9 @@
  elif [ -f /lib/lsb/init-functions ]; then
  	# LSB, Debian GNU/Linux and derivates
@@ -391,10 +391,10 @@ Index: wheezy/contrib/shell-common/zfs-functions.in
  # If plymouth is availible, hide the splash image.
  disable_plymouth()
  {
-Index: wheezy/rpm/generic/zfs.spec.in
+Index: pkg-zfs/rpm/generic/zfs.spec.in
 ===================================================================
---- wheezy.orig/rpm/generic/zfs.spec.in	2016-05-19 09:53:54.000000000 +0000
-+++ wheezy/rpm/generic/zfs.spec.in	2016-05-19 09:54:35.266918771 +0000
+--- pkg-zfs.orig/rpm/generic/zfs.spec.in	2016-05-25 15:45:55.569441168 +0000
++++ pkg-zfs/rpm/generic/zfs.spec.in	2016-05-25 15:46:04.233332249 +0000
 @@ -19,13 +19,19 @@
  %endif
  %endif
@@ -417,7 +417,7 @@ Index: wheezy/rpm/generic/zfs.spec.in
  %endif
  
  # Set the default _initconfdir when undefined.
-@@ -177,15 +183,18 @@
+@@ -179,15 +185,18 @@
  This package contains test infrastructure and support scripts for
  validating the file system.
  
@@ -436,7 +436,7 @@ Index: wheezy/rpm/generic/zfs.spec.in
  
  %if 0%{?_initramfs}
  %package initramfs
-@@ -219,8 +228,8 @@
+@@ -221,8 +230,8 @@
      --with-config=user \
      --with-udevdir=%{_udevdir} \
      --with-udevruledir=%{_udevruledir} \
@@ -446,7 +446,7 @@ Index: wheezy/rpm/generic/zfs.spec.in
      %{debug} \
      %{systemd}
  make %{?_smp_mflags}
-@@ -304,9 +313,13 @@
+@@ -306,9 +315,13 @@
  %files test
  %{_datadir}/%{name}
  

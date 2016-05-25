@@ -1,6 +1,22 @@
 zfs-linux (0.6.5.999-290-g8342673-sid-daily) sid-daily; urgency=medium
 
   * <<EOF New daily release - Debian patches updated - Wed, 25 May 2016
+    17:41:10 +0000/8342673.  846f61d <<EOF New daily release - Debian
+    patches updated - Wed, 25 May 2016 14:47:33 +0000/8342673. EOF
+    1600062 Merge remote-tracking branch 'zfs/master' into
+    snapshot/debian/sid 9953ee7 Merge remote-tracking branch
+    'zfs/master' into snapshot/debian/sid 4f527f7 New daily release -
+    Thu, 19 May 2016 01:31:49 +0000/bc2d809. dc63da8 Merge remote-
+    tracking branch 'zfs/master' into snapshot/debian/sid 38976d5 Update
+    PR1099. 7fd6a8c Merge remote-tracking branch 'zfs/master' into
+    snapshot/debian/sid 870c9bb New upstream daily release - b3744ae.
+    EOF
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 25 May 2016 17:41:15 +0000
+
+zfs-linux (0.6.5.999-290-g8342673-sid-daily) sid-daily; urgency=medium
+
+  * <<EOF New daily release - Debian patches updated - Wed, 25 May 2016
     14:47:33 +0000/8342673. EOF
 
  -- Turbo Fredriksson <turbo@debian.org>  Wed, 25 May 2016 14:47:33 +0000
