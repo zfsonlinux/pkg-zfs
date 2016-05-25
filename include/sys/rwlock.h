@@ -182,13 +182,8 @@ RW_LOCK_HELD(krwlock_t *rwp)
 	if (RW_WRITE_HELD(rwp)) {					\
 		_rc_ = 1;						\
 	} else {							\
-		rw_exit(rwp);						\
-		if (rw_tryenter(rwp, RW_WRITER)) {			\
-			_rc_ = 1;					\
-		} else {						\
-			rw_enter(rwp, RW_READER);			\
-			_rc_ = 0;					\
-		}							\
+		if ((_rc_ = rwsem_tryupgrade(SEM(rwp))))		\
+			spl_rw_set_owner(rwp);				\
 	}								\
 	_rc_;								\
 })
