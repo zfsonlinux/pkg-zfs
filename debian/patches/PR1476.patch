@@ -56,10 +56,10 @@ Date:   Sat Dec 21 07:34:08 2013 +0000
       'somewhere else' and once here (this one AFTER the share have been unshared). That
       makes this one fail! Don't know if this is correct, but it works to comment out this...
 
-Index: wheezy/lib/libshare/list_smbfs.sh
+Index: pkg-zfs/lib/libshare/list_smbfs.sh
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wheezy/lib/libshare/list_smbfs.sh	2016-05-19 09:47:06.632558869 +0000
++++ pkg-zfs/lib/libshare/list_smbfs.sh	2016-05-25 15:41:24.564848157 +0000
 @@ -0,0 +1,12 @@
 +#!/bin/sh
 +
@@ -73,10 +73,10 @@ Index: wheezy/lib/libshare/list_smbfs.sh
 +    printf "%6s: %-80s %-73s guestok=%-3s ro=%-3s\n" $i $share $path $guestok $readonly
 +    i=`expr $i + 1`
 +done
-Index: wheezy/lib/libshare/smb.c
+Index: pkg-zfs/lib/libshare/smb.c
 ===================================================================
---- wheezy.orig/lib/libshare/smb.c	2016-05-19 09:43:19.000000000 +0000
-+++ wheezy/lib/libshare/smb.c	2016-05-19 09:47:06.636558819 +0000
+--- pkg-zfs.orig/lib/libshare/smb.c	2016-05-25 15:40:49.000000000 +0000
++++ pkg-zfs/lib/libshare/smb.c	2016-05-25 15:41:24.564848157 +0000
 @@ -28,168 +28,358 @@
   * shares using the 'net share' command that comes with Samba.
   *
@@ -862,10 +862,10 @@ Index: wheezy/lib/libshare/smb.c
 +#endif
 +	}
  }
-Index: wheezy/lib/libshare/smb.h
+Index: pkg-zfs/lib/libshare/smb.h
 ===================================================================
---- wheezy.orig/lib/libshare/smb.h	2016-05-19 09:43:19.000000000 +0000
-+++ wheezy/lib/libshare/smb.h	2016-05-19 09:47:06.636558819 +0000
+--- pkg-zfs.orig/lib/libshare/smb.h	2016-05-25 15:40:49.000000000 +0000
++++ pkg-zfs/lib/libshare/smb.h	2016-05-25 15:41:24.624847403 +0000
 @@ -28,22 +28,24 @@
   * references are hard to find.
   */
@@ -900,10 +900,10 @@ Index: wheezy/lib/libshare/smb.h
 -smb_share_t *smb_shares;
 -
  void libshare_smb_init(void);
-Index: wheezy/lib/libshare/zfs_share_smbfs
+Index: pkg-zfs/lib/libshare/zfs_share_smbfs
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wheezy/lib/libshare/zfs_share_smbfs	2016-05-19 09:47:06.636558819 +0000
++++ pkg-zfs/lib/libshare/zfs_share_smbfs	2016-05-25 15:41:24.640847202 +0000
 @@ -0,0 +1,16 @@
 +#!/bin/sh
 +
@@ -921,10 +921,10 @@ Index: wheezy/lib/libshare/zfs_share_smbfs
 +net conf setparm $SHARE 'write list' yes
 +net conf setparm $SHARE 'hide dot files' yes
 +net conf setparm $SHARE 'read only' yes
-Index: wheezy/lib/libzfs/libzfs_changelist.c
+Index: pkg-zfs/lib/libzfs/libzfs_changelist.c
 ===================================================================
---- wheezy.orig/lib/libzfs/libzfs_changelist.c	2016-05-19 09:46:50.000000000 +0000
-+++ wheezy/lib/libzfs/libzfs_changelist.c	2016-05-19 09:47:06.656558567 +0000
+--- pkg-zfs.orig/lib/libzfs/libzfs_changelist.c	2016-05-25 15:41:10.000000000 +0000
++++ pkg-zfs/lib/libzfs/libzfs_changelist.c	2016-05-25 15:41:24.640847202 +0000
 @@ -262,8 +262,13 @@
  		 */
  		if (((sharenfs || sharesmb) && mounted) || shareiscsi)
@@ -941,10 +941,10 @@ Index: wheezy/lib/libzfs/libzfs_changelist.c
  	}
  
  	return (errors ? -1 : 0);
-Index: wheezy/man/man8/zfs.8
+Index: pkg-zfs/man/man8/zfs.8
 ===================================================================
---- wheezy.orig/man/man8/zfs.8	2016-05-19 09:46:50.000000000 +0000
-+++ wheezy/man/man8/zfs.8	2016-05-19 09:51:58.324891800 +0000
+--- pkg-zfs.orig/man/man8/zfs.8	2016-05-25 15:41:10.000000000 +0000
++++ pkg-zfs/man/man8/zfs.8	2016-05-25 15:45:31.029749674 +0000
 @@ -1549,39 +1549,127 @@
  .ne 2
  .mk
@@ -1089,14 +1089,14 @@ Index: wheezy/man/man8/zfs.8
  
  .SH SEE ALSO
  .LP
--\fBchmod\fR(2), \fBfsync\fR(2), \fBgzip\fR(1), \fBls\fR(1), \fBmount\fR(8), \fBopen\fR(2), \fBreaddir\fR(3), \fBssh\fR(1), \fBstat\fR(2), \fBwrite\fR(2), \fBzpool\fR(8), \fBietd.conf\fR(8), \fBietadm\fR(8), \fBtgtadm\fR()
-+\fBchmod\fR(2), \fBfsync\fR(2), \fBgzip\fR(1), \fBls\fR(1), \fBmount\fR(8), \fBopen\fR(2), \fBreaddir\fR(3), \fBssh\fR(1), \fBstat\fR(2), \fBwrite\fR(2), \fBzpool\fR(8), \fBietd.conf\fR(8), \fBietadm\fR(8), \fBtgtadm\fR(), \fBnet(8)\fR
+-\fBchmod\fR(2), \fBfsync\fR(2), \fBgzip\fR(1), \fBls\fR(1), \fBmount\fR(8), \fBopen\fR(2), \fBreaddir\fR(3), \fBssh\fR(1), \fBstat\fR(2), \fBwrite\fR(2), \fBzpool\fR(8), \fBzfs-module-parameters\fR(5), \fBietd.conf\fR(8), \fBietadm\fR(8), \fBtgtadm\fR()
++\fBchmod\fR(2), \fBfsync\fR(2), \fBgzip\fR(1), \fBls\fR(1), \fBmount\fR(8), \fBopen\fR(2), \fBreaddir\fR(3), \fBssh\fR(1), \fBstat\fR(2), \fBwrite\fR(2), \fBzpool\fR(8), \fBzfs-module-parameters\fR(5), \fBietd.conf\fR(8), \fBietadm\fR(8), \fBtgtadm\fR(), \fBnet(8)\fR
  .sp
  On Solaris: \fBdfstab(4)\fR, \fBiscsitadm(1M)\fR, \fBmount(1M)\fR, \fBshare(1M)\fR, \fBsharemgr(1M)\fR, \fBunshare(1M)\fR
-Index: wheezy/module/zcommon/zfs_prop.c
+Index: pkg-zfs/module/zcommon/zfs_prop.c
 ===================================================================
---- wheezy.orig/module/zcommon/zfs_prop.c	2016-05-19 09:46:50.000000000 +0000
-+++ wheezy/module/zcommon/zfs_prop.c	2016-05-19 09:47:06.668558416 +0000
+--- pkg-zfs.orig/module/zcommon/zfs_prop.c	2016-05-25 15:41:10.000000000 +0000
++++ pkg-zfs/module/zcommon/zfs_prop.c	2016-05-25 15:41:24.720846196 +0000
 @@ -343,8 +343,8 @@
  	    ZFS_TYPE_DATASET | ZFS_TYPE_BOOKMARK,
  	    "filesystem | volume | snapshot | bookmark", "TYPE");
@@ -1108,10 +1108,10 @@ Index: wheezy/module/zcommon/zfs_prop.c
  	zprop_register_string(ZFS_PROP_MLSLABEL, "mlslabel",
  	    ZFS_MLSLABEL_DEFAULT, PROP_INHERIT, ZFS_TYPE_DATASET,
  	    "<sensitivity label>", "MLSLABEL");
-Index: wheezy/scripts/smb.sh
+Index: pkg-zfs/scripts/smb.sh
 ===================================================================
---- wheezy.orig/scripts/smb.sh	2016-05-19 09:43:19.000000000 +0000
-+++ wheezy/scripts/smb.sh	2016-05-19 09:47:06.696558064 +0000
+--- pkg-zfs.orig/scripts/smb.sh	2016-05-25 15:40:49.000000000 +0000
++++ pkg-zfs/scripts/smb.sh	2016-05-25 15:41:24.760845693 +0000
 @@ -1,15 +1,13 @@
  #!/bin/bash
  

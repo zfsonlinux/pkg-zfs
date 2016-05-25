@@ -1,3 +1,9 @@
+zfs-linux (0.6.5.990-281-gbc2d809-wheezy-daily.2) wheezy-daily; urgency=low
+
+  * Update debian/patches.
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 25 May 2016 15:47:09 +0000
+
 zfs-linux (0.6.5.990-281-gbc2d809-wheezy-daily) wheezy-daily; urgency=low
 
   * New daily release - bc2d809.
