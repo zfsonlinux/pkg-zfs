@@ -1,6 +1,22 @@
 zfs-linux (0.6.5.991-290-g8342673-jessie-daily) jessie-daily; urgency=medium
 
   * <<EOF New daily release - Debian patches updated - Wed, 25 May 2016
+    17:19:23 +0000/8342673.  9be91c9 <<EOF New daily release - Debian
+    patches updated - Wed, 25 May 2016 14:43:08 +0000/8342673. EOF
+    b967ad8 Merge remote-tracking branch 'zfs/master' into
+    snapshot/debian/jessie 0e030b5 Merge remote-tracking branch
+    'zfs/master' into snapshot/debian/jessie 5e13895 New daily release -
+    Thu, 19 May 2016 01:32:37 +0000/bc2d809. 9a980a1 Merge remote-
+    tracking branch 'zfs/master' into snapshot/debian/jessie 04c7ab6
+    Update PR1099. 44a2dc0 Merge remote-tracking branch 'zfs/master'
+    into snapshot/debian/jessie 5a68f30 New upstream daily release -
+    b3744ae. EOF
+
+ -- Turbo Fredriksson <turbo@debian.org>  Wed, 25 May 2016 17:19:24 +0000
+
+zfs-linux (0.6.5.991-290-g8342673-jessie-daily) jessie-daily; urgency=medium
+
+  * <<EOF New daily release - Debian patches updated - Wed, 25 May 2016
     14:43:08 +0000/8342673. EOF
 
  -- Turbo Fredriksson <turbo@debian.org>  Wed, 25 May 2016 14:43:10 +0000
