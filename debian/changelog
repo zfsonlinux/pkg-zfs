@@ -1,3 +1,10 @@
+zfs-linux (0.6.5.991-295-gb7faa7a-jessie-daily) jessie-daily; urgency=medium
+
+  * <<EOF New daily release - Debian patches updated - Tue, 31 May 2016
+    15:19:58 +0000/b7faa7a. EOF
+
+ -- Turbo Fredriksson <turbo@debian.org>  Tue, 31 May 2016 15:20:02 +0000
+
 zfs-linux (0.6.5.991-290-g8342673-jessie-daily) jessie-daily; urgency=medium
 
   * <<EOF New daily release - Debian patches updated - Wed, 25 May 2016
