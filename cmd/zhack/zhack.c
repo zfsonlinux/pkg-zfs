@@ -20,7 +20,7 @@
  */
 
 /*
- * Copyright (c) 2011, 2014 by Delphix. All rights reserved.
+ * Copyright (c) 2011, 2015 by Delphix. All rights reserved.
  * Copyright (c) 2013 Steven Hartland. All rights reserved.
  */
 
@@ -48,7 +48,6 @@
 #include <sys/zio_compress.h>
 #include <sys/zfeature.h>
 #include <sys/dmu_tx.h>
-#undef ZFS_MAXNAMELEN
 #include <libzfs.h>
 
 extern boolean_t zfeature_checks_disable;
@@ -70,9 +69,10 @@ usage(void)
 	(void) fprintf(stderr,
 	    "    feature stat <pool>\n"
 	    "        print information about enabled features\n"
-	    "    feature enable [-d desc] <pool> <feature>\n"
+	    "    feature enable [-r] [-d desc] <pool> <feature>\n"
 	    "        add a new enabled feature to the pool\n"
 	    "        -d <desc> sets the feature's description\n"
+	    "        -r set read-only compatible flag for feature\n"
 	    "    feature ref [-md] <pool> <feature>\n"
 	    "        change the refcount on the given feature\n"
 	    "        -d decrease instead of increase the refcount\n"
@@ -294,8 +294,8 @@ zhack_feature_enable_sync(void *arg, dmu_tx_t *tx)
 	feature_enable_sync(spa, feature, tx);
 
 	spa_history_log_internal(spa, "zhack enable feature", tx,
-	    "name=%s can_readonly=%u",
-	    feature->fi_guid, feature->fi_can_readonly);
+	    "name=%s flags=%u",
+	    feature->fi_guid, feature->fi_flags);
 }
 
 static void
@@ -314,17 +314,15 @@ zhack_do_feature_enable(int argc, char **argv)
 	 */
 	desc = NULL;
 	feature.fi_uname = "zhack";
-	feature.fi_mos = B_FALSE;
-	feature.fi_can_readonly = B_FALSE;
-	feature.fi_activate_on_enable = B_FALSE;
+	feature.fi_flags = 0;
 	feature.fi_depends = nodeps;
 	feature.fi_feature = SPA_FEATURE_NONE;
 
 	optind = 1;
-	while ((c = getopt(argc, argv, "rmd:")) != -1) {
+	while ((c = getopt(argc, argv, "+rd:")) != -1) {
 		switch (c) {
 		case 'r':
-			feature.fi_can_readonly = B_TRUE;
+			feature.fi_flags |= ZFEATURE_FLAG_READONLY_COMPAT;
 			break;
 		case 'd':
 			desc = strdup(optarg);
@@ -413,16 +411,16 @@ zhack_do_feature_ref(int argc, char **argv)
 	 * disk later.
 	 */
 	feature.fi_uname = "zhack";
-	feature.fi_mos = B_FALSE;
+	feature.fi_flags = 0;
 	feature.fi_desc = NULL;
 	feature.fi_depends = nodeps;
 	feature.fi_feature = SPA_FEATURE_NONE;
 
 	optind = 1;
-	while ((c = getopt(argc, argv, "md")) != -1) {
+	while ((c = getopt(argc, argv, "+md")) != -1) {
 		switch (c) {
 		case 'm':
-			feature.fi_mos = B_TRUE;
+			feature.fi_flags |= ZFEATURE_FLAG_MOS;
 			break;
 		case 'd':
 			decr = B_TRUE;
@@ -455,10 +453,10 @@ zhack_do_feature_ref(int argc, char **argv)
 
 	if (0 == zap_contains(mos, spa->spa_feat_for_read_obj,
 	    feature.fi_guid)) {
-		feature.fi_can_readonly = B_FALSE;
+		feature.fi_flags &= ~ZFEATURE_FLAG_READONLY_COMPAT;
 	} else if (0 == zap_contains(mos, spa->spa_feat_for_write_obj,
 	    feature.fi_guid)) {
-		feature.fi_can_readonly = B_TRUE;
+		feature.fi_flags |= ZFEATURE_FLAG_READONLY_COMPAT;
 	} else {
 		fatal(spa, FTAG, "feature is not enabled: %s", feature.fi_guid);
 	}
@@ -466,7 +464,7 @@ zhack_do_feature_ref(int argc, char **argv)
 	if (decr) {
 		uint64_t count;
 		if (feature_get_refcount_from_disk(spa, &feature,
-		    &count) == 0 && count != 0) {
+		    &count) == 0 && count == 0) {
 			fatal(spa, FTAG, "feature refcount already 0: %s",
 			    feature.fi_guid);
 		}
@@ -525,7 +523,7 @@ main(int argc, char **argv)
 	dprintf_setup(&argc, argv);
 	zfs_prop_init();
 
-	while ((c = getopt(argc, argv, "c:d:")) != -1) {
+	while ((c = getopt(argc, argv, "+c:d:")) != -1) {
 		switch (c) {
 		case 'c':
 			g_importargs.cachefile = optarg;

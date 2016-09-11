@@ -20,7 +20,8 @@
  */
 /*
  * Copyright (c) 2008, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2011, 2014 by Delphix. All rights reserved.
+ * Copyright (c) 2011, 2015 by Delphix. All rights reserved.
+ * Copyright 2016 Gary Mills
  */
 
 #include <sys/dsl_scan.h>
@@ -55,7 +56,8 @@ typedef int (scan_cb_t)(dsl_pool_t *, const blkptr_t *,
 
 static scan_cb_t dsl_scan_scrub_cb;
 static void dsl_scan_cancel_sync(void *, dmu_tx_t *);
-static void dsl_scan_sync_state(dsl_scan_t *, dmu_tx_t *tx);
+static void dsl_scan_sync_state(dsl_scan_t *, dmu_tx_t *);
+static boolean_t dsl_scan_restarting(dsl_scan_t *, dmu_tx_t *);
 
 int zfs_top_maxinflight = 32;		/* maximum I/Os per top-level */
 int zfs_resilver_delay = 2;		/* number of ticks to delay resilver */
@@ -75,6 +77,11 @@ ulong zfs_free_max_blocks = 100000;
 #define	DSL_SCAN_IS_SCRUB_RESILVER(scn) \
 	((scn)->scn_phys.scn_func == POOL_SCAN_SCRUB || \
 	(scn)->scn_phys.scn_func == POOL_SCAN_RESILVER)
+
+/*
+ * Enable/disable the processing of the free_bpobj object.
+ */
+int zfs_free_bpobj_enabled = 1;
 
 /* the order has to match pool_scan_type */
 static scan_cb_t *scan_funcs[POOL_SCAN_FUNCS] = {
@@ -240,11 +247,9 @@ dsl_scan_setup_sync(void *arg, dmu_tx_t *tx)
 
 		if (vdev_resilver_needed(spa->spa_root_vdev,
 		    &scn->scn_phys.scn_min_txg, &scn->scn_phys.scn_max_txg)) {
-			spa_event_notify(spa, NULL,
-			    FM_EREPORT_ZFS_RESILVER_START);
+			spa_event_notify(spa, NULL, ESC_ZFS_RESILVER_START);
 		} else {
-			spa_event_notify(spa, NULL,
-			    FM_EREPORT_ZFS_SCRUB_START);
+			spa_event_notify(spa, NULL, ESC_ZFS_SCRUB_START);
 		}
 
 		spa->spa_scrub_started = B_TRUE;
@@ -323,8 +328,15 @@ dsl_scan_done(dsl_scan_t *scn, boolean_t complete, dmu_tx_t *tx)
 	else
 		scn->scn_phys.scn_state = DSS_CANCELED;
 
-	spa_history_log_internal(spa, "scan done", tx,
-	    "complete=%u", complete);
+	if (dsl_scan_restarting(scn, tx))
+		spa_history_log_internal(spa, "scan aborted, restarting", tx,
+		    "errors=%llu", spa_get_errlog_size(spa));
+	else if (!complete)
+		spa_history_log_internal(spa, "scan cancelled", tx,
+		    "errors=%llu", spa_get_errlog_size(spa));
+	else
+		spa_history_log_internal(spa, "scan done", tx,
+		    "errors=%llu", spa_get_errlog_size(spa));
 
 	if (DSL_SCAN_IS_SCRUB_RESILVER(scn)) {
 		mutex_enter(&spa->spa_scrub_lock);
@@ -345,8 +357,7 @@ dsl_scan_done(dsl_scan_t *scn, boolean_t complete, dmu_tx_t *tx)
 		    complete ? scn->scn_phys.scn_max_txg : 0, B_TRUE);
 		if (complete) {
 			spa_event_notify(spa, NULL, scn->scn_phys.scn_min_txg ?
-			    FM_EREPORT_ZFS_RESILVER_FINISH :
-			    FM_EREPORT_ZFS_SCRUB_FINISH);
+			    ESC_ZFS_RESILVER_FINISH : ESC_ZFS_SCRUB_FINISH);
 		}
 		spa_errlog_rotate(spa);
 
@@ -619,7 +630,8 @@ dsl_scan_check_resume(dsl_scan_t *scn, const dnode_phys_t *dnp,
 		 * If we already visited this bp & everything below (in
 		 * a prior txg sync), don't bother doing it again.
 		 */
-		if (zbookmark_is_before(dnp, zb, &scn->scn_phys.scn_bookmark))
+		if (zbookmark_subtree_completed(dnp, zb,
+		    &scn->scn_phys.scn_bookmark))
 			return (B_TRUE);
 
 		/*
@@ -694,14 +706,18 @@ dsl_scan_recurse(dsl_scan_t *scn, dsl_dataset_t *ds, dmu_objset_type_t ostype,
 			scn->scn_phys.scn_errors++;
 			return (err);
 		}
-		for (i = 0, cdnp = buf->b_data; i < epb; i++, cdnp++) {
+		for (i = 0, cdnp = buf->b_data; i < epb;
+		    i += cdnp->dn_extra_slots + 1,
+		    cdnp += cdnp->dn_extra_slots + 1) {
 			for (j = 0; j < cdnp->dn_nblkptr; j++) {
 				blkptr_t *cbp = &cdnp->dn_blkptr[j];
 				dsl_scan_prefetch(scn, buf, cbp,
 				    zb->zb_objset, zb->zb_blkid * epb + i, j);
 			}
 		}
-		for (i = 0, cdnp = buf->b_data; i < epb; i++, cdnp++) {
+		for (i = 0, cdnp = buf->b_data; i < epb;
+		    i += cdnp->dn_extra_slots + 1,
+		    cdnp += cdnp->dn_extra_slots + 1) {
 			dsl_scan_visitdnode(scn, ds, ostype,
 			    cdnp, zb->zb_blkid * epb + i, tx);
 		}
@@ -764,7 +780,7 @@ dsl_scan_visitdnode(dsl_scan_t *scn, dsl_dataset_t *ds,
 		zbookmark_phys_t czb;
 		SET_BOOKMARK(&czb, ds ? ds->ds_object : 0, object,
 		    0, DMU_SPILL_BLKID);
-		dsl_scan_visitbp(&dnp->dn_spill,
+		dsl_scan_visitbp(DN_SPILL_BLKPTR(dnp),
 		    &czb, dnp, ds, scn, ostype, tx);
 	}
 }
@@ -866,7 +882,16 @@ dsl_scan_ds_destroyed(dsl_dataset_t *ds, dmu_tx_t *tx)
 
 	if (scn->scn_phys.scn_bookmark.zb_objset == ds->ds_object) {
 		if (ds->ds_is_snapshot) {
-			/* Note, scn_cur_{min,max}_txg stays the same. */
+			/*
+			 * Note:
+			 *  - scn_cur_{min,max}_txg stays the same.
+			 *  - Setting the flag is not really necessary if
+			 *    scn_cur_max_txg == scn_max_txg, because there
+			 *    is nothing after this snapshot that we care
+			 *    about.  However, we set it anyway and then
+			 *    ignore it when we retraverse it in
+			 *    dsl_scan_visitds().
+			 */
 			scn->scn_phys.scn_bookmark.zb_objset =
 			    dsl_dataset_phys(ds)->ds_next_snap_obj;
 			zfs_dbgmsg("destroying ds %llu; currently traversing; "
@@ -906,9 +931,6 @@ dsl_scan_ds_destroyed(dsl_dataset_t *ds, dmu_tx_t *tx)
 			zfs_dbgmsg("destroying ds %llu; in queue; removing",
 			    (u_longlong_t)ds->ds_object);
 		}
-	} else {
-		zfs_dbgmsg("destroying ds %llu; ignoring",
-		    (u_longlong_t)ds->ds_object);
 	}
 
 	/*
@@ -1062,6 +1084,46 @@ dsl_scan_visitds(dsl_scan_t *scn, uint64_t dsobj, dmu_tx_t *tx)
 
 	VERIFY3U(0, ==, dsl_dataset_hold_obj(dp, dsobj, FTAG, &ds));
 
+	if (scn->scn_phys.scn_cur_min_txg >=
+	    scn->scn_phys.scn_max_txg) {
+		/*
+		 * This can happen if this snapshot was created after the
+		 * scan started, and we already completed a previous snapshot
+		 * that was created after the scan started.  This snapshot
+		 * only references blocks with:
+		 *
+		 *	birth < our ds_creation_txg
+		 *	cur_min_txg is no less than ds_creation_txg.
+		 *	We have already visited these blocks.
+		 * or
+		 *	birth > scn_max_txg
+		 *	The scan requested not to visit these blocks.
+		 *
+		 * Subsequent snapshots (and clones) can reference our
+		 * blocks, or blocks with even higher birth times.
+		 * Therefore we do not need to visit them either,
+		 * so we do not add them to the work queue.
+		 *
+		 * Note that checking for cur_min_txg >= cur_max_txg
+		 * is not sufficient, because in that case we may need to
+		 * visit subsequent snapshots.  This happens when min_txg > 0,
+		 * which raises cur_min_txg.  In this case we will visit
+		 * this dataset but skip all of its blocks, because the
+		 * rootbp's birth time is < cur_min_txg.  Then we will
+		 * add the next snapshots/clones to the work queue.
+		 */
+		char *dsname = kmem_alloc(ZFS_MAX_DATASET_NAME_LEN, KM_SLEEP);
+		dsl_dataset_name(ds, dsname);
+		zfs_dbgmsg("scanning dataset %llu (%s) is unnecessary because "
+		    "cur_min_txg (%llu) >= max_txg (%llu)",
+		    dsobj, dsname,
+		    scn->scn_phys.scn_cur_min_txg,
+		    scn->scn_phys.scn_max_txg);
+		kmem_free(dsname, MAXNAMELEN);
+
+		goto out;
+	}
+
 	if (dmu_objset_from_ds(ds, &os))
 		goto out;
 
@@ -1081,7 +1143,7 @@ dsl_scan_visitds(dsl_scan_t *scn, uint64_t dsobj, dmu_tx_t *tx)
 	dmu_buf_will_dirty(ds->ds_dbuf, tx);
 	dsl_scan_visit_rootbp(scn, ds, &dsl_dataset_phys(ds)->ds_bp, tx);
 
-	dsname = kmem_alloc(ZFS_MAXNAMELEN, KM_SLEEP);
+	dsname = kmem_alloc(ZFS_MAX_DATASET_NAME_LEN, KM_SLEEP);
 	dsl_dataset_name(ds, dsname);
 	zfs_dbgmsg("scanned dataset %llu (%s) with min=%llu max=%llu; "
 	    "pausing=%u",
@@ -1089,7 +1151,7 @@ dsl_scan_visitds(dsl_scan_t *scn, uint64_t dsobj, dmu_tx_t *tx)
 	    (longlong_t)scn->scn_phys.scn_cur_min_txg,
 	    (longlong_t)scn->scn_phys.scn_cur_max_txg,
 	    (int)scn->scn_pausing);
-	kmem_free(dsname, ZFS_MAXNAMELEN);
+	kmem_free(dsname, ZFS_MAX_DATASET_NAME_LEN);
 
 	if (scn->scn_pausing)
 		goto out;
@@ -1458,8 +1520,7 @@ dsl_scan_sync(dsl_pool_t *dp, dmu_tx_t *tx)
 	 * that we can restart an old-style scan while the pool is being
 	 * imported (see dsl_scan_init).
 	 */
-	if (scn->scn_restart_txg != 0 &&
-	    scn->scn_restart_txg <= tx->tx_txg) {
+	if (dsl_scan_restarting(scn, tx)) {
 		pool_scan_func_t func = POOL_SCAN_SCRUB;
 		dsl_scan_done(scn, B_FALSE, tx);
 		if (vdev_resilver_needed(spa->spa_root_vdev, NULL, NULL))
@@ -1470,10 +1531,23 @@ dsl_scan_sync(dsl_pool_t *dp, dmu_tx_t *tx)
 	}
 
 	/*
+	 * Only process scans in sync pass 1.
+	 */
+	if (spa_sync_pass(dp->dp_spa) > 1)
+		return;
+
+	/*
+	 * If the spa is shutting down, then stop scanning. This will
+	 * ensure that the scan does not dirty any new data during the
+	 * shutdown phase.
+	 */
+	if (spa_shutting_down(spa))
+		return;
+
+	/*
 	 * If the scan is inactive due to a stalled async destroy, try again.
 	 */
-	if ((!scn->scn_async_stalled && !dsl_scan_active(scn)) ||
-	    spa_sync_pass(dp->dp_spa) > 1)
+	if (!scn->scn_async_stalled && !dsl_scan_active(scn))
 		return;
 
 	scn->scn_visited_this_txg = 0;
@@ -1488,7 +1562,8 @@ dsl_scan_sync(dsl_pool_t *dp, dmu_tx_t *tx)
 	 * have to worry about traversing it.  It is also faster to free the
 	 * blocks than to scrub them.
 	 */
-	if (spa_version(dp->dp_spa) >= SPA_VERSION_DEADLISTS) {
+	if (zfs_free_bpobj_enabled &&
+	    spa_version(dp->dp_spa) >= SPA_VERSION_DEADLISTS) {
 		scn->scn_is_bptree = B_FALSE;
 		scn->scn_zio_root = zio_root(dp->dp_spa, NULL,
 		    NULL, ZIO_FLAG_MUSTSUCCEED);
@@ -1560,7 +1635,8 @@ dsl_scan_sync(dsl_pool_t *dp, dmu_tx_t *tx)
 	}
 	if (err != 0)
 		return;
-	if (!scn->scn_async_destroying && zfs_free_leak_on_eio &&
+	if (dp->dp_free_dir != NULL && !scn->scn_async_destroying &&
+	    zfs_free_leak_on_eio &&
 	    (dsl_dir_phys(dp->dp_free_dir)->dd_used_bytes != 0 ||
 	    dsl_dir_phys(dp->dp_free_dir)->dd_compressed_bytes != 0 ||
 	    dsl_dir_phys(dp->dp_free_dir)->dd_uncompressed_bytes != 0)) {
@@ -1586,7 +1662,7 @@ dsl_scan_sync(dsl_pool_t *dp, dmu_tx_t *tx)
 		    -dsl_dir_phys(dp->dp_free_dir)->dd_compressed_bytes,
 		    -dsl_dir_phys(dp->dp_free_dir)->dd_uncompressed_bytes, tx);
 	}
-	if (!scn->scn_async_destroying) {
+	if (dp->dp_free_dir != NULL && !scn->scn_async_destroying) {
 		/* finished; verify that space accounting went to zero */
 		ASSERT0(dsl_dir_phys(dp->dp_free_dir)->dd_used_bytes);
 		ASSERT0(dsl_dir_phys(dp->dp_free_dir)->dd_compressed_bytes);
@@ -1874,6 +1950,13 @@ dsl_scan(dsl_pool_t *dp, pool_scan_func_t func)
 	    dsl_scan_setup_sync, &func, 0, ZFS_SPACE_CHECK_NONE));
 }
 
+static boolean_t
+dsl_scan_restarting(dsl_scan_t *scn, dmu_tx_t *tx)
+{
+	return (scn->scn_restart_txg != 0 &&
+	    scn->scn_restart_txg <= tx->tx_txg);
+}
+
 #if defined(_KERNEL) && defined(HAVE_SPL)
 module_param(zfs_top_maxinflight, int, 0644);
 MODULE_PARM_DESC(zfs_top_maxinflight, "Max I/Os per top-level");
@@ -1904,4 +1987,7 @@ MODULE_PARM_DESC(zfs_no_scrub_prefetch, "Set to disable scrub prefetching");
 
 module_param(zfs_free_max_blocks, ulong, 0644);
 MODULE_PARM_DESC(zfs_free_max_blocks, "Max number of blocks freed in one txg");
+
+module_param(zfs_free_bpobj_enabled, int, 0644);
+MODULE_PARM_DESC(zfs_free_bpobj_enabled, "Enable processing of the free_bpobj");
 #endif

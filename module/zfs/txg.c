@@ -128,7 +128,7 @@ txg_init(dsl_pool_t *dp, uint64_t txg)
 		int i;
 
 		mutex_init(&tx->tx_cpu[c].tc_lock, NULL, MUTEX_DEFAULT, NULL);
-		mutex_init(&tx->tx_cpu[c].tc_open_lock, NULL, MUTEX_DEFAULT,
+		mutex_init(&tx->tx_cpu[c].tc_open_lock, NULL, MUTEX_NOLOCKDEP,
 		    NULL);
 		for (i = 0; i < TXG_SIZE; i++) {
 			cv_init(&tx->tx_cpu[c].tc_cv[i], NULL, CV_DEFAULT,
@@ -212,7 +212,7 @@ txg_sync_start(dsl_pool_t *dp)
 	 * 32-bit x86.  This is due in part to nested pools and
 	 * scrub_visitbp() recursion.
 	 */
-	tx->tx_sync_thread = thread_create(NULL, 32<<10, txg_sync_thread,
+	tx->tx_sync_thread = thread_create(NULL, 0, txg_sync_thread,
 	    dp, 0, &p0, TS_RUN, defclsyspri);
 
 	mutex_exit(&tx->tx_sync_lock);
@@ -365,6 +365,7 @@ static void
 txg_quiesce(dsl_pool_t *dp, uint64_t txg)
 {
 	tx_state_t *tx = &dp->dp_tx;
+	uint64_t tx_open_time;
 	int g = txg & TXG_MASK;
 	int c;
 
@@ -376,10 +377,7 @@ txg_quiesce(dsl_pool_t *dp, uint64_t txg)
 
 	ASSERT(txg == tx->tx_open_txg);
 	tx->tx_open_txg++;
-	tx->tx_open_time = gethrtime();
-
-	spa_txg_history_set(dp->dp_spa, txg, TXG_STATE_OPEN, tx->tx_open_time);
-	spa_txg_history_add(dp->dp_spa, tx->tx_open_txg, tx->tx_open_time);
+	tx->tx_open_time = tx_open_time = gethrtime();
 
 	DTRACE_PROBE2(txg__quiescing, dsl_pool_t *, dp, uint64_t, txg);
 	DTRACE_PROBE2(txg__opened, dsl_pool_t *, dp, uint64_t, tx->tx_open_txg);
@@ -390,6 +388,9 @@ txg_quiesce(dsl_pool_t *dp, uint64_t txg)
 	 */
 	for (c = 0; c < max_ncpus; c++)
 		mutex_exit(&tx->tx_cpu[c].tc_open_lock);
+
+	spa_txg_history_set(dp->dp_spa, txg, TXG_STATE_OPEN, tx_open_time);
+	spa_txg_history_add(dp->dp_spa, txg + 1, tx_open_time);
 
 	/*
 	 * Quiesce the transaction group by waiting for everyone to txg_exit().

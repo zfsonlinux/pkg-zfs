@@ -22,13 +22,14 @@
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2011 Nexenta Systems, Inc. All rights reserved.
- * Copyright (c) 2012, 2014 by Delphix. All rights reserved.
+ * Copyright (c) 2012, 2016 by Delphix. All rights reserved.
  * Copyright (c) 2013 by Saso Kiselkov. All rights reserved.
  */
 
 #ifndef _ZIO_H
 #define	_ZIO_H
 
+#include <sys/zio_priority.h>
 #include <sys/zfs_context.h>
 #include <sys/spa.h>
 #include <sys/txg.h>
@@ -147,17 +148,6 @@ enum zio_compress {
 #define	ZIO_FAILURE_MODE_CONTINUE	1
 #define	ZIO_FAILURE_MODE_PANIC		2
 
-typedef enum zio_priority {
-	ZIO_PRIORITY_SYNC_READ,
-	ZIO_PRIORITY_SYNC_WRITE,	/* ZIL */
-	ZIO_PRIORITY_ASYNC_READ,	/* prefetch */
-	ZIO_PRIORITY_ASYNC_WRITE,	/* spa_sync() */
-	ZIO_PRIORITY_SCRUB,		/* asynchronous scrub/resilver reads */
-	ZIO_PRIORITY_NUM_QUEUEABLE,
-
-	ZIO_PRIORITY_NOW		/* non-queued i/os (e.g. free) */
-} zio_priority_t;
-
 enum zio_flag {
 	/*
 	 * Flags inherited by gang, ddt, and vdev children,
@@ -262,6 +252,7 @@ extern const char *zio_type_name[ZIO_TYPES];
  * Root blocks (objset_phys_t) are object 0, level -1:  <objset, 0, -1, 0>.
  * ZIL blocks are bookmarked <objset, 0, -2, blkid == ZIL sequence number>.
  * dmu_sync()ed ZIL data blocks are bookmarked <objset, object, -2, blkid>.
+ * dnode visit bookmarks are <objset, object id of dnode, -3, 0>.
  *
  * Note: this structure is called a bookmark because its original purpose
  * was to remember where to resume a pool-wide traverse.
@@ -293,6 +284,9 @@ struct zbookmark_phys {
 
 #define	ZB_ZIL_OBJECT		(0ULL)
 #define	ZB_ZIL_LEVEL		(-2LL)
+
+#define	ZB_DNODE_LEVEL		(-3LL)
+#define	ZB_DNODE_BLKID		(0ULL)
 
 #define	ZB_IS_ZERO(zb)						\
 	((zb)->zb_objset == 0 && (zb)->zb_object == 0 &&	\
@@ -406,7 +400,8 @@ struct zio {
 	zio_transform_t *io_transform_stack;
 
 	/* Callback info */
-	zio_done_func_t *io_ready;
+	zio_done_func_t	*io_ready;
+	zio_done_func_t	*io_children_ready;
 	zio_done_func_t	*io_physdone;
 	zio_done_func_t	*io_done;
 	void		*io_private;
@@ -426,8 +421,10 @@ struct zio {
 
 	uint64_t	io_offset;
 	hrtime_t	io_timestamp;	/* submitted at */
+	hrtime_t	io_target_timestamp;
 	hrtime_t	io_delta;	/* vdev queue service delta */
-	uint64_t	io_delay;	/* vdev disk service delta (ticks) */
+	hrtime_t	io_delay;	/* Device access time (disk or */
+					/* file). */
 	avl_node_t	io_queue_node;
 	avl_node_t	io_offset_node;
 
@@ -472,9 +469,10 @@ extern zio_t *zio_read(zio_t *pio, spa_t *spa, const blkptr_t *bp, void *data,
 
 extern zio_t *zio_write(zio_t *pio, spa_t *spa, uint64_t txg, blkptr_t *bp,
     void *data, uint64_t size, const zio_prop_t *zp,
-    zio_done_func_t *ready, zio_done_func_t *physdone, zio_done_func_t *done,
-    void *private,
-    zio_priority_t priority, enum zio_flag flags, const zbookmark_phys_t *zb);
+    zio_done_func_t *ready, zio_done_func_t *children_ready,
+    zio_done_func_t *physdone, zio_done_func_t *done,
+    void *private, zio_priority_t priority, enum zio_flag flags,
+    const zbookmark_phys_t *zb);
 
 extern zio_t *zio_rewrite(zio_t *pio, spa_t *spa, uint64_t txg, blkptr_t *bp,
     void *data, uint64_t size, zio_done_func_t *done, void *private,
@@ -515,6 +513,8 @@ extern int zio_wait(zio_t *zio);
 extern void zio_nowait(zio_t *zio);
 extern void zio_execute(zio_t *zio);
 extern void zio_interrupt(zio_t *zio);
+extern void zio_delay_init(zio_t *zio);
+extern void zio_delay_interrupt(zio_t *zio);
 
 extern zio_t *zio_walk_parents(zio_t *cio);
 extern zio_t *zio_walk_children(zio_t *pio);
@@ -577,7 +577,7 @@ extern int zio_handle_fault_injection(zio_t *zio, int error);
 extern int zio_handle_device_injection(vdev_t *vd, zio_t *zio, int error);
 extern int zio_handle_label_injection(zio_t *zio, int error);
 extern void zio_handle_ignored_writes(zio_t *zio);
-extern uint64_t zio_handle_io_delay(zio_t *zio);
+extern hrtime_t zio_handle_io_delay(zio_t *zio);
 
 /*
  * Checksum ereport functions
@@ -587,7 +587,6 @@ extern void zfs_ereport_start_checksum(spa_t *spa, vdev_t *vd, struct zio *zio,
 extern void zfs_ereport_finish_checksum(zio_cksum_report_t *report,
     const void *good_data, const void *bad_data, boolean_t drop_if_identical);
 
-extern void zfs_ereport_send_interim_checksum(zio_cksum_report_t *report);
 extern void zfs_ereport_free_checksum(zio_cksum_report_t *report);
 
 /* If we have the good data in hand, this function can be used */
@@ -599,8 +598,10 @@ extern void zfs_ereport_post_checksum(spa_t *spa, vdev_t *vd,
 extern void spa_handle_ignored_writes(spa_t *spa);
 
 /* zbookmark_phys functions */
-boolean_t zbookmark_is_before(const struct dnode_phys *dnp,
-    const zbookmark_phys_t *zb1, const zbookmark_phys_t *zb2);
+boolean_t zbookmark_subtree_completed(const struct dnode_phys *dnp,
+    const zbookmark_phys_t *subtree_root, const zbookmark_phys_t *last_block);
+int zbookmark_compare(uint16_t dbss1, uint8_t ibs1, uint16_t dbss2,
+    uint8_t ibs2, const zbookmark_phys_t *zb1, const zbookmark_phys_t *zb2);
 
 #ifdef	__cplusplus
 }

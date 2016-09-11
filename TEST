@@ -37,6 +37,12 @@ TEST_ZCONFIG_OPTIONS="-c -s10"
 #TEST_XFSTESTS_VDEV="/var/tmp/vdev"
 #TEST_XFSTESTS_OPTIONS=""
 
+### zfs-tests.sh
+#TEST_ZFSTESTS_SKIP="yes"
+#TEST_ZFSTESTS_DISKS="vdb vdc vdd"
+#TEST_ZFSTESTS_DISKSIZE="8G"
+#TEST_ZFSTESTS_RUNFILE="linux.run"
+
 ### filebench
 #TEST_FILEBENCH_SKIP="yes"
 #TEST_FILEBENCH_URL="http://build.zfsonlinux.org/"
@@ -71,8 +77,6 @@ case "$BB_NAME" in
 Amazon*)
     ;;
 CentOS*)
-    # Sporadic segmentation faults
-    TEST_ZTEST_SKIP="yes"
     # Sporadic VERIFY(!zilog_is_dirty(zilog)) failed
     TEST_ZILTEST_SKIP="yes"
     ;;

@@ -22,7 +22,7 @@
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2013, Joyent, Inc. All rights reserved.
- * Copyright (c) 2012 by Delphix. All rights reserved.
+ * Copyright (c) 2011, 2014 by Delphix. All rights reserved.
  */
 
 /*
@@ -390,7 +390,7 @@ zfs_standard_error_fmt(libzfs_handle_t *hdl, int error, const char *fmt, ...)
 	case ENOSPC:
 	case EDQUOT:
 		zfs_verror(hdl, EZFS_NOSPC, fmt, ap);
-		return (-1);
+		break;
 
 	case EEXIST:
 		zfs_error_aux(hdl, dgettext(TEXT_DOMAIN,
@@ -500,6 +500,11 @@ zpool_standard_error_fmt(libzfs_handle_t *hdl, int error, const char *fmt, ...)
 	case EROFS:
 		zfs_verror(hdl, EZFS_POOLREADONLY, fmt, ap);
 		break;
+	case EDOM:
+		zfs_error_aux(hdl, dgettext(TEXT_DOMAIN,
+		    "block size out of range or does not match"));
+		zfs_verror(hdl, EZFS_BADPROP, fmt, ap);
+		break;
 
 	default:
 		zfs_error_aux(hdl, strerror(error));
@@ -591,27 +596,49 @@ zfs_strdup(libzfs_handle_t *hdl, const char *str)
  * Convert a number to an appropriately human-readable output.
  */
 void
-zfs_nicenum(uint64_t num, char *buf, size_t buflen)
+zfs_nicenum_format(uint64_t num, char *buf, size_t buflen,
+    enum zfs_nicenum_format format)
 {
 	uint64_t n = num;
 	int index = 0;
-	char u;
+	const char *u;
+	const char *units[3][7] = {
+	    [ZFS_NICENUM_1024] = {"", "K", "M", "G", "T", "P", "E"},
+	    [ZFS_NICENUM_TIME] = {"ns", "us", "ms", "s", "?", "?", "?"}
+	};
 
-	while (n >= 1024 && index < 6) {
-		n /= 1024;
+	const int units_len[] = {[ZFS_NICENUM_1024] = 6,
+	    [ZFS_NICENUM_TIME] = 4};
+
+	const int k_unit[] = {	[ZFS_NICENUM_1024] = 1024,
+	    [ZFS_NICENUM_TIME] = 1000};
+
+	double val;
+
+	if (format == ZFS_NICENUM_RAW) {
+		snprintf(buf, buflen, "%llu", (u_longlong_t) num);
+		return;
+	}
+
+
+	while (n >= k_unit[format] && index < units_len[format]) {
+		n /= k_unit[format];
 		index++;
 	}
 
-	u = " KMGTPE"[index];
+	u = units[format][index];
 
-	if (index == 0) {
-		(void) snprintf(buf, buflen, "%llu", (u_longlong_t) n);
-	} else if ((num & ((1ULL << 10 * index) - 1)) == 0) {
+	/* Don't print 0ns times */
+	if ((format == ZFS_NICENUM_TIME) && (num == 0)) {
+		(void) snprintf(buf, buflen, "-");
+	} else if ((index == 0) || ((num %
+	    (uint64_t) powl(k_unit[format], index)) == 0)) {
 		/*
 		 * If this is an even multiple of the base, always display
 		 * without any decimal precision.
 		 */
-		(void) snprintf(buf, buflen, "%llu%c", (u_longlong_t) n, u);
+		(void) snprintf(buf, buflen, "%llu%s", (u_longlong_t) n, u);
+
 	} else {
 		/*
 		 * We want to choose a precision that reflects the best choice
@@ -624,12 +651,60 @@ zfs_nicenum(uint64_t num, char *buf, size_t buflen)
 		 */
 		int i;
 		for (i = 2; i >= 0; i--) {
-			if (snprintf(buf, buflen, "%.*f%c", i,
-			    (double)num / (1ULL << 10 * index), u) <= 5)
-				break;
+			val = (double) num /
+			    (uint64_t) powl(k_unit[format], index);
+
+			/*
+			 * Don't print floating point values for time.  Note,
+			 * we use floor() instead of round() here, since
+			 * round can result in undesirable results.  For
+			 * example, if "num" is in the range of
+			 * 999500-999999, it will print out "1000us".  This
+			 * doesn't happen if we use floor().
+			 */
+			if (format == ZFS_NICENUM_TIME) {
+				if (snprintf(buf, buflen, "%d%s",
+				    (unsigned int) floor(val), u) <= 5)
+					break;
+
+			} else {
+				if (snprintf(buf, buflen, "%.*f%s", i,
+				    val, u) <= 5)
+					break;
+			}
 		}
 	}
 }
+
+/*
+ * Convert a number to an appropriately human-readable output.
+ */
+void
+zfs_nicenum(uint64_t num, char *buf, size_t buflen)
+{
+	zfs_nicenum_format(num, buf, buflen, ZFS_NICENUM_1024);
+}
+
+/*
+ * Convert a time to an appropriately human-readable output.
+ * @num:	Time in nanoseconds
+ */
+void
+zfs_nicetime(uint64_t num, char *buf, size_t buflen)
+{
+	zfs_nicenum_format(num, buf, buflen, ZFS_NICENUM_TIME);
+}
+
+/*
+ * Print out a raw number with correct column spacing
+ */
+void
+zfs_niceraw(uint64_t num, char *buf, size_t buflen)
+{
+	zfs_nicenum_format(num, buf, buflen, ZFS_NICENUM_RAW);
+}
+
+
 
 void
 libzfs_print_on_error(libzfs_handle_t *hdl, boolean_t printerr)
@@ -903,7 +978,8 @@ zfs_append_partition(char *path, size_t max_len)
 {
 	int len = strlen(path);
 
-	if (strncmp(path, UDISK_ROOT, strlen(UDISK_ROOT)) == 0) {
+	if ((strncmp(path, UDISK_ROOT, strlen(UDISK_ROOT)) == 0) ||
+	    (strncmp(path, ZVOL_ROOT, strlen(ZVOL_ROOT)) == 0)) {
 		if (len + 6 >= max_len)
 			return (-1);
 
@@ -1066,8 +1142,9 @@ zcmd_alloc_dst_nvlist(libzfs_handle_t *hdl, zfs_cmd_t *zc, size_t len)
 	if (len == 0)
 		len = 16 * 1024;
 	zc->zc_nvlist_dst_size = len;
-	if ((zc->zc_nvlist_dst = (uint64_t)(uintptr_t)
-	    zfs_alloc(hdl, zc->zc_nvlist_dst_size)) == 0)
+	zc->zc_nvlist_dst =
+	    (uint64_t)(uintptr_t)zfs_alloc(hdl, zc->zc_nvlist_dst_size);
+	if (zc->zc_nvlist_dst == 0)
 		return (-1);
 
 	return (0);
@@ -1082,8 +1159,9 @@ int
 zcmd_expand_dst_nvlist(libzfs_handle_t *hdl, zfs_cmd_t *zc)
 {
 	free((void *)(uintptr_t)zc->zc_nvlist_dst);
-	if ((zc->zc_nvlist_dst = (uint64_t)(uintptr_t)
-	    zfs_alloc(hdl, zc->zc_nvlist_dst_size)) == 0)
+	zc->zc_nvlist_dst =
+	    (uint64_t)(uintptr_t)zfs_alloc(hdl, zc->zc_nvlist_dst_size);
+	if (zc->zc_nvlist_dst == 0)
 		return (-1);
 
 	return (0);
@@ -1098,6 +1176,9 @@ zcmd_free_nvlists(zfs_cmd_t *zc)
 	free((void *)(uintptr_t)zc->zc_nvlist_conf);
 	free((void *)(uintptr_t)zc->zc_nvlist_src);
 	free((void *)(uintptr_t)zc->zc_nvlist_dst);
+	zc->zc_nvlist_conf = 0;
+	zc->zc_nvlist_src = 0;
+	zc->zc_nvlist_dst = 0;
 }
 
 static int
@@ -1352,7 +1433,8 @@ zprop_print_one_property(const char *name, zprop_get_cbdata_t *cbp,
 			continue;
 		}
 
-		if (cbp->cb_columns[i + 1] == GET_COL_NONE)
+		if (i == (ZFS_GET_NCOLS - 1) ||
+		    cbp->cb_columns[i + 1] == GET_COL_NONE)
 			(void) printf("%s", str);
 		else if (cbp->cb_scripted)
 			(void) printf("%s\t", str);

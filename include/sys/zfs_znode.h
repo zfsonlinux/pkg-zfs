@@ -20,7 +20,7 @@
  */
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012 by Delphix. All rights reserved.
+ * Copyright (c) 2012, 2015 by Delphix. All rights reserved.
  */
 
 #ifndef	_SYS_FS_ZFS_ZNODE_H
@@ -37,6 +37,7 @@
 #include <sys/rrwlock.h>
 #include <sys/zfs_sa.h>
 #include <sys/zfs_stat.h>
+#include <sys/zfs_rlock.h>
 #endif
 #include <sys/zfs_acl.h>
 #include <sys/zil.h>
@@ -138,17 +139,6 @@ extern "C" {
 #define	ZFS_SA_ATTRS		"SA_ATTRS"
 
 /*
- * Path component length
- *
- * The generic fs code uses MAXNAMELEN to represent
- * what the largest component length is.  Unfortunately,
- * this length includes the terminating NULL.  ZFS needs
- * to tell the users via pathconf() and statvfs() what the
- * true maximum length of a component is, excluding the NULL.
- */
-#define	ZFS_MAXNAMELEN	(MAXNAMELEN - 1)
-
-/*
  * Convert mode bits (zp_mode) to BSD-style DT_* values for storing in
  * the directory entries.  On Linux systems this value is already
  * defined correctly as part of the /usr/include/dirent.h header file.
@@ -187,8 +177,7 @@ typedef struct znode {
 	krwlock_t	z_parent_lock;	/* parent lock for directories */
 	krwlock_t	z_name_lock;	/* "master" lock for dirent locks */
 	zfs_dirlock_t	*z_dirlocks;	/* directory entry lock list */
-	kmutex_t	z_range_lock;	/* protects changes to z_range_avl */
-	avl_tree_t	z_range_avl;	/* avl tree of file range locks */
+	zfs_rlock_t	z_range_lock;	/* file range lock */
 	uint8_t		z_unlinked;	/* file has been unlinked */
 	uint8_t		z_atime_dirty;	/* atime needs to be synced */
 	uint8_t		z_zn_prefetch;	/* Prefetch znodes? */
@@ -196,24 +185,18 @@ typedef struct znode {
 	uint_t		z_blksz;	/* block size in bytes */
 	uint_t		z_seq;		/* modification sequence number */
 	uint64_t	z_mapcnt;	/* number of pages mapped to file */
-	uint64_t	z_gen;		/* generation (cached) */
+	uint64_t	z_dnodesize;	/* dnode size */
 	uint64_t	z_size;		/* file size (cached) */
-	uint64_t	z_atime[2];	/* atime (cached) */
-	uint64_t	z_links;	/* file links (cached) */
 	uint64_t	z_pflags;	/* pflags (cached) */
-	uint64_t	z_uid;		/* uid fuid (cached) */
-	uint64_t	z_gid;		/* gid fuid (cached) */
 	uint32_t	z_sync_cnt;	/* synchronous open count */
 	mode_t		z_mode;		/* mode (cached) */
 	kmutex_t	z_acl_lock;	/* acl data lock */
 	zfs_acl_t	*z_acl_cached;	/* cached acl */
 	krwlock_t	z_xattr_lock;	/* xattr data lock */
 	nvlist_t	*z_xattr_cached; /* cached xattrs */
-	struct znode	*z_xattr_parent; /* xattr parent znode */
 	list_node_t	z_link_node;	/* all znodes in fs link */
 	sa_handle_t	*z_sa_hdl;	/* handle to sa data */
 	boolean_t	z_is_sa;	/* are we native sa? */
-	boolean_t	z_is_zvol;	/* are we used by the zvol */
 	boolean_t	z_is_mapped;	/* are we mmap'ed */
 	boolean_t	z_is_ctldir;	/* are we .zfs entry */
 	boolean_t	z_is_stale;	/* are we stale due to rollback? */
@@ -306,16 +289,12 @@ extern unsigned int zfs_object_mutex_size;
 #define	STATE_CHANGED		(ATTR_CTIME)
 #define	CONTENT_MODIFIED	(ATTR_MTIME | ATTR_CTIME)
 
-#define	ZFS_ACCESSTIME_STAMP(zsb, zp) \
-	if ((zsb)->z_atime && !(zfs_is_readonly(zsb))) \
-		zfs_tstamp_update_setup(zp, ACCESSED, NULL, NULL, B_FALSE);
-
 extern int	zfs_init_fs(zfs_sb_t *, znode_t **);
 extern void	zfs_set_dataprop(objset_t *);
 extern void	zfs_create_fs(objset_t *os, cred_t *cr, nvlist_t *,
     dmu_tx_t *tx);
 extern void	zfs_tstamp_update_setup(znode_t *, uint_t, uint64_t [2],
-    uint64_t [2], boolean_t);
+    uint64_t [2]);
 extern void	zfs_grow_blocksize(znode_t *, uint64_t, dmu_tx_t *);
 extern int	zfs_freesp(znode_t *, uint64_t, uint64_t, int, boolean_t);
 extern void	zfs_znode_init(void);

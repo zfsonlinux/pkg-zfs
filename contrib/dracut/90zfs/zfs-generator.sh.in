@@ -1,0 +1,47 @@
+#!/bin/bash
+
+GENERATOR_DIR="$1"
+[ -z "$GENERATOR_DIR" ] && exit 1
+
+[ -f /lib/dracut-lib.sh ] && dracutlib=/lib/dracut-lib.sh
+[ -f /usr/lib/dracut/modules.d/99base/dracut-lib.sh ] && dracutlib=/usr/lib/dracut/modules.d/99base/dracut-lib.sh
+
+type getarg >/dev/null 2>&1 || . "$dracutlib"
+
+[ -z "$root" ]       && root=$(getarg root=)
+[ -z "$rootfstype" ] && rootfstype=$(getarg rootfstype=)
+[ -z "$rootflags" ]  && rootflags=$(getarg rootflags=)
+
+[ "${root##zfs:}" = "${root}" -a "${root##ZFS=}" = "${root}" -a "$rootfstype" != "zfs" ] && exit 0
+# If root is set to zfs:AUTO, then we know sysroot.mount will not be generated
+# so we have no need to enhance it.
+# See https://github.com/zfsonlinux/zfs/pull/4558#discussion_r61118952 for details.
+if [ "${root}" = "zfs:AUTO" ] ; then
+  exit 0
+fi
+
+rootfstype=zfs
+if echo "${rootflags}" | grep -Eq '^zfsutil$|^zfsutil,|,zfsutil$|,zfsutil,' ; then
+    true
+elif test -n "${rootflags}" ; then
+    rootflags="zfsutil,${rootflags}"
+else
+    rootflags=zfsutil
+fi
+
+root="${root##zfs:}"
+root="${root##ZFS=}"
+
+[ -d "$GENERATOR_DIR" ] || mkdir "$GENERATOR_DIR"
+[ -d "$GENERATOR_DIR/sysroot.mount.d" ] || mkdir "$GENERATOR_DIR/sysroot.mount.d"
+
+{
+    echo "[Unit]"
+    echo "After=zfs-import-scan.service"
+    echo "After=zfs-import-cache.service"
+    echo ""
+    echo "[Mount]"
+    echo "What=${root}"
+    echo "Type=${rootfstype}"
+    echo "Options=${rootflags}"
+} > "$GENERATOR_DIR/sysroot.mount.d/zfs-enhancement.conf"

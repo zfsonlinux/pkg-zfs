@@ -55,10 +55,6 @@ typedef longlong_t	diskaddr_t;
 typedef ulong_t		pgcnt_t;	/* number of pages */
 typedef long		spgcnt_t;	/* signed number of pages */
 
-typedef longlong_t	hrtime_t;
-typedef struct timespec	timestruc_t;
-typedef struct timespec timespec_t;
-
 typedef short		pri_t;
 
 typedef int		zoneid_t;
@@ -68,6 +64,7 @@ typedef int		major_t;
 typedef int		minor_t;
 
 typedef ushort_t o_mode_t; /* old file attribute type */
+typedef short		index_t;
 
 /*
  * Definitions remaining from previous partial support for 64-bit file

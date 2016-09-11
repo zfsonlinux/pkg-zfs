@@ -20,7 +20,7 @@
  */
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2011, 2014 by Delphix. All rights reserved.
+ * Copyright (c) 2011, 2015 by Delphix. All rights reserved.
  * Copyright (c) 2013 by Saso Kiselkov. All rights reserved.
  */
 
@@ -198,7 +198,6 @@ metaslab_class_create(spa_t *spa, metaslab_ops_t *ops)
 	mc->mc_spa = spa;
 	mc->mc_rotor = NULL;
 	mc->mc_ops = ops;
-	mutex_init(&mc->mc_fastwrite_lock, NULL, MUTEX_DEFAULT, NULL);
 
 	return (mc);
 }
@@ -212,7 +211,6 @@ metaslab_class_destroy(metaslab_class_t *mc)
 	ASSERT(mc->mc_space == 0);
 	ASSERT(mc->mc_dspace == 0);
 
-	mutex_destroy(&mc->mc_fastwrite_lock);
 	kmem_free(mc, sizeof (metaslab_class_t));
 }
 
@@ -401,25 +399,16 @@ metaslab_class_expandable_space(metaslab_class_t *mc)
 static int
 metaslab_compare(const void *x1, const void *x2)
 {
-	const metaslab_t *m1 = x1;
-	const metaslab_t *m2 = x2;
+	const metaslab_t *m1 = (const metaslab_t *)x1;
+	const metaslab_t *m2 = (const metaslab_t *)x2;
 
-	if (m1->ms_weight < m2->ms_weight)
-		return (1);
-	if (m1->ms_weight > m2->ms_weight)
-		return (-1);
+	int cmp = AVL_CMP(m2->ms_weight, m1->ms_weight);
+	if (likely(cmp))
+		return (cmp);
 
-	/*
-	 * If the weights are identical, use the offset to force uniqueness.
-	 */
-	if (m1->ms_start < m2->ms_start)
-		return (-1);
-	if (m1->ms_start > m2->ms_start)
-		return (1);
+	IMPLY(AVL_CMP(m1->ms_start, m2->ms_start) == 0, m1 == m2);
 
-	ASSERT3P(m1, ==, m2);
-
-	return (0);
+	return (AVL_CMP(m1->ms_start, m2->ms_start));
 }
 
 /*
@@ -797,18 +786,11 @@ metaslab_rangesize_compare(const void *x1, const void *x2)
 	uint64_t rs_size1 = r1->rs_end - r1->rs_start;
 	uint64_t rs_size2 = r2->rs_end - r2->rs_start;
 
-	if (rs_size1 < rs_size2)
-		return (-1);
-	if (rs_size1 > rs_size2)
-		return (1);
+	int cmp = AVL_CMP(rs_size1, rs_size2);
+	if (likely(cmp))
+		return (cmp);
 
-	if (r1->rs_start < r2->rs_start)
-		return (-1);
-
-	if (r1->rs_start > r2->rs_start)
-		return (1);
-
-	return (0);
+	return (AVL_CMP(r1->rs_start, r2->rs_start));
 }
 
 /*
@@ -1742,10 +1724,11 @@ metaslab_condense(metaslab_t *msp, uint64_t txg, dmu_tx_t *tx)
 	ASSERT(msp->ms_loaded);
 
 
-	spa_dbgmsg(spa, "condensing: txg %llu, msp[%llu] %p, "
-	    "smp size %llu, segments %lu, forcing condense=%s", txg,
-	    msp->ms_id, msp, space_map_length(msp->ms_sm),
-	    avl_numnodes(&msp->ms_tree->rt_root),
+	spa_dbgmsg(spa, "condensing: txg %llu, msp[%llu] %p, vdev id %llu, "
+	    "spa %s, smp size %llu, segments %lu, forcing condense=%s", txg,
+	    msp->ms_id, msp, msp->ms_group->mg_vd->vdev_id,
+	    msp->ms_group->mg_vd->vdev_spa->spa_name,
+	    space_map_length(msp->ms_sm), avl_numnodes(&msp->ms_tree->rt_root),
 	    msp->ms_condense_wanted ? "TRUE" : "FALSE");
 
 	msp->ms_condense_wanted = B_FALSE;
@@ -2213,9 +2196,6 @@ metaslab_alloc_dva(spa_t *spa, metaslab_class_t *mc, uint64_t psize,
 	if (psize >= metaslab_gang_bang && (ddi_get_lbolt() & 3) == 0)
 		return (SET_ERROR(ENOSPC));
 
-	if (flags & METASLAB_FASTWRITE)
-		mutex_enter(&mc->mc_fastwrite_lock);
-
 	/*
 	 * Start at the rotor and loop through all mgs until we find something.
 	 * Note that there's no locking on mc_rotor or mc_aliquot because
@@ -2394,13 +2374,13 @@ top:
 
 			DVA_SET_VDEV(&dva[d], vd->vdev_id);
 			DVA_SET_OFFSET(&dva[d], offset);
-			DVA_SET_GANG(&dva[d], !!(flags & METASLAB_GANG_HEADER));
+			DVA_SET_GANG(&dva[d],
+			    ((flags & METASLAB_GANG_HEADER) ? 1 : 0));
 			DVA_SET_ASIZE(&dva[d], asize);
 
 			if (flags & METASLAB_FASTWRITE) {
 				atomic_add_64(&vd->vdev_pending_fastwrite,
 				    psize);
-				mutex_exit(&mc->mc_fastwrite_lock);
 			}
 
 			return (0);
@@ -2423,9 +2403,6 @@ next:
 	}
 
 	bzero(&dva[d], sizeof (dva_t));
-
-	if (flags & METASLAB_FASTWRITE)
-		mutex_exit(&mc->mc_fastwrite_lock);
 
 	return (SET_ERROR(ENOSPC));
 }
@@ -2579,7 +2556,7 @@ metaslab_alloc(spa_t *spa, metaslab_class_t *mc, uint64_t psize, blkptr_t *bp,
 
 	spa_config_exit(spa, SCL_ALLOC, FTAG);
 
-	BP_SET_BIRTH(bp, txg, txg);
+	BP_SET_BIRTH(bp, txg, 0);
 
 	return (0);
 }

@@ -54,15 +54,10 @@
 static int
 dsl_deadlist_compare(const void *arg1, const void *arg2)
 {
-	const dsl_deadlist_entry_t *dle1 = arg1;
-	const dsl_deadlist_entry_t *dle2 = arg2;
+	const dsl_deadlist_entry_t *dle1 = (const dsl_deadlist_entry_t *)arg1;
+	const dsl_deadlist_entry_t *dle2 = (const dsl_deadlist_entry_t *)arg2;
 
-	if (dle1->dle_mintxg < dle2->dle_mintxg)
-		return (-1);
-	else if (dle1->dle_mintxg > dle2->dle_mintxg)
-		return (+1);
-	else
-		return (0);
+	return (AVL_CMP(dle1->dle_mintxg, dle2->dle_mintxg));
 }
 
 static void
@@ -239,6 +234,14 @@ dsl_deadlist_insert(dsl_deadlist_t *dl, const blkptr_t *bp, dmu_tx_t *tx)
 		dle = avl_nearest(&dl->dl_tree, where, AVL_BEFORE);
 	else
 		dle = AVL_PREV(&dl->dl_tree, dle);
+
+	if (dle == NULL) {
+		zfs_panic_recover("blkptr at %p has invalid BLK_BIRTH %llu",
+		    bp, (longlong_t)bp->blk_birth);
+		dle = avl_first(&dl->dl_tree);
+	}
+
+	ASSERT3P(dle, !=, NULL);
 	dle_enqueue(dl, dle, bp, tx);
 }
 

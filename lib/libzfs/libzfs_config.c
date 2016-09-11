@@ -26,6 +26,7 @@
 
 /*
  * Copyright (c) 2012 by Delphix. All rights reserved.
+ * Copyright (c) 2015 by Syneto S.R.L. All rights reserved.
  */
 
 /*
@@ -211,7 +212,7 @@ namespace_reload(libzfs_handle_t *hdl)
 }
 
 /*
- * Retrieve the configuration for the given pool.  The configuration is a nvlist
+ * Retrieve the configuration for the given pool. The configuration is an nvlist
  * describing the vdevs, as well as the statistics associated with each one.
  */
 nvlist_t *
@@ -246,8 +247,9 @@ zpool_get_features(zpool_handle_t *zhp)
 		config = zpool_get_config(zhp, NULL);
 	}
 
-	verify(nvlist_lookup_nvlist(config, ZPOOL_CONFIG_FEATURE_STATS,
-	    &features) == 0);
+	if (nvlist_lookup_nvlist(config, ZPOOL_CONFIG_FEATURE_STATS,
+	    &features) != 0)
+		return (NULL);
 
 	return (features);
 }
@@ -309,22 +311,9 @@ zpool_refresh_stats(zpool_handle_t *zhp, boolean_t *missing)
 	zhp->zpool_config_size = zc.zc_nvlist_dst_size;
 
 	if (zhp->zpool_config != NULL) {
-		uint64_t oldtxg, newtxg;
+		nvlist_free(zhp->zpool_old_config);
 
-		verify(nvlist_lookup_uint64(zhp->zpool_config,
-		    ZPOOL_CONFIG_POOL_TXG, &oldtxg) == 0);
-		verify(nvlist_lookup_uint64(config,
-		    ZPOOL_CONFIG_POOL_TXG, &newtxg) == 0);
-
-		if (zhp->zpool_old_config != NULL)
-			nvlist_free(zhp->zpool_old_config);
-
-		if (oldtxg != newtxg) {
-			nvlist_free(zhp->zpool_config);
-			zhp->zpool_old_config = NULL;
-		} else {
-			zhp->zpool_old_config = zhp->zpool_config;
-		}
+		zhp->zpool_old_config = zhp->zpool_config;
 	}
 
 	zhp->zpool_config = config;

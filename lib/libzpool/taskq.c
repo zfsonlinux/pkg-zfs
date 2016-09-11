@@ -34,26 +34,6 @@ int taskq_now;
 taskq_t *system_taskq;
 
 #define	TASKQ_ACTIVE	0x00010000
-#define	TASKQ_NAMELEN	31
-
-struct taskq {
-	char		tq_name[TASKQ_NAMELEN + 1];
-	kmutex_t	tq_lock;
-	krwlock_t	tq_threadlock;
-	kcondvar_t	tq_dispatch_cv;
-	kcondvar_t	tq_wait_cv;
-	kthread_t	**tq_threadlist;
-	int		tq_flags;
-	int		tq_active;
-	int		tq_nthreads;
-	int		tq_nalloc;
-	int		tq_minalloc;
-	int		tq_maxalloc;
-	kcondvar_t	tq_maxalloc_cv;
-	int		tq_maxalloc_wait;
-	taskq_ent_t	*tq_freelist;
-	taskq_ent_t	tq_task;
-};
 
 static taskq_ent_t *
 task_alloc(taskq_t *tq, int tqflags)
@@ -308,7 +288,7 @@ taskq_create(const char *name, int nthreads, pri_t pri,
 
 	for (t = 0; t < nthreads; t++)
 		VERIFY((tq->tq_threadlist[t] = thread_create(NULL, 0,
-		    taskq_thread, tq, TS_RUN, NULL, 0, pri)) != NULL);
+		    taskq_thread, tq, 0, &p0, TS_RUN, pri)) != NULL);
 
 	return (tq);
 }

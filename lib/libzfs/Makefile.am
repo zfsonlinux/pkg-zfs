@@ -15,7 +15,6 @@ USER_C = \
 	libzfs_dataset.c \
 	libzfs_diff.c \
 	libzfs_fru.c \
-	libzfs_graph.c \
 	libzfs_import.c \
 	libzfs_iter.c \
 	libzfs_mount.c \
@@ -36,7 +35,7 @@ libzfs_la_LIBADD = \
 	$(top_builddir)/lib/libnvpair/libnvpair.la \
 	$(top_builddir)/lib/libzpool/libzpool.la
 
-libzfs_la_LIBADD += -lm -ldl $(LIBBLKID)
+libzfs_la_LIBADD += -lm $(LIBBLKID) $(LIBUDEV)
 libzfs_la_LDFLAGS = -version-info 2:0:0
 
 EXTRA_DIST = $(libzfs_pc_DATA) $(USER_C)

@@ -174,20 +174,15 @@ int zfs_vdev_write_gap_limit = 4 << 10;
 int
 vdev_queue_offset_compare(const void *x1, const void *x2)
 {
-	const zio_t *z1 = x1;
-	const zio_t *z2 = x2;
+	const zio_t *z1 = (const zio_t *)x1;
+	const zio_t *z2 = (const zio_t *)x2;
 
-	if (z1->io_offset < z2->io_offset)
-		return (-1);
-	if (z1->io_offset > z2->io_offset)
-		return (1);
+	int cmp = AVL_CMP(z1->io_offset, z2->io_offset);
 
-	if (z1 < z2)
-		return (-1);
-	if (z1 > z2)
-		return (1);
+	if (likely(cmp))
+		return (cmp);
 
-	return (0);
+	return (AVL_PCMP(z1, z2));
 }
 
 static inline avl_tree_t *
@@ -209,20 +204,15 @@ vdev_queue_type_tree(vdev_queue_t *vq, zio_type_t t)
 int
 vdev_queue_timestamp_compare(const void *x1, const void *x2)
 {
-	const zio_t *z1 = x1;
-	const zio_t *z2 = x2;
+	const zio_t *z1 = (const zio_t *)x1;
+	const zio_t *z2 = (const zio_t *)x2;
 
-	if (z1->io_timestamp < z2->io_timestamp)
-		return (-1);
-	if (z1->io_timestamp > z2->io_timestamp)
-		return (1);
+	int cmp = AVL_CMP(z1->io_timestamp, z2->io_timestamp);
 
-	if (z1 < z2)
-		return (-1);
-	if (z1 > z2)
-		return (1);
+	if (likely(cmp))
+		return (cmp);
 
-	return (0);
+	return (AVL_PCMP(z1, z2));
 }
 
 static int
@@ -249,20 +239,29 @@ static int
 vdev_queue_max_async_writes(spa_t *spa)
 {
 	int writes;
-	uint64_t dirty = spa->spa_dsl_pool->dp_dirty_total;
+	uint64_t dirty = 0;
+	dsl_pool_t *dp = spa_get_dsl(spa);
 	uint64_t min_bytes = zfs_dirty_data_max *
 	    zfs_vdev_async_write_active_min_dirty_percent / 100;
 	uint64_t max_bytes = zfs_dirty_data_max *
 	    zfs_vdev_async_write_active_max_dirty_percent / 100;
 
 	/*
+	 * Async writes may occur before the assignment of the spa's
+	 * dsl_pool_t if a self-healing zio is issued prior to the
+	 * completion of dmu_objset_open_impl().
+	 */
+	if (dp == NULL)
+		return (zfs_vdev_async_write_max_active);
+
+	/*
 	 * Sync tasks correspond to interactive user actions. To reduce the
 	 * execution time of those actions we push data out as fast as possible.
 	 */
-	if (spa_has_pending_synctask(spa)) {
+	if (spa_has_pending_synctask(spa))
 		return (zfs_vdev_async_write_max_active);
-	}
 
+	dirty = dp->dp_dirty_total;
 	if (dirty < min_bytes)
 		return (zfs_vdev_async_write_min_active);
 	if (dirty > max_bytes)
@@ -374,6 +373,8 @@ vdev_queue_init(vdev_t *vd)
 		avl_create(vdev_queue_class_tree(vq, p), compfn,
 			sizeof (zio_t), offsetof(struct zio, io_queue_node));
 	}
+
+	vq->vq_lastoffset = 0;
 }
 
 void
@@ -499,20 +500,17 @@ vdev_queue_aggregate(vdev_queue_t *vq, zio_t *zio)
 	zio_t *first, *last, *aio, *dio, *mandatory, *nio;
 	uint64_t maxgap = 0;
 	uint64_t size;
+	uint64_t limit;
 	boolean_t stretch = B_FALSE;
 	avl_tree_t *t = vdev_queue_type_tree(vq, zio->io_type);
 	enum zio_flag flags = zio->io_flags & ZIO_FLAG_AGG_INHERIT;
 	void *buf;
 
-	if (zio->io_flags & ZIO_FLAG_DONT_AGGREGATE)
-		return (NULL);
+	limit = MAX(MIN(zfs_vdev_aggregation_limit,
+	    spa_maxblocksize(vq->vq_vdev->vdev_spa)), 0);
 
-	/*
-	 * Prevent users from setting the zfs_vdev_aggregation_limit
-	 * tuning larger than SPA_MAXBLOCKSIZE.
-	 */
-	zfs_vdev_aggregation_limit =
-	    MIN(zfs_vdev_aggregation_limit, SPA_MAXBLOCKSIZE);
+	if (zio->io_flags & ZIO_FLAG_DONT_AGGREGATE || limit == 0)
+		return (NULL);
 
 	first = last = zio;
 
@@ -540,7 +538,7 @@ vdev_queue_aggregate(vdev_queue_t *vq, zio_t *zio)
 	 */
 	while ((dio = AVL_PREV(t, first)) != NULL &&
 	    (dio->io_flags & ZIO_FLAG_AGG_INHERIT) == flags &&
-	    IO_SPAN(dio, last) <= zfs_vdev_aggregation_limit &&
+	    IO_SPAN(dio, last) <= limit &&
 	    IO_GAP(dio, first) <= maxgap) {
 		first = dio;
 		if (mandatory == NULL && !(first->io_flags & ZIO_FLAG_OPTIONAL))
@@ -561,7 +559,7 @@ vdev_queue_aggregate(vdev_queue_t *vq, zio_t *zio)
 	 */
 	while ((dio = AVL_NEXT(t, last)) != NULL &&
 	    (dio->io_flags & ZIO_FLAG_AGG_INHERIT) == flags &&
-	    IO_SPAN(first, dio) <= zfs_vdev_aggregation_limit &&
+	    IO_SPAN(first, dio) <= limit &&
 	    IO_GAP(last, dio) <= maxgap) {
 		last = dio;
 		if (!(last->io_flags & ZIO_FLAG_OPTIONAL))
@@ -607,7 +605,7 @@ vdev_queue_aggregate(vdev_queue_t *vq, zio_t *zio)
 		return (NULL);
 
 	size = IO_SPAN(first, last);
-	ASSERT3U(size, <=, zfs_vdev_aggregation_limit);
+	ASSERT3U(size, <=, limit);
 
 	buf = zio_buf_alloc_flags(size, KM_NOSLEEP);
 	if (buf == NULL)
@@ -754,9 +752,6 @@ vdev_queue_io_done(zio_t *zio)
 	vdev_queue_t *vq = &zio->io_vd->vdev_queue;
 	zio_t *nio;
 
-	if (zio_injection_enabled)
-		delay(SEC_TO_TICK(zio_handle_io_delay(zio)));
-
 	mutex_enter(&vq->vq_lock);
 
 	vdev_queue_pending_remove(vq, zio);
@@ -777,6 +772,30 @@ vdev_queue_io_done(zio_t *zio)
 	}
 
 	mutex_exit(&vq->vq_lock);
+}
+
+/*
+ * As these three methods are only used for load calculations we're not
+ * concerned if we get an incorrect value on 32bit platforms due to lack of
+ * vq_lock mutex use here, instead we prefer to keep it lock free for
+ * performance.
+ */
+int
+vdev_queue_length(vdev_t *vd)
+{
+	return (avl_numnodes(&vd->vdev_queue.vq_active_tree));
+}
+
+uint64_t
+vdev_queue_lastoffset(vdev_t *vd)
+{
+	return (vd->vdev_queue.vq_lastoffset);
+}
+
+void
+vdev_queue_register_lastoffset(vdev_t *vd, zio_t *zio)
+{
+	vd->vdev_queue.vq_lastoffset = zio->io_offset + zio->io_size;
 }
 
 #if defined(_KERNEL) && defined(HAVE_SPL)

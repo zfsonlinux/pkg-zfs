@@ -21,7 +21,7 @@
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2012, Joyent, Inc. All rights reserved.
- * Copyright (c) 2011, 2015 by Delphix. All rights reserved.
+ * Copyright (c) 2011, 2016 by Delphix. All rights reserved.
  * Copyright (c) 2014 by Saso Kiselkov. All rights reserved.
  * Copyright 2014 Nexenta Systems, Inc.  All rights reserved.
  */
@@ -231,11 +231,24 @@ unsigned long zfs_arc_max = 0;
 unsigned long zfs_arc_min = 0;
 unsigned long zfs_arc_meta_limit = 0;
 unsigned long zfs_arc_meta_min = 0;
+unsigned long zfs_arc_dnode_limit = 0;
+unsigned long zfs_arc_dnode_reduce_percent = 10;
 int zfs_arc_grow_retry = 0;
 int zfs_arc_shrink_shift = 0;
 int zfs_arc_p_min_shift = 0;
 int zfs_disable_dup_eviction = 0;
 int zfs_arc_average_blocksize = 8 * 1024; /* 8KB */
+
+/*
+ * ARC will evict meta buffers that exceed arc_meta_limit. This
+ * tunable make arc_meta_limit adjustable for different workloads.
+ */
+unsigned long zfs_arc_meta_limit_percent = 75;
+
+/*
+ * Percentage that can be consumed by dnodes of ARC meta buffers.
+ */
+unsigned long zfs_arc_dnode_limit_percent = 10;
 
 /*
  * These tunables are Linux specific
@@ -328,13 +341,17 @@ typedef struct arc_stats {
 	 */
 	kstat_named_t arcstat_metadata_size;
 	/*
-	 * Number of bytes consumed by various buffers and structures
-	 * not actually backed with ARC buffers. This includes bonus
-	 * buffers (allocated directly via zio_buf_* functions),
-	 * dmu_buf_impl_t structures (allocated via dmu_buf_impl_t
-	 * cache), and dnode_t structures (allocated via dnode_t cache).
+	 * Number of bytes consumed by dmu_buf_impl_t objects.
 	 */
-	kstat_named_t arcstat_other_size;
+	kstat_named_t arcstat_dbuf_size;
+	/*
+	 * Number of bytes consumed by dnode_t objects.
+	 */
+	kstat_named_t arcstat_dnode_size;
+	/*
+	 * Number of bytes consumed by bonus buffers.
+	 */
+	kstat_named_t arcstat_bonus_size;
 	/*
 	 * Total number of bytes consumed by ARC buffers residing in the
 	 * arc_anon state. This includes *all* buffers in the arc_anon
@@ -446,6 +463,7 @@ typedef struct arc_stats {
 	kstat_named_t arcstat_l2_writes_done;
 	kstat_named_t arcstat_l2_writes_error;
 	kstat_named_t arcstat_l2_writes_lock_retry;
+	kstat_named_t arcstat_l2_writes_skip_toobig;
 	kstat_named_t arcstat_l2_evict_lock_retry;
 	kstat_named_t arcstat_l2_evict_reading;
 	kstat_named_t arcstat_l2_evict_l1cached;
@@ -472,8 +490,11 @@ typedef struct arc_stats {
 	kstat_named_t arcstat_prune;
 	kstat_named_t arcstat_meta_used;
 	kstat_named_t arcstat_meta_limit;
+	kstat_named_t arcstat_dnode_limit;
 	kstat_named_t arcstat_meta_max;
 	kstat_named_t arcstat_meta_min;
+	kstat_named_t arcstat_sync_wait_for_async;
+	kstat_named_t arcstat_demand_hit_predictive_prefetch;
 	kstat_named_t arcstat_need_free;
 	kstat_named_t arcstat_sys_free;
 } arc_stats_t;
@@ -514,7 +535,9 @@ static arc_stats_t arc_stats = {
 	{ "hdr_size",			KSTAT_DATA_UINT64 },
 	{ "data_size",			KSTAT_DATA_UINT64 },
 	{ "metadata_size",		KSTAT_DATA_UINT64 },
-	{ "other_size",			KSTAT_DATA_UINT64 },
+	{ "dbuf_size",			KSTAT_DATA_UINT64 },
+	{ "dnode_size",			KSTAT_DATA_UINT64 },
+	{ "bonus_size",			KSTAT_DATA_UINT64 },
 	{ "anon_size",			KSTAT_DATA_UINT64 },
 	{ "anon_evictable_data",	KSTAT_DATA_UINT64 },
 	{ "anon_evictable_metadata",	KSTAT_DATA_UINT64 },
@@ -540,6 +563,7 @@ static arc_stats_t arc_stats = {
 	{ "l2_writes_done",		KSTAT_DATA_UINT64 },
 	{ "l2_writes_error",		KSTAT_DATA_UINT64 },
 	{ "l2_writes_lock_retry",	KSTAT_DATA_UINT64 },
+	{ "l2_writes_skip_toobig",	KSTAT_DATA_UINT64 },
 	{ "l2_evict_lock_retry",	KSTAT_DATA_UINT64 },
 	{ "l2_evict_reading",		KSTAT_DATA_UINT64 },
 	{ "l2_evict_l1cached",		KSTAT_DATA_UINT64 },
@@ -566,8 +590,11 @@ static arc_stats_t arc_stats = {
 	{ "arc_prune",			KSTAT_DATA_UINT64 },
 	{ "arc_meta_used",		KSTAT_DATA_UINT64 },
 	{ "arc_meta_limit",		KSTAT_DATA_UINT64 },
+	{ "arc_dnode_limit",		KSTAT_DATA_UINT64 },
 	{ "arc_meta_max",		KSTAT_DATA_UINT64 },
 	{ "arc_meta_min",		KSTAT_DATA_UINT64 },
+	{ "sync_wait_for_async",	KSTAT_DATA_UINT64 },
+	{ "demand_hit_predictive_prefetch", KSTAT_DATA_UINT64 },
 	{ "arc_need_free",		KSTAT_DATA_UINT64 },
 	{ "arc_sys_free",		KSTAT_DATA_UINT64 }
 };
@@ -635,9 +662,13 @@ static arc_state_t	*arc_l2c_only;
 #define	arc_tempreserve	ARCSTAT(arcstat_tempreserve)
 #define	arc_loaned_bytes	ARCSTAT(arcstat_loaned_bytes)
 #define	arc_meta_limit	ARCSTAT(arcstat_meta_limit) /* max size for metadata */
+#define	arc_dnode_limit	ARCSTAT(arcstat_dnode_limit) /* max size for dnodes */
 #define	arc_meta_min	ARCSTAT(arcstat_meta_min) /* min size for metadata */
 #define	arc_meta_used	ARCSTAT(arcstat_meta_used) /* size of metadata */
 #define	arc_meta_max	ARCSTAT(arcstat_meta_max) /* max size of metadata */
+#define	arc_dbuf_size	ARCSTAT(arcstat_dbuf_size) /* dbuf metadata */
+#define	arc_dnode_size	ARCSTAT(arcstat_dnode_size) /* dnode metadata */
+#define	arc_bonus_size	ARCSTAT(arcstat_bonus_size) /* bonus buffer metadata */
 #define	arc_need_free	ARCSTAT(arcstat_need_free) /* bytes to be freed */
 #define	arc_sys_free	ARCSTAT(arcstat_sys_free) /* target system free bytes */
 
@@ -722,6 +753,8 @@ uint64_t zfs_crc64_table[256];
 
 #define	L2ARC_WRITE_SIZE	(8 * 1024 * 1024)	/* initial write max */
 #define	L2ARC_HEADROOM		2			/* num of writes */
+#define	L2ARC_MAX_BLOCK_SIZE	(16 * 1024 * 1024)	/* max compress size */
+
 /*
  * If we discover during ARC scan any buffers to be compressed, we boost
  * our headroom for the next scanning cycle by this percentage multiple.
@@ -729,6 +762,7 @@ uint64_t zfs_crc64_table[256];
 #define	L2ARC_HEADROOM_BOOST	200
 #define	L2ARC_FEED_SECS		1		/* caching interval secs */
 #define	L2ARC_FEED_MIN_MS	200		/* min caching interval ms */
+
 
 /*
  * Used to distinguish headers that are being process by
@@ -748,6 +782,7 @@ unsigned long l2arc_write_max = L2ARC_WRITE_SIZE;	/* def max write size */
 unsigned long l2arc_write_boost = L2ARC_WRITE_SIZE;	/* extra warmup write */
 unsigned long l2arc_headroom = L2ARC_HEADROOM;		/* # of dev writes */
 unsigned long l2arc_headroom_boost = L2ARC_HEADROOM_BOOST;
+unsigned long l2arc_max_block_size = L2ARC_MAX_BLOCK_SIZE;
 unsigned long l2arc_feed_secs = L2ARC_FEED_SECS;	/* interval seconds */
 unsigned long l2arc_feed_min_ms = L2ARC_FEED_MIN_MS;	/* min interval msecs */
 int l2arc_noprefetch = B_TRUE;			/* don't cache prefetch bufs */
@@ -793,6 +828,7 @@ static void arc_access(arc_buf_hdr_t *, kmutex_t *);
 static boolean_t arc_is_overflowing(void);
 static void arc_buf_watch(arc_buf_t *);
 static void arc_tuning_update(void);
+static void arc_prune_async(int64_t);
 
 static arc_buf_contents_t arc_buf_type(arc_buf_hdr_t *);
 static uint32_t arc_bufc_to_flags(arc_buf_contents_t);
@@ -1451,15 +1487,19 @@ arc_buf_info(arc_buf_t *ab, arc_buf_info_t *abi, int state_index)
 	l2arc_buf_hdr_t *l2hdr = NULL;
 	arc_state_t *state = NULL;
 
+	memset(abi, 0, sizeof (arc_buf_info_t));
+
+	if (hdr == NULL)
+		return;
+
+	abi->abi_flags = hdr->b_flags;
+
 	if (HDR_HAS_L1HDR(hdr)) {
 		l1hdr = &hdr->b_l1hdr;
 		state = l1hdr->b_state;
 	}
 	if (HDR_HAS_L2HDR(hdr))
 		l2hdr = &hdr->b_l2hdr;
-
-	memset(abi, 0, sizeof (arc_buf_info_t));
-	abi->abi_flags = hdr->b_flags;
 
 	if (l1hdr) {
 		abi->abi_datacnt = l1hdr->b_datacnt;
@@ -1666,8 +1706,14 @@ arc_space_consume(uint64_t space, arc_space_type_t type)
 	case ARC_SPACE_META:
 		ARCSTAT_INCR(arcstat_metadata_size, space);
 		break;
-	case ARC_SPACE_OTHER:
-		ARCSTAT_INCR(arcstat_other_size, space);
+	case ARC_SPACE_BONUS:
+		ARCSTAT_INCR(arcstat_bonus_size, space);
+		break;
+	case ARC_SPACE_DNODE:
+		ARCSTAT_INCR(arcstat_dnode_size, space);
+		break;
+	case ARC_SPACE_DBUF:
+		ARCSTAT_INCR(arcstat_dbuf_size, space);
 		break;
 	case ARC_SPACE_HDRS:
 		ARCSTAT_INCR(arcstat_hdr_size, space);
@@ -1697,8 +1743,14 @@ arc_space_return(uint64_t space, arc_space_type_t type)
 	case ARC_SPACE_META:
 		ARCSTAT_INCR(arcstat_metadata_size, -space);
 		break;
-	case ARC_SPACE_OTHER:
-		ARCSTAT_INCR(arcstat_other_size, -space);
+	case ARC_SPACE_BONUS:
+		ARCSTAT_INCR(arcstat_bonus_size, -space);
+		break;
+	case ARC_SPACE_DNODE:
+		ARCSTAT_INCR(arcstat_dnode_size, -space);
+		break;
+	case ARC_SPACE_DBUF:
+		ARCSTAT_INCR(arcstat_dbuf_size, -space);
 		break;
 	case ARC_SPACE_HDRS:
 		ARCSTAT_INCR(arcstat_hdr_size, -space);
@@ -2585,6 +2637,18 @@ arc_evict_state(arc_state_t *state, uint64_t spa, int64_t bytes,
 	 * we're evicting all available buffers.
 	 */
 	while (total_evicted < bytes || bytes == ARC_EVICT_ALL) {
+		int sublist_idx = multilist_get_random_index(ml);
+		uint64_t scan_evicted = 0;
+
+		/*
+		 * Try to reduce pinned dnodes with a floor of arc_dnode_limit.
+		 * Request that 10% of the LRUs be scanned by the superblock
+		 * shrinker.
+		 */
+		if (type == ARC_BUFC_DATA && arc_dnode_size > arc_dnode_limit)
+			arc_prune_async((arc_dnode_size - arc_dnode_limit) /
+			    sizeof (dnode_t) / zfs_arc_dnode_reduce_percent);
+
 		/*
 		 * Start eviction using a randomly selected sublist,
 		 * this is to try and evenly balance eviction across all
@@ -2592,9 +2656,6 @@ arc_evict_state(arc_state_t *state, uint64_t spa, int64_t bytes,
 		 * (e.g. index 0) would cause evictions to favor certain
 		 * sublists over others.
 		 */
-		int sublist_idx = multilist_get_random_index(ml);
-		uint64_t scan_evicted = 0;
-
 		for (i = 0; i < num_sublists; i++) {
 			uint64_t bytes_remaining;
 			uint64_t bytes_evicted;
@@ -2697,12 +2758,7 @@ arc_prune_task(void *ptr)
 	if (func != NULL)
 		func(ap->p_adjust, ap->p_private);
 
-	/* Callback unregistered concurrently with execution */
-	if (refcount_remove(&ap->p_refcnt, func) == 0) {
-		ASSERT(!list_link_active(&ap->p_node));
-		refcount_destroy(&ap->p_refcnt);
-		kmem_free(ap, sizeof (*ap));
-	}
+	refcount_remove(&ap->p_refcnt, func);
 }
 
 /*
@@ -3420,7 +3476,7 @@ static void
 arc_reclaim_thread(void)
 {
 	fstrans_cookie_t	cookie = spl_fstrans_mark();
-	clock_t			growtime = 0;
+	hrtime_t		growtime = 0;
 	callb_cpr_t		cpr;
 
 	CALLB_CPR_INIT(&cpr, &arc_reclaim_lock, callb_generic_cpr, FTAG);
@@ -3444,7 +3500,7 @@ arc_reclaim_thread(void)
 			 * Wait at least zfs_grow_retry (default 5) seconds
 			 * before considering growing.
 			 */
-			growtime = ddi_get_lbolt() + (arc_grow_retry * hz);
+			growtime = gethrtime() + SEC2NSEC(arc_grow_retry);
 
 			arc_kmem_reap_now();
 
@@ -3463,7 +3519,7 @@ arc_reclaim_thread(void)
 			}
 		} else if (free_memory < arc_c >> arc_no_grow_shift) {
 			arc_no_grow = B_TRUE;
-		} else if (ddi_get_lbolt() >= growtime) {
+		} else if (gethrtime() >= growtime) {
 			arc_no_grow = B_FALSE;
 		}
 
@@ -3496,8 +3552,8 @@ arc_reclaim_thread(void)
 			 * even if we aren't being signalled)
 			 */
 			CALLB_CPR_SAFE_BEGIN(&cpr);
-			(void) cv_timedwait_sig(&arc_reclaim_thread_cv,
-			    &arc_reclaim_lock, ddi_get_lbolt() + hz);
+			(void) cv_timedwait_sig_hires(&arc_reclaim_thread_cv,
+			    &arc_reclaim_lock, SEC2NSEC(1), MSEC2NSEC(1), 0);
 			CALLB_CPR_SAFE_END(&cpr, &arc_reclaim_lock);
 		}
 	}
@@ -4242,6 +4298,36 @@ top:
 
 		if (HDR_IO_IN_PROGRESS(hdr)) {
 
+			if ((hdr->b_flags & ARC_FLAG_PRIO_ASYNC_READ) &&
+			    priority == ZIO_PRIORITY_SYNC_READ) {
+				/*
+				 * This sync read must wait for an
+				 * in-progress async read (e.g. a predictive
+				 * prefetch).  Async reads are queued
+				 * separately at the vdev_queue layer, so
+				 * this is a form of priority inversion.
+				 * Ideally, we would "inherit" the demand
+				 * i/o's priority by moving the i/o from
+				 * the async queue to the synchronous queue,
+				 * but there is currently no mechanism to do
+				 * so.  Track this so that we can evaluate
+				 * the magnitude of this potential performance
+				 * problem.
+				 *
+				 * Note that if the prefetch i/o is already
+				 * active (has been issued to the device),
+				 * the prefetch improved performance, because
+				 * we issued it sooner than we would have
+				 * without the prefetch.
+				 */
+				DTRACE_PROBE1(arc__sync__wait__for__async,
+				    arc_buf_hdr_t *, hdr);
+				ARCSTAT_BUMP(arcstat_sync_wait_for_async);
+			}
+			if (hdr->b_flags & ARC_FLAG_PREDICTIVE_PREFETCH) {
+				hdr->b_flags &= ~ARC_FLAG_PREDICTIVE_PREFETCH;
+			}
+
 			if (*arc_flags & ARC_FLAG_WAIT) {
 				cv_wait(&hdr->b_l1hdr.b_cv, hash_lock);
 				mutex_exit(hash_lock);
@@ -4250,7 +4336,7 @@ top:
 			ASSERT(*arc_flags & ARC_FLAG_NOWAIT);
 
 			if (done) {
-				arc_callback_t	*acb = NULL;
+				arc_callback_t *acb = NULL;
 
 				acb = kmem_zalloc(sizeof (arc_callback_t),
 				    KM_SLEEP);
@@ -4275,6 +4361,19 @@ top:
 		    hdr->b_l1hdr.b_state == arc_mfu);
 
 		if (done) {
+			if (hdr->b_flags & ARC_FLAG_PREDICTIVE_PREFETCH) {
+				/*
+				 * This is a demand read which does not have to
+				 * wait for i/o because we did a predictive
+				 * prefetch i/o for it, which has completed.
+				 */
+				DTRACE_PROBE1(
+				    arc__demand__hit__predictive__prefetch,
+				    arc_buf_hdr_t *, hdr);
+				ARCSTAT_BUMP(
+				    arcstat_demand_hit_predictive_prefetch);
+				hdr->b_flags &= ~ARC_FLAG_PREDICTIVE_PREFETCH;
+			}
 			add_reference(hdr, hash_lock, private);
 			/*
 			 * If this block is already in use, create a new
@@ -4320,17 +4419,11 @@ top:
 
 		/*
 		 * Gracefully handle a damaged logical block size as a
-		 * checksum error by passing a dummy zio to the done callback.
+		 * checksum error.
 		 */
 		if (size > spa_maxblocksize(spa)) {
-			if (done) {
-				rzio = zio_null(pio, spa, NULL,
-				    NULL, NULL, zio_flags);
-				rzio->io_error = ECKSUM;
-				done(rzio, buf, private);
-				zio_nowait(rzio);
-			}
-			rc = ECKSUM;
+			ASSERT3P(buf, ==, NULL);
+			rc = SET_ERROR(ECKSUM);
 			goto out;
 		}
 
@@ -4353,12 +4446,16 @@ top:
 				goto top; /* restart the IO request */
 			}
 
-			/* if this is a prefetch, we don't have a reference */
-			if (*arc_flags & ARC_FLAG_PREFETCH) {
+			/*
+			 * If there is a callback, we pass our reference to
+			 * it; otherwise we remove our reference.
+			 */
+			if (done == NULL) {
 				(void) remove_reference(hdr, hash_lock,
 				    private);
-				hdr->b_flags |= ARC_FLAG_PREFETCH;
 			}
+			if (*arc_flags & ARC_FLAG_PREFETCH)
+				hdr->b_flags |= ARC_FLAG_PREFETCH;
 			if (*arc_flags & ARC_FLAG_L2CACHE)
 				hdr->b_flags |= ARC_FLAG_L2CACHE;
 			if (*arc_flags & ARC_FLAG_L2COMPRESS)
@@ -4381,11 +4478,13 @@ top:
 			ASSERT(refcount_is_zero(&hdr->b_l1hdr.b_refcnt));
 			ASSERT3P(hdr->b_l1hdr.b_buf, ==, NULL);
 
-			/* if this is a prefetch, we don't have a reference */
+			/*
+			 * If there is a callback, we pass a reference to it.
+			 */
+			if (done != NULL)
+				add_reference(hdr, hash_lock, private);
 			if (*arc_flags & ARC_FLAG_PREFETCH)
 				hdr->b_flags |= ARC_FLAG_PREFETCH;
-			else
-				add_reference(hdr, hash_lock, private);
 			if (*arc_flags & ARC_FLAG_L2CACHE)
 				hdr->b_flags |= ARC_FLAG_L2CACHE;
 			if (*arc_flags & ARC_FLAG_L2COMPRESS)
@@ -4403,6 +4502,8 @@ top:
 			arc_access(hdr, hash_lock);
 		}
 
+		if (*arc_flags & ARC_FLAG_PREDICTIVE_PREFETCH)
+			hdr->b_flags |= ARC_FLAG_PREDICTIVE_PREFETCH;
 		ASSERT(!GHOST_STATE(hdr->b_l1hdr.b_state));
 
 		acb = kmem_zalloc(sizeof (arc_callback_t), KM_SLEEP);
@@ -4441,6 +4542,11 @@ top:
 		ARCSTAT_CONDSTAT(!HDR_PREFETCH(hdr),
 		    demand, prefetch, !HDR_ISTYPE_METADATA(hdr),
 		    data, metadata, misses);
+
+		if (priority == ZIO_PRIORITY_ASYNC_READ)
+			hdr->b_flags |= ARC_FLAG_PRIO_ASYNC_READ;
+		else
+			hdr->b_flags &= ~ARC_FLAG_PRIO_ASYNC_READ;
 
 		if (vd != NULL && l2arc_ndev != 0 && !(l2arc_norw && devw)) {
 			/*
@@ -4568,13 +4674,19 @@ arc_add_prune_callback(arc_prune_func_t *func, void *private)
 void
 arc_remove_prune_callback(arc_prune_t *p)
 {
+	boolean_t wait = B_FALSE;
 	mutex_enter(&arc_prune_mtx);
 	list_remove(&arc_prune_list, p);
-	if (refcount_remove(&p->p_refcnt, &arc_prune_list) == 0) {
-		refcount_destroy(&p->p_refcnt);
-		kmem_free(p, sizeof (*p));
-	}
+	if (refcount_remove(&p->p_refcnt, &arc_prune_list) > 0)
+		wait = B_TRUE;
 	mutex_exit(&arc_prune_mtx);
+
+	/* wait for arc_prune_task to finish */
+	if (wait)
+		taskq_wait_outstanding(arc_prune_taskq, 0);
+	ASSERT0(refcount_count(&p->p_refcnt));
+	refcount_destroy(&p->p_refcnt);
+	kmem_free(p, sizeof (*p));
 }
 
 void
@@ -4920,6 +5032,15 @@ arc_write_ready(zio_t *zio)
 	hdr->b_flags |= ARC_FLAG_IO_IN_PROGRESS;
 }
 
+static void
+arc_write_children_ready(zio_t *zio)
+{
+	arc_write_callback_t *callback = zio->io_private;
+	arc_buf_t *buf = callback->awcb_buf;
+
+	callback->awcb_children_ready(zio, buf, callback->awcb_private);
+}
+
 /*
  * The SPA calls this callback for each physical write that happens on behalf
  * of a logical write.  See the comment in dbuf_write_physdone() for details.
@@ -5016,7 +5137,8 @@ arc_write_done(zio_t *zio)
 zio_t *
 arc_write(zio_t *pio, spa_t *spa, uint64_t txg,
     blkptr_t *bp, arc_buf_t *buf, boolean_t l2arc, boolean_t l2arc_compress,
-    const zio_prop_t *zp, arc_done_func_t *ready, arc_done_func_t *physdone,
+    const zio_prop_t *zp, arc_done_func_t *ready,
+    arc_done_func_t *children_ready, arc_done_func_t *physdone,
     arc_done_func_t *done, void *private, zio_priority_t priority,
     int zio_flags, const zbookmark_phys_t *zb)
 {
@@ -5036,13 +5158,16 @@ arc_write(zio_t *pio, spa_t *spa, uint64_t txg,
 		hdr->b_flags |= ARC_FLAG_L2COMPRESS;
 	callback = kmem_zalloc(sizeof (arc_write_callback_t), KM_SLEEP);
 	callback->awcb_ready = ready;
+	callback->awcb_children_ready = children_ready;
 	callback->awcb_physdone = physdone;
 	callback->awcb_done = done;
 	callback->awcb_private = private;
 	callback->awcb_buf = buf;
 
 	zio = zio_write(pio, spa, txg, bp, buf->b_data, hdr->b_size, zp,
-	    arc_write_ready, arc_write_physdone, arc_write_done, callback,
+	    arc_write_ready,
+	    (children_ready != NULL) ? arc_write_children_ready : NULL,
+	    arc_write_physdone, arc_write_done, callback,
 	    priority, zio_flags, zb);
 
 	return (zio);
@@ -5243,6 +5368,7 @@ arc_state_multilist_index_func(multilist_t *ml, void *obj)
 static void
 arc_tuning_update(void)
 {
+	uint64_t percent;
 	/* Valid range: 64M - <all physical memory> */
 	if ((zfs_arc_max) && (zfs_arc_max != arc_c_max) &&
 	    (zfs_arc_max > 64 << 20) && (zfs_arc_max < ptob(physmem)) &&
@@ -5250,7 +5376,11 @@ arc_tuning_update(void)
 		arc_c_max = zfs_arc_max;
 		arc_c = arc_c_max;
 		arc_p = (arc_c >> 1);
-		arc_meta_limit = MIN(arc_meta_limit, arc_c_max);
+		/* Valid range of arc_meta_limit: arc_meta_min - arc_c_max */
+		percent = MIN(zfs_arc_meta_limit_percent, 100);
+		arc_meta_limit = MAX(arc_meta_min, (percent * arc_c_max) / 100);
+		percent = MIN(zfs_arc_dnode_limit_percent, 100);
+		arc_dnode_limit = (percent * arc_meta_limit) / 100;
 	}
 
 	/* Valid range: 32M - <arc_c_max> */
@@ -5267,6 +5397,7 @@ arc_tuning_update(void)
 	    (zfs_arc_meta_min <= arc_c_max)) {
 		arc_meta_min = zfs_arc_meta_min;
 		arc_meta_limit = MAX(arc_meta_limit, arc_meta_min);
+		arc_dnode_limit = arc_meta_limit / 10;
 	}
 
 	/* Valid range: <arc_meta_min> - <arc_c_max> */
@@ -5274,6 +5405,12 @@ arc_tuning_update(void)
 	    (zfs_arc_meta_limit >= zfs_arc_meta_min) &&
 	    (zfs_arc_meta_limit <= arc_c_max))
 		arc_meta_limit = zfs_arc_meta_limit;
+
+	/* Valid range: <arc_meta_min> - <arc_c_max> */
+	if ((zfs_arc_dnode_limit) && (zfs_arc_dnode_limit != arc_dnode_limit) &&
+	    (zfs_arc_dnode_limit >= zfs_arc_meta_min) &&
+	    (zfs_arc_dnode_limit <= arc_c_max))
+		arc_dnode_limit = zfs_arc_dnode_limit;
 
 	/* Valid range: 1 - N */
 	if (zfs_arc_grow_retry)
@@ -5315,6 +5452,7 @@ arc_init(void)
 #else
 	uint64_t allmem = (physmem * PAGESIZE) / 2;
 #endif
+	uint64_t percent;
 
 	mutex_init(&arc_reclaim_lock, NULL, MUTEX_DEFAULT, NULL);
 	cv_init(&arc_reclaim_thread_cv, NULL, CV_DEFAULT, NULL);
@@ -5349,10 +5487,20 @@ arc_init(void)
 	arc_need_free = 0;
 #endif
 
-	/* Set min cache to allow safe operation of arc_adapt() */
-	arc_c_min = 2ULL << SPA_MAXBLOCKSHIFT;
 	/* Set max to 1/2 of all memory */
 	arc_c_max = allmem / 2;
+
+	/*
+	 * In userland, there's only the memory pressure that we artificially
+	 * create (see arc_available_memory()).  Don't let arc_c get too
+	 * small, because it can cause transactions to be larger than
+	 * arc_c, causing arc_tempreserve_space() to fail.
+	 */
+#ifndef	_KERNEL
+	arc_c_min = MAX(arc_c_max / 2, 2ULL << SPA_MAXBLOCKSHIFT);
+#else
+	arc_c_min = 2ULL << SPA_MAXBLOCKSHIFT;
+#endif
 
 	arc_c = arc_c_max;
 	arc_p = (arc_c >> 1);
@@ -5361,8 +5509,14 @@ arc_init(void)
 	arc_meta_min = 1ULL << SPA_MAXBLOCKSHIFT;
 	/* Initialize maximum observed usage to zero */
 	arc_meta_max = 0;
-	/* Set limit to 3/4 of arc_c_max with a floor of arc_meta_min */
-	arc_meta_limit = MAX((3 * arc_c_max) / 4, arc_meta_min);
+	/*
+	 * Set arc_meta_limit to a percent of arc_c_max with a floor of
+	 * arc_meta_min, and a ceiling of arc_c_max.
+	 */
+	percent = MIN(zfs_arc_meta_limit_percent, 100);
+	arc_meta_limit = MAX(arc_meta_min, (percent * arc_c_max) / 100);
+	percent = MIN(zfs_arc_dnode_limit_percent, 100);
+	arc_dnode_limit = (percent * arc_meta_limit) / 100;
 
 	/* Apply user specified tunings */
 	arc_tuning_update();
@@ -5956,7 +6110,20 @@ top:
 		 */
 		l2arc_release_cdata_buf(hdr);
 
-		if (zio->io_error != 0) {
+		/*
+		 * Skipped - drop L2ARC entry and mark the header as no
+		 * longer L2 eligibile.
+		 */
+		if (hdr->b_l2hdr.b_daddr == L2ARC_ADDR_UNSET) {
+			list_remove(buflist, hdr);
+			hdr->b_flags &= ~ARC_FLAG_HAS_L2HDR;
+			hdr->b_flags &= ~ARC_FLAG_L2CACHE;
+
+			ARCSTAT_BUMP(arcstat_l2_writes_skip_toobig);
+
+			(void) refcount_remove_many(&dev->l2ad_alloc,
+			    hdr->b_l2hdr.b_asize, hdr);
+		} else if (zio->io_error != 0) {
 			/*
 			 * Error - drop L2ARC entry.
 			 */
@@ -6503,6 +6670,16 @@ l2arc_write_buffers(spa_t *spa, l2arc_dev_t *dev, uint64_t target_sz,
 		if (buf_sz != 0) {
 			uint64_t buf_a_sz;
 
+			/*
+			 * Buffers which are larger than l2arc_max_block_size
+			 * after compression are skipped and removed from L2
+			 * eligibility.
+			 */
+			if (buf_sz > l2arc_max_block_size) {
+				hdr->b_l2hdr.b_daddr = L2ARC_ADDR_UNSET;
+				continue;
+			}
+
 			wzio = zio_write_phys(pio, dev->l2ad_vdev,
 			    dev->l2ad_hand, buf_sz, buf_data, ZIO_CHECKSUM_OFF,
 			    NULL, NULL, ZIO_PRIORITY_ASYNC_WRITE,
@@ -7012,6 +7189,10 @@ MODULE_PARM_DESC(zfs_arc_max, "Max arc size");
 module_param(zfs_arc_meta_limit, ulong, 0644);
 MODULE_PARM_DESC(zfs_arc_meta_limit, "Meta limit for arc size");
 
+module_param(zfs_arc_meta_limit_percent, ulong, 0644);
+MODULE_PARM_DESC(zfs_arc_meta_limit_percent,
+	"Percent of arc size for arc meta limit");
+
 module_param(zfs_arc_meta_min, ulong, 0644);
 MODULE_PARM_DESC(zfs_arc_meta_min, "Min arc metadata");
 
@@ -7065,6 +7246,9 @@ MODULE_PARM_DESC(l2arc_headroom, "Number of max device writes to precache");
 module_param(l2arc_headroom_boost, ulong, 0644);
 MODULE_PARM_DESC(l2arc_headroom_boost, "Compressed l2arc_headroom multiplier");
 
+module_param(l2arc_max_block_size, ulong, 0644);
+MODULE_PARM_DESC(l2arc_max_block_size, "Skip L2ARC buffers larger than N");
+
 module_param(l2arc_feed_secs, ulong, 0644);
 MODULE_PARM_DESC(l2arc_feed_secs, "Seconds between L2ARC writing");
 
@@ -7089,5 +7273,16 @@ MODULE_PARM_DESC(zfs_arc_lotsfree_percent,
 
 module_param(zfs_arc_sys_free, ulong, 0644);
 MODULE_PARM_DESC(zfs_arc_sys_free, "System free memory target size in bytes");
+
+module_param(zfs_arc_dnode_limit, ulong, 0644);
+MODULE_PARM_DESC(zfs_arc_dnode_limit, "Minimum bytes of dnodes in arc");
+
+module_param(zfs_arc_dnode_limit_percent, ulong, 0644);
+MODULE_PARM_DESC(zfs_arc_dnode_limit_percent,
+	"Percent of ARC meta buffers for dnodes");
+
+module_param(zfs_arc_dnode_reduce_percent, ulong, 0644);
+MODULE_PARM_DESC(zfs_arc_dnode_reduce_percent,
+	"Percentage of excess dnodes to try to unpin");
 
 #endif

@@ -1,6 +1,7 @@
 include $(top_srcdir)/config/Rules.am
 
 AM_CFLAGS += $(DEBUG_STACKFLAGS) $(FRAME_LARGER_THAN)
+AM_CPPFLAGS += -DDEBUG
 
 DEFAULT_INCLUDES += \
 	-I$(top_srcdir)/include \
@@ -18,4 +19,4 @@ ztest_LDADD = \
 	$(top_builddir)/lib/libzfs/libzfs.la \
 	$(top_builddir)/lib/libzfs_core/libzfs_core.la
 
-ztest_LDADD += -lm -ldl
+ztest_LDADD += -lm

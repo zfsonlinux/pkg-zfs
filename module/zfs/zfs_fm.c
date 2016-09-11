@@ -112,10 +112,6 @@ zfs_zevent_post_cb(nvlist_t *nvl, nvlist_t *detector)
 		fm_nvlist_destroy(detector, FM_NVA_FREE);
 }
 
-static void
-zfs_zevent_post_cb_noop(nvlist_t *nvl, nvlist_t *detector)
-{
-}
 
 static void
 zfs_ereport_start(nvlist_t **ereport_out, nvlist_t **detector_out,
@@ -824,14 +820,6 @@ zfs_ereport_free_checksum(zio_cksum_report_t *rpt)
 	kmem_free(rpt, sizeof (*rpt));
 }
 
-void
-zfs_ereport_send_interim_checksum(zio_cksum_report_t *report)
-{
-#ifdef _KERNEL
-	zfs_zevent_post(report->zcr_ereport, report->zcr_detector,
-	    zfs_zevent_post_cb_noop);
-#endif
-}
 
 void
 zfs_ereport_post_checksum(spa_t *spa, vdev_t *vd,
@@ -860,7 +848,8 @@ zfs_ereport_post_checksum(spa_t *spa, vdev_t *vd,
 }
 
 static void
-zfs_post_common(spa_t *spa, vdev_t *vd, const char *name)
+zfs_post_common(spa_t *spa, vdev_t *vd, const char *type, const char *name,
+    nvlist_t *aux)
 {
 #ifdef _KERNEL
 	nvlist_t *resource;
@@ -872,7 +861,7 @@ zfs_post_common(spa_t *spa, vdev_t *vd, const char *name)
 	if ((resource = fm_nvlist_create(NULL)) == NULL)
 		return;
 
-	(void) snprintf(class, sizeof (class), "%s.%s.%s", FM_RSRC_RESOURCE,
+	(void) snprintf(class, sizeof (class), "%s.%s.%s", type,
 	    ZFS_ERROR_CLASS, name);
 	VERIFY0(nvlist_add_uint8(resource, FM_VERSION, FM_RSRC_VERSION));
 	VERIFY0(nvlist_add_string(resource, FM_CLASS, class));
@@ -886,6 +875,22 @@ zfs_post_common(spa_t *spa, vdev_t *vd, const char *name)
 		    FM_EREPORT_PAYLOAD_ZFS_VDEV_GUID, vd->vdev_guid));
 		VERIFY0(nvlist_add_uint64(resource,
 		    FM_EREPORT_PAYLOAD_ZFS_VDEV_STATE, vd->vdev_state));
+		if (vd->vdev_path != NULL)
+			VERIFY0(nvlist_add_string(resource,
+			    FM_EREPORT_PAYLOAD_ZFS_VDEV_PATH, vd->vdev_path));
+		if (vd->vdev_devid != NULL)
+			VERIFY0(nvlist_add_string(resource,
+			    FM_EREPORT_PAYLOAD_ZFS_VDEV_DEVID, vd->vdev_devid));
+		if (vd->vdev_fru != NULL)
+			VERIFY0(nvlist_add_string(resource,
+			    FM_EREPORT_PAYLOAD_ZFS_VDEV_FRU, vd->vdev_fru));
+		/* also copy any optional payload data */
+		if (aux) {
+			nvpair_t *elem = NULL;
+
+			while ((elem = nvlist_next_nvpair(aux, elem)) != NULL)
+				(void) nvlist_add_nvpair(resource, elem);
+		}
 	}
 
 	zfs_zevent_post(resource, NULL, zfs_zevent_post_cb);
@@ -901,7 +906,7 @@ zfs_post_common(spa_t *spa, vdev_t *vd, const char *name)
 void
 zfs_post_remove(spa_t *spa, vdev_t *vd)
 {
-	zfs_post_common(spa, vd, FM_EREPORT_RESOURCE_REMOVED);
+	zfs_post_common(spa, vd, FM_RSRC_CLASS, FM_RESOURCE_REMOVED, NULL);
 }
 
 /*
@@ -912,7 +917,7 @@ zfs_post_remove(spa_t *spa, vdev_t *vd)
 void
 zfs_post_autoreplace(spa_t *spa, vdev_t *vd)
 {
-	zfs_post_common(spa, vd, FM_EREPORT_RESOURCE_AUTOREPLACE);
+	zfs_post_common(spa, vd, FM_RSRC_CLASS, FM_RESOURCE_AUTOREPLACE, NULL);
 }
 
 /*
@@ -922,9 +927,43 @@ zfs_post_autoreplace(spa_t *spa, vdev_t *vd)
  * open because the device was not found (fault.fs.zfs.device).
  */
 void
-zfs_post_state_change(spa_t *spa, vdev_t *vd)
+zfs_post_state_change(spa_t *spa, vdev_t *vd, uint64_t laststate)
 {
-	zfs_post_common(spa, vd, FM_EREPORT_RESOURCE_STATECHANGE);
+#ifdef _KERNEL
+	nvlist_t *aux;
+
+	/*
+	 * Add optional supplemental keys to payload
+	 */
+	aux = fm_nvlist_create(NULL);
+	if (vd && aux) {
+		if (vd->vdev_physpath) {
+			(void) nvlist_add_string(aux,
+			    FM_EREPORT_PAYLOAD_ZFS_VDEV_PHYSPATH,
+			    vd->vdev_physpath);
+		}
+		(void) nvlist_add_uint64(aux,
+		    FM_EREPORT_PAYLOAD_ZFS_VDEV_LASTSTATE, laststate);
+	}
+
+	zfs_post_common(spa, vd, FM_RSRC_CLASS, FM_RESOURCE_STATECHANGE,
+	    aux);
+
+	if (aux)
+		fm_nvlist_destroy(aux, FM_NVA_FREE);
+#endif
+}
+
+/*
+ * The 'sysevent.fs.zfs.*' events are signals posted to notify user space of
+ * change in the pool.  All sysevents are listed in sys/sysevent/eventdefs.h
+ * and are designed to be consumed by the ZFS Event Daemon (ZED).  For
+ * additional details refer to the zed(8) man page.
+ */
+void
+zfs_post_sysevent(spa_t *spa, vdev_t *vd, const char *name)
+{
+	zfs_post_common(spa, vd, FM_SYSEVENT_CLASS, name, NULL);
 }
 
 #if defined(_KERNEL) && defined(HAVE_SPL)
@@ -933,4 +972,5 @@ EXPORT_SYMBOL(zfs_ereport_post_checksum);
 EXPORT_SYMBOL(zfs_post_remove);
 EXPORT_SYMBOL(zfs_post_autoreplace);
 EXPORT_SYMBOL(zfs_post_state_change);
+EXPORT_SYMBOL(zfs_post_sysevent);
 #endif /* _KERNEL */
