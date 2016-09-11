@@ -54,17 +54,13 @@ Index: b/config/zfs-build.m4
 ===================================================================
 --- a/config/zfs-build.m4
 +++ b/config/zfs-build.m4
-@@ -87,10 +87,10 @@
+@@ -86,8 +86,8 @@
  	ZFS_AC_CONFIG_ALWAYS
  
  	case "$ZFS_CONFIG" in
 -		kernel) ZFS_AC_CONFIG_KERNEL ;;
  		user)	ZFS_AC_CONFIG_USER   ;;
--		all)    ZFS_AC_CONFIG_KERNEL
--			ZFS_AC_CONFIG_USER   ;;
 +		kernel) ZFS_AC_CONFIG_KERNEL ;;
-+		all)    ZFS_AC_CONFIG_USER
-+			ZFS_AC_CONFIG_KERNEL ;;
+ 		all)    ZFS_AC_CONFIG_USER
+ 			ZFS_AC_CONFIG_KERNEL ;;
  		srpm)                        ;;
- 		*)
- 		AC_MSG_RESULT([Error!])
