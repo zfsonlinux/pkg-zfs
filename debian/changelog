@@ -1,3 +1,119 @@
+zfs-linux (0.7.0-rc1-3~trusty~gbp7bd9cb) trusty; urgency=low
+
+  ** SNAPSHOT build @7bd9cb7a88032716a6512e16c3f2d8ab4c75692e **
+
+  [ liuhuang ]
+  * Fix memory/fd leak in check_file() and is_spare()
+
+  [ Tim Chase ]
+  * Free property names with spa_strfree() rather than strfree()
+
+  [ Nikolay Borisov ]
+  * Refactor spa_load_l2cache to make build happy
+
+  [ Tim Chase ]
+  * Remove redundant assignments to arc_c
+
+  [ loli10K ]
+  * Allow ZVOL bookmarks to be listed recursively
+
+  [ luozhengzheng ]
+  * Fix memleak in zfs_do_* and zpool_do_*
+
+  [ Paul Dagnelie ]
+  * OpenZFS 7262 - remove seq from zfs_receive_010.ksh
+
+  [ George Wilson ]
+  * OpenZFS 6950 - ARC should cache compressed data
+
+  [ Dan Kimmel ]
+  * DLPX-40252 integrate EP-476 compressed zfs send/receive
+
+  [ Tom Caputi ]
+  * Enable raw writes to perform dedup with verification
+
+  [ Dan Kimmel ]
+  * Remove lint suppression from dmu.h and unnecessary dmu.h include in spa.h
+  * DLPX-44733 combine arc_buf_alloc_impl() with arc_buf_clone()
+
+  [ Nikolay Borisov ]
+  * Refactor generic inode time updating
+  * Simplify time handling logic in zfs_settattr
+
+  [ Brian Behlendorf ]
+  * Disable zpool_upgrade_004_pos test case
+  * Enable ignore_hole_birth module option by default
+
+  [ luozhengzheng ]
+  * Fix Coverity defects
+
+  [ legend-hua ]
+  * Fix FALLOC_FL_PUNCH_HOLE use in randfree_file.c
+
+  [ Tim Chase ]
+  * Fix arc_adjust_meta_balanced()
+
+  [ slashdd ]
+  * Change /etc/mtab to /proc/self/mounts
+
+  [ candychencan ]
+  * Fix strncpy in taskq_create
+
+  [ cao ]
+  * Fix coverity defects
+
+  [ legend-hua ]
+  * Remove script zfs_commands.cfg
+
+  [ BearBabyLiu ]
+  * Fix coverity defects
+
+  [ Moritz Maxeiner ]
+  * Fix regression that broke dracut initramfs generation
+
+  [ Isaac Huang ]
+  * Reduce noise in tracing logs
+
+  [ Brian Behlendorf ]
+  * Fix automatically generated release number
+
+  [ candychencan ]
+  * Fix zfs_destroy_001_pos.ksh
+
+  [ luozhengzheng ]
+  * Fix coverity defects
+
+  [ cao ]
+  * Update zfs destroy test scripts
+
+  [ luozhengzheng ]
+  * Fix coverity defects
+
+  [ kernelOfTruth aka. kOT, Gentoo user ]
+  * OpenZFS 7230 - add assertions to dmu_send_impl() to verify that stream includes BEGIN and END records
+  * OpenZFS 6111 - zfs send should ignore datasets created after the ending snapshot
+
+  [ tuxoko ]
+  * Linux 4.7 compat: Fix deadlock during lookup on case-insensitive
+
+  [ luozhengzheng ]
+  * Fix coverity defects: CID 147613 147614 147616 147617
+
+  [ Brian Behlendorf ]
+  * Fix multilist_create() memory leak
+
+  [ cao ]
+  * Fix coverity defects: CID 147602 147604
+  * Fix coverity defects: CID 147650, 147649, 147647, 147646
+
+  [ candychencan ]
+  * Enable property_alias_001_pos.ksh
+
+  [ lorddoskias ]
+  * Refactor inode->i_mode management
+
+ -- Darik Horn <dajhorn@vanadac.com>  Tue, 27 Sep 2016 22:56:25 -0400
+
 zfs-linux (0.7.0-rc1-3~trusty~gbp2b28e7) trusty; urgency=low
 
   ** SNAPSHOT build @2b28e733d1e8ed3994f9231700fe597d8c19c7d9 **
