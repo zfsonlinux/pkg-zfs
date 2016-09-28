@@ -101,9 +101,13 @@ zpl_lookup(struct inode *dir, struct dentry *dentry, unsigned int flags)
 		struct dentry *new_dentry;
 		struct qstr ci_name;
 
-		ci_name.name = pn.pn_buf;
-		ci_name.len = strlen(pn.pn_buf);
-		new_dentry = d_add_ci(dentry, ip, &ci_name);
+		if (strcmp(dname(dentry), pn.pn_buf) == 0) {
+			new_dentry = d_splice_alias(ip,  dentry);
+		} else {
+			ci_name.name = pn.pn_buf;
+			ci_name.len = strlen(pn.pn_buf);
+			new_dentry = d_add_ci(dentry, ip, &ci_name);
+		}
 		pn_free(ppn);
 		return (new_dentry);
 	} else {
@@ -335,7 +339,8 @@ zpl_setattr(struct dentry *dentry, struct iattr *ia)
 	vap->va_ctime = ia->ia_ctime;
 
 	if (vap->va_mask & ATTR_ATIME)
-		ip->i_atime = ia->ia_atime;
+		ip->i_atime = timespec_trunc(ia->ia_atime,
+				ip->i_sb->s_time_gran);
 
 	cookie = spl_fstrans_mark();
 	error = -zfs_setattr(ip, vap, 0, cr);

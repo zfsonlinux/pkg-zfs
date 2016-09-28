@@ -261,7 +261,7 @@ get_usage(zfs_help_t idx)
 	case HELP_ROLLBACK:
 		return (gettext("\trollback [-rRf] <snapshot>\n"));
 	case HELP_SEND:
-		return (gettext("\tsend [-DnPpRvLe] [-[iI] snapshot] "
+		return (gettext("\tsend [-DnPpRvLec] [-[iI] snapshot] "
 		    "<snapshot>\n"
 		    "\tsend [-Le] [-i snapshot|bookmark] "
 		    "<filesystem|volume|snapshot>\n"
@@ -659,8 +659,10 @@ zfs_do_clone(int argc, char **argv)
 	while ((c = getopt(argc, argv, "o:p")) != -1) {
 		switch (c) {
 		case 'o':
-			if (parseprop(props, optarg) != 0)
+			if (parseprop(props, optarg) != 0) {
+				nvlist_free(props);
 				return (1);
+			}
 			break;
 		case 'p':
 			parents = B_TRUE;
@@ -692,8 +694,10 @@ zfs_do_clone(int argc, char **argv)
 	}
 
 	/* open the source dataset */
-	if ((zhp = zfs_open(g_zfs, argv[0], ZFS_TYPE_SNAPSHOT)) == NULL)
+	if ((zhp = zfs_open(g_zfs, argv[0], ZFS_TYPE_SNAPSHOT)) == NULL) {
+		nvlist_free(props);
 		return (1);
+	}
 
 	if (parents && zfs_name_valid(argv[1], ZFS_TYPE_FILESYSTEM |
 	    ZFS_TYPE_VOLUME)) {
@@ -703,10 +707,16 @@ zfs_do_clone(int argc, char **argv)
 		 * complain.
 		 */
 		if (zfs_dataset_exists(g_zfs, argv[1], ZFS_TYPE_FILESYSTEM |
-		    ZFS_TYPE_VOLUME))
+		    ZFS_TYPE_VOLUME)) {
+			zfs_close(zhp);
+			nvlist_free(props);
 			return (0);
-		if (zfs_create_ancestors(g_zfs, argv[1]) != 0)
+		}
+		if (zfs_create_ancestors(g_zfs, argv[1]) != 0) {
+			zfs_close(zhp);
+			nvlist_free(props);
 			return (1);
+		}
 	}
 
 	/* pass to libzfs */
@@ -1280,8 +1290,10 @@ zfs_do_destroy(int argc, char **argv)
 		*at = '\0';
 		zhp = zfs_open(g_zfs, argv[0],
 		    ZFS_TYPE_FILESYSTEM | ZFS_TYPE_VOLUME);
-		if (zhp == NULL)
+		if (zhp == NULL) {
+			nvlist_free(cb.cb_nvl);
 			return (1);
+		}
 
 		cb.cb_snapspec = at + 1;
 		if (gather_snapshots(zfs_handle_dup(zhp), &cb) != 0 ||
@@ -1370,7 +1382,7 @@ zfs_do_destroy(int argc, char **argv)
 			    "cannot destroy bookmark");
 		}
 
-		nvlist_free(cb.cb_nvl);
+		nvlist_free(nvl);
 
 		return (err);
 	} else {
@@ -3645,8 +3657,11 @@ zfs_do_snapshot(int argc, char **argv)
 	while ((c = getopt(argc, argv, "ro:")) != -1) {
 		switch (c) {
 		case 'o':
-			if (parseprop(props, optarg) != 0)
+			if (parseprop(props, optarg) != 0) {
+				nvlist_free(sd.sd_nvl);
+				nvlist_free(props);
 				return (1);
+			}
 			break;
 		case 'r':
 			sd.sd_recursive = B_TRUE;
@@ -3718,7 +3733,7 @@ zfs_do_send(int argc, char **argv)
 	boolean_t extraverbose = B_FALSE;
 
 	/* check options */
-	while ((c = getopt(argc, argv, ":i:I:RDpvnPLet:")) != -1) {
+	while ((c = getopt(argc, argv, ":i:I:RDpvnPLet:c")) != -1) {
 		switch (c) {
 		case 'i':
 			if (fromname)
@@ -3761,6 +3776,9 @@ zfs_do_send(int argc, char **argv)
 			break;
 		case 't':
 			resume_token = optarg;
+			break;
+		case 'c':
+			flags.compress = B_TRUE;
 			break;
 		case ':':
 			(void) fprintf(stderr, gettext("missing argument for "
@@ -3838,6 +3856,8 @@ zfs_do_send(int argc, char **argv)
 			lzc_flags |= LZC_SEND_FLAG_LARGE_BLOCK;
 		if (flags.embed_data)
 			lzc_flags |= LZC_SEND_FLAG_EMBED_DATA;
+		if (flags.compress)
+			lzc_flags |= LZC_SEND_FLAG_COMPRESS;
 
 		if (fromname != NULL &&
 		    (fromname[0] == '#' || fromname[0] == '@')) {
@@ -3845,7 +3865,7 @@ zfs_do_send(int argc, char **argv)
 			 * Incremental source name begins with # or @.
 			 * Default to same fs as target.
 			 */
-			(void) strncpy(frombuf, argv[0], sizeof (frombuf));
+			(void) strlcpy(frombuf, argv[0], sizeof (frombuf));
 			cp = strchr(frombuf, '@');
 			if (cp != NULL)
 				*cp = '\0';
@@ -3937,8 +3957,10 @@ zfs_do_receive(int argc, char **argv)
 	while ((c = getopt(argc, argv, ":o:denuvFsA")) != -1) {
 		switch (c) {
 		case 'o':
-			if (parseprop(props, optarg) != 0)
+			if (parseprop(props, optarg) != 0) {
+				nvlist_free(props);
 				return (1);
+			}
 			break;
 		case 'd':
 			flags.isprefix = B_TRUE;
@@ -4012,9 +4034,12 @@ zfs_do_receive(int argc, char **argv)
 		    ZFS_TYPE_FILESYSTEM | ZFS_TYPE_VOLUME)) {
 			zfs_handle_t *zhp = zfs_open(g_zfs,
 			    namebuf, ZFS_TYPE_FILESYSTEM | ZFS_TYPE_VOLUME);
-			if (zhp == NULL)
+			if (zhp == NULL) {
+				nvlist_free(props);
 				return (1);
+			}
 			err = zfs_destroy(zhp, B_FALSE);
+			zfs_close(zhp);
 		} else {
 			zfs_handle_t *zhp = zfs_open(g_zfs,
 			    argv[0], ZFS_TYPE_FILESYSTEM | ZFS_TYPE_VOLUME);
@@ -4027,11 +4052,14 @@ zfs_do_receive(int argc, char **argv)
 				    gettext("'%s' does not have any "
 				    "resumable receive state to abort\n"),
 				    argv[0]);
+				nvlist_free(props);
+				zfs_close(zhp);
 				return (1);
 			}
 			err = zfs_destroy(zhp, B_FALSE);
+			zfs_close(zhp);
 		}
-
+		nvlist_free(props);
 		return (err != 0);
 	}
 
@@ -4040,9 +4068,11 @@ zfs_do_receive(int argc, char **argv)
 		    gettext("Error: Backup stream can not be read "
 		    "from a terminal.\n"
 		    "You must redirect standard input.\n"));
+		nvlist_free(props);
 		return (1);
 	}
 	err = zfs_receive(g_zfs, argv[0], props, &flags, STDIN_FILENO, NULL);
+	nvlist_free(props);
 
 	return (err != 0);
 }
@@ -6116,9 +6146,10 @@ share_mount(int op, int argc, char **argv)
 		}
 
 		/*
-		 * When mount is given no arguments, go through /etc/mtab and
-		 * display any active ZFS mounts.  We hide any snapshots, since
-		 * they are controlled automatically.
+		 * When mount is given no arguments, go through
+		 * /proc/self/mounts and display any active ZFS mounts.
+		 * We hide any snapshots, since they are controlled
+		 * automatically.
 		 */
 
 		/* Reopen MNTTAB to prevent reading stale data from open file */
@@ -6198,8 +6229,8 @@ unshare_unmount_compare(const void *larg, const void *rarg, void *unused)
 
 /*
  * Convenience routine used by zfs_do_umount() and manual_unmount().  Given an
- * absolute path, find the entry /etc/mtab, verify that its a ZFS filesystem,
- * and unmount it appropriately.
+ * absolute path, find the entry /proc/self/mounts, verify that its a
+ * ZFS filesystems, and unmount it appropriately.
  */
 static int
 unshare_unmount_path(int op, char *path, int flags, boolean_t is_manual)
@@ -6212,7 +6243,7 @@ unshare_unmount_path(int op, char *path, int flags, boolean_t is_manual)
 	ino_t path_inode;
 
 	/*
-	 * Search for the path in /etc/mtab.  Rather than looking for the
+	 * Search for the path in /proc/self/mounts. Rather than looking for the
 	 * specific path, which can be fooled by non-standard paths (i.e. ".."
 	 * or "//"), we stat() the path and search for the corresponding
 	 * (major,minor) device pair.
@@ -6243,8 +6274,8 @@ unshare_unmount_path(int op, char *path, int flags, boolean_t is_manual)
 			    "currently mounted\n"), cmdname, path);
 			return (1);
 		}
-		(void) fprintf(stderr, gettext("warning: %s not in mtab\n"),
-		    path);
+		(void) fprintf(stderr, gettext("warning: %s not in"
+		    "/proc/self/mounts\n"), path);
 		if ((ret = umount2(path, flags)) != 0)
 			(void) fprintf(stderr, gettext("%s: %s\n"), path,
 			    strerror(errno));
@@ -6355,9 +6386,9 @@ unshare_unmount(int op, int argc, char **argv)
 		/*
 		 * We could make use of zfs_for_each() to walk all datasets in
 		 * the system, but this would be very inefficient, especially
-		 * since we would have to linearly search /etc/mtab for each
-		 * one.  Instead, do one pass through /etc/mtab looking for
-		 * zfs entries and call zfs_unmount() for each one.
+		 * since we would have to linearly search /proc/self/mounts for
+		 * each one. Instead, do one pass through /proc/self/mounts
+		 * looking for zfs entries and call zfs_unmount() for each one.
 		 *
 		 * Things get a little tricky if the administrator has created
 		 * mountpoints beneath other ZFS filesystems.  In this case, we
@@ -6740,7 +6771,7 @@ zfs_do_bookmark(int argc, char **argv)
 		*strchr(snapname, '#') = '\0';
 		(void) strlcat(snapname, argv[0], sizeof (snapname));
 	} else {
-		(void) strncpy(snapname, argv[0], sizeof (snapname));
+		(void) strlcpy(snapname, argv[0], sizeof (snapname));
 	}
 	zhp = zfs_open(g_zfs, snapname, ZFS_TYPE_SNAPSHOT);
 	if (zhp == NULL)

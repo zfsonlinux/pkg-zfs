@@ -39,7 +39,7 @@
 #include <sys/zfeature.h>
 
 int32_t zfs_pd_bytes_max = 50 * 1024 * 1024;	/* 50MB */
-int32_t ignore_hole_birth = 0;
+int32_t ignore_hole_birth = 1;
 
 typedef struct prefetch_data {
 	kmutex_t pd_mtx;
@@ -386,7 +386,7 @@ traverse_visitbp(traverse_data_t *td, const dnode_phys_t *dnp,
 	}
 
 	if (buf)
-		(void) arc_buf_remove_ref(buf, &buf);
+		arc_buf_destroy(buf, &buf);
 
 post:
 	if (err == 0 && (td->td_flags & TRAVERSE_POST))
@@ -610,7 +610,7 @@ traverse_impl(spa_t *spa, dsl_dataset_t *ds, uint64_t objset, blkptr_t *rootbp,
 
 		osp = buf->b_data;
 		traverse_zil(td, &osp->os_zil_header);
-		(void) arc_buf_remove_ref(buf, &buf);
+		arc_buf_destroy(buf, &buf);
 	}
 
 	if (!(flags & TRAVERSE_PREFETCH_DATA) ||

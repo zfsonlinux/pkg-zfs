@@ -34,7 +34,7 @@ When set, the hole_birth optimization will not be used, and all holes will
 always be sent on zfs send. Useful if you suspect your datasets are affected
 by a bug in hole_birth.
 .sp
-Use \fB1\fR for on and \fB0\fR (default) for off.
+Use \fB1\fR for on (default) and \fB0\fR for off.
 .RE
 
 .sp
@@ -94,20 +94,6 @@ Scales \fBl2arc_headroom\fR by this percentage when L2ARC contents are being
 successfully compressed before writing. A value of 100 disables this feature.
 .sp
 Default value: \fB200\fR.
-.RE
-
-.sp
-.ne 2
-.na
-\fBl2arc_max_block_size\fR (ulong)
-.ad
-.RS 12n
-The maximum block size which may be written to an L2ARC device, after
-compression and other factors.  This setting is used to prevent a small
-number of large blocks from pushing a larger number of small blocks out
-of the cache.
-.sp
-Default value: \fB16,777,216\fR.
 .RE
 
 .sp

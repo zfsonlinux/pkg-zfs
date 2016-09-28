@@ -504,14 +504,13 @@ zfs_set_inode_flags(znode_t *zp, struct inode *ip)
  * inode has the correct field it should be used, and the ZFS code
  * updated to access the inode.  This can be done incrementally.
  */
-static void
-zfs_inode_update_impl(znode_t *zp, boolean_t new)
+void
+zfs_inode_update(znode_t *zp)
 {
 	zfs_sb_t	*zsb;
 	struct inode	*ip;
 	uint32_t	blksize;
 	u_longlong_t	i_blocks;
-	uint64_t	atime[2], mtime[2], ctime[2];
 
 	ASSERT(zp != NULL);
 	zsb = ZTOZSB(zp);
@@ -521,41 +520,15 @@ zfs_inode_update_impl(znode_t *zp, boolean_t new)
 	if (zfsctl_is_node(ip))
 		return;
 
-	sa_lookup(zp->z_sa_hdl, SA_ZPL_ATIME(zsb), &atime, 16);
-	sa_lookup(zp->z_sa_hdl, SA_ZPL_MTIME(zsb), &mtime, 16);
-	sa_lookup(zp->z_sa_hdl, SA_ZPL_CTIME(zsb), &ctime, 16);
-
 	dmu_object_size_from_db(sa_get_db(zp->z_sa_hdl), &blksize, &i_blocks);
 
 	spin_lock(&ip->i_lock);
-	ip->i_mode = zp->z_mode;
 	zfs_set_inode_flags(zp, ip);
 	ip->i_blocks = i_blocks;
-
-	/*
-	 * Only read atime from SA if we are newly created inode (or rezget),
-	 * otherwise i_atime might be dirty.
-	 */
-	if (new)
-		ZFS_TIME_DECODE(&ip->i_atime, atime);
-	ZFS_TIME_DECODE(&ip->i_mtime, mtime);
-	ZFS_TIME_DECODE(&ip->i_ctime, ctime);
-
 	i_size_write(ip, zp->z_size);
 	spin_unlock(&ip->i_lock);
 }
 
-static void
-zfs_inode_update_new(znode_t *zp)
-{
-	zfs_inode_update_impl(zp, B_TRUE);
-}
-
-void
-zfs_inode_update(znode_t *zp)
-{
-	zfs_inode_update_impl(zp, B_FALSE);
-}
 
 /*
  * Construct a znode+inode and initialize.
@@ -575,7 +548,8 @@ zfs_znode_alloc(zfs_sb_t *zsb, dmu_buf_t *db, int blksz,
 	uint64_t tmp_gen;
 	uint64_t links;
 	uint64_t z_uid, z_gid;
-	sa_bulk_attr_t bulk[8];
+	uint64_t atime[2], mtime[2], ctime[2];
+	sa_bulk_attr_t bulk[11];
 	int count = 0;
 
 	ASSERT(zsb != NULL);
@@ -616,6 +590,9 @@ zfs_znode_alloc(zfs_sb_t *zsb, dmu_buf_t *db, int blksz,
 	    &parent, 8);
 	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_UID(zsb), NULL, &z_uid, 8);
 	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_GID(zsb), NULL, &z_gid, 8);
+	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_ATIME(zsb), NULL, &atime, 16);
+	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_MTIME(zsb), NULL, &mtime, 16);
+	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_CTIME(zsb), NULL, &ctime, 16);
 
 	if (sa_bulk_lookup(zp->z_sa_hdl, bulk, count) != 0 ||
 		tmp_gen == 0) {
@@ -626,15 +603,19 @@ zfs_znode_alloc(zfs_sb_t *zsb, dmu_buf_t *db, int blksz,
 		goto error;
 	}
 
-	zp->z_mode = mode;
+	zp->z_mode = ip->i_mode = mode;
 	ip->i_generation = (uint32_t)tmp_gen;
 	ip->i_blkbits = SPA_MINBLOCKSHIFT;
 	set_nlink(ip, (uint32_t)links);
 	zfs_uid_write(ip, z_uid);
 	zfs_gid_write(ip, z_gid);
 
+	ZFS_TIME_DECODE(&ip->i_atime, atime);
+	ZFS_TIME_DECODE(&ip->i_mtime, mtime);
+	ZFS_TIME_DECODE(&ip->i_ctime, ctime);
+
 	ip->i_ino = obj;
-	zfs_inode_update_new(zp);
+	zfs_inode_update(zp);
 	zfs_inode_set_ops(zsb, ip);
 
 	/*
@@ -935,7 +916,7 @@ zfs_mknode(znode_t *dzp, vattr_t *vap, dmu_tx_t *tx, cred_t *cr,
 	}
 
 	(*zpp)->z_pflags = pflags;
-	(*zpp)->z_mode = mode;
+	(*zpp)->z_mode = ZTOI(*zpp)->i_mode = mode;
 	(*zpp)->z_dnodesize = dnodesize;
 
 	if (obj_type == DMU_OT_ZNODE ||
@@ -1151,11 +1132,12 @@ zfs_rezget(znode_t *zp)
 	uint64_t obj_num = zp->z_id;
 	uint64_t mode;
 	uint64_t links;
-	sa_bulk_attr_t bulk[7];
+	sa_bulk_attr_t bulk[10];
 	int err;
 	int count = 0;
 	uint64_t gen;
 	uint64_t z_uid, z_gid;
+	uint64_t atime[2], mtime[2], ctime[2];
 	znode_hold_t *zh;
 
 	/*
@@ -1218,6 +1200,12 @@ zfs_rezget(znode_t *zp)
 	    &z_gid, sizeof (z_gid));
 	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_MODE(zsb), NULL,
 	    &mode, sizeof (mode));
+	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_ATIME(zsb), NULL,
+	    &atime, 16);
+	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_MTIME(zsb), NULL,
+	    &mtime, 16);
+	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_CTIME(zsb), NULL,
+	    &ctime, 16);
 
 	if (sa_bulk_lookup(zp->z_sa_hdl, bulk, count)) {
 		zfs_znode_dmu_fini(zp);
@@ -1225,9 +1213,13 @@ zfs_rezget(znode_t *zp)
 		return (SET_ERROR(EIO));
 	}
 
-	zp->z_mode = mode;
+	zp->z_mode = ZTOI(zp)->i_mode = mode;
 	zfs_uid_write(ZTOI(zp), z_uid);
 	zfs_gid_write(ZTOI(zp), z_gid);
+
+	ZFS_TIME_DECODE(&ZTOI(zp)->i_atime, atime);
+	ZFS_TIME_DECODE(&ZTOI(zp)->i_mtime, mtime);
+	ZFS_TIME_DECODE(&ZTOI(zp)->i_ctime, ctime);
 
 	if (gen != ZTOI(zp)->i_generation) {
 		zfs_znode_dmu_fini(zp);
@@ -1240,7 +1232,7 @@ zfs_rezget(znode_t *zp)
 
 	zp->z_blksz = doi.doi_data_block_size;
 	zp->z_atime_dirty = 0;
-	zfs_inode_update_new(zp);
+	zfs_inode_update(zp);
 
 	zfs_znode_hold_exit(zsb, zh);
 
@@ -1336,6 +1328,7 @@ zfs_tstamp_update_setup(znode_t *zp, uint_t flag, uint64_t mtime[2],
 
 	if (flag & ATTR_MTIME) {
 		ZFS_TIME_ENCODE(&now, mtime);
+		ZFS_TIME_DECODE(&(ZTOI(zp)->i_mtime), mtime);
 		if (ZTOZSB(zp)->z_use_fuids) {
 			zp->z_pflags |= (ZFS_ARCHIVE |
 			    ZFS_AV_MODIFIED);
@@ -1344,6 +1337,7 @@ zfs_tstamp_update_setup(znode_t *zp, uint_t flag, uint64_t mtime[2],
 
 	if (flag & ATTR_CTIME) {
 		ZFS_TIME_ENCODE(&now, ctime);
+		ZFS_TIME_DECODE(&(ZTOI(zp)->i_ctime), ctime);
 		if (ZTOZSB(zp)->z_use_fuids)
 			zp->z_pflags |= ZFS_ARCHIVE;
 	}

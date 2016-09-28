@@ -204,7 +204,7 @@ zfs_replay_fuid_domain(void *buf, void **end, uint64_t uid, uint64_t gid)
 		return (fuid_infop);
 
 	fuid_infop->z_domain_table =
-	    kmem_zalloc(domcnt * sizeof (char **), KM_SLEEP);
+	    kmem_zalloc(domcnt * sizeof (char *), KM_SLEEP);
 
 	zfs_replay_fuid_ugid(fuid_infop, uid, gid);
 
@@ -228,7 +228,7 @@ zfs_replay_fuids(void *start, void **end, int idcnt, int domcnt, uint64_t uid,
 	fuid_infop->z_domain_cnt = domcnt;
 
 	fuid_infop->z_domain_table =
-	    kmem_zalloc(domcnt * sizeof (char **), KM_SLEEP);
+	    kmem_zalloc(domcnt * sizeof (char *), KM_SLEEP);
 
 	for (i = 0; i != idcnt; i++) {
 		zfs_fuid_t *zfuid;
@@ -805,6 +805,8 @@ zfs_replay_setattr(zfs_sb_t *zsb, lr_setattr_t *lr, boolean_t byteswap)
 	vap->va_size = lr->lr_size;
 	ZFS_TIME_DECODE(&vap->va_atime, lr->lr_atime);
 	ZFS_TIME_DECODE(&vap->va_mtime, lr->lr_mtime);
+	gethrestime(&vap->va_ctime);
+	vap->va_mask |= ATTR_CTIME;
 
 	/*
 	 * Fill in xvattr_t portions if necessary.

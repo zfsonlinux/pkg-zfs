@@ -871,7 +871,7 @@ zfs_write(struct inode *ip, uio_t *uio, int ioflag, cred_t *cr)
 		    ((zp->z_mode & S_ISUID) != 0 && uid == 0)) != 0) {
 			uint64_t newmode;
 			zp->z_mode &= ~(S_ISUID | S_ISGID);
-			newmode = zp->z_mode;
+			ip->i_mode = newmode = zp->z_mode;
 			(void) sa_update(zp->z_sa_hdl, SA_ZPL_MODE(zsb),
 			    (void *)&newmode, sizeof (uint64_t), tx);
 		}
@@ -1470,8 +1470,10 @@ top:
 		if (S_ISREG(ZTOI(zp)->i_mode) &&
 		    (vap->va_mask & ATTR_SIZE) && (vap->va_size == 0)) {
 			/* we can't hold any locks when calling zfs_freesp() */
-			zfs_dirent_unlock(dl);
-			dl = NULL;
+			if (dl) {
+				zfs_dirent_unlock(dl);
+				dl = NULL;
+			}
 			error = zfs_freesp(zp, 0, 0, mode, TRUE);
 		}
 	}
@@ -2991,7 +2993,7 @@ top:
 	if (mask & ATTR_MODE) {
 		SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_MODE(zsb), NULL,
 		    &new_mode, sizeof (new_mode));
-		zp->z_mode = new_mode;
+		zp->z_mode = ZTOI(zp)->i_mode = new_mode;
 		ASSERT3P(aclp, !=, NULL);
 		err = zfs_aclset_common(zp, aclp, cr, tx);
 		ASSERT0(err);
@@ -3000,7 +3002,6 @@ top:
 		zp->z_acl_cached = aclp;
 		aclp = NULL;
 	}
-
 
 	if ((mask & ATTR_ATIME) || zp->z_atime_dirty) {
 		zp->z_atime_dirty = 0;
@@ -3011,29 +3012,27 @@ top:
 
 	if (mask & ATTR_MTIME) {
 		ZFS_TIME_ENCODE(&vap->va_mtime, mtime);
+		ZTOI(zp)->i_mtime = timespec_trunc(vap->va_mtime,
+		    ZTOI(zp)->i_sb->s_time_gran);
+
 		SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_MTIME(zsb), NULL,
 		    mtime, sizeof (mtime));
 	}
 
-	/* XXX - shouldn't this be done *before* the ATIME/MTIME checks? */
-	if (mask & ATTR_SIZE && !(mask & ATTR_MTIME)) {
-		SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_MTIME(zsb),
-		    NULL, mtime, sizeof (mtime));
+	if (mask & ATTR_CTIME) {
+		ZFS_TIME_ENCODE(&vap->va_ctime, ctime);
+		ZTOI(zp)->i_ctime = timespec_trunc(vap->va_ctime,
+		    ZTOI(zp)->i_sb->s_time_gran);
 		SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_CTIME(zsb), NULL,
-		    &ctime, sizeof (ctime));
-		zfs_tstamp_update_setup(zp, CONTENT_MODIFIED, mtime, ctime);
-	} else if (mask != 0) {
-		SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_CTIME(zsb), NULL,
-		    &ctime, sizeof (ctime));
-		zfs_tstamp_update_setup(zp, STATE_CHANGED, mtime, ctime);
-		if (attrzp) {
-			SA_ADD_BULK_ATTR(xattr_bulk, xattr_count,
-			    SA_ZPL_CTIME(zsb), NULL,
-			    &ctime, sizeof (ctime));
-			zfs_tstamp_update_setup(attrzp, STATE_CHANGED,
-			    mtime, ctime);
-		}
+		    ctime, sizeof (ctime));
 	}
+
+	if (attrzp && mask) {
+		SA_ADD_BULK_ATTR(xattr_bulk, xattr_count,
+		    SA_ZPL_CTIME(zsb), NULL, &ctime,
+		    sizeof (ctime));
+	}
+
 	/*
 	 * Do this after setting timestamps to prevent timestamp
 	 * update from toggling bit

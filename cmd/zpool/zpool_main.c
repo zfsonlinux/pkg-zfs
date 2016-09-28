@@ -758,7 +758,7 @@ zpool_do_remove(int argc, char **argv)
 {
 	char *poolname;
 	int i, ret = 0;
-	zpool_handle_t *zhp;
+	zpool_handle_t *zhp = NULL;
 
 	argc--;
 	argv++;
@@ -782,6 +782,7 @@ zpool_do_remove(int argc, char **argv)
 		if (zpool_vdev_remove(zhp, argv[i]) != 0)
 			ret = 1;
 	}
+	zpool_close(zhp);
 
 	return (ret);
 }
@@ -1296,6 +1297,7 @@ zpool_do_destroy(int argc, char **argv)
 	if (zpool_disable_datasets(zhp, force) != 0) {
 		(void) fprintf(stderr, gettext("could not destroy '%s': "
 		    "could not unmount datasets\n"), zpool_get_name(zhp));
+		zpool_close(zhp);
 		return (1);
 	}
 
@@ -2343,6 +2345,7 @@ zpool_do_import(int argc, char **argv)
 		if (searchdirs != NULL)
 			free(searchdirs);
 
+		nvlist_free(props);
 		nvlist_free(policy);
 		return (1);
 	}
@@ -2449,6 +2452,8 @@ zpool_do_import(int argc, char **argv)
 		if (envdup != NULL)
 			free(envdup);
 		nvlist_free(policy);
+		nvlist_free(pools);
+		nvlist_free(props);
 		return (1);
 	}
 
@@ -3377,10 +3382,12 @@ print_vdev_stats(zpool_handle_t *zhp, const char *name, nvlist_t *oldnv,
 	if (!(cb->cb_flags & IOS_ANYHISTO_M))
 		printf("\n");
 
-	free(calcvs);
 	ret++;
 
 children:
+
+	free(calcvs);
+
 	if (!cb->cb_verbose)
 		return (ret);
 
@@ -3729,14 +3736,16 @@ static int
 is_vdev_cb(zpool_handle_t *zhp, nvlist_t *nv, void *cb_data)
 {
 	iostat_cbdata_t *cb = cb_data;
-	char *name;
+	char *name = NULL;
+	int ret = 0;
 
 	name = zpool_vdev_name(g_zfs, zhp, nv, cb->cb_name_flags);
 
 	if (strcmp(name, cb->cb_vdev_names[0]) == 0)
-		return (1); /* match */
+		ret = 1; /* match */
+	free(name);
 
-	return (0);
+	return (ret);
 }
 
 /*
@@ -4749,13 +4758,16 @@ zpool_do_attach_or_replace(int argc, char **argv, int replacing)
 		usage(B_FALSE);
 	}
 
-	if ((zhp = zpool_open(g_zfs, poolname)) == NULL)
+	if ((zhp = zpool_open(g_zfs, poolname)) == NULL) {
+		nvlist_free(props);
 		return (1);
+	}
 
 	if (zpool_get_config(zhp, NULL) == NULL) {
 		(void) fprintf(stderr, gettext("pool '%s' is unavailable\n"),
 		    poolname);
 		zpool_close(zhp);
+		nvlist_free(props);
 		return (1);
 	}
 
@@ -4763,11 +4775,13 @@ zpool_do_attach_or_replace(int argc, char **argv, int replacing)
 	    argc, argv);
 	if (nvroot == NULL) {
 		zpool_close(zhp);
+		nvlist_free(props);
 		return (1);
 	}
 
 	ret = zpool_vdev_attach(zhp, old_disk, new_disk, nvroot, replacing);
 
+	nvlist_free(props);
 	nvlist_free(nvroot);
 	zpool_close(zhp);
 
@@ -4973,8 +4987,10 @@ zpool_do_split(int argc, char **argv)
 	argc -= 2;
 	argv += 2;
 
-	if ((zhp = zpool_open(g_zfs, srcpool)) == NULL)
+	if ((zhp = zpool_open(g_zfs, srcpool)) == NULL) {
+		nvlist_free(props);
 		return (1);
+	}
 
 	config = split_mirror_vdev(zhp, newpool, props, flags, argc, argv);
 	if (config == NULL) {
@@ -4986,20 +5002,25 @@ zpool_do_split(int argc, char **argv)
 			print_vdev_tree(NULL, newpool, config, 0, B_FALSE,
 			    flags.name_flags);
 		}
-		nvlist_free(config);
 	}
 
 	zpool_close(zhp);
 
-	if (ret != 0 || flags.dryrun || !flags.import)
+	if (ret != 0 || flags.dryrun || !flags.import) {
+		nvlist_free(config);
+		nvlist_free(props);
 		return (ret);
+	}
 
 	/*
 	 * The split was successful. Now we need to open the new
 	 * pool and import it.
 	 */
-	if ((zhp = zpool_open_canfail(g_zfs, newpool)) == NULL)
+	if ((zhp = zpool_open_canfail(g_zfs, newpool)) == NULL) {
+		nvlist_free(config);
+		nvlist_free(props);
 		return (1);
+	}
 	if (zpool_get_state(zhp) != POOL_STATE_UNAVAIL &&
 	    zpool_enable_datasets(zhp, mntopts, 0) != 0) {
 		ret = 1;
@@ -5009,6 +5030,8 @@ zpool_do_split(int argc, char **argv)
 		    "different altroot\n"), "zpool import");
 	}
 	zpool_close(zhp);
+	nvlist_free(config);
+	nvlist_free(props);
 
 	return (ret);
 }
@@ -7422,7 +7445,7 @@ main(int argc, char **argv)
 		 */
 		char buf[16384];
 		int fd = open(ZFS_DEV, O_RDWR);
-		(void) strcpy((void *)buf, argv[2]);
+		(void) strlcpy((void *)buf, argv[2], sizeof (buf));
 		return (!!ioctl(fd, ZFS_IOC_POOL_FREEZE, buf));
 	} else {
 		(void) fprintf(stderr, gettext("unrecognized "

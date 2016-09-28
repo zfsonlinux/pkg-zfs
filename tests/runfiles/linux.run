@@ -95,18 +95,13 @@ tests = ['zfs_create_001_pos', 'zfs_create_002_pos', 'zfs_create_003_pos',
     'zfs_create_013_pos']
 
 # DISABLED:
-# zfs_destroy_001_pos - busy mountpoint behavior
 # zfs_destroy_005_neg - busy mountpoint behavior
-# zfs_destroy_008_pos - busy mountpoint behavior
-# zfs_destroy_009_pos - busy mountpoint behavior
-# zfs_destroy_010_pos - busy mountpoint behavior
-# zfs_destroy_011_pos - busy mountpoint behavior
-# zfs_destroy_012_pos - busy mountpoint behavior
-# zfs_destroy_013_neg - busy mountpoint behavior
 [tests/functional/cli_root/zfs_destroy]
-tests = ['zfs_destroy_002_pos', 'zfs_destroy_003_pos', 'zfs_destroy_004_pos',
-    'zfs_destroy_006_neg', 'zfs_destroy_007_neg', 'zfs_destroy_014_pos',
-    'zfs_destroy_015_pos', 'zfs_destroy_016_pos']
+tests = ['zfs_destroy_001_pos', 'zfs_destroy_002_pos', 'zfs_destroy_003_pos',
+    'zfs_destroy_004_pos','zfs_destroy_006_neg', 'zfs_destroy_007_neg',
+    'zfs_destroy_008_pos','zfs_destroy_009_pos', 'zfs_destroy_010_pos',
+    'zfs_destroy_011_pos','zfs_destroy_012_pos', 'zfs_destroy_013_neg',
+    'zfs_destroy_014_pos','zfs_destroy_015_pos', 'zfs_destroy_016_pos']
 
 # DISABLED:
 # zfs_get_004_pos - nested pools
@@ -177,7 +172,6 @@ tests = ['zfs_send_001_pos', 'zfs_send_002_pos', 'zfs_send_003_pos',
 # mountpoint_003_pos - needs investigation
 # ro_props_001_pos - needs investigation
 # onoffs_001_pos - needs investigation
-# property_alias_001_pos - needs investigation
 # readonly_001_pos - needs investigation
 # user_property_002_pos - needs investigation
 [tests/functional/cli_root/zfs_set]
@@ -188,7 +182,7 @@ tests = ['cache_001_pos', 'cache_002_neg', 'canmount_001_pos',
     'share_mount_001_neg', 'snapdir_001_pos',
     'user_property_001_pos', 'user_property_003_neg',
     'user_property_004_pos', 'version_001_neg', 'zfs_set_001_neg',
-    'zfs_set_002_neg', 'zfs_set_003_neg']
+    'zfs_set_002_neg', 'zfs_set_003_neg', 'property_alias_001_pos']
 
 # DISABLED: Tests need to be updated for Linux share behavior
 #[tests/functional/cli_root/zfs_share]
@@ -333,10 +327,11 @@ post =
 tests = ['zpool_status_001_pos', 'zpool_status_002_pos']
 
 # DISABLED:
+# zpool_upgrade_004_pos - Issue zfsonlinux/zfs#4034
 # zpool_upgrade_007_pos - needs investigation
 [tests/functional/cli_root/zpool_upgrade]
 tests = ['zpool_upgrade_001_pos', 'zpool_upgrade_002_pos',
-    'zpool_upgrade_003_pos', 'zpool_upgrade_004_pos', 'zpool_upgrade_005_neg',
+    'zpool_upgrade_003_pos', 'zpool_upgrade_005_neg',
     'zpool_upgrade_006_neg', 'zpool_upgrade_008_pos',
     'zpool_upgrade_009_neg']
 
