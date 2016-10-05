@@ -53,7 +53,7 @@ EXPORT_SYMBOL(spl_hostid);
 module_param(spl_hostid, ulong, 0644);
 MODULE_PARM_DESC(spl_hostid, "The system hostid.");
 
-proc_t p0 = { 0 };
+proc_t p0;
 EXPORT_SYMBOL(p0);
 
 #if BITS_PER_LONG == 32
@@ -522,6 +522,8 @@ static int __init
 spl_init(void)
 {
 	int rc = 0;
+
+	bzero(&p0, sizeof (proc_t));
 
 	if ((rc = spl_kvmem_init()))
 		goto out1;
