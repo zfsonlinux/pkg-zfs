@@ -2,3 +2,4 @@
 sbin
 lib/udev
 usr/share/man
+debian/zfs.target /lib/systemd/system

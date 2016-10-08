@@ -1,0 +1,13 @@
+[Unit]
+Description=Import ZFS pools by cache file
+DefaultDependencies=no
+Requires=systemd-udev-settle.service
+After=systemd-udev-settle.service
+After=cryptsetup.target
+ConditionPathExists=/etc/zfs/zpool.cache
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=/sbin/modprobe zfs
+ExecStart=/sbin/zpool import -c /etc/zfs/zpool.cache -aN

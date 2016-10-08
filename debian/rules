@@ -9,7 +9,7 @@ META_VERSION := $(shell awk '$$1 == "Version:" { print $$2; }' META)
 META_DISTDIR := $(CURDIR)/$(META_NAME)-$(META_VERSION)/
 
 %:
-	dh $@ --with autoreconf,dkms
+	dh $@ --with autoreconf,dkms,systemd
 
 override_dh_auto_configure:
 	@# Build the userland, but don't build the kernel modules.
@@ -86,6 +86,13 @@ override_dh_installdocs:
 	dh_installdocs --link-doc=zfs-doc
 
 override_dh_installinit:
+	# zfs.target isn't automatically handled by dh_systemd(?)
+	dh_systemd_enable -p zfsutils zfs.target
+
+	@# Install debian/zfs-zed.zed.upstart as /etc/init/zed.conf
+	@# and debian/zfs-zed.zed.service as /lib/systemd/system/zed.service
+	dh_installinit --name=zed
+
 	@# Install debian/zfsutils.zfs.default as /etc/default/zfs.
 	dh_installinit --name=zfs
 
@@ -94,6 +101,11 @@ override_dh_installinit:
 
 	@# Ubuntu runs nfs-kernel-server at sysv sequence 20 80 and iscsitarget at 20 20.
 	dh_installinit --name=zfs-share --no-restart-on-upgrade --no-start -- defaults 25 15
+
+	@# Only for systemd:
+	dh_installinit --name=zfs-import-cache
+	dh_installinit --name=zfs-import-scan
+	dh_installinit --name=zfs-mount
 
 override_dh_installudev:
 	dh_installudev --name=zvol --priority=60
