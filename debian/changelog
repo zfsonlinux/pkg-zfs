@@ -1,3 +1,11 @@
+zfs-linux (0.7.0-rc2-1~trusty~2.gbp1cf5b2) trusty; urgency=low
+
+  ** SNAPSHOT build @1cf5b28768d4a156cfc4719c920e50dfcd82e1fc **
+
+  * Add the new icp module to the packaging overlay.
+
+ -- Darik Horn <dajhorn@vanadac.com>  Thu, 27 Oct 2016 00:22:24 -0400
+
 zfs-linux (0.7.0-rc2-1~trusty~1.gbpc8c448) trusty; urgency=low
 
   ** SNAPSHOT build @c8c448c296d86fdfd32a0d60b7809192e382645e **
