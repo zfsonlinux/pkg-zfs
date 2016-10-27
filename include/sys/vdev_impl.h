@@ -34,6 +34,7 @@
 #include <sys/vdev.h>
 #include <sys/dkio.h>
 #include <sys/uberblock_impl.h>
+#include <sys/zfs_ratelimit.h>
 
 #ifdef	__cplusplus
 extern "C" {
@@ -52,6 +53,9 @@ extern "C" {
 typedef struct vdev_queue vdev_queue_t;
 typedef struct vdev_cache vdev_cache_t;
 typedef struct vdev_cache_entry vdev_cache_entry_t;
+
+extern int zfs_vdev_queue_depth_pct;
+extern uint32_t zfs_vdev_async_write_max_active;
 
 /*
  * Virtual device operations
@@ -177,8 +181,19 @@ struct vdev {
 	uint64_t	vdev_deflate_ratio; /* deflation ratio (x512)	*/
 	uint64_t	vdev_islog;	/* is an intent log device	*/
 	uint64_t	vdev_removing;	/* device is being removed?	*/
-	boolean_t	vdev_ishole;	/* is a hole in the namespace 	*/
+	boolean_t	vdev_ishole;	/* is a hole in the namespace	*/
+	kmutex_t	vdev_queue_lock; /* protects vdev_queue_depth	*/
 	uint64_t	vdev_top_zap;
+
+	/*
+	 * The queue depth parameters determine how many async writes are
+	 * still pending (i.e. allocated by net yet issued to disk) per
+	 * top-level (vdev_async_write_queue_depth) and the maximum allowed
+	 * (vdev_max_async_write_queue_depth). These values only apply to
+	 * top-level vdevs.
+	 */
+	uint64_t	vdev_async_write_queue_depth;
+	uint64_t	vdev_max_async_write_queue_depth;
 
 	/*
 	 * Leaf vdev state.
@@ -198,6 +213,7 @@ struct vdev {
 	char		*vdev_path;	/* vdev path (if any)		*/
 	char		*vdev_devid;	/* vdev devid (if any)		*/
 	char		*vdev_physpath;	/* vdev device path (if any)	*/
+	char		*vdev_enc_sysfs_path;	/* enclosure sysfs path */
 	char		*vdev_fru;	/* physical FRU location	*/
 	uint64_t	vdev_not_present; /* not present during import	*/
 	uint64_t	vdev_unspare;	/* unspare when resilvering done */
@@ -229,6 +245,15 @@ struct vdev {
 	kmutex_t	vdev_dtl_lock;	/* vdev_dtl_{map,resilver}	*/
 	kmutex_t	vdev_stat_lock;	/* vdev_stat			*/
 	kmutex_t	vdev_probe_lock; /* protects vdev_probe_zio	*/
+
+	/*
+	 * We rate limit ZIO delay and ZIO checksum events, since they
+	 * can flood ZED with tons of events when a drive is acting up.
+	 */
+#define	DELAYS_PER_SECOND 5
+#define	CHECKSUMS_PER_SECOND 5
+	zfs_ratelimit_t vdev_delay_rl;
+	zfs_ratelimit_t vdev_checksum_rl;
 };
 
 #define	VDEV_RAIDZ_MAXPARITY	3

@@ -912,6 +912,7 @@ zed_event_service(struct zed_conf *zcp)
 		subclass = _zed_event_get_subclass(class);
 		_zed_event_add_var(eid, zsp, ZEVENT_VAR_PREFIX, "SUBCLASS",
 		    "%s", (subclass ? subclass : class));
+
 		_zed_event_add_time_strings(eid, zsp, etime);
 
 		zed_exec_process(eid, class, subclass,

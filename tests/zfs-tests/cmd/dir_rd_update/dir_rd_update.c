@@ -94,6 +94,12 @@ main(int argc, char **argv)
 		int rdret;
 		int j = 0;
 
+		if (fd < 0) {
+			(void) printf("%s: open <%s> again failed:"
+			    " errno = %d\n", argv[0], dirpath, errno);
+			exit(-1);
+		}
+
 		while (j < op_num) {
 			(void) sleep(1);
 			rdret = read(fd, buf, 16);
@@ -102,10 +108,17 @@ main(int argc, char **argv)
 			}
 			j++;
 		}
+		(void) close(fd);
 	} else if (pid == 0) {
 		int fd = open(dirpath, O_RDONLY);
 		int chownret;
 		int k = 0;
+
+		if (fd < 0) {
+			(void) printf("%s: open(<%s>, O_RDONLY) again failed:"
+			    " errno (decimal)=%d\n", argv[0], dirpath, errno);
+			exit(-1);
+		}
 
 		while (k < op_num) {
 			(void) sleep(1);
@@ -116,6 +129,7 @@ main(int argc, char **argv)
 
 			k++;
 		}
+		(void) close(fd);
 	}
 
 	return (0);

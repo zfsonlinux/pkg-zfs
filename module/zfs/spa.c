@@ -25,6 +25,7 @@
  * Copyright (c) 2015, Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 2013, 2014, Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 2014 Spectra Logic Corporation, All rights reserved.
+ * Copyright 2013 Saso Kiselkov. All rights reserved.
  * Copyright (c) 2016 Actifio, Inc. All rights reserved.
  */
 
@@ -861,7 +862,7 @@ spa_taskqs_init(spa_t *spa, zio_type_t t, zio_taskq_type_t q)
 	uint_t count = ztip->zti_count;
 	spa_taskqs_t *tqs = &spa->spa_zio_taskq[t][q];
 	char name[32];
-	uint_t i, flags = TASKQ_DYNAMIC;
+	uint_t i, flags = 0;
 	boolean_t batch = B_FALSE;
 
 	if (mode == ZTI_MODE_NULL) {
@@ -879,6 +880,7 @@ spa_taskqs_init(spa_t *spa, zio_type_t t, zio_taskq_type_t q)
 	case ZTI_MODE_FIXED:
 		ASSERT3U(value, >=, 1);
 		value = MAX(value, 1);
+		flags |= TASKQ_DYNAMIC;
 		break;
 
 	case ZTI_MODE_BATCH:
@@ -1166,6 +1168,13 @@ spa_activate(spa_t *spa, int mode)
 	 */
 	spa->spa_zvol_taskq = taskq_create("z_zvol", 1, defclsyspri,
 	    1, INT_MAX, 0);
+
+	/*
+	 * The taskq to upgrade datasets in this pool. Currently used by
+	 * feature SPA_FEATURE_USEROBJ_ACCOUNTING.
+	 */
+	spa->spa_upgrade_taskq = taskq_create("z_upgrade", boot_ncpus,
+	    defclsyspri, 1, INT_MAX, TASKQ_DYNAMIC);
 }
 
 /*
@@ -1187,6 +1196,11 @@ spa_deactivate(spa_t *spa)
 	if (spa->spa_zvol_taskq) {
 		taskq_destroy(spa->spa_zvol_taskq);
 		spa->spa_zvol_taskq = NULL;
+	}
+
+	if (spa->spa_upgrade_taskq) {
+		taskq_destroy(spa->spa_upgrade_taskq);
+		spa->spa_upgrade_taskq = NULL;
 	}
 
 	txg_list_destroy(&spa->spa_vdev_txg_list);
@@ -1348,7 +1362,6 @@ spa_unload(spa_t *spa)
 	}
 
 	ddt_unload(spa);
-
 
 	/*
 	 * Drop and purge level 2 cache
@@ -2675,6 +2688,19 @@ spa_load_impl(spa_t *spa, uint64_t pool_guid, nvlist_t *config,
 		return (spa_load(spa, state, SPA_IMPORT_EXISTING, B_TRUE));
 	}
 
+	/* Grab the checksum salt from the MOS. */
+	error = zap_lookup(spa->spa_meta_objset, DMU_POOL_DIRECTORY_OBJECT,
+	    DMU_POOL_CHECKSUM_SALT, 1,
+	    sizeof (spa->spa_cksum_salt.zcs_bytes),
+	    spa->spa_cksum_salt.zcs_bytes);
+	if (error == ENOENT) {
+		/* Generate a new salt for subsequent use */
+		(void) random_get_pseudo_bytes(spa->spa_cksum_salt.zcs_bytes,
+		    sizeof (spa->spa_cksum_salt.zcs_bytes));
+	} else if (error != 0) {
+		return (spa_vdev_err(rvd, VDEV_AUX_CORRUPT_DATA, EIO));
+	}
+
 	if (spa_dir_prop(spa, DMU_POOL_SYNC_BPOBJ, &obj) != 0)
 		return (spa_vdev_err(rvd, VDEV_AUX_CORRUPT_DATA, EIO));
 	error = bpobj_open(&spa->spa_deferred_bpobj, spa->spa_meta_objset, obj);
@@ -3786,6 +3812,7 @@ spa_create(const char *pool, nvlist_t *nvroot, nvlist_t *props,
 	spa->spa_uberblock.ub_txg = txg - 1;
 	spa->spa_uberblock.ub_version = version;
 	spa->spa_ubsync = spa->spa_uberblock;
+	spa->spa_load_state = SPA_LOAD_CREATE;
 
 	/*
 	 * Create "The Godfather" zio to hold all async IOs
@@ -3930,6 +3957,12 @@ spa_create(const char *pool, nvlist_t *nvroot, nvlist_t *props,
 		spa_history_create_obj(spa, tx);
 
 	/*
+	 * Generate some random noise for salted checksums to operate on.
+	 */
+	(void) random_get_pseudo_bytes(spa->spa_cksum_salt.zcs_bytes,
+	    sizeof (spa->spa_cksum_salt.zcs_bytes));
+
+	/*
 	 * Set pool properties.
 	 */
 	spa->spa_bootfs = zpool_prop_default_numeric(ZPOOL_PROP_BOOTFS);
@@ -3964,6 +3997,7 @@ spa_create(const char *pool, nvlist_t *nvroot, nvlist_t *props,
 	 */
 	spa_evicting_os_wait(spa);
 	spa->spa_minref = refcount_count(&spa->spa_refcount);
+	spa->spa_load_state = SPA_LOAD_NONE;
 
 	mutex_exit(&spa_namespace_lock);
 
@@ -4913,7 +4947,7 @@ spa_vdev_detach(spa_t *spa, uint64_t guid, uint64_t pguid, int replace_done)
 	 * But first make sure we're not on any *other* txg's DTL list, to
 	 * prevent vd from being accessed after it's freed.
 	 */
-	vdpath = spa_strdup(vd->vdev_path);
+	vdpath = spa_strdup(vd->vdev_path ? vd->vdev_path : "none");
 	for (t = 0; t < TXG_SIZE; t++)
 		(void) txg_list_remove_this(&tvd->vdev_dtl_list, vd, t);
 	vd->vdev_detached = B_TRUE;
@@ -5279,7 +5313,7 @@ spa_nvlist_lookup_by_guid(nvlist_t **nvpp, int count, uint64_t target_guid)
 
 static void
 spa_vdev_remove_aux(nvlist_t *config, char *name, nvlist_t **dev, int count,
-	nvlist_t *dev_to_remove)
+    nvlist_t *dev_to_remove)
 {
 	nvlist_t **newdev = NULL;
 	int i, j;
@@ -5895,7 +5929,7 @@ spa_async_tasks_pending(spa_t *spa)
 	} else {
 		config_task_suspended =
 		    (gethrtime() - spa->spa_ccw_fail_time) <
-		    (zfs_ccw_retry_interval * NANOSEC);
+		    ((hrtime_t)zfs_ccw_retry_interval * NANOSEC);
 	}
 
 	return (non_config_tasks || (config_task && !config_task_suspended));
@@ -6406,6 +6440,20 @@ spa_sync_upgrades(spa_t *spa, dmu_tx_t *tx)
 		if (lz4_en && !lz4_ac)
 			spa_feature_incr(spa, SPA_FEATURE_LZ4_COMPRESS, tx);
 	}
+
+	/*
+	 * If we haven't written the salt, do so now.  Note that the
+	 * feature may not be activated yet, but that's fine since
+	 * the presence of this ZAP entry is backwards compatible.
+	 */
+	if (zap_contains(spa->spa_meta_objset, DMU_POOL_DIRECTORY_OBJECT,
+	    DMU_POOL_CHECKSUM_SALT) == ENOENT) {
+		VERIFY0(zap_add(spa->spa_meta_objset,
+		    DMU_POOL_DIRECTORY_OBJECT, DMU_POOL_CHECKSUM_SALT, 1,
+		    sizeof (spa->spa_cksum_salt.zcs_bytes),
+		    spa->spa_cksum_salt.zcs_bytes, tx));
+	}
+
 	rrw_exit(&dp->dp_config_rwlock, FTAG);
 }
 
@@ -6419,10 +6467,14 @@ spa_sync(spa_t *spa, uint64_t txg)
 	dsl_pool_t *dp = spa->spa_dsl_pool;
 	objset_t *mos = spa->spa_meta_objset;
 	bplist_t *free_bpl = &spa->spa_free_bplist[txg & TXG_MASK];
+	metaslab_class_t *mc;
 	vdev_t *rvd = spa->spa_root_vdev;
 	vdev_t *vd;
 	dmu_tx_t *tx;
 	int error;
+	uint32_t max_queue_depth = zfs_vdev_async_write_max_active *
+	    zfs_vdev_queue_depth_pct / 100;
+	uint64_t queue_depth_total;
 	int c;
 
 	VERIFY(spa_writeable(spa));
@@ -6434,6 +6486,10 @@ spa_sync(spa_t *spa, uint64_t txg)
 
 	spa->spa_syncing_txg = txg;
 	spa->spa_sync_pass = 0;
+
+	mutex_enter(&spa->spa_alloc_lock);
+	VERIFY0(avl_numnodes(&spa->spa_alloc_tree));
+	mutex_exit(&spa->spa_alloc_lock);
 
 	/*
 	 * If there are any pending vdev state changes, convert them
@@ -6487,6 +6543,38 @@ spa_sync(spa_t *spa, uint64_t txg)
 			    sizeof (uint64_t), 1, &spa->spa_deflate, tx));
 		}
 	}
+
+	/*
+	 * Set the top-level vdev's max queue depth. Evaluate each
+	 * top-level's async write queue depth in case it changed.
+	 * The max queue depth will not change in the middle of syncing
+	 * out this txg.
+	 */
+	queue_depth_total = 0;
+	for (c = 0; c < rvd->vdev_children; c++) {
+		vdev_t *tvd = rvd->vdev_child[c];
+		metaslab_group_t *mg = tvd->vdev_mg;
+
+		if (mg == NULL || mg->mg_class != spa_normal_class(spa) ||
+		    !metaslab_group_initialized(mg))
+			continue;
+
+		/*
+		 * It is safe to do a lock-free check here because only async
+		 * allocations look at mg_max_alloc_queue_depth, and async
+		 * allocations all happen from spa_sync().
+		 */
+		ASSERT0(refcount_count(&mg->mg_alloc_queue_depth));
+		mg->mg_max_alloc_queue_depth = max_queue_depth;
+		queue_depth_total += mg->mg_max_alloc_queue_depth;
+	}
+	mc = spa_normal_class(spa);
+	ASSERT0(refcount_count(&mc->mc_alloc_slots));
+	mc->mc_alloc_max_slots = queue_depth_total;
+	mc->mc_alloc_throttle_enabled = zio_dva_throttle_enabled;
+
+	ASSERT3U(mc->mc_alloc_max_slots, <=,
+	    max_queue_depth * rvd->vdev_children);
 
 	/*
 	 * Iterate to convergence.
@@ -6641,6 +6729,10 @@ spa_sync(spa_t *spa, uint64_t txg)
 	spa->spa_ubsync = spa->spa_uberblock;
 
 	dsl_pool_sync_done(dp, txg);
+
+	mutex_enter(&spa->spa_alloc_lock);
+	VERIFY0(avl_numnodes(&spa->spa_alloc_tree));
+	mutex_exit(&spa->spa_alloc_lock);
 
 	/*
 	 * Update usable space statistics.

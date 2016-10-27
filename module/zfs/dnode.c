@@ -1612,6 +1612,8 @@ dnode_new_blkid(dnode_t *dn, uint64_t blkid, dmu_tx_t *tx, boolean_t have_read)
 	    sz <= blkid && sz >= dn->dn_nblkptr; sz <<= epbs)
 		new_nlevels++;
 
+	ASSERT3U(new_nlevels, <=, DN_MAX_LEVELS);
+
 	if (new_nlevels > dn->dn_nlevels) {
 		int old_nlevels = dn->dn_nlevels;
 		dmu_buf_impl_t *db;
@@ -1999,9 +2001,6 @@ dnode_next_offset_level(dnode_t *dn, int flags, uint64_t *offset,
 	boolean_t hole;
 	int i, inc, error, span;
 
-	dprintf("probing object %llu offset %llx level %d of %u\n",
-	    dn->dn_object, *offset, lvl, dn->dn_phys->dn_nlevels);
-
 	hole = ((flags & DNODE_FIND_HOLE) != 0);
 	inc = (flags & DNODE_FIND_BACKWARDS) ? -1 : 1;
 	ASSERT(txg == 0 || !hole);
@@ -2073,7 +2072,14 @@ dnode_next_offset_level(dnode_t *dn, int flags, uint64_t *offset,
 		else
 			minfill++;
 
-		*offset = *offset >> span;
+		if (span >= 8 * sizeof (*offset)) {
+			/* This only happens on the highest indirection level */
+			ASSERT3U((lvl - 1), ==, dn->dn_phys->dn_nlevels - 1);
+			*offset = 0;
+		} else {
+			*offset = *offset >> span;
+		}
+
 		for (i = BF64_GET(*offset, 0, epbs);
 		    i >= 0 && i < epb; i += inc) {
 			if (BP_GET_FILL(&bp[i]) >= minfill &&
@@ -2083,7 +2089,13 @@ dnode_next_offset_level(dnode_t *dn, int flags, uint64_t *offset,
 			if (inc > 0 || *offset > 0)
 				*offset += inc;
 		}
-		*offset = *offset << span;
+
+		if (span >= 8 * sizeof (*offset)) {
+			*offset = start;
+		} else {
+			*offset = *offset << span;
+		}
+
 		if (inc < 0) {
 			/* traversing backwards; position offset at the end */
 			ASSERT3U(*offset, <=, start);

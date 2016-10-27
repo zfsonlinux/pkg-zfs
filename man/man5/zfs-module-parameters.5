@@ -900,7 +900,7 @@ Default value: \fB67,108,864\fR.
 Select a fletcher 4 implementation.
 .sp
 Supported selectors are: \fBfastest\fR, \fBscalar\fR, \fBsse2\fR, \fBssse3\fR,
-\fBavx2\fR, and \fBavx512f\fR.
+\fBavx2\fR, \fBavx512f\fR, and \fBaarch64_neon\fR.
 All of the selectors except \fBfastest\fR and \fBscalar\fR require instruction
 set extensions to be available and will only appear if ZFS detects that they are
 present at runtime. If multiple implementations of fletcher 4 are available,
@@ -1095,6 +1095,18 @@ Minimum synchronous write I/Os active to each device.
 See the section "ZFS I/O SCHEDULER".
 .sp
 Default value: \fB10\fR.
+.RE
+
+.sp
+.ne 2
+.na
+\fBzfs_vdev_queue_depth_pct\fR (int)
+.ad
+.RS 12n
+The queue depth percentage for each top-level virtual device.
+Used in conjunction with zfs_vdev_async_max_active.
+.sp
+Default value: \fB1000\fR.
 .RE
 
 .sp
@@ -1763,6 +1775,8 @@ Possible options are:
   sse2     - implementation using SSE2 instruction set (64bit x86 only)
   ssse3    - implementation using SSSE3 instruction set (64bit x86 only)
   avx2     - implementation using AVX2 instruction set (64bit x86 only)
+  aarch64_neon - implementation using NEON (Aarch64/64 bit ARMv8 only)
+  aarch64_neonx2 - implementation using NEON with more unrolling (Aarch64/64 bit ARMv8 only)
 .sp
 Default value: \fBfastest\fR.
 .RE
@@ -1836,6 +1850,18 @@ complete. Note that this is only a logging facility, not a timeout on
 operations.
 .sp
 Default value: \fB30,000\fR.
+.RE
+
+.sp
+.ne 2
+.na
+\fBzio_dva_throttle_enabled\fR (int)
+.ad
+.RS 12n
+Throttle block allocations in the ZIO pipeline. This allows for
+dynamic allocation distribution when devices are imbalanced.
+.sp
+Default value: \fB0\fR.
 .RE
 
 .sp

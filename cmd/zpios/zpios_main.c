@@ -388,7 +388,7 @@ dev_clear(void)
 		fprintf(stderr, "Ioctl() error %lu / %d: %d\n",
 		    (unsigned long) ZPIOS_CFG, cfg.cfg_cmd, errno);
 
-	lseek(zpiosctl_fd, 0, SEEK_SET);
+	(void) lseek(zpiosctl_fd, 0, SEEK_SET);
 
 	return (rc);
 }
@@ -550,7 +550,8 @@ run_one(cmd_args_t *args, uint32_t id, uint32_t T, uint32_t N,
 	print_stats(args, cmd);
 
 	if (args->verbose) {
-		rc2 = read(zpiosctl_fd, zpios_buffer, zpios_buffer_size - 1);
+		rc2 = read(zpiosctl_fd, zpios_buffer, zpios_buffer_size);
+		zpios_buffer[zpios_buffer_size - 1] = '\0';
 		if (rc2 < 0) {
 			fprintf(stdout, "Error reading results: %d\n", rc2);
 		} else if ((rc2 > 0) && (strlen(zpios_buffer) > 0)) {

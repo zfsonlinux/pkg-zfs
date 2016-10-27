@@ -49,6 +49,7 @@ AC_PROG_INSTALL
 AC_PROG_CC
 AC_PROG_LIBTOOL
 AM_PROG_AS
+AM_PROG_CC_C_O
 
 ZFS_AC_LICENSE
 ZFS_AC_PACKAGE
@@ -178,6 +179,7 @@ AC_CONFIG_FILES([
 	tests/zfs-tests/tests/functional/cache/Makefile
 	tests/zfs-tests/tests/functional/cachefile/Makefile
 	tests/zfs-tests/tests/functional/casenorm/Makefile
+	tests/zfs-tests/tests/functional/checksum/Makefile
 	tests/zfs-tests/tests/functional/clean_mirror/Makefile
 	tests/zfs-tests/tests/functional/cli_root/Makefile
 	tests/zfs-tests/tests/functional/cli_root/zdb/Makefile
@@ -272,6 +274,7 @@ AC_CONFIG_FILES([
 	tests/zfs-tests/tests/functional/threadsappend/Makefile
 	tests/zfs-tests/tests/functional/truncate/Makefile
 	tests/zfs-tests/tests/functional/userquota/Makefile
+	tests/zfs-tests/tests/functional/upgrade/Makefile
 	tests/zfs-tests/tests/functional/vdev_zaps/Makefile
 	tests/zfs-tests/tests/functional/write_dirs/Makefile
 	tests/zfs-tests/tests/functional/xattr/Makefile
@@ -298,4 +301,10 @@ AC_CONFIG_FILES([
 	zfs.release
 ])
 
+
 AC_OUTPUT
+
+AS_IF([test "x$user_libdevmapper" != xyes && test "$ZFS_CONFIG" != kernel ], [
+    AC_MSG_WARN([Building without libdevmapper.  Auto-replace, auto-online, \
+and statechange-led.sh may not work correctly with device mapper vdevs.])
+])

@@ -31,6 +31,7 @@
 
 /* Portions Copyright 2010 Robert Milkowski */
 
+#include <sys/zfeature.h>
 #include <sys/cred.h>
 #include <sys/zfs_context.h>
 #include <sys/dmu_objset.h>
@@ -53,6 +54,7 @@
 #include <sys/dsl_destroy.h>
 #include <sys/vdev.h>
 #include <sys/policy.h>
+#include <sys/spa_impl.h>
 
 /*
  * Needed to close a window in dnode_move() that allows the objset to be freed
@@ -76,6 +78,9 @@ int dmu_find_threads = 0;
 int dmu_rescan_dnode_threshold = 1 << DN_MAX_INDBLKSHIFT;
 
 static void dmu_objset_find_dp_cb(void *arg);
+
+static void dmu_objset_upgrade(objset_t *os, dmu_objset_upgrade_cb_t cb);
+static void dmu_objset_upgrade_stop(objset_t *os);
 
 void
 dmu_objset_init(void)
@@ -519,6 +524,8 @@ dmu_objset_open_impl(spa_t *spa, dsl_dataset_t *ds, blkptr_t *bp,
 		    DMU_GROUPUSED_OBJECT, &os->os_groupused_dnode);
 	}
 
+	mutex_init(&os->os_upgrade_lock, NULL, MUTEX_DEFAULT, NULL);
+
 	*osp = os;
 	return (0);
 }
@@ -625,6 +632,9 @@ dmu_objset_own(const char *name, dmu_objset_type_t type,
 	err = dmu_objset_own_impl(ds, type, readonly, tag, osp);
 	dsl_pool_rele(dp, FTAG);
 
+	if (err == 0 && dmu_objset_userobjspace_upgradable(*osp))
+		dmu_objset_userobjspace_upgrade(*osp);
+
 	return (err);
 }
 
@@ -685,6 +695,10 @@ dmu_objset_refresh_ownership(objset_t *os, void *tag)
 void
 dmu_objset_disown(objset_t *os, void *tag)
 {
+	/*
+	 * Stop upgrading thread
+	 */
+	dmu_objset_upgrade_stop(os);
 	dsl_dataset_disown(os->os_dsl_dataset, tag);
 }
 
@@ -859,6 +873,12 @@ dmu_objset_create_impl(spa_t *spa, dsl_dataset_t *ds, blkptr_t *bp,
 	os->os_phys->os_type = type;
 	if (dmu_objset_userused_enabled(os)) {
 		os->os_phys->os_flags |= OBJSET_FLAG_USERACCOUNTING_COMPLETE;
+		if (dmu_objset_userobjused_enabled(os)) {
+			ds->ds_feature_activation_needed[
+			    SPA_FEATURE_USEROBJ_ACCOUNTING] = B_TRUE;
+			os->os_phys->os_flags |=
+			    OBJSET_FLAG_USEROBJACCOUNTING_COMPLETE;
+		}
 		os->os_flags = os->os_phys->os_flags;
 	}
 
@@ -1068,6 +1088,60 @@ dmu_objset_snapshot_one(const char *fsname, const char *snapname)
 }
 
 static void
+dmu_objset_upgrade_task_cb(void *data)
+{
+	objset_t *os = data;
+
+	mutex_enter(&os->os_upgrade_lock);
+	os->os_upgrade_status = EINTR;
+	if (!os->os_upgrade_exit) {
+		mutex_exit(&os->os_upgrade_lock);
+
+		os->os_upgrade_status = os->os_upgrade_cb(os);
+		mutex_enter(&os->os_upgrade_lock);
+	}
+	os->os_upgrade_exit = B_TRUE;
+	os->os_upgrade_id = 0;
+	mutex_exit(&os->os_upgrade_lock);
+}
+
+static void
+dmu_objset_upgrade(objset_t *os, dmu_objset_upgrade_cb_t cb)
+{
+	if (os->os_upgrade_id != 0)
+		return;
+
+	mutex_enter(&os->os_upgrade_lock);
+	if (os->os_upgrade_id == 0 && os->os_upgrade_status == 0) {
+		os->os_upgrade_exit = B_FALSE;
+		os->os_upgrade_cb = cb;
+		os->os_upgrade_id = taskq_dispatch(
+		    os->os_spa->spa_upgrade_taskq,
+		    dmu_objset_upgrade_task_cb, os, TQ_SLEEP);
+		if (os->os_upgrade_id == 0)
+			os->os_upgrade_status = ENOMEM;
+	}
+	mutex_exit(&os->os_upgrade_lock);
+}
+
+static void
+dmu_objset_upgrade_stop(objset_t *os)
+{
+	mutex_enter(&os->os_upgrade_lock);
+	os->os_upgrade_exit = B_TRUE;
+	if (os->os_upgrade_id != 0) {
+		taskqid_t id = os->os_upgrade_id;
+
+		os->os_upgrade_id = 0;
+		mutex_exit(&os->os_upgrade_lock);
+
+		taskq_cancel_id(os->os_spa->spa_upgrade_taskq, id);
+	} else {
+		mutex_exit(&os->os_upgrade_lock);
+	}
+}
+
+static void
 dmu_objset_sync_dnodes(list_t *list, list_t *newlist, dmu_tx_t *tx)
 {
 	dnode_t *dn;
@@ -1257,18 +1331,123 @@ dmu_objset_userused_enabled(objset_t *os)
 	    DMU_USERUSED_DNODE(os) != NULL);
 }
 
+boolean_t
+dmu_objset_userobjused_enabled(objset_t *os)
+{
+	return (dmu_objset_userused_enabled(os) &&
+	    spa_feature_is_enabled(os->os_spa, SPA_FEATURE_USEROBJ_ACCOUNTING));
+}
+
+typedef struct userquota_node {
+	/* must be in the first filed, see userquota_update_cache() */
+	char		uqn_id[20 + DMU_OBJACCT_PREFIX_LEN];
+	int64_t		uqn_delta;
+	avl_node_t	uqn_node;
+} userquota_node_t;
+
+typedef struct userquota_cache {
+	avl_tree_t uqc_user_deltas;
+	avl_tree_t uqc_group_deltas;
+} userquota_cache_t;
+
+static int
+userquota_compare(const void *l, const void *r)
+{
+	const userquota_node_t *luqn = l;
+	const userquota_node_t *ruqn = r;
+	int rv;
+
+	/*
+	 * NB: can only access uqn_id because userquota_update_cache() doesn't
+	 * pass in an entire userquota_node_t.
+	 */
+	rv = strcmp(luqn->uqn_id, ruqn->uqn_id);
+
+	return (AVL_ISIGN(rv));
+}
+
 static void
-do_userquota_update(objset_t *os, uint64_t used, uint64_t flags,
-    uint64_t user, uint64_t group, boolean_t subtract, dmu_tx_t *tx)
+do_userquota_cacheflush(objset_t *os, userquota_cache_t *cache, dmu_tx_t *tx)
+{
+	void *cookie;
+	userquota_node_t *uqn;
+
+	ASSERT(dmu_tx_is_syncing(tx));
+
+	cookie = NULL;
+	while ((uqn = avl_destroy_nodes(&cache->uqc_user_deltas,
+	    &cookie)) != NULL) {
+		VERIFY0(zap_increment(os, DMU_USERUSED_OBJECT,
+		    uqn->uqn_id, uqn->uqn_delta, tx));
+		kmem_free(uqn, sizeof (*uqn));
+	}
+	avl_destroy(&cache->uqc_user_deltas);
+
+	cookie = NULL;
+	while ((uqn = avl_destroy_nodes(&cache->uqc_group_deltas,
+	    &cookie)) != NULL) {
+		VERIFY0(zap_increment(os, DMU_GROUPUSED_OBJECT,
+		    uqn->uqn_id, uqn->uqn_delta, tx));
+		kmem_free(uqn, sizeof (*uqn));
+	}
+	avl_destroy(&cache->uqc_group_deltas);
+}
+
+static void
+userquota_update_cache(avl_tree_t *avl, const char *id, int64_t delta)
+{
+	userquota_node_t *uqn;
+	avl_index_t idx;
+
+	ASSERT(strlen(id) < sizeof (uqn->uqn_id));
+	/*
+	 * Use id directly for searching because uqn_id is the first field of
+	 * userquota_node_t and fields after uqn_id won't be accessed in
+	 * avl_find().
+	 */
+	uqn = avl_find(avl, (const void *)id, &idx);
+	if (uqn == NULL) {
+		uqn = kmem_zalloc(sizeof (*uqn), KM_SLEEP);
+		strlcpy(uqn->uqn_id, id, sizeof (uqn->uqn_id));
+		avl_insert(avl, uqn, idx);
+	}
+	uqn->uqn_delta += delta;
+}
+
+static void
+do_userquota_update(userquota_cache_t *cache, uint64_t used, uint64_t flags,
+    uint64_t user, uint64_t group, boolean_t subtract)
 {
 	if ((flags & DNODE_FLAG_USERUSED_ACCOUNTED)) {
 		int64_t delta = DNODE_MIN_SIZE + used;
+		char name[20];
+
 		if (subtract)
 			delta = -delta;
-		VERIFY3U(0, ==, zap_increment_int(os, DMU_USERUSED_OBJECT,
-		    user, delta, tx));
-		VERIFY3U(0, ==, zap_increment_int(os, DMU_GROUPUSED_OBJECT,
-		    group, delta, tx));
+
+		(void) sprintf(name, "%llx", (longlong_t)user);
+		userquota_update_cache(&cache->uqc_user_deltas, name, delta);
+
+		(void) sprintf(name, "%llx", (longlong_t)group);
+		userquota_update_cache(&cache->uqc_group_deltas, name, delta);
+	}
+}
+
+static void
+do_userobjquota_update(userquota_cache_t *cache, uint64_t flags,
+    uint64_t user, uint64_t group, boolean_t subtract)
+{
+	if (flags & DNODE_FLAG_USEROBJUSED_ACCOUNTED) {
+		char name[20 + DMU_OBJACCT_PREFIX_LEN];
+		int delta = subtract ? -1 : 1;
+
+		(void) snprintf(name, sizeof (name), DMU_OBJACCT_PREFIX "%llx",
+		    (longlong_t)user);
+		userquota_update_cache(&cache->uqc_user_deltas, name, delta);
+
+		(void) snprintf(name, sizeof (name), DMU_OBJACCT_PREFIX "%llx",
+		    (longlong_t)group);
+		userquota_update_cache(&cache->uqc_group_deltas, name, delta);
 	}
 }
 
@@ -1277,8 +1456,14 @@ dmu_objset_do_userquota_updates(objset_t *os, dmu_tx_t *tx)
 {
 	dnode_t *dn;
 	list_t *list = &os->os_synced_dnodes;
+	userquota_cache_t cache = { { 0 } };
 
 	ASSERT(list_head(list) == NULL || dmu_objset_userused_enabled(os));
+
+	avl_create(&cache.uqc_user_deltas, userquota_compare,
+	    sizeof (userquota_node_t), offsetof(userquota_node_t, uqn_node));
+	avl_create(&cache.uqc_group_deltas, userquota_compare,
+	    sizeof (userquota_node_t), offsetof(userquota_node_t, uqn_node));
 
 	while ((dn = list_head(list))) {
 		int flags;
@@ -1289,32 +1474,27 @@ dmu_objset_do_userquota_updates(objset_t *os, dmu_tx_t *tx)
 
 		/* Allocate the user/groupused objects if necessary. */
 		if (DMU_USERUSED_DNODE(os)->dn_type == DMU_OT_NONE) {
-			VERIFY(0 == zap_create_claim(os,
-			    DMU_USERUSED_OBJECT,
+			VERIFY0(zap_create_claim(os, DMU_USERUSED_OBJECT,
 			    DMU_OT_USERGROUP_USED, DMU_OT_NONE, 0, tx));
-			VERIFY(0 == zap_create_claim(os,
-			    DMU_GROUPUSED_OBJECT,
+			VERIFY0(zap_create_claim(os, DMU_GROUPUSED_OBJECT,
 			    DMU_OT_USERGROUP_USED, DMU_OT_NONE, 0, tx));
 		}
-
-		/*
-		 * We intentionally modify the zap object even if the
-		 * net delta is zero.  Otherwise
-		 * the block of the zap obj could be shared between
-		 * datasets but need to be different between them after
-		 * a bprewrite.
-		 */
 
 		flags = dn->dn_id_flags;
 		ASSERT(flags);
 		if (flags & DN_ID_OLD_EXIST)  {
-			do_userquota_update(os, dn->dn_oldused, dn->dn_oldflags,
-			    dn->dn_olduid, dn->dn_oldgid, B_TRUE, tx);
+			do_userquota_update(&cache,
+			    dn->dn_oldused, dn->dn_oldflags,
+			    dn->dn_olduid, dn->dn_oldgid, B_TRUE);
+			do_userobjquota_update(&cache, dn->dn_oldflags,
+			    dn->dn_olduid, dn->dn_oldgid, B_TRUE);
 		}
 		if (flags & DN_ID_NEW_EXIST) {
-			do_userquota_update(os, DN_USED_BYTES(dn->dn_phys),
-			    dn->dn_phys->dn_flags,  dn->dn_newuid,
-			    dn->dn_newgid, B_FALSE, tx);
+			do_userquota_update(&cache,
+			    DN_USED_BYTES(dn->dn_phys), dn->dn_phys->dn_flags,
+			    dn->dn_newuid, dn->dn_newgid, B_FALSE);
+			do_userobjquota_update(&cache, dn->dn_phys->dn_flags,
+			    dn->dn_newuid, dn->dn_newgid, B_FALSE);
 		}
 
 		mutex_enter(&dn->dn_mtx);
@@ -1335,6 +1515,7 @@ dmu_objset_do_userquota_updates(objset_t *os, dmu_tx_t *tx)
 		list_remove(list, dn);
 		dnode_rele(dn, list);
 	}
+	do_userquota_cacheflush(os, &cache, tx);
 }
 
 /*
@@ -1486,18 +1667,18 @@ dmu_objset_userspace_present(objset_t *os)
 	    OBJSET_FLAG_USERACCOUNTING_COMPLETE);
 }
 
-int
-dmu_objset_userspace_upgrade(objset_t *os)
+boolean_t
+dmu_objset_userobjspace_present(objset_t *os)
+{
+	return (os->os_phys->os_flags &
+	    OBJSET_FLAG_USEROBJACCOUNTING_COMPLETE);
+}
+
+static int
+dmu_objset_space_upgrade(objset_t *os)
 {
 	uint64_t obj;
 	int err = 0;
-
-	if (dmu_objset_userspace_present(os))
-		return (0);
-	if (!dmu_objset_userused_enabled(os))
-		return (SET_ERROR(ENOTSUP));
-	if (dmu_objset_is_snapshot(os))
-		return (SET_ERROR(EINVAL));
 
 	/*
 	 * We simply need to mark every object dirty, so that it will be
@@ -1511,6 +1692,13 @@ dmu_objset_userspace_upgrade(objset_t *os)
 		dmu_tx_t *tx;
 		dmu_buf_t *db;
 		int objerr;
+
+		mutex_enter(&os->os_upgrade_lock);
+		if (os->os_upgrade_exit)
+			err = SET_ERROR(EINTR);
+		mutex_exit(&os->os_upgrade_lock);
+		if (err != 0)
+			return (err);
 
 		if (issig(JUSTLOOKING) && issig(FORREAL))
 			return (SET_ERROR(EINTR));
@@ -1529,10 +1717,58 @@ dmu_objset_userspace_upgrade(objset_t *os)
 		dmu_buf_rele(db, FTAG);
 		dmu_tx_commit(tx);
 	}
+	return (0);
+}
+
+int
+dmu_objset_userspace_upgrade(objset_t *os)
+{
+	int err = 0;
+
+	if (dmu_objset_userspace_present(os))
+		return (0);
+	if (dmu_objset_is_snapshot(os))
+		return (SET_ERROR(EINVAL));
+	if (!dmu_objset_userused_enabled(os))
+		return (SET_ERROR(ENOTSUP));
+
+	err = dmu_objset_space_upgrade(os);
+	if (err)
+		return (err);
 
 	os->os_flags |= OBJSET_FLAG_USERACCOUNTING_COMPLETE;
 	txg_wait_synced(dmu_objset_pool(os), 0);
 	return (0);
+}
+
+static int
+dmu_objset_userobjspace_upgrade_cb(objset_t *os)
+{
+	int err = 0;
+
+	if (dmu_objset_userobjspace_present(os))
+		return (0);
+	if (dmu_objset_is_snapshot(os))
+		return (SET_ERROR(EINVAL));
+	if (!dmu_objset_userobjused_enabled(os))
+		return (SET_ERROR(ENOTSUP));
+
+	dmu_objset_ds(os)->ds_feature_activation_needed[
+	    SPA_FEATURE_USEROBJ_ACCOUNTING] = B_TRUE;
+
+	err = dmu_objset_space_upgrade(os);
+	if (err)
+		return (err);
+
+	os->os_flags |= OBJSET_FLAG_USEROBJACCOUNTING_COMPLETE;
+	txg_wait_synced(dmu_objset_pool(os), 0);
+	return (0);
+}
+
+void
+dmu_objset_userobjspace_upgrade(objset_t *os)
+{
+	dmu_objset_upgrade(os, dmu_objset_userobjspace_upgrade_cb);
 }
 
 void
@@ -2096,4 +2332,7 @@ EXPORT_SYMBOL(dmu_objset_userquota_get_ids);
 EXPORT_SYMBOL(dmu_objset_userused_enabled);
 EXPORT_SYMBOL(dmu_objset_userspace_upgrade);
 EXPORT_SYMBOL(dmu_objset_userspace_present);
+EXPORT_SYMBOL(dmu_objset_userobjused_enabled);
+EXPORT_SYMBOL(dmu_objset_userobjspace_upgrade);
+EXPORT_SYMBOL(dmu_objset_userobjspace_present);
 #endif

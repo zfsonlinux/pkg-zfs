@@ -918,7 +918,7 @@ dbuf_loan_arcbuf(dmu_buf_impl_t *db)
  * provided.
  */
 uint64_t
-dbuf_whichblock(dnode_t *dn, int64_t level, uint64_t offset)
+dbuf_whichblock(const dnode_t *dn, const int64_t level, const uint64_t offset)
 {
 	if (dn->dn_datablkshift != 0 && dn->dn_indblkshift != 0) {
 		/*
@@ -940,8 +940,19 @@ dbuf_whichblock(dnode_t *dn, int64_t level, uint64_t offset)
 		 * = offset >> (datablkshift + level *
 		 *   (indblkshift - SPA_BLKPTRSHIFT))
 		 */
-		return (offset >> (dn->dn_datablkshift + level *
-		    (dn->dn_indblkshift - SPA_BLKPTRSHIFT)));
+
+		const unsigned exp = dn->dn_datablkshift +
+		    level * (dn->dn_indblkshift - SPA_BLKPTRSHIFT);
+
+		if (exp >= 8 * sizeof (offset)) {
+			/* This only happens on the highest indirection level */
+			ASSERT3U(level, ==, dn->dn_nlevels - 1);
+			return (0);
+		}
+
+		ASSERT3U(exp, <, 8 * sizeof (offset));
+
+		return (offset >> exp);
 	} else {
 		ASSERT3U(offset, <, dn->dn_datablksz);
 		return (0);
@@ -3527,7 +3538,7 @@ dbuf_write_children_ready(zio_t *zio, arc_buf_t *buf, void *vdb)
 	epbs = dn->dn_phys->dn_indblkshift - SPA_BLKPTRSHIFT;
 
 	/* Determine if all our children are holes */
-	for (i = 0, bp = db->db.db_data; i < 1 << epbs; i++, bp++) {
+	for (i = 0, bp = db->db.db_data; i < 1ULL << epbs; i++, bp++) {
 		if (!BP_IS_HOLE(bp))
 			break;
 	}
@@ -3536,7 +3547,7 @@ dbuf_write_children_ready(zio_t *zio, arc_buf_t *buf, void *vdb)
 	 * If all the children are holes, then zero them all out so that
 	 * we may get compressed away.
 	 */
-	if (i == 1 << epbs) {
+	if (i == 1ULL << epbs) {
 		/* didn't find any non-holes */
 		bzero(db->db.db_data, db->db.db_size);
 	}
@@ -3803,7 +3814,8 @@ dbuf_write(dbuf_dirty_record_t *dr, arc_buf_t *data, dmu_tx_t *tx)
 		    dr->dt.dl.dr_copies, dr->dt.dl.dr_nopwrite);
 		mutex_exit(&db->db_mtx);
 	} else if (db->db_state == DB_NOFILL) {
-		ASSERT(zp.zp_checksum == ZIO_CHECKSUM_OFF);
+		ASSERT(zp.zp_checksum == ZIO_CHECKSUM_OFF ||
+		    zp.zp_checksum == ZIO_CHECKSUM_NOPARITY);
 		dr->dr_zio = zio_write(zio, os->os_spa, txg,
 		    &dr->dr_bp_copy, NULL, db->db.db_size, db->db.db_size, &zp,
 		    dbuf_write_nofill_ready, NULL, NULL,

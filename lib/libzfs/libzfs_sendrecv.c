@@ -61,6 +61,7 @@
 #include <sys/zio_checksum.h>
 #include <sys/ddt.h>
 #include <sys/socket.h>
+#include <sys/sha2.h>
 
 /* in libzfs_dataset.c */
 extern void zfs_setprop_error(libzfs_handle_t *, zfs_prop_t, int, char *);
@@ -365,10 +366,11 @@ cksummer(void *arg)
 			if (ZIO_CHECKSUM_EQUAL(drrw->drr_key.ddk_cksum,
 			    zero_cksum) ||
 			    !DRR_IS_DEDUP_CAPABLE(drrw->drr_checksumflags)) {
+				SHA256_CTX ctx;
 				zio_cksum_t tmpsha256;
 
 				zio_checksum_SHA256(buf,
-				    payload_size, &tmpsha256);
+				    payload_size, &ctx, &tmpsha256);
 
 				drrw->drr_key.ddk_cksum.zc_word[0] =
 				    BE_64(tmpsha256.zc_word[0]);
@@ -1221,7 +1223,8 @@ dump_snapshot(zfs_handle_t *zhp, void *arg)
 	if (!sdd->seenfrom && isfromsnap) {
 		gather_holds(zhp, sdd);
 		sdd->seenfrom = B_TRUE;
-		(void) strcpy(sdd->prevsnap, thissnap);
+		(void) strlcpy(sdd->prevsnap, thissnap,
+		    sizeof (sdd->prevsnap));
 		sdd->prevsnap_obj = zfs_prop_get_int(zhp, ZFS_PROP_OBJSETID);
 		zfs_close(zhp);
 		return (0);
@@ -3022,6 +3025,7 @@ recv_skip(libzfs_handle_t *hdl, int fd, boolean_t byteswap)
 		default:
 			zfs_error_aux(hdl, dgettext(TEXT_DOMAIN,
 			    "invalid record type"));
+			free(buf);
 			return (zfs_error(hdl, EZFS_BADSTREAM, errbuf));
 		}
 	}
@@ -3107,6 +3111,7 @@ zfs_receive_one(libzfs_handle_t *hdl, int infd, const char *tosnap,
 	    ENOENT);
 
 	if (stream_avl != NULL) {
+		nvlist_t *lookup = NULL;
 		nvlist_t *fs = fsavl_find(stream_avl, drrb->drr_toguid,
 		    &snapname);
 
@@ -3121,6 +3126,10 @@ zfs_receive_one(libzfs_handle_t *hdl, int infd, const char *tosnap,
 		if (flags->canmountoff) {
 			VERIFY(0 == nvlist_add_uint64(props,
 			    zfs_prop_to_name(ZFS_PROP_CANMOUNT), 0));
+		}
+		if (0 == nvlist_lookup_nvlist(fs, "snapprops", &lookup)) {
+			VERIFY(0 == nvlist_lookup_nvlist(lookup,
+			    snapname, &snapprops_nvlist));
 		}
 	}
 
@@ -3204,7 +3213,7 @@ zfs_receive_one(libzfs_handle_t *hdl, int infd, const char *tosnap,
 	/*
 	 * Determine name of destination snapshot.
 	 */
-	(void) strcpy(destsnap, tosnap);
+	(void) strlcpy(destsnap, tosnap, sizeof (destsnap));
 	(void) strlcat(destsnap, chopprefix, sizeof (destsnap));
 	free(cp);
 	if (!zfs_name_valid(destsnap, ZFS_TYPE_SNAPSHOT)) {

@@ -944,7 +944,9 @@ zfs_valid_proplist(libzfs_handle_t *hdl, zfs_type_t type, nvlist_t *nvl,
 			}
 
 			if (uqtype != ZFS_PROP_USERQUOTA &&
-			    uqtype != ZFS_PROP_GROUPQUOTA) {
+			    uqtype != ZFS_PROP_GROUPQUOTA &&
+			    uqtype != ZFS_PROP_USEROBJQUOTA &&
+			    uqtype != ZFS_PROP_GROUPOBJQUOTA) {
 				zfs_error_aux(hdl,
 				    dgettext(TEXT_DOMAIN, "'%s' is readonly"),
 				    propname);
@@ -1476,6 +1478,12 @@ zfs_setprop_error(libzfs_handle_t *hdl, zfs_prop_t prop, int err,
 			(void) zfs_error_aux(hdl, dgettext(TEXT_DOMAIN,
 			    "property setting is not allowed on "
 			    "bootable datasets"));
+			(void) zfs_error(hdl, EZFS_NOTSUP, errbuf);
+		} else if (prop == ZFS_PROP_CHECKSUM ||
+		    prop == ZFS_PROP_DEDUP) {
+			(void) zfs_error_aux(hdl, dgettext(TEXT_DOMAIN,
+			    "property setting is not allowed on "
+			    "root pools"));
 			(void) zfs_error(hdl, EZFS_NOTSUP, errbuf);
 		} else {
 			(void) zfs_standard_error(hdl, err, errbuf);
@@ -2262,6 +2270,11 @@ zfs_get_clones_nvl(zfs_handle_t *zhp)
 			(void) strsep(&cp, "/@");
 			root = zfs_open(zhp->zfs_hdl, pool,
 			    ZFS_TYPE_FILESYSTEM);
+			if (root == NULL) {
+				nvlist_free(nv);
+				nvlist_free(value);
+				return (NULL);
+			}
 
 			(void) get_clones_cb(root, &gca);
 		}
@@ -2730,8 +2743,12 @@ userquota_propname_decode(const char *propname, boolean_t zoned,
 		return (EINVAL);
 	*typep = type;
 
-	isuser = (type == ZFS_PROP_USERQUOTA || type == ZFS_PROP_USERUSED);
-	isgroup = (type == ZFS_PROP_GROUPQUOTA || type == ZFS_PROP_GROUPUSED);
+	isuser = (type == ZFS_PROP_USERQUOTA || type == ZFS_PROP_USERUSED ||
+		    type == ZFS_PROP_USEROBJQUOTA ||
+		    type == ZFS_PROP_USEROBJUSED);
+	isgroup = (type == ZFS_PROP_GROUPQUOTA || type == ZFS_PROP_GROUPUSED ||
+		    type == ZFS_PROP_GROUPOBJQUOTA ||
+		    type == ZFS_PROP_GROUPOBJUSED);
 
 	cp = strchr(propname, '@') + 1;
 
@@ -2864,7 +2881,8 @@ zfs_prop_get_userquota(zfs_handle_t *zhp, const char *propname,
 		(void) snprintf(propbuf, proplen, "%llu",
 		    (u_longlong_t)propvalue);
 	} else if (propvalue == 0 &&
-	    (type == ZFS_PROP_USERQUOTA || type == ZFS_PROP_GROUPQUOTA)) {
+	    (type == ZFS_PROP_USERQUOTA || type == ZFS_PROP_GROUPQUOTA ||
+	    type == ZFS_PROP_USEROBJQUOTA || type == ZFS_PROP_GROUPOBJQUOTA)) {
 		(void) strlcpy(propbuf, "none", proplen);
 	} else {
 		zfs_nicenum(propvalue, propbuf, proplen);
@@ -3645,6 +3663,8 @@ zfs_snapshot_nvl(libzfs_handle_t *hdl, nvlist_t *snaps, nvlist_t *props)
 	char errbuf[1024];
 	nvpair_t *elem;
 	nvlist_t *errors;
+	zpool_handle_t *zpool_hdl;
+	char pool[ZFS_MAX_DATASET_NAME_LEN];
 
 	(void) snprintf(errbuf, sizeof (errbuf), dgettext(TEXT_DOMAIN,
 	    "cannot create snapshots "));
@@ -3667,11 +3687,12 @@ zfs_snapshot_nvl(libzfs_handle_t *hdl, nvlist_t *snaps, nvlist_t *props)
 	 * get pool handle for prop validation. assumes all snaps are in the
 	 * same pool, as does lzc_snapshot (below).
 	 */
-	char pool[ZFS_MAX_DATASET_NAME_LEN];
 	elem = nvlist_next_nvpair(snaps, NULL);
 	(void) strlcpy(pool, nvpair_name(elem), sizeof (pool));
 	pool[strcspn(pool, "/@")] = '\0';
-	zpool_handle_t *zpool_hdl = zpool_open(hdl, pool);
+	zpool_hdl = zpool_open(hdl, pool);
+	if (zpool_hdl == NULL)
+		return (-1);
 
 	if (props != NULL &&
 	    (props = zfs_valid_proplist(hdl, ZFS_TYPE_SNAPSHOT,
@@ -4321,6 +4342,13 @@ zfs_userspace(zfs_handle_t *zhp, zfs_userquota_prop_t type,
 		zc.zc_nvlist_dst_size = sizeof (buf);
 		if (zfs_ioctl(hdl, ZFS_IOC_USERSPACE_MANY, &zc) != 0) {
 			char errbuf[1024];
+
+			if ((errno == ENOTSUP &&
+			    (type == ZFS_PROP_USEROBJUSED ||
+			    type == ZFS_PROP_GROUPOBJUSED ||
+			    type == ZFS_PROP_USEROBJQUOTA ||
+			    type == ZFS_PROP_GROUPOBJQUOTA)))
+				break;
 
 			(void) snprintf(errbuf, sizeof (errbuf),
 			    dgettext(TEXT_DOMAIN,

@@ -1249,7 +1249,7 @@ hdr_recl(void *unused)
 static void
 buf_init(void)
 {
-	uint64_t *ct;
+	uint64_t *ct = NULL;
 	uint64_t hsize = 1ULL << 12;
 	int i, j;
 
@@ -1382,7 +1382,7 @@ arc_cksum_verify(arc_buf_t *buf)
 		return;
 	}
 
-	fletcher_2_native(buf->b_data, arc_buf_size(buf), &zc);
+	fletcher_2_native(buf->b_data, arc_buf_size(buf), NULL, &zc);
 	if (!ZIO_CHECKSUM_EQUAL(*hdr->b_l1hdr.b_freeze_cksum, zc))
 		panic("buffer modified while frozen!");
 	mutex_exit(&hdr->b_l1hdr.b_freeze_lock);
@@ -1495,7 +1495,7 @@ arc_cksum_compute(arc_buf_t *buf)
 	ASSERT(!ARC_BUF_COMPRESSED(buf));
 	hdr->b_l1hdr.b_freeze_cksum = kmem_alloc(sizeof (zio_cksum_t),
 	    KM_SLEEP);
-	fletcher_2_native(buf->b_data, arc_buf_size(buf),
+	fletcher_2_native(buf->b_data, arc_buf_size(buf), NULL,
 	    hdr->b_l1hdr.b_freeze_cksum);
 	mutex_exit(&hdr->b_l1hdr.b_freeze_lock);
 	arc_buf_watch(buf);
@@ -3472,7 +3472,11 @@ arc_prune_async(int64_t adjust)
 
 		refcount_add(&ap->p_refcnt, ap->p_pfunc);
 		ap->p_adjust = adjust;
-		taskq_dispatch(arc_prune_taskq, arc_prune_task, ap, TQ_SLEEP);
+		if (taskq_dispatch(arc_prune_taskq, arc_prune_task,
+		    ap, TQ_SLEEP) == 0) {
+			refcount_remove(&ap->p_refcnt, ap->p_pfunc);
+			continue;
+		}
 		ARCSTAT_BUMP(arcstat_prune);
 	}
 	mutex_exit(&arc_prune_mtx);

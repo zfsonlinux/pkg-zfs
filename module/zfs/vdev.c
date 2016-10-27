@@ -44,6 +44,7 @@
 #include <sys/zil.h>
 #include <sys/dsl_scan.h>
 #include <sys/zvol.h>
+#include <sys/zfs_ratelimit.h>
 
 /*
  * When a vdev is added, it will be divided into approximately (but no
@@ -346,11 +347,21 @@ vdev_alloc_common(spa_t *spa, uint_t id, uint64_t guid, vdev_ops_t *ops)
 	vd->vdev_state = VDEV_STATE_CLOSED;
 	vd->vdev_ishole = (ops == &vdev_hole_ops);
 
+	/*
+	 * Initialize rate limit structs for events.  We rate limit ZIO delay
+	 * and checksum events so that we don't overwhelm ZED with thousands
+	 * of events when a disk is acting up.
+	 */
+	zfs_ratelimit_init(&vd->vdev_delay_rl, DELAYS_PER_SECOND, 1);
+	zfs_ratelimit_init(&vd->vdev_checksum_rl, CHECKSUMS_PER_SECOND, 1);
+
 	list_link_init(&vd->vdev_config_dirty_node);
 	list_link_init(&vd->vdev_state_dirty_node);
 	mutex_init(&vd->vdev_dtl_lock, NULL, MUTEX_NOLOCKDEP, NULL);
 	mutex_init(&vd->vdev_stat_lock, NULL, MUTEX_DEFAULT, NULL);
 	mutex_init(&vd->vdev_probe_lock, NULL, MUTEX_DEFAULT, NULL);
+	mutex_init(&vd->vdev_queue_lock, NULL, MUTEX_DEFAULT, NULL);
+
 	for (t = 0; t < DTL_TYPES; t++) {
 		vd->vdev_dtl[t] = range_tree_create(NULL, NULL,
 		    &vd->vdev_dtl_lock);
@@ -477,6 +488,11 @@ vdev_alloc(spa_t *spa, vdev_t **vdp, nvlist_t *nv, vdev_t *parent, uint_t id,
 	if (nvlist_lookup_string(nv, ZPOOL_CONFIG_PHYS_PATH,
 	    &vd->vdev_physpath) == 0)
 		vd->vdev_physpath = spa_strdup(vd->vdev_physpath);
+
+	if (nvlist_lookup_string(nv, ZPOOL_CONFIG_VDEV_ENC_SYSFS_PATH,
+	    &vd->vdev_enc_sysfs_path) == 0)
+		vd->vdev_enc_sysfs_path = spa_strdup(vd->vdev_enc_sysfs_path);
+
 	if (nvlist_lookup_string(nv, ZPOOL_CONFIG_FRU, &vd->vdev_fru) == 0)
 		vd->vdev_fru = spa_strdup(vd->vdev_fru);
 
@@ -662,6 +678,10 @@ vdev_free(vdev_t *vd)
 		spa_strfree(vd->vdev_devid);
 	if (vd->vdev_physpath)
 		spa_strfree(vd->vdev_physpath);
+
+	if (vd->vdev_enc_sysfs_path)
+		spa_strfree(vd->vdev_enc_sysfs_path);
+
 	if (vd->vdev_fru)
 		spa_strfree(vd->vdev_fru);
 
@@ -681,6 +701,7 @@ vdev_free(vdev_t *vd)
 	}
 	mutex_exit(&vd->vdev_dtl_lock);
 
+	mutex_destroy(&vd->vdev_queue_lock);
 	mutex_destroy(&vd->vdev_dtl_lock);
 	mutex_destroy(&vd->vdev_stat_lock);
 	mutex_destroy(&vd->vdev_probe_lock);
@@ -990,6 +1011,7 @@ vdev_probe_done(zio_t *zio)
 		zio_buf_free(zio->io_data, zio->io_size);
 	} else if (zio->io_type == ZIO_TYPE_NULL) {
 		zio_t *pio;
+		zio_link_t *zl;
 
 		vd->vdev_cant_read |= !vps->vps_readable;
 		vd->vdev_cant_write |= !vps->vps_writeable;
@@ -1009,7 +1031,8 @@ vdev_probe_done(zio_t *zio)
 		vd->vdev_probe_zio = NULL;
 		mutex_exit(&vd->vdev_probe_lock);
 
-		while ((pio = zio_walk_parents(zio)) != NULL)
+		zl = NULL;
+		while ((pio = zio_walk_parents(zio, &zl)) != NULL)
 			if (!vdev_accessible(vd, pio))
 				pio->io_error = SET_ERROR(ENXIO);
 
@@ -1124,7 +1147,6 @@ vdev_open_child(void *arg)
 	vd->vdev_open_thread = curthread;
 	vd->vdev_open_error = vdev_open(vd);
 	vd->vdev_open_thread = NULL;
-	vd->vdev_parent->vdev_nonrot &= vd->vdev_nonrot;
 }
 
 static boolean_t
@@ -1151,29 +1173,30 @@ vdev_open_children(vdev_t *vd)
 	int children = vd->vdev_children;
 	int c;
 
-	vd->vdev_nonrot = B_TRUE;
-
 	/*
 	 * in order to handle pools on top of zvols, do the opens
 	 * in a single thread so that the same thread holds the
 	 * spa_namespace_lock
 	 */
 	if (vdev_uses_zvols(vd)) {
-		for (c = 0; c < children; c++) {
+retry_sync:
+		for (c = 0; c < children; c++)
 			vd->vdev_child[c]->vdev_open_error =
 			    vdev_open(vd->vdev_child[c]);
-			vd->vdev_nonrot &= vd->vdev_child[c]->vdev_nonrot;
-		}
-		return;
+	} else {
+		tq = taskq_create("vdev_open", children, minclsyspri,
+		    children, children, TASKQ_PREPOPULATE);
+		if (tq == NULL)
+			goto retry_sync;
+
+		for (c = 0; c < children; c++)
+			VERIFY(taskq_dispatch(tq, vdev_open_child,
+			    vd->vdev_child[c], TQ_SLEEP) != 0);
+
+		taskq_destroy(tq);
 	}
-	tq = taskq_create("vdev_open", children, minclsyspri,
-	    children, children, TASKQ_PREPOPULATE);
 
-	for (c = 0; c < children; c++)
-		VERIFY(taskq_dispatch(tq, vdev_open_child, vd->vdev_child[c],
-		    TQ_SLEEP) != 0);
-
-	taskq_destroy(tq);
+	vd->vdev_nonrot = B_TRUE;
 
 	for (c = 0; c < children; c++)
 		vd->vdev_nonrot &= vd->vdev_child[c]->vdev_nonrot;
@@ -2220,7 +2243,6 @@ vdev_load(vdev_t *vd)
 	    vdev_metaslab_init(vd, 0) != 0))
 		vdev_set_state(vd, B_FALSE, VDEV_STATE_CANT_OPEN,
 		    VDEV_AUX_CORRUPT_DATA);
-
 	/*
 	 * If this is a leaf vdev, load its DTL.
 	 */
@@ -2757,7 +2779,8 @@ vdev_allocatable(vdev_t *vd)
 	 * we're asking two separate questions about it.
 	 */
 	return (!(state < VDEV_STATE_DEGRADED && state != VDEV_STATE_CLOSED) &&
-	    !vd->vdev_cant_write && !vd->vdev_ishole);
+	    !vd->vdev_cant_write && !vd->vdev_ishole &&
+	    vd->vdev_mg->mg_initialized);
 }
 
 boolean_t
@@ -3456,15 +3479,17 @@ vdev_set_state(vdev_t *vd, boolean_t isopen, vdev_state_t state, vdev_aux_t aux)
 	/*
 	 * Notify ZED of any significant state-change on a leaf vdev.
 	 *
-	 * We ignore transitions from a closed state to healthy unless
-	 * the parent was degraded.
 	 */
-	if (vd->vdev_ops->vdev_op_leaf &&
-	    ((save_state > VDEV_STATE_CLOSED) ||
-	    (vd->vdev_state < VDEV_STATE_HEALTHY) ||
-	    (vd->vdev_parent != NULL &&
-	    vd->vdev_parent->vdev_prevstate == VDEV_STATE_DEGRADED))) {
-		zfs_post_state_change(spa, vd, save_state);
+	if (vd->vdev_ops->vdev_op_leaf) {
+		/* preserve original state from a vdev_reopen() */
+		if ((vd->vdev_prevstate != VDEV_STATE_UNKNOWN) &&
+		    (vd->vdev_prevstate != vd->vdev_state) &&
+		    (save_state <= VDEV_STATE_CLOSED))
+			save_state = vd->vdev_prevstate;
+
+		/* filter out state change due to initial vdev_open */
+		if (save_state > VDEV_STATE_CLOSED)
+			zfs_post_state_change(spa, vd, save_state);
 	}
 
 	if (!isopen && vd->vdev_parent)

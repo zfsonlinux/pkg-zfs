@@ -50,6 +50,7 @@ log_onexit cleanup
 
 log_assert "Check the basic function of {user|group} used"
 
+sync_pool
 typeset user_used=$(get_value "userused@$QUSER1" $QFS)
 typeset group_used=$(get_value "groupused@$QGROUP" $QFS)
 
@@ -62,7 +63,7 @@ fi
 
 mkmount_writable $QFS
 log_must user_run $QUSER1 $MKFILE 100m $QFILE
-$SYNC
+sync_pool
 
 user_used=$(get_value "userused@$QUSER1" $QFS)
 group_used=$(get_value "groupused@$QGROUP" $QFS)

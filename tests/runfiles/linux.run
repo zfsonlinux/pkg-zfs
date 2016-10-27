@@ -60,6 +60,9 @@ tests = ['cache_002_pos', 'cache_003_pos', 'cache_004_neg',
 [tests/functional/casenorm]
 tests = ['case_all_values', 'norm_all_values']
 
+[tests/functional/checksum]
+tests = ['run_edonr_test', 'run_sha2_test', 'run_skein_test', 'filetest_001_pos']
+
 [tests/functional/clean_mirror]
 tests = [ 'clean_mirror_001_pos', 'clean_mirror_002_pos',
     'clean_mirror_003_pos', 'clean_mirror_004_pos']
@@ -74,18 +77,18 @@ tests = ['zfs_001_neg', 'zfs_002_pos', 'zfs_003_neg']
 
 # DISABLED:
 # zfs_clone_005_pos - busy unmount
-# zfs_clone_010_pos - needs investigation
 [tests/functional/cli_root/zfs_clone]
 tests = ['zfs_clone_001_neg', 'zfs_clone_002_pos', 'zfs_clone_003_pos',
     'zfs_clone_004_pos', 'zfs_clone_006_pos',
-    'zfs_clone_007_pos', 'zfs_clone_008_neg', 'zfs_clone_009_neg']
+    'zfs_clone_007_pos', 'zfs_clone_008_neg', 'zfs_clone_009_neg',
+    'zfs_clone_010_pos']
 
 # DISABLED:
-# zfs_copies_002_pos - needs investigation
 # zfs_copies_003_pos - zpool on zvol
 # zfs_copies_005_neg - nested pools
 [tests/functional/cli_root/zfs_copies]
-tests = ['zfs_copies_001_pos', 'zfs_copies_004_neg', 'zfs_copies_006_pos']
+tests = ['zfs_copies_001_pos', 'zfs_copies_002_pos', 'zfs_copies_004_neg',
+    'zfs_copies_006_pos']
 
 [tests/functional/cli_root/zfs_create]
 tests = ['zfs_create_001_pos', 'zfs_create_002_pos', 'zfs_create_003_pos',
@@ -136,21 +139,17 @@ tests = []
 
 # DISABLED:
 # zfs_receive_004_neg - Fails for OpenZFS on illumos
-# zfs_receive_011_pos - Requires port of OpenZFS 6562
 [tests/functional/cli_root/zfs_receive]
 tests = ['zfs_receive_001_pos', 'zfs_receive_002_pos', 'zfs_receive_003_pos',
     'zfs_receive_005_neg', 'zfs_receive_006_pos',
     'zfs_receive_007_neg', 'zfs_receive_008_pos', 'zfs_receive_009_neg',
-    'zfs_receive_010_pos', 'zfs_receive_012_pos']
+    'zfs_receive_010_pos', 'zfs_receive_011_pos', 'zfs_receive_012_pos',
+    'zfs_receive_013_pos']
 
-# DISABLED:
-# zfs_rename_002_pos - needs investigation
-# zfs_rename_005_neg - nested pools
-# zfs_rename_006_pos - needs investigation
-# zfs_rename_007_pos - needs investigation
 [tests/functional/cli_root/zfs_rename]
-tests = ['zfs_rename_001_pos', 'zfs_rename_003_pos',
-    'zfs_rename_004_neg', 'zfs_rename_008_pos', 'zfs_rename_009_neg',
+tests = ['zfs_rename_001_pos', 'zfs_rename_002_pos', 'zfs_rename_003_pos',
+    'zfs_rename_004_neg', 'zfs_rename_005_neg', 'zfs_rename_006_pos',
+    'zfs_rename_007_pos', 'zfs_rename_008_pos', 'zfs_rename_009_neg',
     'zfs_rename_010_neg', 'zfs_rename_011_pos', 'zfs_rename_012_neg',
     'zfs_rename_013_pos']
 
@@ -170,17 +169,15 @@ tests = ['zfs_send_001_pos', 'zfs_send_002_pos', 'zfs_send_003_pos',
 
 # DISABLED:
 # mountpoint_003_pos - needs investigation
-# ro_props_001_pos - needs investigation
-# onoffs_001_pos - needs investigation
-# readonly_001_pos - needs investigation
+# ro_props_001_pos - https://github.com/zfsonlinux/zfs/issues/5201
 # user_property_002_pos - needs investigation
 [tests/functional/cli_root/zfs_set]
 tests = ['cache_001_pos', 'cache_002_neg', 'canmount_001_pos',
     'canmount_002_pos', 'canmount_003_pos', 'canmount_004_pos',
     'checksum_001_pos', 'compression_001_pos', 'mountpoint_001_pos',
     'mountpoint_002_pos', 'reservation_001_neg',
-    'share_mount_001_neg', 'snapdir_001_pos',
-    'user_property_001_pos', 'user_property_003_neg',
+    'share_mount_001_neg', 'snapdir_001_pos', 'onoffs_001_pos',
+    'user_property_001_pos', 'user_property_003_neg', 'readonly_001_pos',
     'user_property_004_pos', 'version_001_neg', 'zfs_set_001_neg',
     'zfs_set_002_neg', 'zfs_set_003_neg', 'property_alias_001_pos']
 
@@ -191,13 +188,11 @@ tests = ['cache_001_pos', 'cache_002_neg', 'canmount_001_pos',
 #    'zfs_share_007_neg', 'zfs_share_008_neg', 'zfs_share_009_neg',
 #    'zfs_share_010_neg', 'zfs_share_011_pos']
 
-# DISABLED:
-# zfs_snapshot_008_neg - nested pools
-# zfs_snapshot_009_pos - Fails for OpenZFS on illumos
 [tests/functional/cli_root/zfs_snapshot]
 tests = ['zfs_snapshot_001_neg', 'zfs_snapshot_002_neg',
     'zfs_snapshot_003_neg', 'zfs_snapshot_004_neg', 'zfs_snapshot_005_neg',
-    'zfs_snapshot_006_pos', 'zfs_snapshot_007_neg']
+    'zfs_snapshot_006_pos', 'zfs_snapshot_007_neg', 'zfs_snapshot_008_neg',
+    'zfs_snapshot_009_pos']
 
 # DISABLED:
 # zfs_unmount_005_pos - needs investigation
@@ -253,8 +248,10 @@ tests = [
     'zpool_create_009_neg', 'zpool_create_010_neg', 'zpool_create_017_neg',
     'zpool_create_018_pos', 'zpool_create_019_pos',
     'zpool_create_021_pos', 'zpool_create_022_pos', 'zpool_create_023_neg',
+    'zpool_create_024_pos',
     'zpool_create_features_001_pos', 'zpool_create_features_002_pos',
-    'zpool_create_features_003_pos', 'zpool_create_features_004_neg']
+    'zpool_create_features_003_pos', 'zpool_create_features_004_neg',
+    'zpool_create_features_005_pos']
 
 # DISABLED:
 # zpool_destroy_001_pos - failure should be investigated
@@ -287,10 +284,11 @@ tests = ['zpool_get_001_pos', 'zpool_get_002_pos', 'zpool_get_003_pos',
 tests = ['zpool_history_001_neg', 'zpool_history_002_pos']
 
 # DISABLED:
+# zpool_import_002_pos - https://github.com/zfsonlinux/zfs/issues/5202
 # zpool_import_012_pos - sharenfs issue
 # zpool_import_all_001_pos - partition issue
 [tests/functional/cli_root/zpool_import]
-tests = ['zpool_import_001_pos', 'zpool_import_002_pos',
+tests = ['zpool_import_001_pos',
     'zpool_import_003_pos', 'zpool_import_004_pos', 'zpool_import_005_pos',
     'zpool_import_006_pos', 'zpool_import_007_pos', 'zpool_import_008_pos',
     'zpool_import_009_neg', 'zpool_import_010_pos', 'zpool_import_011_neg',
@@ -327,10 +325,11 @@ post =
 tests = ['zpool_status_001_pos', 'zpool_status_002_pos']
 
 # DISABLED:
+# zpool_upgrade_002_pos - Issue zfsonlinux/zfs#4034
 # zpool_upgrade_004_pos - Issue zfsonlinux/zfs#4034
 # zpool_upgrade_007_pos - needs investigation
 [tests/functional/cli_root/zpool_upgrade]
-tests = ['zpool_upgrade_001_pos', 'zpool_upgrade_002_pos',
+tests = ['zpool_upgrade_001_pos',
     'zpool_upgrade_003_pos', 'zpool_upgrade_005_neg',
     'zpool_upgrade_006_neg', 'zpool_upgrade_008_pos',
     'zpool_upgrade_009_neg']
@@ -352,7 +351,8 @@ tests = ['zdb_001_neg', 'zfs_001_neg', 'zfs_allow_001_neg',
     'zpool_history_001_neg', 'zpool_import_001_neg', 'zpool_import_002_neg',
     'zpool_offline_001_neg', 'zpool_online_001_neg', 'zpool_remove_001_neg',
     'zpool_replace_001_neg', 'zpool_scrub_001_neg', 'zpool_set_001_neg',
-    'zpool_status_001_neg', 'zpool_upgrade_001_neg']
+    'zpool_status_001_neg', 'zpool_upgrade_001_neg', 'arcstat_001_pos',
+    'arc_summary_001_pos', 'dbufstat_001_pos']
 user =
 
 [tests/functional/cli_user/zfs_list]
@@ -499,12 +499,9 @@ tests = ['poolversion_001_pos', 'poolversion_002_pos']
 #[tests/functional/privilege]
 #tests = ['privilege_001_pos', 'privilege_002_pos']
 
-# DISABLED:
-# quota_002_pos - size is less than current used or reserved space
-# quota_004_pos - size is less than current used or reserved space
-# quota_005_pos - size is less than current used or reserved space
 [tests/functional/quota]
-tests = ['quota_001_pos', 'quota_003_pos', 'quota_006_neg']
+tests = ['quota_001_pos', 'quota_002_pos', 'quota_003_pos',
+         'quota_004_pos', 'quota_005_pos', 'quota_006_neg']
 
 [tests/functional/raidz]
 tests = ['raidz_001_neg', 'raidz_002_pos']
@@ -512,12 +509,9 @@ tests = ['raidz_001_neg', 'raidz_002_pos']
 [tests/functional/redundancy]
 tests = ['redundancy_001_pos', 'redundancy_002_pos', 'redundancy_003_pos']
 
-# DISABLED:
-# refquota_002_pos - size is less than current used or reserved space
-# refquota_004_pos - needs investigation
 [tests/functional/refquota]
-tests = ['refquota_001_pos', 'refquota_003_pos',
-    'refquota_005_pos', 'refquota_006_neg']
+tests = ['refquota_001_pos', 'refquota_002_pos', 'refquota_003_pos',
+    'refquota_004_pos', 'refquota_005_pos', 'refquota_006_neg']
 
 # DISABLED:
 # refreserv_004_pos - needs investigation
@@ -532,17 +526,13 @@ tests = ['refreserv_001_pos', 'refreserv_002_pos', 'refreserv_003_pos',
 [tests/functional/replacement]
 tests = ['replacement_001_pos', 'replacement_002_pos', 'replacement_003_pos']
 
-# DISABLED:
-# reservation_012_pos - needs investigation
-# reservation_015_pos - needs investigation
-# reservation_016_pos - needs investigation
 [tests/functional/reservation]
 tests = ['reservation_001_pos', 'reservation_002_pos', 'reservation_003_pos',
     'reservation_004_pos', 'reservation_005_pos', 'reservation_006_pos',
     'reservation_007_pos', 'reservation_008_pos', 'reservation_009_pos',
-    'reservation_010_pos', 'reservation_011_pos',
-    'reservation_013_pos', 'reservation_014_pos',
-    'reservation_017_pos', 'reservation_018_pos']
+    'reservation_010_pos', 'reservation_011_pos', 'reservation_012_pos',
+    'reservation_013_pos', 'reservation_014_pos', 'reservation_015_pos',
+    'reservation_016_pos', 'reservation_017_pos', 'reservation_018_pos']
 
 # DISABLED: Root pools must be handled differently under Linux
 #[tests/functional/rootpool]
@@ -599,21 +589,18 @@ tests = ['sparse_001_pos']
 [tests/functional/truncate]
 tests = ['truncate_001_pos', 'truncate_002_pos']
 
-# DISABLED:
-# groupspace_001_pos
-# groupspace_002_pos
-# userquota_001_pos
-# userquota_004_pos
-# userquota_007_pos
-# userquota_010_pos
-# userspace_001_pos
-# userspace_002_pos
+[tests/functional/upgrade]
+tests = [ 'upgrade_userobj_001_pos' ]
+
 [tests/functional/userquota]
 tests = [
-    'userquota_002_pos', 'userquota_003_pos',
-    'userquota_005_neg', 'userquota_006_pos',
-    'userquota_008_pos', 'userquota_009_pos',
-    'userquota_011_pos', 'userquota_012_neg']
+    'userquota_001_pos', 'userquota_002_pos', 'userquota_003_pos',
+    'userquota_004_pos', 'userquota_005_neg', 'userquota_006_pos',
+    'userquota_007_pos', 'userquota_008_pos', 'userquota_009_pos',
+    'userquota_010_pos', 'userquota_011_pos', 'userquota_012_neg',
+    'userquota_013_pos',
+    'userspace_001_pos', 'userspace_002_pos', 'userspace_003_pos',
+    'groupspace_001_pos', 'groupspace_002_pos', 'groupspace_003_pos' ]
 
 # DISABLED:
 # vdev_zaps_007_pos -- fails due to a pre-existing issue with zpool split

@@ -596,14 +596,16 @@ zfs_write(struct inode *ip, uio_t *uio, int ioflag, cred_t *cr)
 	arc_buf_t	*abuf;
 	const iovec_t	*aiov = NULL;
 	xuio_t		*xuio = NULL;
-	int		i_iov = 0;
-	const iovec_t	*iovp = uio->uio_iov;
 	int		write_eof;
 	int		count = 0;
 	sa_bulk_attr_t	bulk[4];
 	uint64_t	mtime[2], ctime[2];
 	uint32_t	uid;
+#ifdef HAVE_UIO_ZEROCOPY
+	int		i_iov = 0;
+	const iovec_t	*iovp = uio->uio_iov;
 	ASSERTV(int	iovcnt = uio->uio_iovcnt);
+#endif
 
 	/*
 	 * Fasttrack empty write
@@ -726,6 +728,7 @@ zfs_write(struct inode *ip, uio_t *uio, int ioflag, cred_t *cr)
 		}
 
 		if (xuio && abuf == NULL) {
+#ifdef HAVE_UIO_ZEROCOPY
 			ASSERT(i_iov < iovcnt);
 			ASSERT3U(uio->uio_segflg, !=, UIO_BVEC);
 			aiov = &iovp[i_iov];
@@ -735,6 +738,7 @@ zfs_write(struct inode *ip, uio_t *uio, int ioflag, cred_t *cr)
 			    ((char *)aiov->iov_base - (char *)abuf->b_data +
 			    aiov->iov_len == arc_buf_size(abuf)));
 			i_iov++;
+#endif
 		} else if (abuf == NULL && n >= max_blksz &&
 		    woff >= zp->z_size &&
 		    P2PHASE(woff, max_blksz) == 0 &&
@@ -932,6 +936,12 @@ zfs_write(struct inode *ip, uio_t *uio, int ioflag, cred_t *cr)
 }
 EXPORT_SYMBOL(zfs_write);
 
+/*
+ * Drop a reference on the passed inode asynchronously. This ensures
+ * that the caller will never drop the last reference on an inode in
+ * the current context. Doing so while holding open a tx could result
+ * in a deadlock if iput_final() re-enters the filesystem code.
+ */
 void
 zfs_iput_async(struct inode *ip)
 {
@@ -941,8 +951,8 @@ zfs_iput_async(struct inode *ip)
 	ASSERT(os != NULL);
 
 	if (atomic_read(&ip->i_count) == 1)
-		taskq_dispatch(dsl_pool_iput_taskq(dmu_objset_pool(os)),
-		    (task_func_t *)iput, ip, TQ_SLEEP);
+		VERIFY(taskq_dispatch(dsl_pool_iput_taskq(dmu_objset_pool(os)),
+		    (task_func_t *)iput, ip, TQ_SLEEP) != 0);
 	else
 		iput(ip);
 }

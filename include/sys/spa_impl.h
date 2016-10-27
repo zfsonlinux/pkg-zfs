@@ -23,6 +23,7 @@
  * Copyright (c) 2011, 2015 by Delphix. All rights reserved.
  * Copyright 2011 Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 2014 Spectra Logic Corporation, All rights reserved.
+ * Copyright 2013 Saso Kiselkov. All rights reserved.
  * Copyright (c) 2016 Actifio, Inc. All rights reserved.
  */
 
@@ -164,6 +165,8 @@ struct spa {
 	uint64_t	spa_last_synced_guid;	/* last synced guid */
 	list_t		spa_config_dirty_list;	/* vdevs with dirty config */
 	list_t		spa_state_dirty_list;	/* vdevs with dirty state */
+	kmutex_t	spa_alloc_lock;
+	avl_tree_t	spa_alloc_tree;
 	spa_aux_vdev_t	spa_spares;		/* hot spares */
 	spa_aux_vdev_t	spa_l2cache;		/* L2ARC cache devices */
 	nvlist_t	*spa_label_features;	/* Features for reading MOS */
@@ -172,6 +175,10 @@ struct spa {
 	uint64_t	spa_syncing_txg;	/* txg currently syncing */
 	bpobj_t		spa_deferred_bpobj;	/* deferred-free bplist */
 	bplist_t	spa_free_bplist[TXG_SIZE]; /* bplist of stuff to free */
+	zio_cksum_salt_t spa_cksum_salt;	/* secret salt for cksum */
+	/* checksum context templates */
+	kmutex_t	spa_cksum_tmpls_lock;
+	void		*spa_cksum_tmpls[ZIO_CHECKSUM_FUNCTIONS];
 	uberblock_t	spa_ubsync;		/* last synced uberblock */
 	uberblock_t	spa_uberblock;		/* current uberblock */
 	boolean_t	spa_extreme_rewind;	/* rewind past deferred frees */
@@ -272,6 +279,8 @@ struct spa {
 	 */
 	spa_config_lock_t spa_config_lock[SCL_LOCKS]; /* config changes */
 	refcount_t	spa_refcount;		/* number of opens */
+
+	taskq_t		*spa_upgrade_taskq;	/* taskq for upgrade jobs */
 };
 
 extern char *spa_config_path;
