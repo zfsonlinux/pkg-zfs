@@ -15,7 +15,7 @@ COPY_EXEC_LIST="$COPY_EXEC_LIST /bin/hostname /sbin/blkid"
 
 # Explicitly specify all kernel modules because automatic dependency resolution
 # is unreliable on many systems.
-MANUAL_ADD_MODULES_LIST="zlib_deflate spl zavl zcommon znvpair zunicode zfs"
+MANUAL_ADD_MODULES_LIST="zlib_deflate spl zavl zcommon znvpair zunicode zfs icp"
 
 # Generic result code.
 RC=0
