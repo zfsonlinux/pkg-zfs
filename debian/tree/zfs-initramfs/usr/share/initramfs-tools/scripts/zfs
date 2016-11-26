@@ -75,6 +75,12 @@ mountroot()
 		ZFS_RPOOL=$(echo "$ZFS_RPOOL" | sed -e 's,/.*,,')
 	fi
 
+	if [ -z "$ZFS_RPOOL" ]
+	then
+		ZFS_BOOTFS=${ROOT#ZFS=}
+		ZFS_RPOOL=$(echo "$ZFS_BOOTFS" | sed -e 's,/.*,,')
+	fi
+
 	# Use "rpool" as the default, like on most Solaris systems.
 	[ -z "$ZFS_RPOOL" ] && ZFS_RPOOL='rpool'
 
