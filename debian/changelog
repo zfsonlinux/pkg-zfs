@@ -1,3 +1,108 @@
+zfs-linux (0.6.5.8-1~trusty) trusty; urgency=low
+
+  [ Marcel Huber ]
+  * Fixes bug in fix_paths()
+
+  [ Brian Behlendorf ]
+  * Add `make lint` target
+
+  [ AndCycle ]
+  * Obey arc_meta_limit default size when changing arc_max
+
+  [ Brian Behlendorf ]
+  * Fix ztest truncated cache file
+
+  [ Matthew Ahrens ]
+  * Illumos 4953, 4954, 4955
+
+  [ Chunwei Chen ]
+  * Remove dummy znode from zvol_state
+  * Linux 4.7 compat: handler->get() takes both dentry and inode
+  * Linux 4.7 compat: replace blk_queue_flush with blk_queue_write_cache
+  * Linux 4.7 compat: use iterate_shared for concurrent readdir
+
+  [ Brian Behlendorf ]
+  * Linux 4.7 compat: handler->set() takes both dentry and inode
+  * Retire HAVE_CURRENT_UMASK and HAVE_POSIX_ACL_CACHING
+
+  [ Chunwei Chen ]
+  * Linux 4.7 compat: fix zpl_get_acl returns invalid acl pointer
+  * Skip ctldir znode in zfs_rezget to fix snapdir issues
+
+  [ Turbo Fredriksson ]
+  * Rename 'zed.service' to 'zfs-zed.service'
+
+  [ Grischa Zengel ]
+  * Add nfs-kernel-server for Debian
+
+  [ Brian Behlendorf ]
+  * Systemd configuration fixes
+
+  [ Tim Chase ]
+  * Linux 4.6 compat: Fall back to d_prune_aliases() if necessary
+    (Closes: #4726)
+
+  [ Chunwei Chen ]
+  * Fix Large kmem_alloc in vdev_metaslab_init
+
+  [ Peng ]
+  * Fix PANIC: metaslab_free_dva(): bad DVA X:Y:Z
+
+  [ Rich Ercolani ]
+  * Add tunable to ignore hole_birth (enabled by default)
+
+  [ Ned Bass ]
+  * Add ZIO_CHECKSUM_IS_ZERO
+
+  [ Chunwei Chen ]
+  * xattr dir doesn't get purged during iput
+  * Kill zp->z_xattr_parent to prevent pinning
+  * Fix get_zfs_sb race with concurrent umount
+  * Fix arc_prune_task use-after-free
+  * Fix memleak in zpl_parse_options
+  * Fix out-of-bound access in zfs_fillpage
+  * Don't allow accessing XATTR via export handle
+  * fh_to_dentry should return ESTALE when generation mismatch
+
+  [ Tim Chase ]
+  * Prevent null dereferences when accessing dbuf kstat
+
+  [ Chunwei Chen ]
+  * Fix dbuf_stats_hash_table_data race
+
+  [ Matthew Ahrens ]
+  * OpenZFS 7263 - deeply nested nvlist can overflow stack
+
+  [ Paul Dagnelie ]
+  * OpenZFS 6876 - Stack corruption after importing a pool with a too-long name
+
+  [ GeLiXin ]
+  * Fix self-healing IO prior to dsl_pool_init() completion
+  * Fix incorrect pool state after import
+  * Fix call zfs_get_name() with invalid parameter
+  * Fix: Array bounds read in zprop_print_one_property()
+
+  [ smh ]
+  * FreeBSD rS271776 - Persist vdev_resilver_txg changes
+
+  [ Brian Behlendorf ]
+  * Linux 4.8 compat: submit_bio()
+  * Linux 4.8 compat: REQ_PREFLUSH
+
+  [ Chunwei Chen ]
+  * Linux 4.8 compat: REQ_OP and bio_set_op_attrs()
+
+  [ Brian Behlendorf ]
+  * Linux 4.8 compat: posix_acl_valid()
+  * Linux 4.8 compat: Fix removal of bio->bi_rw member
+  * Handle block pointers with a corrupt logical size
+  * Fix gcc -Warray-bounds check for dump_object() in zdb
+
+  [ Ned Bass ]
+  * Prepare to release 0.6.5.8
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 15 Jan 2017 21:37:05 -0500
+
 zfs-linux (0.6.5.7-1~trusty) trusty; urgency=low
 
   [ Gordan Bobic ]
