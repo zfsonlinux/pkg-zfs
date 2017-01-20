@@ -1,3 +1,321 @@
+zfs-linux (0.7.0-rc3-1~trusty~1.gbp45e48b) trusty; urgency=low
+
+  ** SNAPSHOT build @45e48bdf9bb4f9c51620bde10d8760da378a7ad4 **
+
+  [ Jason Zaman ]
+  * Add paxcheck make lint target
+
+  [ legend-hua ]
+  * Update migration tests
+
+  [ GeLiXin ]
+  * Fix coverity defects: CID 147509
+
+  [ cao ]
+  * Fix coverity defects: CID 152975
+  * Fix coverity defects: CID 147548
+  * Fix coverity defects: CID 147553
+  * Fix sa_legacy_attr_count to use ARRAY_SIZE
+
+  [ Neal Gompa (ニール・ゴンパ) ]
+  * Process all systemd services through the systemd scriptlets
+
+  [ Brian Behlendorf ]
+  * Add TASKQID_INVALID
+  * Enable .zfs/snapshot for 32-bit systems
+  * Fix 32-bit maximum volume size
+  * Use vmem_size() for 32-bit systems
+  * Skip async_destroy_001_pos on 32-bit systems
+
+  [ BearBabyLiu ]
+  * Fix dsl_prop_get_all_dsl() memory leak
+
+  [ Romain Dolbeau ]
+  * Add parity generation/rebuild using AVX-512 for x86-64
+
+  [ Chunwei Chen ]
+  * Fix unlinked file cannot do xattr operations
+  * Add support for O_TMPFILE
+
+  [ Romain Dolbeau ]
+  * Add superscalar fletcher4
+
+  [ Tony Hutter ]
+  * Allow autoreplace even when enclosure LED sysfs entries don't exist
+
+  [ Brian Behlendorf ]
+  * Replace ISAINFO with is_32bit function
+  * Allow 16M zio buffers in user space
+  * Fix 'zpool import' detection issues
+
+  [ Chunwei Chen ]
+  * Batch free zpl_posix_acl_release
+  * Use set_cached_acl and forget_cached_acl when possible
+
+  [ cao ]
+  * Fix coverity defects: CID 147575, 147577, 147578, 147579
+
+  [ Don Brady ]
+  * Add illumos FMD ZFS logic to ZED -- phase 2
+
+  [ Brian Behlendorf ]
+  * Skip test suites on 32-bit TEST builders
+
+  [ cao ]
+  * Fix coverity defects: CID 147626, 147628
+
+  [ luozhengzheng ]
+  * Fix coverity defects: 154021
+
+  [ cao ]
+  * Fix coverity defects: CID 147629
+  * Fix coverity defects: CID 147586
+
+  [ Olaf Faaland ]
+  * Fix symlinks for {vdev_clear,statechange}-led.sh
+
+  [ tuxoko ]
+  * Linux 3.14 compat: assign inode->set_acl
+
+  [ jxiong ]
+  * Export symbol dmu_objset_userobjspace_upgradable
+
+  [ Gvozden Neskovic ]
+  * Fix ZFS_AC_KERNEL_SET_CACHED_ACL_USABLE check
+
+  [ cao ]
+  * Fix coverity defects: CID 147540, 147542
+
+  [ luozhengzheng ]
+  * Fix coverity defects: CID 147503
+
+  [ Don Brady ]
+  * Add a statechange notify zedlet
+
+  [ Brian Behlendorf ]
+  * Fix 'zpool import' detection issue
+
+  [ Håkan Johansson ]
+  * Repair indent of zpool.8 man page
+
+  [ DeHackEd ]
+  * Fix man page formatting in zfs-module-parameters
+  * Kernel 4.9 compat: file_operations->aio_fsync removal
+
+  [ ChaoyuZhang ]
+  * Enable user_property_002_pos
+
+  [ Giuseppe Di Natale ]
+  * Ensure that perf regression tests cleanup properly
+
+  [ LOLi ]
+  * Allow zfs unshare <protocol> -a
+
+  [ Tony Hutter ]
+  * Add -c to zpool iostat & status to run command
+
+  [ Tim Chase ]
+  * zstreamdump needs to initialize fletcher 4 support
+
+  [ David Quigley ]
+  * DLPX-44812 integrate EP-220 large memory scalability
+
+  [ Isaac Huang ]
+  * ABD page support to vdev_disk.c
+
+  [ Gvozden Neskovic ]
+  * ABD changes for vectorized RAIDZ
+  * ABD Vectorized raidz
+  * ABD raidz avx512f support
+
+  [ Romain Dolbeau ]
+  * ABD raidz NEON support
+
+  [ Chunwei Chen ]
+  * ABD kmap to kmap_atomic
+  * ABD optimized page allocation code
+
+  [ luozhengzheng ]
+  * Fix coverity defects: CID 154591
+
+  [ ChaoyuZhang ]
+  * Enable ro_props_001_pos
+
+  [ Brian Behlendorf ]
+  * Convert zio_buf_alloc() consumers
+
+  [ Håkan Johansson ]
+  * Do not force VDEV_NAME_TYPE_ID in max_width()
+
+  [ Chunwei Chen ]
+  * Use system_delay_taskq for long delay tasks
+  * zvol: reduce linear list search
+
+  [ cao ]
+  * Compile zio.h and zio_impl.h mutual include
+  * Remove unused sa_update_from_cb()
+
+  [ luozhengzheng ]
+  * Fix incorrect operator in abd_alloc_sametype()
+
+  [ Brian Behlendorf ]
+  * OpenZFS 7143 - dbuf_read() creates unnecessary zio_root() for bonus buf
+  * Skip zpool_scrub_004_pos on 32-bit systems
+
+  [ ChaoyuZhang ]
+  * Enable mountpoint_003_pos
+
+  [ Chunwei Chen ]
+  * zpool_create_minors parallel prefetch
+  * zvol_remove_minors do parallel zvol_free
+
+  [ Brian Behlendorf ]
+  * Refactor txg history kstat
+
+  [ Gvozden Neskovic ]
+  * Cache ddt_get_dedup_dspace() value if there was no ddt changes
+
+  [ Brian Behlendorf ]
+  * Revert "Disable zio_dva_throttle_enabled by default"
+
+  [ luozhengzheng ]
+  * Fix coverity defects: CID 154617
+
+  [ Chunwei Chen ]
+  * Don't count '@' for dataset namelen if not a snapshot
+
+  [ liaoyuxiangqin ]
+  * Fix coverity defects: CID 147475
+
+  [ George Melikov ]
+  * Add CONTRIBUTING information and templates
+
+  [ Brian Behlendorf ]
+  * Use cstyle -cpP in `make cstyle` check
+
+  [ bunder2015 ]
+  * Fix typos in dbuf.c
+
+  [ Brian Behlendorf ]
+  * Skip slow tests when kmemleak is enabled
+  * Skip xfstests on Ubuntu 16.04 and CentOS 7
+
+  [ Chunwei Chen ]
+  * Add ida_destroy in zvol_fini to fix memleak
+  * Fix i_flags issue caused by 64c688d
+  * Fix wrong operator in xvattr.h
+
+  [ Gvozden Neskovic ]
+  * ABD: Adapt avx512bw raidz assembly
+
+  [ cao ]
+  * Fix coverity defects: CID 147534
+
+  [ Chunwei Chen ]
+  * Fix fchange in zpl_ioctl_setflags
+  * Use inode_set_flags when available
+  * Add test for chattr
+
+  [ Tony Hutter ]
+  * Don't run 'zpool iostat -c CMD' command on all vdevs, if vdevs specified
+
+  [ Chunwei Chen ]
+  * Fix zmo leak when zfs_sb_create fails
+
+  [ cao ]
+  * Fix coverity defects: CID 155008
+
+  [ LOLi ]
+  * Fix dsl_props_set_sync_impl to work with nested nvlist
+
+  [ Chunwei Chen ]
+  * Use a dedicated taskq for vdev_file
+
+  [ bunder2015 ]
+  * Remove extra + from zfs man page
+
+  [ GeLiXin ]
+  * Fix coverity defects: CID 147587
+
+  [ LOLi ]
+  * Don't persist temporary pool name on devices
+
+  [ Tim Chase ]
+  * 4.10 compat - BIO flag changes and others
+
+  [ ka7 ]
+  * Fix spelling
+
+  [ George Melikov ]
+  * OpenZFS 7259 - DS_FIELD_LARGE_BLOCKS is unused
+
+  [ Johnny Stenback ]
+  * Fix TypeError: unorderable types: str() > int() in arc_summary.py
+
+  [ George Melikov ]
+  * Further work on Github usability (issue templates)
+  * OpenZFS 6328 - Fix cstyle errors in zfs codebase
+  * OpenZFS 6637 - replacing "dontclose" with "should_close"
+
+  [ Don Brady ]
+  * OpenZFS 7303 - dynamic metaslab selection
+
+  [ George Melikov ]
+  * OpenZFS 6603 - zfeature_register() should verify ZFEATURE_FLAG_PER_DATASET implies SPA_FEATURE_EXTENSIBLE_DATASET
+
+  [ LOLi ]
+  * Fix zfs-share systemd unit file
+
+  [ George Melikov ]
+  * OpenZFS 7276 -  zfs(1m) manpage could better describe space properties
+
+  [ Don Brady ]
+  * OpenZFS 7743 - per-vdev-zaps init path for upgrade
+
+  [ bzzz77 ]
+  * Add *_by-dnode routines
+
+  [ Jörg Thalheim ]
+  * module/Makefile.in: use relative cp
+
+  [ Brian Behlendorf ]
+  * OpenZFS 7181 - race between zfs_mount and zfs_ioc_rollback
+  * OpenZFS 7603 - xuio_stat_wbuf_* should be declared (void)
+
+  [ LOLi ]
+  * Fix unallocated object detection for large_dnode datasets
+
+  [ clefru ]
+  * Don't hardcode perl path but use env instead
+
+  [ Brian Behlendorf ]
+  * OpenZFS 6551 - cmd/zpool: cleanup gcc warnings
+  * OpenZFS 6550 - cmd/zfs: cleanup gcc warnings
+  * OpenZFS 6586 - Whitespace inconsistencies in the spa feature dependency arrays in zfeature_common.c
+
+  [ George Melikov ]
+  * OpenZFS 7082 - bptree_iterate() passes wrong args to zfs_dbgmsg()
+  * OpenZFS 7071 - lzc_snapshot does not fill in errlist on ENOENT
+  * OpenZFS 7256 - low probability race in zfs_get_data
+  * OpenZFS 7235 - remove unused func dsl_dataset_set_blkptr
+  * OpenZFS 7257 - zfs manpage user property length needs to be updated
+  * OpenZFS 7659 - Missing thread_exit() in dmu_send.c
+
+  [ Brian Behlendorf ]
+  * Disable racy test cases
+
+  [ George Melikov ]
+  * OpenZFS 6529 - Properly handle updates of variably-sized SA entries
+
+  [ Chunwei Chen ]
+  * Suspend/resume zvol for recv and rollback
+
+  [ Brian Behlendorf ]
+  * Fix unused variable warning
+  * Tag 0.7.0-rc3
+
+ -- Darik Horn <dajhorn@vanadac.com>  Fri, 20 Jan 2017 18:35:47 -0500
+
 zfs-linux (0.7.0-rc2-1~trusty~2.gbp1cf5b2) trusty; urgency=low
 
   ** SNAPSHOT build @1cf5b28768d4a156cfc4719c920e50dfcd82e1fc **
