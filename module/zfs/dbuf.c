@@ -21,7 +21,7 @@
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2011 Nexenta Systems, Inc.  All rights reserved.
- * Copyright (c) 2012, 2016 by Delphix. All rights reserved.
+ * Copyright (c) 2012, 2015 by Delphix. All rights reserved.
  * Copyright (c) 2013 by Saso Kiselkov. All rights reserved.
  * Copyright (c) 2014 Spectra Logic Corporation, All rights reserved.
  */
@@ -46,6 +46,7 @@
 #include <sys/range_tree.h>
 #include <sys/trace_dbuf.h>
 #include <sys/callb.h>
+#include <sys/abd.h>
 
 struct dbuf_hold_impl_data {
 	/* Function arguments */
@@ -149,7 +150,7 @@ int dbuf_cache_max_shift = 5;
  * cache size). Once the eviction thread is woken up and eviction is required,
  * it will continue evicting buffers until it's able to reduce the cache size
  * to the low water mark. If the cache size continues to grow and hits the high
- * water mark, then callers adding elments to the cache will begin to evict
+ * water mark, then callers adding elements to the cache will begin to evict
  * directly from the cache until the cache is no longer above the high water
  * mark.
  */
@@ -319,7 +320,7 @@ dbuf_hash_remove(dmu_buf_impl_t *db)
 	idx = hv & h->hash_table_mask;
 
 	/*
-	 * We musn't hold db_mtx to maintain lock ordering:
+	 * We mustn't hold db_mtx to maintain lock ordering:
 	 * DBUF_HASH_MUTEX > db_mtx.
 	 */
 	ASSERT(refcount_is_zero(&db->db_holds));
@@ -789,7 +790,7 @@ dbuf_verify(dmu_buf_impl_t *db)
 		} else {
 			/* db is pointed to by an indirect block */
 			ASSERTV(int epb = db->db_parent->db.db_size >>
-				SPA_BLKPTRSHIFT);
+			    SPA_BLKPTRSHIFT);
 			ASSERT3U(db->db_parent->db_level, ==, db->db_level+1);
 			ASSERT3U(db->db_parent->db.db_object, ==,
 			    db->db.db_object);
@@ -1019,7 +1020,7 @@ dbuf_read_impl(dmu_buf_impl_t *db, zio_t *zio, uint32_t flags)
 		int max_bonuslen = DN_SLOTS_TO_BONUSLEN(dn->dn_num_slots);
 
 		ASSERT3U(bonuslen, <=, db->db.db_size);
-		db->db.db_data = zio_buf_alloc(max_bonuslen);
+		db->db.db_data = kmem_alloc(max_bonuslen, KM_SLEEP);
 		arc_space_consume(max_bonuslen, ARC_SPACE_BONUS);
 		if (bonuslen < max_bonuslen)
 			bzero(db->db.db_data, max_bonuslen);
@@ -1131,10 +1132,9 @@ dbuf_fix_old_data(dmu_buf_impl_t *db, uint64_t txg)
 	 */
 	ASSERT(dr->dr_txg >= txg - 2);
 	if (db->db_blkid == DMU_BONUS_BLKID) {
-		/* Note that the data bufs here are zio_bufs */
 		dnode_t *dn = DB_DNODE(db);
 		int bonuslen = DN_SLOTS_TO_BONUSLEN(dn->dn_num_slots);
-		dr->dt.dl.dr_data = zio_buf_alloc(bonuslen);
+		dr->dt.dl.dr_data = kmem_alloc(bonuslen, KM_SLEEP);
 		arc_space_consume(bonuslen, ARC_SPACE_BONUS);
 		bcopy(db->db.db_data, dr->dt.dl.dr_data, bonuslen);
 	} else if (refcount_count(&db->db_holds) > db->db_dirtycnt) {
@@ -1207,7 +1207,8 @@ dbuf_read(dmu_buf_impl_t *db, zio_t *zio, uint32_t flags)
 	} else if (db->db_state == DB_UNCACHED) {
 		spa_t *spa = dn->dn_objset->os_spa;
 
-		if (zio == NULL)
+		if (zio == NULL &&
+		    db->db_blkptr != NULL && !BP_IS_HOLE(db->db_blkptr))
 			zio = zio_root(spa, NULL, NULL, ZIO_FLAG_CANFAIL);
 
 		err = dbuf_read_impl(db, zio, flags);
@@ -1221,7 +1222,7 @@ dbuf_read(dmu_buf_impl_t *db, zio_t *zio, uint32_t flags)
 			rw_exit(&dn->dn_struct_rwlock);
 		DB_DNODE_EXIT(db);
 
-		if (!err && !havepzio)
+		if (!err && !havepzio && zio != NULL)
 			err = zio_wait(zio);
 	} else {
 		/*
@@ -2156,7 +2157,7 @@ dbuf_destroy(dmu_buf_impl_t *db)
 		int slots = DB_DNODE(db)->dn_num_slots;
 		int bonuslen = DN_SLOTS_TO_BONUSLEN(slots);
 		ASSERT(db->db.db_data != NULL);
-		zio_buf_free(db->db.db_data, bonuslen);
+		kmem_free(db->db.db_data, bonuslen);
 		arc_space_return(bonuslen, ARC_SPACE_BONUS);
 		db->db_state = DB_UNCACHED;
 	}
@@ -2685,8 +2686,7 @@ __dbuf_hold_impl(struct dbuf_hold_impl_data *dh)
 
 		ASSERT3P(dh->dh_parent, ==, NULL);
 		dh->dh_err = dbuf_findbp(dh->dh_dn, dh->dh_level, dh->dh_blkid,
-					dh->dh_fail_sparse, &dh->dh_parent,
-					&dh->dh_bp, dh);
+		    dh->dh_fail_sparse, &dh->dh_parent, &dh->dh_bp, dh);
 		if (dh->dh_fail_sparse) {
 			if (dh->dh_err == 0 &&
 			    dh->dh_bp && BP_IS_HOLE(dh->dh_bp))
@@ -2700,7 +2700,7 @@ __dbuf_hold_impl(struct dbuf_hold_impl_data *dh)
 		if (dh->dh_err && dh->dh_err != ENOENT)
 			return (dh->dh_err);
 		dh->dh_db = dbuf_create(dh->dh_dn, dh->dh_level, dh->dh_blkid,
-					dh->dh_parent, dh->dh_bp);
+		    dh->dh_parent, dh->dh_bp);
 	}
 
 	if (dh->dh_fail_uncached && dh->dh_db->db_state != DB_CACHED) {
@@ -2774,7 +2774,7 @@ dbuf_hold_impl(dnode_t *dn, uint8_t level, uint64_t blkid,
 	dh = kmem_alloc(sizeof (struct dbuf_hold_impl_data) *
 	    DBUF_HOLD_IMPL_MAX_DEPTH, KM_SLEEP);
 	__dbuf_hold_impl_init(dh, dn, level, blkid, fail_sparse,
-		fail_uncached, tag, dbp, 0);
+	    fail_uncached, tag, dbp, 0);
 
 	error = __dbuf_hold_impl(dh);
 
@@ -3303,7 +3303,7 @@ dbuf_sync_leaf(dbuf_dirty_record_t *dr, dmu_tx_t *tx)
 		if (*datap != db->db.db_data) {
 			int slots = DB_DNODE(db)->dn_num_slots;
 			int bonuslen = DN_SLOTS_TO_BONUSLEN(slots);
-			zio_buf_free(*datap, bonuslen);
+			kmem_free(*datap, bonuslen);
 			arc_space_return(bonuslen, ARC_SPACE_BONUS);
 		}
 		db->db_data_pending = NULL;
@@ -3709,6 +3709,9 @@ dbuf_write_override_done(zio_t *zio)
 	mutex_exit(&db->db_mtx);
 
 	dbuf_write_done(zio, NULL, db);
+
+	if (zio->io_abd != NULL)
+		abd_put(zio->io_abd);
 }
 
 /* Issue I/O to commit a dirty buffer to disk. */
@@ -3801,7 +3804,8 @@ dbuf_write(dbuf_dirty_record_t *dr, arc_buf_t *data, dmu_tx_t *tx)
 		 * The BP for this block has been provided by open context
 		 * (by dmu_sync() or dmu_buf_write_embedded()).
 		 */
-		void *contents = (data != NULL) ? data->b_data : NULL;
+		abd_t *contents = (data != NULL) ?
+		    abd_get_from_buf(data->b_data, arc_buf_size(data)) : NULL;
 
 		dr->dr_zio = zio_write(zio, os->os_spa, txg,
 		    &dr->dr_bp_copy, contents, db->db.db_size, db->db.db_size,
@@ -3879,23 +3883,23 @@ EXPORT_SYMBOL(dmu_buf_get_user);
 EXPORT_SYMBOL(dmu_buf_freeable);
 EXPORT_SYMBOL(dmu_buf_get_blkptr);
 
-
+/* BEGIN CSTYLED */
 module_param(dbuf_cache_max_bytes, ulong, 0644);
 MODULE_PARM_DESC(dbuf_cache_max_bytes,
-		"Maximum size in bytes of the dbuf cache.");
+	"Maximum size in bytes of the dbuf cache.");
 
 module_param(dbuf_cache_hiwater_pct, uint, 0644);
 MODULE_PARM_DESC(dbuf_cache_hiwater_pct,
-		"Percentage over dbuf_cache_max_bytes when dbufs \
-		 much be evicted directly.");
+	"Percentage over dbuf_cache_max_bytes when dbufs must be evicted "
+	"directly.");
 
 module_param(dbuf_cache_lowater_pct, uint, 0644);
 MODULE_PARM_DESC(dbuf_cache_lowater_pct,
-		"Percentage below dbuf_cache_max_bytes \
-		when the evict thread stop evicting dbufs.");
+	"Percentage below dbuf_cache_max_bytes when the evict thread stops "
+	"evicting dbufs.");
 
 module_param(dbuf_cache_max_shift, int, 0644);
 MODULE_PARM_DESC(dbuf_cache_max_shift,
-		"Cap the size of the dbuf cache to log2 fraction of arc size.");
-
+	"Cap the size of the dbuf cache to a log2 fraction of arc size.");
+/* END CSTYLED */
 #endif

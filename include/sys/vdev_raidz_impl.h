@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <sys/debug.h>
 #include <sys/kstat.h>
+#include <sys/abd.h>
 
 #ifdef  __cplusplus
 extern "C" {
@@ -104,7 +105,7 @@ typedef struct raidz_col {
 	size_t rc_devidx;		/* child device index for I/O */
 	size_t rc_offset;		/* device offset */
 	size_t rc_size;			/* I/O size */
-	void *rc_data;			/* I/O data */
+	abd_t *rc_abd;			/* I/O data */
 	void *rc_gdata;			/* used to store the "good" version */
 	int rc_error;			/* I/O error for this device */
 	unsigned int rc_tried;		/* Did we attempt this I/O column? */
@@ -121,7 +122,7 @@ typedef struct raidz_map {
 	size_t rm_firstdatacol;		/* First data column/parity count */
 	size_t rm_nskip;		/* Skipped sectors for padding */
 	size_t rm_skipstart;		/* Column index of padding start */
-	void *rm_datacopy;		/* rm_asize-buffer of copied data */
+	abd_t *rm_abd_copy;		/* rm_asize-buffer of copied data */
 	size_t rm_reports;		/* # of referencing checksum reports */
 	unsigned int rm_freed;		/* map no longer has referencing ZIO */
 	unsigned int rm_ecksuminjected;	/* checksum error was injected */
@@ -140,6 +141,12 @@ extern const raidz_impl_ops_t vdev_raidz_ssse3_impl;
 #endif
 #if defined(__x86_64) && defined(HAVE_AVX2)	/* only x86_64 for now */
 extern const raidz_impl_ops_t vdev_raidz_avx2_impl;
+#endif
+#if defined(__x86_64) && defined(HAVE_AVX512F)	/* only x86_64 for now */
+extern const raidz_impl_ops_t vdev_raidz_avx512f_impl;
+#endif
+#if defined(__x86_64) && defined(HAVE_AVX512BW)	/* only x86_64 for now */
+extern const raidz_impl_ops_t vdev_raidz_avx512bw_impl;
 #endif
 #if defined(__aarch64__)
 extern const raidz_impl_ops_t vdev_raidz_aarch64_neon_impl;
@@ -171,12 +178,12 @@ extern const raidz_impl_ops_t vdev_raidz_aarch64_neonx2_impl;
  * @code	parity the function produce
  * @impl	name of the implementation
  */
-#define	_RAIDZ_GEN_WRAP(code, impl) 					\
+#define	_RAIDZ_GEN_WRAP(code, impl)					\
 static void								\
 impl ## _gen_ ## code(void *rmp)					\
 {									\
-	raidz_map_t *rm = (raidz_map_t *) rmp;				\
-	raidz_generate_## code ## _impl(rm); 				\
+	raidz_map_t *rm = (raidz_map_t *)rmp;				\
+	raidz_generate_## code ## _impl(rm);				\
 }
 
 /*
@@ -185,11 +192,11 @@ impl ## _gen_ ## code(void *rmp)					\
  * @code	parity the function produce
  * @impl	name of the implementation
  */
-#define	_RAIDZ_REC_WRAP(code, impl) 					\
-static int 								\
+#define	_RAIDZ_REC_WRAP(code, impl)					\
+static int								\
 impl ## _rec_ ## code(void *rmp, const int *tgtidx)			\
 {									\
-	raidz_map_t *rm = (raidz_map_t *) rmp;				\
+	raidz_map_t *rm = (raidz_map_t *)rmp;				\
 	return (raidz_reconstruct_## code ## _impl(rm, tgtidx));	\
 }
 
@@ -288,7 +295,7 @@ vdev_raidz_exp2(const uint8_t a, const unsigned exp)
 	if (a == 0)
 		return (0);
 
-	return (vdev_raidz_pow2[(exp + (unsigned) vdev_raidz_log2[a]) % 255]);
+	return (vdev_raidz_pow2[(exp + (unsigned)vdev_raidz_log2[a]) % 255]);
 }
 
 /*
@@ -311,9 +318,9 @@ gf_mul(const gf_t a, const gf_t b)
 	if (a == 0 || b == 0)
 		return (0);
 
-	logsum = (gf_log_t) vdev_raidz_log2[a] + (gf_log_t) vdev_raidz_log2[b];
+	logsum = (gf_log_t)vdev_raidz_log2[a] + (gf_log_t)vdev_raidz_log2[b];
 
-	return ((gf_t) vdev_raidz_pow2[logsum % 255]);
+	return ((gf_t)vdev_raidz_pow2[logsum % 255]);
 }
 
 static inline gf_t
@@ -325,10 +332,10 @@ gf_div(const gf_t  a, const gf_t b)
 	if (a == 0)
 		return (0);
 
-	logsum = (gf_log_t) 255 + (gf_log_t) vdev_raidz_log2[a] -
-	    (gf_log_t) vdev_raidz_log2[b];
+	logsum = (gf_log_t)255 + (gf_log_t)vdev_raidz_log2[a] -
+	    (gf_log_t)vdev_raidz_log2[b];
 
-	return ((gf_t) vdev_raidz_pow2[logsum % 255]);
+	return ((gf_t)vdev_raidz_pow2[logsum % 255]);
 }
 
 static inline gf_t
@@ -338,9 +345,9 @@ gf_inv(const gf_t a)
 
 	ASSERT3U(a, >, 0);
 
-	logsum = (gf_log_t) 255 - (gf_log_t) vdev_raidz_log2[a];
+	logsum = (gf_log_t)255 - (gf_log_t)vdev_raidz_log2[a];
 
-	return ((gf_t) vdev_raidz_pow2[logsum]);
+	return ((gf_t)vdev_raidz_pow2[logsum]);
 }
 
 static inline gf_t
@@ -353,7 +360,7 @@ static inline gf_t
 gf_exp4(gf_log_t exp)
 {
 	ASSERT3U(exp, <=, 255);
-	return ((gf_t) vdev_raidz_pow2[(2 * exp) % 255]);
+	return ((gf_t)vdev_raidz_pow2[(2 * exp) % 255]);
 }
 
 #ifdef  __cplusplus

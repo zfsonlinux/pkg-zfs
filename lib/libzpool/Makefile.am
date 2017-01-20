@@ -26,11 +26,14 @@ KERNEL_C = \
 	zfs_fletcher_sse.c \
 	zfs_fletcher_avx512.c \
 	zfs_fletcher_aarch64_neon.c \
+	zfs_fletcher_superscalar.c \
+	zfs_fletcher_superscalar4.c \
 	zfs_namecheck.c \
 	zfs_prop.c \
 	zfs_uio.c \
 	zpool_prop.c \
 	zprop_common.c \
+	abd.c \
 	arc.c \
 	blkptr.c \
 	bplist.c \
@@ -102,6 +105,8 @@ KERNEL_C = \
 	vdev_raidz_math_sse2.c \
 	vdev_raidz_math_ssse3.c \
 	vdev_raidz_math_avx2.c \
+	vdev_raidz_math_avx512f.c \
+	vdev_raidz_math_avx512bw.c \
 	vdev_raidz_math_aarch64_neon.c \
 	vdev_raidz_math_aarch64_neonx2.c \
 	vdev_root.c \

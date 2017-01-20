@@ -83,7 +83,7 @@ extern inline dsl_dataset_phys_t *dsl_dataset_phys(dsl_dataset_t *ds);
 extern int spa_asize_inflation;
 
 /*
- * Figure out how much of this delta should be propogated to the dsl_dir
+ * Figure out how much of this delta should be propagated to the dsl_dir
  * layer.  If there's a refreservation, that space has already been
  * partially accounted for in our ancestors.
  */
@@ -705,7 +705,11 @@ dsl_dataset_namelen(dsl_dataset_t *ds)
 	int len;
 	VERIFY0(dsl_dataset_get_snapname(ds));
 	mutex_enter(&ds->ds_lock);
-	len = dsl_dir_namelen(ds->ds_dir) + 1 + strlen(ds->ds_snapname);
+	len = strlen(ds->ds_snapname);
+	/* add '@' if ds is a snap */
+	if (len > 0)
+		len++;
+	len += dsl_dir_namelen(ds->ds_dir);
 	mutex_exit(&ds->ds_lock);
 	return (len);
 }
@@ -1020,19 +1024,6 @@ blkptr_t *
 dsl_dataset_get_blkptr(dsl_dataset_t *ds)
 {
 	return (&dsl_dataset_phys(ds)->ds_bp);
-}
-
-void
-dsl_dataset_set_blkptr(dsl_dataset_t *ds, blkptr_t *bp, dmu_tx_t *tx)
-{
-	ASSERT(dmu_tx_is_syncing(tx));
-	/* If it's the meta-objset, set dp_meta_rootbp */
-	if (ds == NULL) {
-		tx->tx_pool->dp_meta_rootbp = *bp;
-	} else {
-		dmu_buf_will_dirty(ds->ds_dbuf, tx);
-		dsl_dataset_phys(ds)->ds_bp = *bp;
-	}
 }
 
 spa_t *
@@ -2133,8 +2124,7 @@ dsl_dataset_rename_snapshot(const char *fsname,
  * only one long hold on the dataset.  We're not allowed to change anything here
  * so we don't permanently release the long hold or regular hold here.  We want
  * to do this only when syncing to avoid the dataset unexpectedly going away
- * when we release the long hold.  Allow a long hold to exist for volumes, this
- * may occur when asynchronously registering the minor with the kernel.
+ * when we release the long hold.
  */
 static int
 dsl_dataset_handoff_check(dsl_dataset_t *ds, void *owner, dmu_tx_t *tx)
@@ -2149,7 +2139,7 @@ dsl_dataset_handoff_check(dsl_dataset_t *ds, void *owner, dmu_tx_t *tx)
 		dsl_dataset_long_rele(ds, owner);
 	}
 
-	held = (dsl_dataset_long_held(ds) && (ds->ds_owner != zvol_tag));
+	held = dsl_dataset_long_held(ds);
 
 	if (owner != NULL)
 		dsl_dataset_long_hold(ds, owner);
@@ -3546,7 +3536,7 @@ dsl_dataset_space_wouldfree(dsl_dataset_t *firstsnap,
  */
 boolean_t
 dsl_dataset_is_before(dsl_dataset_t *later, dsl_dataset_t *earlier,
-	uint64_t earlier_txg)
+    uint64_t earlier_txg)
 {
 	dsl_pool_t *dp = later->ds_dir->dd_pool;
 	int error;
@@ -3630,7 +3620,6 @@ EXPORT_SYMBOL(dsl_dataset_user_hold);
 EXPORT_SYMBOL(dsl_dataset_user_release);
 EXPORT_SYMBOL(dsl_dataset_get_holds);
 EXPORT_SYMBOL(dsl_dataset_get_blkptr);
-EXPORT_SYMBOL(dsl_dataset_set_blkptr);
 EXPORT_SYMBOL(dsl_dataset_get_spa);
 EXPORT_SYMBOL(dsl_dataset_modified_since_snap);
 EXPORT_SYMBOL(dsl_dataset_space_written);

@@ -1,7 +1,7 @@
 /*
  *  ZPIOS is a heavily modified version of the original PIOS test code.
  *  It is designed to have the test code running in the Linux kernel
- *  against ZFS while still being flexibly controled from user space.
+ *  against ZFS while still being flexibly controlled from user space.
  *
  *  Copyright (C) 2008-2010 Lawrence Livermore National Security, LLC.
  *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
@@ -143,7 +143,7 @@ regex_match(const char *string, char *pattern)
 		return (rc);
 	}
 
-	rc = regexec(&re, string, (size_t) 0, NULL, 0);
+	rc = regexec(&re, string, (size_t)0, NULL, 0);
 	regfree(&re);
 
 	return (rc);
@@ -224,7 +224,7 @@ set_lhi(char *pattern, range_repeat_t *range, char *optarg,
 
 	if ((rc = regex_match(optarg, pattern))) {
 		fprintf(stderr, "Error: Wrong pattern in %s, '%s'\n",
-			arg, optarg);
+		    arg, optarg);
 		return (rc);
 	}
 

@@ -40,6 +40,7 @@
 #include <sys/dsl_pool.h>
 #include <sys/metaslab.h>
 #include <sys/trace_zil.h>
+#include <sys/abd.h>
 
 /*
  * The zfs intent log (ZIL) saves transaction records of system calls
@@ -543,7 +544,7 @@ zil_create(zilog_t *zilog)
 	/*
 	 * Allocate an initial log block if:
 	 *    - there isn't one already
-	 *    - the existing block is the wrong endianess
+	 *    - the existing block is the wrong endianness
 	 */
 	if (BP_IS_HOLE(&blk) || BP_SHOULD_BYTESWAP(&blk)) {
 		tx = dmu_tx_create(zilog->zl_os);
@@ -878,6 +879,7 @@ zil_lwb_write_done(zio_t *zio)
 	 * one in zil_commit_writer(). zil_sync() will only remove
 	 * the lwb if lwb_buf is null.
 	 */
+	abd_put(zio->io_abd);
 	zio_buf_free(lwb->lwb_buf, lwb->lwb_sz);
 	mutex_enter(&zilog->zl_lock);
 	lwb->lwb_zio = NULL;
@@ -914,12 +916,14 @@ zil_lwb_write_init(zilog_t *zilog, lwb_t *lwb)
 	/* Lock so zil_sync() doesn't fastwrite_unmark after zio is created */
 	mutex_enter(&zilog->zl_lock);
 	if (lwb->lwb_zio == NULL) {
+		abd_t *lwb_abd = abd_get_from_buf(lwb->lwb_buf,
+		    BP_GET_LSIZE(&lwb->lwb_blk));
 		if (!lwb->lwb_fastwrite) {
 			metaslab_fastwrite_mark(zilog->zl_spa, &lwb->lwb_blk);
 			lwb->lwb_fastwrite = 1;
 		}
 		lwb->lwb_zio = zio_rewrite(zilog->zl_root_zio, zilog->zl_spa,
-		    0, &lwb->lwb_blk, lwb->lwb_buf, BP_GET_LSIZE(&lwb->lwb_blk),
+		    0, &lwb->lwb_blk, lwb_abd, BP_GET_LSIZE(&lwb->lwb_blk),
 		    zil_lwb_write_done, lwb, ZIO_PRIORITY_SYNC_WRITE,
 		    ZIO_FLAG_CANFAIL | ZIO_FLAG_DONT_PROPAGATE |
 		    ZIO_FLAG_FASTWRITE, &zb);
@@ -2266,6 +2270,7 @@ MODULE_PARM_DESC(zil_replay_disable, "Disable intent logging replay");
 module_param(zfs_nocacheflush, int, 0644);
 MODULE_PARM_DESC(zfs_nocacheflush, "Disable cache flushes");
 
+/* CSTYLED */
 module_param(zil_slog_limit, ulong, 0644);
 MODULE_PARM_DESC(zil_slog_limit, "Max commit bytes to separate log device");
 #endif

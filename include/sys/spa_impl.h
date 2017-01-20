@@ -120,7 +120,8 @@ typedef struct spa_taskqs {
 typedef enum spa_all_vdev_zap_action {
 	AVZ_ACTION_NONE = 0,
 	AVZ_ACTION_DESTROY,	/* Destroy all per-vdev ZAPs and the AVZ. */
-	AVZ_ACTION_REBUILD	/* Populate the new AVZ, see spa_avz_rebuild */
+	AVZ_ACTION_REBUILD,	/* Populate the new AVZ, see spa_avz_rebuild */
+	AVZ_ACTION_INITIALIZE
 } spa_avz_action_t;
 
 struct spa {
@@ -239,6 +240,7 @@ struct spa {
 	uint64_t	spa_autoexpand;		/* lun expansion on/off */
 	ddt_t		*spa_ddt[ZIO_CHECKSUM_FUNCTIONS]; /* in-core DDTs */
 	uint64_t	spa_ddt_stat_object;	/* DDT statistics */
+	uint64_t	spa_dedup_dspace;	/* Cache get_dedup_dspace() */
 	uint64_t	spa_dedup_ditto;	/* dedup ditto threshold */
 	uint64_t	spa_dedup_checksum;	/* default dedup checksum */
 	uint64_t	spa_dspace;		/* dspace in normal class */
@@ -269,7 +271,7 @@ struct spa {
 	uint64_t	spa_errata;		/* errata issues detected */
 	spa_stats_t	spa_stats;		/* assorted spa statistics */
 	hrtime_t	spa_ccw_fail_time;	/* Conf cache write fail time */
-	taskq_t		*spa_zvol_taskq;	/* Taskq for minor managment */
+	taskq_t		*spa_zvol_taskq;	/* Taskq for minor management */
 
 	/*
 	 * spa_refcount & spa_config_lock must be the last elements

@@ -48,15 +48,16 @@ extern "C" {
  * checksum method is added. This method will ignore last (size % 4) bytes of
  * the data buffer.
  */
+void fletcher_init(zio_cksum_t *);
 void fletcher_2_native(const void *, uint64_t, const void *, zio_cksum_t *);
 void fletcher_2_byteswap(const void *, uint64_t, const void *, zio_cksum_t *);
 void fletcher_4_native(const void *, uint64_t, const void *, zio_cksum_t *);
+int fletcher_2_incremental_native(void *, size_t, void *);
+int fletcher_2_incremental_byteswap(void *, size_t, void *);
 void fletcher_4_native_varsize(const void *, uint64_t, zio_cksum_t *);
 void fletcher_4_byteswap(const void *, uint64_t, const void *, zio_cksum_t *);
-void fletcher_4_incremental_native(const void *, uint64_t,
-    zio_cksum_t *);
-void fletcher_4_incremental_byteswap(const void *, uint64_t,
-    zio_cksum_t *);
+int fletcher_4_incremental_native(void *, size_t, void *);
+int fletcher_4_incremental_byteswap(void *, size_t, void *);
 int fletcher_4_impl_set(const char *selector);
 void fletcher_4_init(void);
 void fletcher_4_fini(void);
@@ -64,6 +65,10 @@ void fletcher_4_fini(void);
 
 
 /* Internal fletcher ctx */
+
+typedef struct zfs_fletcher_superscalar {
+	uint64_t v[4];
+} zfs_fletcher_superscalar_t;
 
 typedef struct zfs_fletcher_sse {
 	uint64_t v[2] __attribute__((aligned(16)));
@@ -84,6 +89,7 @@ typedef struct zfs_fletcher_aarch64_neon {
 
 typedef union fletcher_4_ctx {
 	zio_cksum_t scalar;
+	zfs_fletcher_superscalar_t superscalar[4];
 
 #if defined(HAVE_SSE2) || (defined(HAVE_SSE2) && defined(HAVE_SSSE3))
 	zfs_fletcher_sse_t sse[4];
@@ -118,6 +124,8 @@ typedef struct fletcher_4_func {
 	const char *name;
 } fletcher_4_ops_t;
 
+extern const fletcher_4_ops_t fletcher_4_superscalar_ops;
+extern const fletcher_4_ops_t fletcher_4_superscalar4_ops;
 
 #if defined(HAVE_SSE2)
 extern const fletcher_4_ops_t fletcher_4_sse2_ops;

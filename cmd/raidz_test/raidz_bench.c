@@ -53,18 +53,18 @@ bench_init_raidz_map(void)
 
 	/*
 	 * To permit larger column sizes these have to be done
-	 * allocated using aligned alloc instead of zio_data_buf_alloc
+	 * allocated using aligned alloc instead of zio_abd_buf_alloc
 	 */
-	zio_bench.io_data = raidz_alloc(max_data_size);
+	zio_bench.io_abd = raidz_alloc(max_data_size);
 
-	init_zio_data(&zio_bench);
+	init_zio_abd(&zio_bench);
 }
 
 static void
 bench_fini_raidz_maps(void)
 {
 	/* tear down golden zio */
-	raidz_free(zio_bench.io_data, max_data_size);
+	raidz_free(zio_bench.io_abd, max_data_size);
 	bzero(&zio_bench, sizeof (zio_t));
 }
 
@@ -93,7 +93,7 @@ run_gen_bench_impl(const char *impl)
 			start = gethrtime();
 			for (iter = 0; iter < iter_cnt; iter++)
 				vdev_raidz_generate_parity(rm_bench);
-			elapsed = NSEC2SEC((double) (gethrtime() - start));
+			elapsed = NSEC2SEC((double)(gethrtime() - start));
 
 			disksize = (1ULL << ds) / rto_opts.rto_dcols;
 			d_bw = (double)iter_cnt * (double)disksize;
@@ -106,7 +106,7 @@ run_gen_bench_impl(const char *impl)
 			    (1ULL<<ds),
 			    d_bw,
 			    d_bw * (double)(ncols),
-			    (unsigned) iter_cnt);
+			    (unsigned)iter_cnt);
 
 			vdev_raidz_map_free(rm_bench);
 		}
@@ -164,7 +164,7 @@ run_rec_bench_impl(const char *impl)
 				continue;
 
 			rm_bench = vdev_raidz_map_alloc(&zio_bench,
-				BENCH_ASHIFT, ncols, PARITY_PQR);
+			    BENCH_ASHIFT, ncols, PARITY_PQR);
 
 			/* estimate iteration count */
 			iter_cnt = (REC_BENCH_MEMORY);
@@ -177,7 +177,7 @@ run_rec_bench_impl(const char *impl)
 			start = gethrtime();
 			for (iter = 0; iter < iter_cnt; iter++)
 				vdev_raidz_reconstruct(rm_bench, tgt[fn], nbad);
-			elapsed = NSEC2SEC((double) (gethrtime() - start));
+			elapsed = NSEC2SEC((double)(gethrtime() - start));
 
 			disksize = (1ULL << ds) / rto_opts.rto_dcols;
 			d_bw = (double)iter_cnt * (double)(disksize);
@@ -190,7 +190,7 @@ run_rec_bench_impl(const char *impl)
 			    (1ULL<<ds),
 			    d_bw,
 			    d_bw * (double)ncols,
-			    (unsigned) iter_cnt);
+			    (unsigned)iter_cnt);
 
 			vdev_raidz_map_free(rm_bench);
 		}

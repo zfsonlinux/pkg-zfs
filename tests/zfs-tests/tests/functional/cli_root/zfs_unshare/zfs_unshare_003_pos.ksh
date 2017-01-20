@@ -29,7 +29,7 @@
 
 #
 # DESCRIPTION:
-# Verify that a file system and its dependant are unshared when turn off sharenfs
+# Verify that a file system and its dependent are unshared when turn off sharenfs
 # property.
 #
 # STRATEGY:
@@ -68,7 +68,7 @@ function test_snap_unshare # <mntp> <filesystem>
 	prop_value=$(get_prop "sharenfs" $filesystem)
 
 	if [[ $prop_value == "off" ]]; then
-		is_shared $mntp || $UNSHARE -F nfs $mntp
+		is_shared $mntp || unshare_nfs $mntp
 		log_must $ZFS set sharenfs=on $filesystem
 	fi
 
@@ -81,10 +81,10 @@ function test_snap_unshare # <mntp> <filesystem>
 	    log_fail "Snapshot $mntpt@snapshot is shared (set sharenfs)."
 }
 
-log_assert "Verify that a file system and its dependant are unshared."
+log_assert "Verify that a file system and its dependent are unshared."
 log_onexit cleanup
 
 log_must $ZFS snapshot $TESTPOOL/$TESTFS@snapshot
 test_snap_unshare $TESTDIR $TESTPOOL/$TESTFS
 
-log_pass "A file system and its dependant are both unshared as expected."
+log_pass "A file system and its dependent are both unshared as expected."

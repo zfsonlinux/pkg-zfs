@@ -119,6 +119,7 @@ zfs_znode_cache_constructor(void *buf, void *arg, int kmflags)
 	zp->z_dirlocks = NULL;
 	zp->z_acl_cached = NULL;
 	zp->z_xattr_cached = NULL;
+	zp->z_xattr_parent = 0;
 	zp->z_moved = 0;
 	return (0);
 }
@@ -478,6 +479,34 @@ zfs_inode_set_ops(zfs_sb_t *zsb, struct inode *ip)
 	}
 }
 
+void
+zfs_set_inode_flags(znode_t *zp, struct inode *ip)
+{
+	/*
+	 * Linux and Solaris have different sets of file attributes, so we
+	 * restrict this conversion to the intersection of the two.
+	 */
+#ifdef HAVE_INODE_SET_FLAGS
+	unsigned int flags = 0;
+	if (zp->z_pflags & ZFS_IMMUTABLE)
+		flags |= S_IMMUTABLE;
+	if (zp->z_pflags & ZFS_APPENDONLY)
+		flags |= S_APPEND;
+
+	inode_set_flags(ip, flags, S_IMMUTABLE|S_APPEND);
+#else
+	if (zp->z_pflags & ZFS_IMMUTABLE)
+		ip->i_flags |= S_IMMUTABLE;
+	else
+		ip->i_flags &= ~S_IMMUTABLE;
+
+	if (zp->z_pflags & ZFS_APPENDONLY)
+		ip->i_flags |= S_APPEND;
+	else
+		ip->i_flags &= ~S_APPEND;
+#endif
+}
+
 /*
  * Update the embedded inode given the znode.  We should work toward
  * eliminating this function as soon as possible by removing values
@@ -574,9 +603,7 @@ zfs_znode_alloc(zfs_sb_t *zsb, dmu_buf_t *db, int blksz,
 	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_MTIME(zsb), NULL, &mtime, 16);
 	SA_ADD_BULK_ATTR(bulk, count, SA_ZPL_CTIME(zsb), NULL, &ctime, 16);
 
-	if (sa_bulk_lookup(zp->z_sa_hdl, bulk, count) != 0 ||
-		tmp_gen == 0) {
-
+	if (sa_bulk_lookup(zp->z_sa_hdl, bulk, count) != 0 || tmp_gen == 0) {
 		if (hdl == NULL)
 			sa_handle_destroy(zp->z_sa_hdl);
 		zp->z_sa_hdl = NULL;
@@ -589,6 +616,11 @@ zfs_znode_alloc(zfs_sb_t *zsb, dmu_buf_t *db, int blksz,
 	set_nlink(ip, (uint32_t)links);
 	zfs_uid_write(ip, z_uid);
 	zfs_gid_write(ip, z_gid);
+	zfs_set_inode_flags(zp, ip);
+
+	/* Cache the xattr parent id */
+	if (zp->z_pflags & ZFS_XATTR)
+		zp->z_xattr_parent = parent;
 
 	ZFS_TIME_DECODE(&ip->i_atime, atime);
 	ZFS_TIME_DECODE(&ip->i_mtime, mtime);
@@ -759,7 +791,7 @@ zfs_mknode(znode_t *dzp, vattr_t *vap, dmu_tx_t *tx, cred_t *cr,
 		links = 2;
 	} else {
 		size = 0;
-		links = 1;
+		links = (flag & IS_TMPFILE) ? 0 : 1;
 	}
 
 	if (S_ISBLK(vap->va_mode) || S_ISCHR(vap->va_mode))
@@ -915,6 +947,7 @@ void
 zfs_xvattr_set(znode_t *zp, xvattr_t *xvap, dmu_tx_t *tx)
 {
 	xoptattr_t *xoap;
+	boolean_t update_inode = B_FALSE;
 
 	xoap = xva_getxoptattr(xvap);
 	ASSERT(xoap);
@@ -926,7 +959,6 @@ zfs_xvattr_set(znode_t *zp, xvattr_t *xvap, dmu_tx_t *tx)
 		    &times, sizeof (times), tx);
 		XVA_SET_RTN(xvap, XAT_CREATETIME);
 	}
-
 	if (XVA_ISSET_REQ(xvap, XAT_READONLY)) {
 		ZFS_ATTR_SET(zp, ZFS_READONLY, xoap->xoa_readonly,
 		    zp->z_pflags, tx);
@@ -952,11 +984,8 @@ zfs_xvattr_set(znode_t *zp, xvattr_t *xvap, dmu_tx_t *tx)
 		    zp->z_pflags, tx);
 		XVA_SET_RTN(xvap, XAT_IMMUTABLE);
 
-		ZTOI(zp)->i_flags |= S_IMMUTABLE;
-	} else {
-		ZTOI(zp)->i_flags &= ~S_IMMUTABLE;
+		update_inode = B_TRUE;
 	}
-
 	if (XVA_ISSET_REQ(xvap, XAT_NOUNLINK)) {
 		ZFS_ATTR_SET(zp, ZFS_NOUNLINK, xoap->xoa_nounlink,
 		    zp->z_pflags, tx);
@@ -967,12 +996,8 @@ zfs_xvattr_set(znode_t *zp, xvattr_t *xvap, dmu_tx_t *tx)
 		    zp->z_pflags, tx);
 		XVA_SET_RTN(xvap, XAT_APPENDONLY);
 
-		ZTOI(zp)->i_flags |= S_APPEND;
-	} else {
-
-		ZTOI(zp)->i_flags &= ~S_APPEND;
+		update_inode = B_TRUE;
 	}
-
 	if (XVA_ISSET_REQ(xvap, XAT_NODUMP)) {
 		ZFS_ATTR_SET(zp, ZFS_NODUMP, xoap->xoa_nodump,
 		    zp->z_pflags, tx);
@@ -1012,6 +1037,9 @@ zfs_xvattr_set(znode_t *zp, xvattr_t *xvap, dmu_tx_t *tx)
 		    zp->z_pflags, tx);
 		XVA_SET_RTN(xvap, XAT_SPARSE);
 	}
+
+	if (update_inode)
+		zfs_set_inode_flags(zp, ZTOI(zp));
 }
 
 int
@@ -1060,34 +1088,30 @@ again:
 
 		mutex_enter(&zp->z_lock);
 		ASSERT3U(zp->z_id, ==, obj_num);
-		if (zp->z_unlinked) {
-			err = SET_ERROR(ENOENT);
-		} else {
-			/*
-			 * If igrab() returns NULL the VFS has independently
-			 * determined the inode should be evicted and has
-			 * called iput_final() to start the eviction process.
-			 * The SA handle is still valid but because the VFS
-			 * requires that the eviction succeed we must drop
-			 * our locks and references to allow the eviction to
-			 * complete.  The zfs_zget() may then be retried.
-			 *
-			 * This unlikely case could be optimized by registering
-			 * a sops->drop_inode() callback.  The callback would
-			 * need to detect the active SA hold thereby informing
-			 * the VFS that this inode should not be evicted.
-			 */
-			if (igrab(ZTOI(zp)) == NULL) {
-				mutex_exit(&zp->z_lock);
-				sa_buf_rele(db, NULL);
-				zfs_znode_hold_exit(zsb, zh);
-				/* inode might need this to finish evict */
-				cond_resched();
-				goto again;
-			}
-			*zpp = zp;
-			err = 0;
+		/*
+		 * If igrab() returns NULL the VFS has independently
+		 * determined the inode should be evicted and has
+		 * called iput_final() to start the eviction process.
+		 * The SA handle is still valid but because the VFS
+		 * requires that the eviction succeed we must drop
+		 * our locks and references to allow the eviction to
+		 * complete.  The zfs_zget() may then be retried.
+		 *
+		 * This unlikely case could be optimized by registering
+		 * a sops->drop_inode() callback.  The callback would
+		 * need to detect the active SA hold thereby informing
+		 * the VFS that this inode should not be evicted.
+		 */
+		if (igrab(ZTOI(zp)) == NULL) {
+			mutex_exit(&zp->z_lock);
+			sa_buf_rele(db, NULL);
+			zfs_znode_hold_exit(zsb, zh);
+			/* inode might need this to finish evict */
+			cond_resched();
+			goto again;
 		}
+		*zpp = zp;
+		err = 0;
 		mutex_exit(&zp->z_lock);
 		sa_buf_rele(db, NULL);
 		zfs_znode_hold_exit(zsb, zh);
@@ -1221,11 +1245,11 @@ zfs_rezget(znode_t *zp)
 
 	zp->z_unlinked = (ZTOI(zp)->i_nlink == 0);
 	set_nlink(ZTOI(zp), (uint32_t)links);
+	zfs_set_inode_flags(zp, ZTOI(zp));
 
 	zp->z_blksz = doi.doi_data_block_size;
 	zp->z_atime_dirty = 0;
 	zfs_inode_update(zp);
-
 
 	zfs_znode_hold_exit(zsb, zh);
 
@@ -2141,6 +2165,7 @@ zfs_obj_to_stats(objset_t *osp, uint64_t obj, zfs_stat_t *sb,
 EXPORT_SYMBOL(zfs_create_fs);
 EXPORT_SYMBOL(zfs_obj_to_path);
 
+/* CSTYLED */
 module_param(zfs_object_mutex_size, uint, 0644);
 MODULE_PARM_DESC(zfs_object_mutex_size, "Size of znode hold array");
 #endif

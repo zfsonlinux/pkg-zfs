@@ -5,6 +5,7 @@ SUBDIRS = \
 	cache \
 	cachefile \
 	casenorm \
+	chattr \
 	checksum \
 	clean_mirror \
 	cli_root \
@@ -50,6 +51,7 @@ SUBDIRS = \
 	snapused \
 	sparse \
 	threadsappend \
+	tmpfile \
 	truncate \
 	upgrade \
 	userquota \

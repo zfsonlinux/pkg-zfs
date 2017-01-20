@@ -113,7 +113,7 @@ parse_sharetab(sa_handle_impl_t impl_handle) {
 	char line[512];
 	char *eol, *pathname, *resource, *fstype, *options, *description;
 
-	fp = fopen("/etc/dfs/sharetab", "r");
+	fp = fopen(ZFS_SHARETAB, "r");
 
 	if (fp == NULL)
 		return;
@@ -170,7 +170,7 @@ update_sharetab(sa_handle_impl_t impl_handle)
 	sa_share_impl_t impl_share;
 	int temp_fd;
 	FILE *temp_fp;
-	char tempfile[] = "/etc/dfs/sharetab.XXXXXX";
+	char tempfile[] = ZFS_SHARETAB".XXXXXX";
 	sa_fstype_t *fstype;
 	const char *resource;
 
@@ -215,7 +215,7 @@ update_sharetab(sa_handle_impl_t impl_handle)
 	fsync(temp_fd);
 	fclose(temp_fp);
 
-	(void) rename(tempfile, "/etc/dfs/sharetab");
+	(void) rename(tempfile, ZFS_SHARETAB);
 }
 
 typedef struct update_cookie_s {
@@ -498,7 +498,7 @@ sa_enable_share(sa_share_t share, char *protocol)
 
 #ifdef DEBUG
 	fprintf(stderr, "sa_enable_share: share->sharepath=%s, protocol=%s\n",
-		impl_share->sharepath, protocol);
+	    impl_share->sharepath, protocol);
 #endif
 
 	assert(impl_share->handle != NULL);
@@ -539,7 +539,7 @@ sa_disable_share(sa_share_t share, char *protocol)
 
 #ifdef DEBUG
 	fprintf(stderr, "sa_disable_share: share->sharepath=%s, protocol=%s\n",
-		impl_share->sharepath, protocol);
+	    impl_share->sharepath, protocol);
 #endif
 
 	ret = SA_OK;
@@ -697,7 +697,7 @@ sa_parse_legacy_options(sa_group_t group, char *options, char *proto)
 
 #ifdef DEBUG
 	fprintf(stderr, "sa_parse_legacy_options: options=%s, proto=%s\n",
-		options, proto);
+	    options, proto);
 #endif
 
 	fstype = fstypes;

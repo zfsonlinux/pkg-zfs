@@ -456,7 +456,7 @@ zfs_mount(zfs_handle_t *zhp, const char *options, int flags)
 	 */
 	if (!(flags & MS_OVERLAY)) {
 		if (zfs_prop_get(zhp, ZFS_PROP_OVERLAY, overlay,
-			    sizeof (overlay), NULL, NULL, 0, B_FALSE) == 0) {
+		    sizeof (overlay), NULL, NULL, 0, B_FALSE) == 0) {
 			if (strcmp(overlay, "on") == 0) {
 				flags |= MS_OVERLAY;
 			}
@@ -986,6 +986,20 @@ int
 zfs_unshareall_bypath(zfs_handle_t *zhp, const char *mountpoint)
 {
 	return (zfs_unshare_proto(zhp, mountpoint, share_all_proto));
+}
+
+int
+zfs_unshareall_bytype(zfs_handle_t *zhp, const char *mountpoint,
+    const char *proto)
+{
+	if (proto == NULL)
+		return (zfs_unshare_proto(zhp, mountpoint, share_all_proto));
+	if (strcmp(proto, "nfs") == 0)
+		return (zfs_unshare_proto(zhp, mountpoint, nfs_only));
+	else if (strcmp(proto, "smb") == 0)
+		return (zfs_unshare_proto(zhp, mountpoint, smb_only));
+	else
+		return (1);
 }
 
 /*

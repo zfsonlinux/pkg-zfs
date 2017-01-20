@@ -43,7 +43,7 @@ checkstyle: cstyle shellcheck flake8
 
 cstyle:
 	@find ${top_srcdir} -name '*.[hc]' ! -name 'zfs_config.*' \
-		! -name '*.mod.c' -type f -exec scripts/cstyle.pl {} \+
+		! -name '*.mod.c' -type f -exec scripts/cstyle.pl -cpP {} \+
 
 shellcheck:
 	@if type shellcheck > /dev/null 2>&1; then \
@@ -55,11 +55,16 @@ shellcheck:
 		 done; \
 	 fi
 
-lint: cppcheck
+lint: cppcheck paxcheck
 
 cppcheck:
 	@if type cppcheck > /dev/null 2>&1; then \
 		cppcheck --quiet --force --error-exitcode=2 ${top_srcdir}; \
+	fi
+
+paxcheck:
+	@if type scanelf > /dev/null 2>&1; then \
+		scripts/paxcheck.sh ${top_srcdir}; \
 	fi
 
 flake8:

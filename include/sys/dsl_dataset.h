@@ -86,13 +86,6 @@ struct dsl_pool;
 
 /*
  * This field is present (with value=0) if this dataset may contain large
- * blocks (>128KB).  If it is present, then this dataset
- * is counted in the refcount of the SPA_FEATURE_LARGE_BLOCKS feature.
- */
-#define	DS_FIELD_LARGE_BLOCKS "org.open-zfs:large_blocks"
-
-/*
- * This field is present (with value=0) if this dataset may contain large
  * dnodes (>512B).  If it is present, then this dataset is counted in the
  * refcount of the SPA_FEATURE_LARGE_DNODE feature.
  */
@@ -278,7 +271,6 @@ int dsl_dataset_snapshot_tmp(const char *fsname, const char *snapname,
     minor_t cleanup_minor, const char *htag);
 
 blkptr_t *dsl_dataset_get_blkptr(dsl_dataset_t *ds);
-void dsl_dataset_set_blkptr(dsl_dataset_t *ds, blkptr_t *bp, dmu_tx_t *tx);
 
 spa_t *dsl_dataset_get_spa(dsl_dataset_t *ds);
 

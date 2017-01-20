@@ -555,8 +555,7 @@ spa_prop_validate(spa_t *spa, nvlist_t *props)
 
 		case ZPOOL_PROP_FAILUREMODE:
 			error = nvpair_value_uint64(elem, &intval);
-			if (!error && (intval < ZIO_FAILURE_MODE_WAIT ||
-			    intval > ZIO_FAILURE_MODE_PANIC))
+			if (!error && intval > ZIO_FAILURE_MODE_PANIC)
 				error = SET_ERROR(EINVAL);
 
 			/*
@@ -1209,7 +1208,7 @@ spa_deactivate(spa_t *spa)
 	list_destroy(&spa->spa_evicting_os_list);
 	list_destroy(&spa->spa_state_dirty_list);
 
-	taskq_cancel_id(system_taskq, spa->spa_deadman_tqid);
+	taskq_cancel_id(system_delay_taskq, spa->spa_deadman_tqid);
 
 	for (t = 0; t < ZIO_TYPES; t++) {
 		for (q = 0; q < ZIO_TASKQ_TYPES; q++) {
@@ -1314,7 +1313,7 @@ spa_config_parse(spa_t *spa, vdev_t **vdp, nvlist_t *nv, vdev_t *parent,
 static void
 spa_unload(spa_t *spa)
 {
-	int i;
+	int i, c;
 
 	ASSERT(MUTEX_HELD(&spa_namespace_lock));
 
@@ -1329,6 +1328,19 @@ spa_unload(spa_t *spa)
 	if (spa->spa_sync_on) {
 		txg_sync_stop(spa->spa_dsl_pool);
 		spa->spa_sync_on = B_FALSE;
+	}
+
+	/*
+	 * Even though vdev_free() also calls vdev_metaslab_fini, we need
+	 * to call it earlier, before we wait for async i/o to complete.
+	 * This ensures that there is no async metaslab prefetching, by
+	 * calling taskq_wait(mg_taskq).
+	 */
+	if (spa->spa_root_vdev != NULL) {
+		spa_config_enter(spa, SCL_ALL, FTAG, RW_WRITER);
+		for (c = 0; c < spa->spa_root_vdev->vdev_children; c++)
+			vdev_metaslab_fini(spa->spa_root_vdev->vdev_child[c]);
+		spa_config_exit(spa, SCL_ALL, FTAG);
 	}
 
 	/*
@@ -1964,6 +1976,7 @@ spa_load_verify_done(zio_t *zio)
 	int error = zio->io_error;
 	spa_t *spa = zio->io_spa;
 
+	abd_free(zio->io_abd);
 	if (error) {
 		if ((BP_GET_LEVEL(bp) != 0 || DMU_OT_IS_METADATA(type)) &&
 		    type != DMU_OT_INTENT_LOG)
@@ -1971,7 +1984,6 @@ spa_load_verify_done(zio_t *zio)
 		else
 			atomic_inc_64(&sle->sle_data_count);
 	}
-	zio_data_buf_free(zio->io_data, zio->io_size);
 
 	mutex_enter(&spa->spa_scrub_lock);
 	spa->spa_scrub_inflight--;
@@ -1994,7 +2006,6 @@ spa_load_verify_cb(spa_t *spa, zilog_t *zilog, const blkptr_t *bp,
 {
 	zio_t *rio;
 	size_t size;
-	void *data;
 
 	if (bp == NULL || BP_IS_HOLE(bp) || BP_IS_EMBEDDED(bp))
 		return (0);
@@ -2005,12 +2016,11 @@ spa_load_verify_cb(spa_t *spa, zilog_t *zilog, const blkptr_t *bp,
 	 */
 	if (!spa_load_verify_metadata)
 		return (0);
-	if (BP_GET_BUFC_TYPE(bp) == ARC_BUFC_DATA && !spa_load_verify_data)
+	if (!BP_IS_METADATA(bp) && !spa_load_verify_data)
 		return (0);
 
 	rio = arg;
 	size = BP_GET_PSIZE(bp);
-	data = zio_data_buf_alloc(size);
 
 	mutex_enter(&spa->spa_scrub_lock);
 	while (spa->spa_scrub_inflight >= spa_load_verify_maxinflight)
@@ -2018,7 +2028,7 @@ spa_load_verify_cb(spa_t *spa, zilog_t *zilog, const blkptr_t *bp,
 	spa->spa_scrub_inflight++;
 	mutex_exit(&spa->spa_scrub_lock);
 
-	zio_nowait(zio_read(rio, spa, bp, data, size,
+	zio_nowait(zio_read(rio, spa, bp, abd_alloc_for_io(size, B_FALSE), size,
 	    spa_load_verify_done, rio->io_private, ZIO_PRIORITY_SCRUB,
 	    ZIO_FLAG_SPECULATIVE | ZIO_FLAG_CANFAIL |
 	    ZIO_FLAG_SCRUB | ZIO_FLAG_RAW, zb));
@@ -2756,10 +2766,14 @@ spa_load_impl(spa_t *spa, uint64_t pool_guid, nvlist_t *config,
 	error = spa_dir_prop(spa, DMU_POOL_VDEV_ZAP_MAP,
 	    &spa->spa_all_vdev_zaps);
 
-	if (error != ENOENT && error != 0) {
+	if (error == ENOENT) {
+		VERIFY(!nvlist_exists(mos_config,
+		    ZPOOL_CONFIG_HAS_PER_VDEV_ZAPS));
+		spa->spa_avz_action = AVZ_ACTION_INITIALIZE;
+		ASSERT0(vdev_count_verify_zaps(spa->spa_root_vdev));
+	} else if (error != 0) {
 		return (spa_vdev_err(rvd, VDEV_AUX_CORRUPT_DATA, EIO));
-	} else if (error == 0 && !nvlist_exists(mos_config,
-	    ZPOOL_CONFIG_HAS_PER_VDEV_ZAPS)) {
+	} else if (!nvlist_exists(mos_config, ZPOOL_CONFIG_HAS_PER_VDEV_ZAPS)) {
 		/*
 		 * An older version of ZFS overwrote the sentinel value, so
 		 * we have orphaned per-vdev ZAPs in the MOS. Defer their
@@ -3680,7 +3694,7 @@ spa_set_aux_vdevs(spa_aux_vdev_t *sav, nvlist_t **devs, int ndevs,
 		nvlist_t **newdevs;
 
 		/*
-		 * Generate new dev list by concatentating with the
+		 * Generate new dev list by concatenating with the
 		 * current dev list.
 		 */
 		VERIFY(nvlist_lookup_nvlist_array(sav->sav_config, config,
@@ -6125,6 +6139,7 @@ spa_sync_config_object(spa_t *spa, dmu_tx_t *tx)
 	spa_config_enter(spa, SCL_STATE, FTAG, RW_READER);
 
 	ASSERT(spa->spa_avz_action == AVZ_ACTION_NONE ||
+	    spa->spa_avz_action == AVZ_ACTION_INITIALIZE ||
 	    spa->spa_all_vdev_zaps != 0);
 
 	if (spa->spa_avz_action == AVZ_ACTION_REBUILD) {
@@ -6277,7 +6292,7 @@ spa_sync_props(void *arg, dmu_tx_t *tx)
 		case ZPOOL_PROP_VERSION:
 			intval = fnvpair_value_uint64(elem);
 			/*
-			 * The version is synced seperatly before other
+			 * The version is synced separately before other
 			 * properties and should be correct by now.
 			 */
 			ASSERT3U(spa_version(spa), >=, intval);
@@ -6307,7 +6322,7 @@ spa_sync_props(void *arg, dmu_tx_t *tx)
 			 * We need to dirty the configuration on all the vdevs
 			 * so that their labels get updated.  It's unnecessary
 			 * to do this for pool creation since the vdev's
-			 * configuratoin has already been dirtied.
+			 * configuration has already been dirtied.
 			 */
 			if (tx->tx_txg != TXG_INITIAL)
 				vdev_config_dirty(spa->spa_root_vdev);
@@ -6518,8 +6533,8 @@ spa_sync(spa_t *spa, uint64_t txg)
 	tx = dmu_tx_create_assigned(dp, txg);
 
 	spa->spa_sync_starttime = gethrtime();
-	taskq_cancel_id(system_taskq, spa->spa_deadman_tqid);
-	spa->spa_deadman_tqid = taskq_dispatch_delay(system_taskq,
+	taskq_cancel_id(system_delay_taskq, spa->spa_deadman_tqid);
+	spa->spa_deadman_tqid = taskq_dispatch_delay(system_delay_taskq,
 	    spa_deadman, spa, TQ_SLEEP, ddi_get_lbolt() +
 	    NSEC_TO_TICK(spa->spa_deadman_synctime));
 
@@ -6707,7 +6722,7 @@ spa_sync(spa_t *spa, uint64_t txg)
 	}
 	dmu_tx_commit(tx);
 
-	taskq_cancel_id(system_taskq, spa->spa_deadman_tqid);
+	taskq_cancel_id(system_delay_taskq, spa->spa_deadman_tqid);
 	spa->spa_deadman_tqid = 0;
 
 	/*
@@ -6999,6 +7014,7 @@ module_param(spa_load_verify_data, int, 0644);
 MODULE_PARM_DESC(spa_load_verify_data,
 	"Set to traverse data on pool import");
 
+/* CSTYLED */
 module_param(zio_taskq_batch_pct, uint, 0444);
 MODULE_PARM_DESC(zio_taskq_batch_pct,
 	"Percentage of CPUs to run an IO worker thread");

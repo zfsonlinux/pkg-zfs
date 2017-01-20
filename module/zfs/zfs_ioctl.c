@@ -467,6 +467,14 @@ zfs_secpolicy_write_perms(const char *name, const char *perm, cred_t *cr)
 	dsl_dataset_t *ds;
 	dsl_pool_t *dp;
 
+	/*
+	 * First do a quick check for root in the global zone, which
+	 * is allowed to do all write_perms.  This ensures that zfs_ioc_*
+	 * will get to handle nonexistent datasets.
+	 */
+	if (INGLOBALZONE(curproc) && secpolicy_zfs(cr) == 0)
+		return (0);
+
 	error = dsl_pool_hold(name, FTAG, &dp);
 	if (error != 0)
 		return (error);
@@ -2033,8 +2041,10 @@ zfs_ioc_objset_stats_impl(zfs_cmd_t *zc, objset_t *os)
 		if (!zc->zc_objset_stats.dds_inconsistent &&
 		    dmu_objset_type(os) == DMU_OST_ZVOL) {
 			error = zvol_get_stats(os, nv);
-			if (error == EIO)
+			if (error == EIO) {
+				nvlist_free(nv);
 				return (error);
+			}
 			VERIFY0(error);
 		}
 		if (error == 0)
@@ -3631,6 +3641,7 @@ static int
 zfs_ioc_rollback(const char *fsname, nvlist_t *args, nvlist_t *outnvl)
 {
 	zfs_sb_t *zsb;
+	zvol_state_t *zv;
 	int error;
 
 	if (get_zfs_sb(fsname, &zsb) == 0) {
@@ -3643,6 +3654,9 @@ zfs_ioc_rollback(const char *fsname, nvlist_t *args, nvlist_t *outnvl)
 			error = error ? error : resume_err;
 		}
 		deactivate_super(zsb->z_sb);
+	} else if ((zv = zvol_suspend(fsname)) != NULL) {
+		error = dsl_dataset_rollback(fsname, zvol_tag(zv), outnvl);
+		zvol_resume(zv);
 	} else {
 		error = dsl_dataset_rollback(fsname, NULL, outnvl);
 	}
@@ -3881,7 +3895,7 @@ zfs_check_settable(const char *dsname, nvpair_t *pair, cred_t *cr)
 			 * because GRUB doesn't support them.
 			 */
 			if (zfs_is_bootfs(dsname) &&
-				intval != ZFS_DNSIZE_LEGACY) {
+			    intval != ZFS_DNSIZE_LEGACY) {
 				return (SET_ERROR(EDOM));
 			}
 
@@ -4230,6 +4244,7 @@ zfs_ioc_recv_impl(char *tofs, char *tosnap, char *origin,
 
 	if (error == 0) {
 		zfs_sb_t *zsb = NULL;
+		zvol_state_t *zv = NULL;
 
 		if (get_zfs_sb(tofs, &zsb) == 0) {
 			/* online recv */
@@ -4245,6 +4260,9 @@ zfs_ioc_recv_impl(char *tofs, char *tosnap, char *origin,
 				error = zfs_resume_fs(zsb, tofs);
 			error = error ? error : end_err;
 			deactivate_super(zsb->z_sb);
+		} else if ((zv = zvol_suspend(tofs)) != NULL) {
+			error = dmu_recv_end(&drc, zvol_tag(zv));
+			zvol_resume(zv);
 		} else {
 			error = dmu_recv_end(&drc, NULL);
 		}
@@ -4273,7 +4291,7 @@ zfs_ioc_recv_impl(char *tofs, char *tosnap, char *origin,
 
 	*read_bytes = off - input_fp->f_offset;
 	if (VOP_SEEK(input_fp->f_vnode, input_fp->f_offset, &off, NULL) == 0)
-	    input_fp->f_offset = off;
+		input_fp->f_offset = off;
 
 #ifdef	DEBUG
 	if (zfs_ioc_recv_inject_err) {
@@ -4305,7 +4323,7 @@ zfs_ioc_recv_impl(char *tofs, char *tosnap, char *origin,
 		/*
 		 * dsl_props_set() will not convert RECEIVED to LOCAL on or
 		 * after SPA_VERSION_RECVD_PROPS, so we need to specify LOCAL
-		 * explictly if we're restoring local properties cleared in the
+		 * explicitly if we're restoring local properties cleared in the
 		 * first new-style receive.
 		 */
 		if (origprops != NULL &&
@@ -4461,7 +4479,7 @@ zfs_ioc_recv_new(const char *fsname, nvlist_t *innvl, nvlist_t *outnvl)
 		return (error);
 
 	error = nvlist_lookup_byte_array(innvl, "begin_record",
-	    (uchar_t **) &begin_record, &begin_record_size);
+	    (uchar_t **)&begin_record, &begin_record_size);
 	if (error != 0 || begin_record_size != sizeof (*begin_record))
 		return (SET_ERROR(EINVAL));
 
@@ -5354,7 +5372,7 @@ zfs_ioc_events_next(zfs_cmd_t *zc)
 
 	do {
 		error = zfs_zevent_next(ze, &event,
-			&zc->zc_nvlist_dst_size, &dropped);
+		    &zc->zc_nvlist_dst_size, &dropped);
 		if (event != NULL) {
 			zc->zc_cookie = dropped;
 			error = put_nvlist(zc, event);
@@ -5560,7 +5578,7 @@ zfs_ioc_send_new(const char *snapname, nvlist_t *innvl, nvlist_t *outnvl)
 
 	off = fp->f_offset;
 	error = dmu_send(snapname, fromname, embedok, largeblockok, compressok,
-		fd, resumeobj, resumeoff, fp->f_vnode, &off);
+	    fd, resumeobj, resumeoff, fp->f_vnode, &off);
 
 	if (VOP_SEEK(fp->f_vnode, fp->f_offset, &off, NULL) == 0)
 		fp->f_offset = off;
@@ -5629,7 +5647,7 @@ zfs_ioc_send_space(const char *snapname, nvlist_t *innvl, nvlist_t *outnvl)
 			if (error != 0)
 				goto out;
 			error = dmu_send_estimate(tosnap, fromsnap, compressok,
-				&space);
+			    &space);
 			dsl_dataset_rele(fromsnap, FTAG);
 		} else if (strchr(fromname, '#') != NULL) {
 			/*
@@ -5765,7 +5783,7 @@ zfs_ioctl_register_dataset_read(zfs_ioc_t ioc, zfs_ioc_legacy_func_t *func)
 
 static void
 zfs_ioctl_register_dataset_modify(zfs_ioc_t ioc, zfs_ioc_legacy_func_t *func,
-	zfs_secpolicy_func_t *secpolicy)
+    zfs_secpolicy_func_t *secpolicy)
 {
 	zfs_ioctl_register_legacy(ioc, func, secpolicy,
 	    DATASET_NAME, B_TRUE, POOL_CHECK_SUSPENDED | POOL_CHECK_READONLY);

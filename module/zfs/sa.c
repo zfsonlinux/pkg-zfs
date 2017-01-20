@@ -202,7 +202,7 @@ sa_attr_type_t sa_legacy_zpl_layout[] = {
  */
 sa_attr_type_t sa_dummy_zpl_layout[] = { 0 };
 
-static int sa_legacy_attr_count = 16;
+static int sa_legacy_attr_count = ARRAY_SIZE(sa_legacy_attrs);
 static kmem_cache_t *sa_cache = NULL;
 
 /*ARGSUSED*/
@@ -1245,7 +1245,7 @@ sa_byteswap(sa_handle_t *hdl, sa_buf_type_t buftype)
 	sa_hdr_phys->sa_layout_info = BSWAP_16(sa_hdr_phys->sa_layout_info);
 
 	/*
-	 * Determine number of variable lenghts in header
+	 * Determine number of variable lengths in header
 	 * The standard 8 byte header has one for free and a
 	 * 16 byte header would have 4 + 1;
 	 */
@@ -1644,8 +1644,11 @@ sa_replace_all_by_template(sa_handle_t *hdl, sa_bulk_attr_t *attr_desc,
 }
 
 /*
- * add/remove/replace a single attribute and then rewrite the entire set
+ * Add/remove a single attribute or replace a variable-sized attribute value
+ * with a value of a different size, and then rewrite the entire set
  * of attributes.
+ * Same-length attribute value replacement (including fixed-length attributes)
+ * is handled more efficiently by the upper layers.
  */
 static int
 sa_modify_attrs(sa_handle_t *hdl, sa_attr_type_t newattr,
@@ -1662,7 +1665,7 @@ sa_modify_attrs(sa_handle_t *hdl, sa_attr_type_t newattr,
 	int spill_data_size = 0;
 	int spill_attr_count = 0;
 	int error;
-	uint16_t length;
+	uint16_t length, reg_length;
 	int i, j, k, length_idx;
 	sa_hdr_phys_t *hdr;
 	sa_idx_tab_t *idx_tab;
@@ -1690,7 +1693,7 @@ sa_modify_attrs(sa_handle_t *hdl, sa_attr_type_t newattr,
 
 	if ((error = sa_get_spill(hdl)) == 0) {
 		spill_data_size = hdl->sa_spill->db_size;
-		old_data[1] = zio_buf_alloc(spill_data_size);
+		old_data[1] = vmem_alloc(spill_data_size, KM_SLEEP);
 		bcopy(hdl->sa_spill->db_data, old_data[1],
 		    hdl->sa_spill->db_size);
 		spill_attr_count =
@@ -1731,20 +1734,36 @@ sa_modify_attrs(sa_handle_t *hdl, sa_attr_type_t newattr,
 			sa_attr_type_t attr;
 
 			attr = idx_tab->sa_layout->lot_attrs[i];
-			length = SA_REGISTERED_LEN(sa, attr);
+			reg_length = SA_REGISTERED_LEN(sa, attr);
+			if (reg_length == 0) {
+				length = hdr->sa_lengths[length_idx];
+				length_idx++;
+			} else {
+				length = reg_length;
+			}
 			if (attr == newattr) {
-				if (length == 0)
-					++length_idx;
+				/*
+				 * There is nothing to do for SA_REMOVE,
+				 * so it is just skipped.
+				 */
 				if (action == SA_REMOVE)
 					continue;
-				ASSERT(length == 0);
-				ASSERT(action == SA_REPLACE);
+
+				/*
+				 * Duplicate attributes are not allowed, so the
+				 * action can not be SA_ADD here.
+				 */
+				ASSERT3S(action, ==, SA_REPLACE);
+
+				/*
+				 * Only a variable-sized attribute can be
+				 * replaced here, and its size must be changing.
+				 */
+				ASSERT3U(reg_length, ==, 0);
+				ASSERT3U(length, !=, buflen);
 				SA_ADD_BULK_ATTR(attr_desc, j, attr,
 				    locator, datastart, buflen);
 			} else {
-				if (length == 0)
-					length = hdr->sa_lengths[length_idx++];
-
 				SA_ADD_BULK_ATTR(attr_desc, j, attr,
 				    NULL, (void *)
 				    (TOC_OFF(idx_tab->sa_idx_tab[attr]) +
@@ -1760,20 +1779,19 @@ sa_modify_attrs(sa_handle_t *hdl, sa_attr_type_t newattr,
 		}
 	}
 	if (action == SA_ADD) {
-		length = SA_REGISTERED_LEN(sa, newattr);
-		if (length == 0) {
-			length = buflen;
-		}
+		reg_length = SA_REGISTERED_LEN(sa, newattr);
+		IMPLY(reg_length != 0, reg_length == buflen);
 		SA_ADD_BULK_ATTR(attr_desc, j, newattr, locator,
-		    datastart, length);
+		    datastart, buflen);
 	}
+	ASSERT3U(j, ==, attr_count);
 
 	error = sa_build_layouts(hdl, attr_desc, attr_count, tx);
 
 	if (old_data[0])
 		kmem_free(old_data[0], bonus_data_size);
 	if (old_data[1])
-		zio_buf_free(old_data[1], spill_data_size);
+		vmem_free(old_data[1], spill_data_size);
 	kmem_free(attr_desc, sizeof (sa_bulk_attr_t) * attr_count);
 
 	return (error);
@@ -1839,26 +1857,6 @@ sa_update(sa_handle_t *hdl, sa_attr_type_t type,
 	bulk.sa_data_func = NULL;
 	bulk.sa_length = buflen;
 	bulk.sa_data = buf;
-
-	mutex_enter(&hdl->sa_lock);
-	error = sa_bulk_update_impl(hdl, &bulk, 1, tx);
-	mutex_exit(&hdl->sa_lock);
-	return (error);
-}
-
-int
-sa_update_from_cb(sa_handle_t *hdl, sa_attr_type_t attr,
-    uint32_t buflen, sa_data_locator_t *locator, void *userdata, dmu_tx_t *tx)
-{
-	int error;
-	sa_bulk_attr_t bulk;
-
-	VERIFY3U(buflen, <=, SA_ATTR_MAX_LEN);
-
-	bulk.sa_attr = attr;
-	bulk.sa_data = userdata;
-	bulk.sa_data_func = locator;
-	bulk.sa_length = buflen;
 
 	mutex_enter(&hdl->sa_lock);
 	error = sa_bulk_update_impl(hdl, &bulk, 1, tx);
@@ -2044,7 +2042,6 @@ EXPORT_SYMBOL(sa_bulk_lookup);
 EXPORT_SYMBOL(sa_bulk_lookup_locked);
 EXPORT_SYMBOL(sa_bulk_update);
 EXPORT_SYMBOL(sa_size);
-EXPORT_SYMBOL(sa_update_from_cb);
 EXPORT_SYMBOL(sa_object_info);
 EXPORT_SYMBOL(sa_object_size);
 EXPORT_SYMBOL(sa_get_userdata);

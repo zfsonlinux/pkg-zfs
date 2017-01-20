@@ -21,7 +21,7 @@
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2012 Cyril Plisko. All rights reserved.
- * Copyright (c) 2013 by Delphix. All rights reserved.
+ * Copyright (c) 2013, 2015 by Delphix. All rights reserved.
  */
 
 #include <sys/types.h>
@@ -58,7 +58,7 @@
 
 static void
 zfs_init_vattr(vattr_t *vap, uint64_t mask, uint64_t mode,
-	uint64_t uid, uint64_t gid, uint64_t rdev, uint64_t nodeid)
+    uint64_t uid, uint64_t gid, uint64_t rdev, uint64_t nodeid)
 {
 	bzero(vap, sizeof (*vap));
 	vap->va_mask = (uint_t)mask;
@@ -870,7 +870,7 @@ zfs_replay_acl_v0(zfs_sb_t *zsb, lr_acl_v0_t *lr, boolean_t byteswap)
  * The FUID table index may no longer be valid and
  * during zfs_create() a new index may be assigned.
  * Because of this the log will contain the original
- * doman+rid in order to create a new FUID.
+ * domain+rid in order to create a new FUID.
  *
  * The individual ACEs may contain an ephemeral uid/gid which is no
  * longer valid and will need to be replaced with an actual FUID.

@@ -222,7 +222,7 @@ spa_config_write(spa_config_dirent_t *dp, nvlist_t *nvl)
  * the configuration has been synced to the MOS. This exposes a window where
  * the MOS config will have been updated but the cache file has not. If
  * the system were to crash at that instant then the cached config may not
- * contain the correct information to open the pool and an explicity import
+ * contain the correct information to open the pool and an explicit import
  * would be required.
  */
 void
@@ -419,14 +419,14 @@ spa_config_generate(spa_t *spa, vdev_t *vd, uint64_t txg, int getstats)
 	 */
 	if (spa->spa_import_flags & ZFS_IMPORT_TEMP_NAME) {
 		VERIFY0(nvlist_lookup_string(spa->spa_config,
-			ZPOOL_CONFIG_POOL_NAME, &pool_name));
+		    ZPOOL_CONFIG_POOL_NAME, &pool_name));
 	} else
 		pool_name = spa_name(spa);
 
 	config = fnvlist_alloc();
 
 	fnvlist_add_uint64(config, ZPOOL_CONFIG_VERSION, spa_version(spa));
-	fnvlist_add_string(config, ZPOOL_CONFIG_POOL_NAME, spa_name(spa));
+	fnvlist_add_string(config, ZPOOL_CONFIG_POOL_NAME, pool_name);
 	fnvlist_add_uint64(config, ZPOOL_CONFIG_POOL_STATE, spa_state(spa));
 	fnvlist_add_uint64(config, ZPOOL_CONFIG_POOL_TXG, txg);
 	fnvlist_add_uint64(config, ZPOOL_CONFIG_POOL_GUID, spa_guid(spa));

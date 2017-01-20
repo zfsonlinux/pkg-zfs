@@ -76,7 +76,13 @@ TEST_ZCONFIG_OPTIONS="-c -s10"
 case "$BB_NAME" in
 Amazon*)
     ;;
-CentOS*)
+CentOS-7*)
+    # ZFS enabled xfstests fails to build
+    TEST_XFSTESTS_SKIP="yes"
+    # Sporadic VERIFY(!zilog_is_dirty(zilog)) failed
+    TEST_ZILTEST_SKIP="yes"
+    ;;
+CentOS-6*)
     # Sporadic VERIFY(!zilog_is_dirty(zilog)) failed
     TEST_ZILTEST_SKIP="yes"
     ;;
@@ -88,8 +94,24 @@ RHEL*)
     ;;
 SUSE*)
     ;;
+Ubuntu-16.04*)
+    # ZFS enabled xfstests fails to build
+    TEST_XFSTESTS_SKIP="yes"
+    TEST_FILEBENCH_SKIP="yes"
+    ;;
 Ubuntu*)
     ;;
 *)
     ;;
 esac
+
+###
+#
+# Disable the following test suites on 32-bit systems.
+#
+if [ $(getconf LONG_BIT) = "32" ]; then
+    TEST_ZTEST_SKIP="yes"
+    TEST_FILEBENCH_SKIP="yes"
+    TEST_XFSTESTS_SKIP="yes"
+    TEST_ZFSSTRESS_SKIP="yes"
+fi

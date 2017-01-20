@@ -82,7 +82,8 @@ typedef enum dmu_objset_type {
  * the property table in module/zcommon/zfs_prop.c.
  */
 typedef enum {
-	ZFS_PROP_TYPE,
+	ZFS_PROP_BAD = -1,
+	ZFS_PROP_TYPE = 0,
 	ZFS_PROP_CREATION,
 	ZFS_PROP_USED,
 	ZFS_PROP_AVAILABLE,
@@ -894,7 +895,7 @@ typedef struct vdev_stat_ex {
  * is passed between kernel and userland as an nvlist uint64 array.
  */
 typedef struct ddt_object {
-	uint64_t	ddo_count;	/* number of elments in ddt 	*/
+	uint64_t	ddo_count;	/* number of elements in ddt 	*/
 	uint64_t	ddo_dspace;	/* size of ddt on disk		*/
 	uint64_t	ddo_mspace;	/* size of ddt in-core		*/
 } ddt_object_t;
@@ -917,6 +918,7 @@ typedef struct ddt_histogram {
 #define	ZVOL_DRIVER	"zvol"
 #define	ZFS_DRIVER	"zfs"
 #define	ZFS_DEV		"/dev/zfs"
+#define	ZFS_SHARETAB	"/etc/dfs/sharetab"
 
 /* general zvol path */
 #define	ZVOL_DIR	"/dev"

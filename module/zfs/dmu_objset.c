@@ -63,7 +63,7 @@
 krwlock_t os_lock;
 
 /*
- * Tunable to overwrite the maximum number of threads for the parallization
+ * Tunable to overwrite the maximum number of threads for the parallelization
  * of dmu_objset_find_dp, needed to speed up the import of pools with many
  * datasets.
  * Default is 4 times the number of leaf vdevs.
@@ -1118,7 +1118,7 @@ dmu_objset_upgrade(objset_t *os, dmu_objset_upgrade_cb_t cb)
 		os->os_upgrade_id = taskq_dispatch(
 		    os->os_spa->spa_upgrade_taskq,
 		    dmu_objset_upgrade_task_cb, os, TQ_SLEEP);
-		if (os->os_upgrade_id == 0)
+		if (os->os_upgrade_id == TASKQID_INVALID)
 			os->os_upgrade_status = ENOMEM;
 	}
 	mutex_exit(&os->os_upgrade_lock);
@@ -1771,6 +1771,15 @@ dmu_objset_userobjspace_upgrade(objset_t *os)
 	dmu_objset_upgrade(os, dmu_objset_userobjspace_upgrade_cb);
 }
 
+boolean_t
+dmu_objset_userobjspace_upgradable(objset_t *os)
+{
+	return (dmu_objset_type(os) == DMU_OST_ZFS &&
+	    !dmu_objset_is_snapshot(os) &&
+	    dmu_objset_userobjused_enabled(os) &&
+	    !dmu_objset_userobjspace_present(os));
+}
+
 void
 dmu_objset_space(objset_t *os, uint64_t *refdbytesp, uint64_t *availbytesp,
     uint64_t *usedobjsp, uint64_t *availobjsp)
@@ -2334,5 +2343,6 @@ EXPORT_SYMBOL(dmu_objset_userspace_upgrade);
 EXPORT_SYMBOL(dmu_objset_userspace_present);
 EXPORT_SYMBOL(dmu_objset_userobjused_enabled);
 EXPORT_SYMBOL(dmu_objset_userobjspace_upgrade);
+EXPORT_SYMBOL(dmu_objset_userobjspace_upgradable);
 EXPORT_SYMBOL(dmu_objset_userobjspace_present);
 #endif

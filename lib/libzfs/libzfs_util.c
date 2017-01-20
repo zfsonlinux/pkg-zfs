@@ -617,7 +617,7 @@ zfs_nicenum_format(uint64_t num, char *buf, size_t buflen,
 	double val;
 
 	if (format == ZFS_NICENUM_RAW) {
-		snprintf(buf, buflen, "%llu", (u_longlong_t) num);
+		snprintf(buf, buflen, "%llu", (u_longlong_t)num);
 		return;
 	}
 
@@ -633,12 +633,12 @@ zfs_nicenum_format(uint64_t num, char *buf, size_t buflen,
 	if ((format == ZFS_NICENUM_TIME) && (num == 0)) {
 		(void) snprintf(buf, buflen, "-");
 	} else if ((index == 0) || ((num %
-	    (uint64_t) powl(k_unit[format], index)) == 0)) {
+	    (uint64_t)powl(k_unit[format], index)) == 0)) {
 		/*
 		 * If this is an even multiple of the base, always display
 		 * without any decimal precision.
 		 */
-		(void) snprintf(buf, buflen, "%llu%s", (u_longlong_t) n, u);
+		(void) snprintf(buf, buflen, "%llu%s", (u_longlong_t)n, u);
 
 	} else {
 		/*
@@ -652,8 +652,8 @@ zfs_nicenum_format(uint64_t num, char *buf, size_t buflen,
 		 */
 		int i;
 		for (i = 2; i >= 0; i--) {
-			val = (double) num /
-			    (uint64_t) powl(k_unit[format], index);
+			val = (double)num /
+			    (uint64_t)powl(k_unit[format], index);
 
 			/*
 			 * Don't print floating point values for time.  Note,
@@ -752,7 +752,7 @@ libzfs_run_process(const char *path, char *argv[], int flags)
 		int status;
 
 		while ((error = waitpid(pid, &status, 0)) == -1 &&
-			errno == EINTR);
+		    errno == EINTR) { }
 		if (error < 0 || !WIFEXITED(status))
 			return (-1);
 
@@ -863,12 +863,13 @@ libzfs_init(void)
 		return (NULL);
 	}
 
-	hdl->libzfs_sharetab = fopen("/etc/dfs/sharetab", "r");
+	hdl->libzfs_sharetab = fopen(ZFS_SHARETAB, "r");
 
 	if (libzfs_core_init() != 0) {
 		(void) close(hdl->libzfs_fd);
 		(void) fclose(hdl->libzfs_mnttab);
-		(void) fclose(hdl->libzfs_sharetab);
+		if (hdl->libzfs_sharetab)
+			(void) fclose(hdl->libzfs_sharetab);
 		free(hdl);
 		return (NULL);
 	}
@@ -1133,6 +1134,45 @@ zfs_strcmp_pathname(char *name, char *cmp, int wholedisk)
 		return (ENOENT);
 
 	return (0);
+}
+
+/*
+ * Given a full path to a device determine if that device appears in the
+ * import search path.  If it does return the first match and store the
+ * index in the passed 'order' variable, otherwise return an error.
+ */
+int
+zfs_path_order(char *name, int *order)
+{
+	int i = 0, error = ENOENT;
+	char *dir, *env, *envdup;
+
+	env = getenv("ZPOOL_IMPORT_PATH");
+	if (env) {
+		envdup = strdup(env);
+		dir = strtok(envdup, ":");
+		while (dir) {
+			if (strncmp(name, dir, strlen(dir)) == 0) {
+				*order = i;
+				error = 0;
+				break;
+			}
+			dir = strtok(NULL, ":");
+			i++;
+		}
+		free(envdup);
+	} else {
+		for (i = 0; i < DEFAULT_IMPORT_PATH_SIZE; i++) {
+			if (strncmp(name, zpool_default_import_path[i],
+			    strlen(zpool_default_import_path[i])) == 0) {
+				*order = i;
+				error = 0;
+				break;
+			}
+		}
+	}
+
+	return (error);
 }
 
 /*

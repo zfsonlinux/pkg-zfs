@@ -34,6 +34,8 @@ static const char *raidz_impl_names[] = {
 	"sse2",
 	"ssse3",
 	"avx2",
+	"avx512f",
+	"avx512bw",
 	"aarch64_neon",
 	"aarch64_neonx2",
 	NULL
@@ -102,11 +104,11 @@ static inline size_t ilog2(size_t a)
 #define	SEP    "----------------\n"
 
 
-#define	raidz_alloc(size)	zio_data_buf_alloc(size)
-#define	raidz_free(p, size)	zio_data_buf_free(p, size)
+#define	raidz_alloc(size)	abd_alloc(size, B_FALSE)
+#define	raidz_free(p, size)	abd_free(p)
 
 
-void init_zio_data(zio_t *zio);
+void init_zio_abd(zio_t *zio);
 
 void run_raidz_benchmark(void);
 

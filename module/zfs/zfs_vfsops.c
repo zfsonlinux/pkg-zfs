@@ -744,19 +744,17 @@ zfs_sb_create(const char *osname, zfs_mntopts_t *zmo, zfs_sb_t **zsbp)
 	zsb = kmem_zalloc(sizeof (zfs_sb_t), KM_SLEEP);
 
 	/*
+	 * Optional temporary mount options, free'd in zfs_sb_free().
+	 */
+	zsb->z_mntopts = (zmo ? zmo : zfs_mntopts_alloc());
+
+	/*
 	 * We claim to always be readonly so we can open snapshots;
 	 * other ZPL code will prevent us from writing to snapshots.
 	 */
 	error = dmu_objset_own(osname, DMU_OST_ZFS, B_TRUE, zsb, &os);
-	if (error) {
-		kmem_free(zsb, sizeof (zfs_sb_t));
-		return (error);
-	}
-
-	/*
-	 * Optional temporary mount options, free'd in zfs_sb_free().
-	 */
-	zsb->z_mntopts = (zmo ? zmo : zfs_mntopts_alloc());
+	if (error)
+		goto out_zmo;
 
 	/*
 	 * Initialize the zfs-specific filesystem structure.
@@ -896,8 +894,9 @@ zfs_sb_create(const char *osname, zfs_mntopts_t *zmo, zfs_sb_t **zsbp)
 
 out:
 	dmu_objset_disown(os, zsb);
+out_zmo:
 	*zsbp = NULL;
-
+	zfs_mntopts_free(zsb->z_mntopts);
 	kmem_free(zsb, sizeof (zfs_sb_t));
 	return (error);
 }
@@ -911,13 +910,6 @@ zfs_sb_setup(zfs_sb_t *zsb, boolean_t mounting)
 	error = zfs_register_callbacks(zsb);
 	if (error)
 		return (error);
-
-	/*
-	 * Set the objset user_ptr to track its zsb.
-	 */
-	mutex_enter(&zsb->z_os->os_user_ptr_lock);
-	dmu_objset_set_user(zsb->z_os, zsb);
-	mutex_exit(&zsb->z_os->os_user_ptr_lock);
 
 	zsb->z_log = zil_open(zsb->z_os, zfs_get_data);
 
@@ -981,6 +973,13 @@ zfs_sb_setup(zfs_sb_t *zsb, boolean_t mounting)
 		if (readonly != 0)
 			readonly_changed_cb(zsb, B_TRUE);
 	}
+
+	/*
+	 * Set the objset user_ptr to track its zsb.
+	 */
+	mutex_enter(&zsb->z_os->os_user_ptr_lock);
+	dmu_objset_set_user(zsb->z_os, zsb);
+	mutex_exit(&zsb->z_os->os_user_ptr_lock);
 
 	return (0);
 }
@@ -1222,8 +1221,9 @@ zfs_sb_prune(struct super_block *sb, unsigned long nr_to_scan, int *objects)
 	defined(SHRINKER_NUMA_AWARE)
 	if (sb->s_shrink.flags & SHRINKER_NUMA_AWARE) {
 		*objects = 0;
-		for_each_online_node(sc.nid)
+		for_each_online_node(sc.nid) {
 			*objects += (*shrinker->scan_objects)(shrinker, &sc);
+		}
 	} else {
 			*objects = (*shrinker->scan_objects)(shrinker, &sc);
 	}
@@ -1344,7 +1344,7 @@ zfs_sb_teardown(zfs_sb_t *zsb, boolean_t unmounting)
 	if (!unmounting) {
 		mutex_enter(&zsb->z_znodes_lock);
 		for (zp = list_head(&zsb->z_all_znodes); zp != NULL;
-		zp = list_next(&zsb->z_all_znodes, zp)) {
+		    zp = list_next(&zsb->z_all_znodes, zp)) {
 			if (zp->z_sa_hdl)
 				zfs_znode_dmu_fini(zp);
 		}
@@ -1919,7 +1919,11 @@ zfs_init(void)
 void
 zfs_fini(void)
 {
-	taskq_wait_outstanding(system_taskq, 0);
+	/*
+	 * we don't use outstanding because zpl_posix_acl_free might add more.
+	 */
+	taskq_wait(system_delay_taskq);
+	taskq_wait(system_taskq);
 	unregister_filesystem(&zpl_fs_type);
 	zfs_znode_fini();
 	zfsctl_fini();

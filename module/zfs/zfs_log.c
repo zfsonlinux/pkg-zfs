@@ -20,6 +20,7 @@
  */
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015 by Delphix. All rights reserved.
  */
 
 
@@ -212,6 +213,34 @@ zfs_log_fuid_domains(zfs_fuid_info_t *fuidp, void *start)
 }
 
 /*
+ * If zp is an xattr node, check whether the xattr owner is unlinked.
+ * We don't want to log anything if the owner is unlinked.
+ */
+static int
+zfs_xattr_owner_unlinked(znode_t *zp)
+{
+	int unlinked = 0;
+	znode_t *dzp;
+	igrab(ZTOI(zp));
+	/*
+	 * if zp is XATTR node, keep walking up via z_xattr_parent until we
+	 * get the owner
+	 */
+	while (zp->z_pflags & ZFS_XATTR) {
+		ASSERT3U(zp->z_xattr_parent, !=, 0);
+		if (zfs_zget(ZTOZSB(zp), zp->z_xattr_parent, &dzp) != 0) {
+			unlinked = 1;
+			break;
+		}
+		iput(ZTOI(zp));
+		zp = dzp;
+		unlinked = zp->z_unlinked;
+	}
+	iput(ZTOI(zp));
+	return (unlinked);
+}
+
+/*
  * Handles TX_CREATE, TX_CREATE_ATTR, TX_MKDIR, TX_MKDIR_ATTR and
  * TK_MKXATTR transactions.
  *
@@ -247,7 +276,7 @@ zfs_log_create(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
 	size_t namesize = strlen(name) + 1;
 	size_t fuidsz = 0;
 
-	if (zil_replaying(zilog, tx))
+	if (zil_replaying(zilog, tx) || zfs_xattr_owner_unlinked(dzp))
 		return;
 
 	/*
@@ -346,13 +375,13 @@ zfs_log_create(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
  */
 void
 zfs_log_remove(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
-	znode_t *dzp, char *name, uint64_t foid)
+    znode_t *dzp, char *name, uint64_t foid)
 {
 	itx_t *itx;
 	lr_remove_t *lr;
 	size_t namesize = strlen(name) + 1;
 
-	if (zil_replaying(zilog, tx))
+	if (zil_replaying(zilog, tx) || zfs_xattr_owner_unlinked(dzp))
 		return;
 
 	itx = zil_itx_create(txtype, sizeof (*lr) + namesize);
@@ -370,7 +399,7 @@ zfs_log_remove(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
  */
 void
 zfs_log_link(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
-	znode_t *dzp, znode_t *zp, char *name)
+    znode_t *dzp, znode_t *zp, char *name)
 {
 	itx_t *itx;
 	lr_link_t *lr;
@@ -425,7 +454,7 @@ zfs_log_symlink(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
  */
 void
 zfs_log_rename(zilog_t *zilog, dmu_tx_t *tx, uint64_t txtype,
-	znode_t *sdzp, char *sname, znode_t *tdzp, char *dname, znode_t *szp)
+    znode_t *sdzp, char *sname, znode_t *tdzp, char *dname, znode_t *szp)
 {
 	itx_t *itx;
 	lr_rename_t *lr;
@@ -455,15 +484,16 @@ long zfs_immediate_write_sz = 32768;
 
 void
 zfs_log_write(zilog_t *zilog, dmu_tx_t *tx, int txtype,
-	znode_t *zp, offset_t off, ssize_t resid, int ioflag,
-	zil_callback_t callback, void *callback_data)
+    znode_t *zp, offset_t off, ssize_t resid, int ioflag,
+    zil_callback_t callback, void *callback_data)
 {
 	itx_wr_state_t write_state;
 	boolean_t slogging;
 	uintptr_t fsync_cnt;
 	ssize_t immediate_write_sz;
 
-	if (zil_replaying(zilog, tx) || zp->z_unlinked) {
+	if (zil_replaying(zilog, tx) || zp->z_unlinked ||
+	    zfs_xattr_owner_unlinked(zp)) {
 		if (callback != NULL)
 			callback(callback_data);
 		return;
@@ -538,12 +568,13 @@ zfs_log_write(zilog_t *zilog, dmu_tx_t *tx, int txtype,
  */
 void
 zfs_log_truncate(zilog_t *zilog, dmu_tx_t *tx, int txtype,
-	znode_t *zp, uint64_t off, uint64_t len)
+    znode_t *zp, uint64_t off, uint64_t len)
 {
 	itx_t *itx;
 	lr_truncate_t *lr;
 
-	if (zil_replaying(zilog, tx) || zp->z_unlinked)
+	if (zil_replaying(zilog, tx) || zp->z_unlinked ||
+	    zfs_xattr_owner_unlinked(zp))
 		return;
 
 	itx = zil_itx_create(txtype, sizeof (*lr));

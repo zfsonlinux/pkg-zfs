@@ -180,6 +180,7 @@ AC_CONFIG_FILES([
 	tests/zfs-tests/tests/functional/cachefile/Makefile
 	tests/zfs-tests/tests/functional/casenorm/Makefile
 	tests/zfs-tests/tests/functional/checksum/Makefile
+	tests/zfs-tests/tests/functional/chattr/Makefile
 	tests/zfs-tests/tests/functional/clean_mirror/Makefile
 	tests/zfs-tests/tests/functional/cli_root/Makefile
 	tests/zfs-tests/tests/functional/cli_root/zdb/Makefile
@@ -272,6 +273,7 @@ AC_CONFIG_FILES([
 	tests/zfs-tests/tests/functional/snapused/Makefile
 	tests/zfs-tests/tests/functional/sparse/Makefile
 	tests/zfs-tests/tests/functional/threadsappend/Makefile
+	tests/zfs-tests/tests/functional/tmpfile/Makefile
 	tests/zfs-tests/tests/functional/truncate/Makefile
 	tests/zfs-tests/tests/functional/userquota/Makefile
 	tests/zfs-tests/tests/functional/upgrade/Makefile
@@ -303,8 +305,3 @@ AC_CONFIG_FILES([
 
 
 AC_OUTPUT
-
-AS_IF([test "x$user_libdevmapper" != xyes && test "$ZFS_CONFIG" != kernel ], [
-    AC_MSG_WARN([Building without libdevmapper.  Auto-replace, auto-online, \
-and statechange-led.sh may not work correctly with device mapper vdevs.])
-])

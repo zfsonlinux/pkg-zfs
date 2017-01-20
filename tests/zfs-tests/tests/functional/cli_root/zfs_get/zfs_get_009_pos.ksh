@@ -36,10 +36,15 @@
 #	1. Create a multiple depth filesystem.
 #	2. 'zfs get -d <n>' to get the output.
 #	3. 'zfs get -r|egrep' to get the expected output.
-#	4. Compare the two outputs, they shoud be same.
+#	4. Compare the two outputs, they should be same.
 #
 
 verify_runnable "both"
+
+# See issue: https://github.com/zfsonlinux/zfs/issues/5479
+if is_kmemleak; then
+	log_unsupported "Test case runs slowly when kmemleak is enabled"
+fi
 
 log_assert "'zfs get -d <n>' should get expected output."
 log_onexit depth_fs_cleanup

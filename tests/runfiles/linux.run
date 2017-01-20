@@ -60,6 +60,9 @@ tests = ['cache_002_pos', 'cache_003_pos', 'cache_004_neg',
 [tests/functional/casenorm]
 tests = ['case_all_values', 'norm_all_values']
 
+[tests/functional/chattr]
+tests = ['chattr_001_pos', 'chattr_002_neg']
+
 [tests/functional/checksum]
 tests = ['run_edonr_test', 'run_sha2_test', 'run_skein_test', 'filetest_001_pos']
 
@@ -95,7 +98,7 @@ tests = ['zfs_create_001_pos', 'zfs_create_002_pos', 'zfs_create_003_pos',
     'zfs_create_004_pos', 'zfs_create_005_pos', 'zfs_create_006_pos',
     'zfs_create_007_pos', 'zfs_create_008_neg', 'zfs_create_009_neg',
     'zfs_create_010_neg', 'zfs_create_011_pos', 'zfs_create_012_pos',
-    'zfs_create_013_pos']
+    'zfs_create_013_pos', 'zfs_create_014_pos']
 
 # DISABLED:
 # zfs_destroy_005_neg - busy mountpoint behavior
@@ -144,7 +147,7 @@ tests = ['zfs_receive_001_pos', 'zfs_receive_002_pos', 'zfs_receive_003_pos',
     'zfs_receive_005_neg', 'zfs_receive_006_pos',
     'zfs_receive_007_neg', 'zfs_receive_008_pos', 'zfs_receive_009_neg',
     'zfs_receive_010_pos', 'zfs_receive_011_pos', 'zfs_receive_012_pos',
-    'zfs_receive_013_pos']
+    'zfs_receive_013_pos', 'zfs_receive_014_pos']
 
 [tests/functional/cli_root/zfs_rename]
 tests = ['zfs_rename_001_pos', 'zfs_rename_002_pos', 'zfs_rename_003_pos',
@@ -168,25 +171,25 @@ tests = ['zfs_send_001_pos', 'zfs_send_002_pos', 'zfs_send_003_pos',
     'zfs_send_007_pos']
 
 # DISABLED:
-# mountpoint_003_pos - needs investigation
-# ro_props_001_pos - https://github.com/zfsonlinux/zfs/issues/5201
-# user_property_002_pos - needs investigation
+# ro_props_001_pos - https://github.com/zfsonlinux/zfs/issues/5511
 [tests/functional/cli_root/zfs_set]
 tests = ['cache_001_pos', 'cache_002_neg', 'canmount_001_pos',
     'canmount_002_pos', 'canmount_003_pos', 'canmount_004_pos',
     'checksum_001_pos', 'compression_001_pos', 'mountpoint_001_pos',
-    'mountpoint_002_pos', 'reservation_001_neg',
+    'mountpoint_002_pos', 'reservation_001_neg', 'user_property_002_pos',
     'share_mount_001_neg', 'snapdir_001_pos', 'onoffs_001_pos',
     'user_property_001_pos', 'user_property_003_neg', 'readonly_001_pos',
     'user_property_004_pos', 'version_001_neg', 'zfs_set_001_neg',
-    'zfs_set_002_neg', 'zfs_set_003_neg', 'property_alias_001_pos']
+    'zfs_set_002_neg', 'zfs_set_003_neg', 'property_alias_001_pos',
+    'mountpoint_003_pos']
 
 # DISABLED: Tests need to be updated for Linux share behavior
-#[tests/functional/cli_root/zfs_share]
-#tests = ['zfs_share_001_pos', 'zfs_share_002_pos', 'zfs_share_003_pos',
-#    'zfs_share_004_pos', 'zfs_share_005_pos', 'zfs_share_006_pos',
-#    'zfs_share_007_neg', 'zfs_share_008_neg', 'zfs_share_009_neg',
-#    'zfs_share_010_neg', 'zfs_share_011_pos']
+# zfs_share_005_pos - needs investigation, probably unsupported NFS share format
+[tests/functional/cli_root/zfs_share]
+tests = ['zfs_share_001_pos', 'zfs_share_002_pos', 'zfs_share_003_pos',
+    'zfs_share_004_pos', 'zfs_share_006_pos',
+    'zfs_share_007_neg', 'zfs_share_008_neg', 'zfs_share_009_neg',
+    'zfs_share_010_neg', 'zfs_share_011_pos']
 
 [tests/functional/cli_root/zfs_snapshot]
 tests = ['zfs_snapshot_001_neg', 'zfs_snapshot_002_neg',
@@ -204,9 +207,11 @@ tests = ['zfs_unmount_001_pos', 'zfs_unmount_002_pos', 'zfs_unmount_003_pos',
     'zfs_unmount_007_neg', 'zfs_unmount_008_neg']
 
 # DISABLED: Tests need to be updated for Linux unshare behavior
-#[tests/functional/cli_root/zfs_unshare]
-#tests = ['zfs_unshare_001_pos', 'zfs_unshare_002_pos', 'zfs_unshare_003_pos',
-#    'zfs_unshare_004_neg', 'zfs_unshare_005_neg']
+# zfs_unshare_002_pos - zfs set sharenfs=off won't unshare if it was already off
+# zfs_unshare_006_pos - some distros come with Samba "user shares" disabled
+[tests/functional/cli_root/zfs_unshare]
+tests = ['zfs_unshare_001_pos', 'zfs_unshare_003_pos',
+    'zfs_unshare_004_neg', 'zfs_unshare_005_neg']
 
 [tests/functional/cli_root/zfs_upgrade]
 tests = ['zfs_upgrade_001_pos', 'zfs_upgrade_002_pos', 'zfs_upgrade_003_pos',
@@ -292,7 +297,7 @@ tests = ['zpool_import_001_pos',
     'zpool_import_003_pos', 'zpool_import_004_pos', 'zpool_import_005_pos',
     'zpool_import_006_pos', 'zpool_import_007_pos', 'zpool_import_008_pos',
     'zpool_import_009_neg', 'zpool_import_010_pos', 'zpool_import_011_neg',
-    'zpool_import_013_neg',
+    'zpool_import_013_neg', 'zpool_import_014_pos',
     'zpool_import_features_001_pos', 'zpool_import_features_002_neg',
     'zpool_import_features_003_pos','zpool_import_missing_001_pos',
     'zpool_import_missing_002_pos', 'zpool_import_missing_003_pos',
@@ -362,7 +367,8 @@ user =
 
 [tests/functional/cli_user/zpool_iostat]
 tests = ['zpool_iostat_001_neg', 'zpool_iostat_002_pos',
-    'zpool_iostat_003_neg', 'zpool_iostat_004_pos']
+    'zpool_iostat_003_neg', 'zpool_iostat_004_pos',
+    'zpool_iostat_005_pos']
 user =
 
 [tests/functional/cli_user/zpool_list]
@@ -476,11 +482,11 @@ tests = ['nestedfs_001_pos']
 tests = ['enospc_001_pos']
 
 # DISABLED:
+# nopwrite_volume - https://github.com/zfsonlinux/zfs/issues/5510
 # nopwrite_varying_compression - needs investigation
 [tests/functional/nopwrite]
 tests = ['nopwrite_copies', 'nopwrite_mtime', 'nopwrite_negative',
-    'nopwrite_promoted_clone', 'nopwrite_recsize', 'nopwrite_sync',
-    'nopwrite_volume']
+    'nopwrite_promoted_clone', 'nopwrite_recsize', 'nopwrite_sync']
 
 # DISABLED: needs investigation
 #[tests/functional/online_offline]
@@ -586,6 +592,9 @@ tests = ['sparse_001_pos']
 #[tests/functional/threadsappend]
 #tests = ['threadsappend_001_pos']
 
+[tests/functional/tmpfile]
+tests = ['tmpfile_001_pos', 'tmpfile_002_pos', 'tmpfile_003_pos']
+
 [tests/functional/truncate]
 tests = ['truncate_001_pos', 'truncate_002_pos']
 
@@ -614,7 +623,7 @@ tests = ['vdev_zaps_001_pos', 'vdev_zaps_002_pos', 'vdev_zaps_003_pos',
 [tests/functional/write_dirs]
 tests = ['write_dirs_001_pos']
 
-# DISABLED: No 'runat' command, replace the Linux equivilant and add xattrtest
+# DISABLED: No 'runat' command, replace the Linux equivalent and add xattrtest
 #[tests/functional/xattr]
 #tests = ['xattr_001_pos', 'xattr_002_neg', 'xattr_003_neg', 'xattr_004_pos',
 #    'xattr_005_pos', 'xattr_006_pos', 'xattr_007_neg', 'xattr_008_pos',

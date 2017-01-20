@@ -394,6 +394,7 @@ extern void cv_broadcast(kcondvar_t *cv);
  */
 extern kstat_t *kstat_create(const char *, int,
     const char *, const char *, uchar_t, ulong_t, uchar_t);
+extern void kstat_named_init(kstat_named_t *, const char *, uchar_t);
 extern void kstat_install(kstat_t *);
 extern void kstat_delete(kstat_t *);
 extern void kstat_waitq_enter(kstat_io_t *);
@@ -495,7 +496,10 @@ typedef struct taskq {
 #define	TQ_NOQUEUE	0x02		/* Do not enqueue if can't dispatch */
 #define	TQ_FRONT	0x08		/* Queue in front */
 
+#define	TASKQID_INVALID		((taskqid_t)0)
+
 extern taskq_t *system_taskq;
+extern taskq_t *system_delay_taskq;
 
 extern taskq_t	*taskq_create(const char *, int, pri_t, int, int, uint_t);
 #define	taskq_create_proc(a, b, c, d, e, p, f) \

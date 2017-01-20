@@ -72,7 +72,7 @@ space_map_load(space_map_t *sm, range_tree_t *rt, maptype_t maptype)
 	}
 
 	bufsize = MAX(sm->sm_blksz, SPA_MINBLOCKSIZE);
-	entry_map = zio_buf_alloc(bufsize);
+	entry_map = vmem_alloc(bufsize, KM_SLEEP);
 
 	mutex_exit(sm->sm_lock);
 	if (end > bufsize) {
@@ -128,7 +128,7 @@ space_map_load(space_map_t *sm, range_tree_t *rt, maptype_t maptype)
 	else
 		range_tree_vacate(rt, NULL, NULL);
 
-	zio_buf_free(entry_map, bufsize);
+	vmem_free(entry_map, bufsize);
 	return (error);
 }
 
@@ -173,7 +173,6 @@ space_map_histogram_add(space_map_t *sm, range_tree_t *rt, dmu_tx_t *tx)
 	dmu_buf_will_dirty(sm->sm_dbuf, tx);
 
 	ASSERT(space_map_histogram_verify(sm, rt));
-
 	/*
 	 * Transfer the content of the range tree histogram to the space
 	 * map histogram. The space map histogram contains 32 buckets ranging
@@ -272,7 +271,7 @@ space_map_write(space_map_t *sm, range_tree_t *rt, maptype_t maptype,
 
 	expected_entries = space_map_entries(sm, rt);
 
-	entry_map = zio_buf_alloc(sm->sm_blksz);
+	entry_map = vmem_alloc(sm->sm_blksz, KM_SLEEP);
 	entry_map_end = entry_map + (sm->sm_blksz / sizeof (uint64_t));
 	entry = entry_map;
 
@@ -335,7 +334,7 @@ space_map_write(space_map_t *sm, range_tree_t *rt, maptype_t maptype,
 	VERIFY3U(range_tree_space(rt), ==, rt_space);
 	VERIFY3U(range_tree_space(rt), ==, total);
 
-	zio_buf_free(entry_map, sm->sm_blksz);
+	vmem_free(entry_map, sm->sm_blksz);
 }
 
 static int

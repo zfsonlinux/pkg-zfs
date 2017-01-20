@@ -59,6 +59,7 @@
 #include <sys/arc.h>
 #include <sys/ddt.h>
 #include <sys/zfeature.h>
+#include <sys/abd.h>
 #include <zfs_comutil.h>
 #include <libzfs.h>
 
@@ -76,7 +77,7 @@ zdb_ot_name(dmu_object_type_t type)
 	if (type < DMU_OT_NUMTYPES)
 		return (dmu_ot[type].ot_name);
 	else if ((type & DMU_OT_NEWTYPE) &&
-		((type & DMU_OT_BYTESWAP_MASK) < DMU_BSWAP_NUMFUNCS))
+	    ((type & DMU_OT_BYTESWAP_MASK) < DMU_BSWAP_NUMFUNCS))
 		return (dmu_ot_byteswap[type & DMU_OT_BYTESWAP_MASK].ob_name);
 	else
 		return ("UNKNOWN");
@@ -2464,7 +2465,7 @@ zdb_blkptr_done(zio_t *zio)
 	zdb_cb_t *zcb = zio->io_private;
 	zbookmark_phys_t *zb = &zio->io_bookmark;
 
-	zio_data_buf_free(zio->io_data, zio->io_size);
+	abd_free(zio->io_abd);
 
 	mutex_enter(&spa->spa_scrub_lock);
 	spa->spa_scrub_inflight--;
@@ -2530,7 +2531,7 @@ zdb_blkptr_cb(spa_t *spa, zilog_t *zilog, const blkptr_t *bp,
 	if (!BP_IS_EMBEDDED(bp) &&
 	    (dump_opt['c'] > 1 || (dump_opt['c'] && is_metadata))) {
 		size_t size = BP_GET_PSIZE(bp);
-		void *data = zio_data_buf_alloc(size);
+		abd_t *abd = abd_alloc(size, B_FALSE);
 		int flags = ZIO_FLAG_CANFAIL | ZIO_FLAG_SCRUB | ZIO_FLAG_RAW;
 
 		/* If it's an intent log block, failure is expected. */
@@ -2543,7 +2544,7 @@ zdb_blkptr_cb(spa_t *spa, zilog_t *zilog, const blkptr_t *bp,
 		spa->spa_scrub_inflight++;
 		mutex_exit(&spa->spa_scrub_lock);
 
-		zio_nowait(zio_read(NULL, spa, bp, data, size,
+		zio_nowait(zio_read(NULL, spa, bp, abd, size,
 		    zdb_blkptr_done, zcb, ZIO_PRIORITY_ASYNC_READ, flags, zb));
 	}
 
@@ -2642,10 +2643,21 @@ zdb_leak_init(spa_t *spa, zdb_cb_t *zcb)
 
 	if (!dump_opt['L']) {
 		vdev_t *rvd = spa->spa_root_vdev;
+
+		/*
+		 * We are going to be changing the meaning of the metaslab's
+		 * ms_tree.  Ensure that the allocator doesn't try to
+		 * use the tree.
+		 */
+		spa->spa_normal_class->mc_ops = &zdb_metaslab_ops;
+		spa->spa_log_class->mc_ops = &zdb_metaslab_ops;
+
 		for (c = 0; c < rvd->vdev_children; c++) {
 			vdev_t *vd = rvd->vdev_child[c];
+			ASSERTV(metaslab_group_t *mg = vd->vdev_mg);
 			for (m = 0; m < vd->vdev_ms_count; m++) {
 				metaslab_t *msp = vd->vdev_ms[m];
+				ASSERT3P(msp->ms_group, ==, mg);
 				mutex_enter(&msp->ms_lock);
 				metaslab_unload(msp);
 
@@ -2666,8 +2678,6 @@ zdb_leak_init(spa_t *spa, zdb_cb_t *zcb)
 					    (longlong_t)m,
 					    (longlong_t)vd->vdev_ms_count);
 
-					msp->ms_ops = &zdb_metaslab_ops;
-
 					/*
 					 * We don't want to spend the CPU
 					 * manipulating the size-ordered
@@ -2677,7 +2687,9 @@ zdb_leak_init(spa_t *spa, zdb_cb_t *zcb)
 					msp->ms_tree->rt_ops = NULL;
 					VERIFY0(space_map_load(msp->ms_sm,
 					    msp->ms_tree, SM_ALLOC));
-					msp->ms_loaded = B_TRUE;
+
+					if (!msp->ms_loaded)
+						msp->ms_loaded = B_TRUE;
 				}
 				mutex_exit(&msp->ms_lock);
 			}
@@ -2701,8 +2713,10 @@ zdb_leak_fini(spa_t *spa)
 		vdev_t *rvd = spa->spa_root_vdev;
 		for (c = 0; c < rvd->vdev_children; c++) {
 			vdev_t *vd = rvd->vdev_child[c];
+			ASSERTV(metaslab_group_t *mg = vd->vdev_mg);
 			for (m = 0; m < vd->vdev_ms_count; m++) {
 				metaslab_t *msp = vd->vdev_ms[m];
+				ASSERT3P(mg, ==, msp->ms_group);
 				mutex_enter(&msp->ms_lock);
 
 				/*
@@ -2716,7 +2730,9 @@ zdb_leak_fini(spa_t *spa)
 				 * from the ms_tree.
 				 */
 				range_tree_vacate(msp->ms_tree, zdb_leak, vd);
-				msp->ms_loaded = B_FALSE;
+
+				if (msp->ms_loaded)
+					msp->ms_loaded = B_FALSE;
 
 				mutex_exit(&msp->ms_lock);
 			}
@@ -3248,7 +3264,7 @@ zdb_dump_block(char *label, void *buf, uint64_t size, int flags)
 	(void) printf("\n%s\n%6s   %s  0123456789abcdef\n", label, "", hdr);
 
 #ifdef _LITTLE_ENDIAN
-	/* correct the endianess */
+	/* correct the endianness */
 	do_bswap = !do_bswap;
 #endif
 	for (i = 0; i < nwords; i += 2) {
@@ -3270,7 +3286,7 @@ zdb_dump_block(char *label, void *buf, uint64_t size, int flags)
  *	child[.child]*    - For example: 0.1.1
  *
  * The second form can be used to specify arbitrary vdevs anywhere
- * in the heirarchy.  For example, in a pool with a mirror of
+ * in the hierarchy.  For example, in a pool with a mirror of
  * RAID-Zs, you can specify either RAID-Z vdev with 0.0 or 0.1 .
  */
 static vdev_t *
@@ -3321,6 +3337,13 @@ name:
 	return (NULL);
 }
 
+/* ARGSUSED */
+static int
+random_get_pseudo_bytes_cb(void *buf, size_t len, void *unused)
+{
+	return (random_get_pseudo_bytes(buf, len));
+}
+
 /*
  * Read a block from a pool and print it out.  The syntax of the
  * block descriptor is:
@@ -3352,7 +3375,8 @@ zdb_read_block(char *thing, spa_t *spa)
 	uint64_t offset = 0, size = 0, psize = 0, lsize = 0, blkptr_offset = 0;
 	zio_t *zio;
 	vdev_t *vd;
-	void *pbuf, *lbuf, *buf;
+	abd_t *pabd;
+	void *lbuf, *buf;
 	char *s, *p, *dup, *vdev, *flagstr;
 	int i, error;
 
@@ -3425,8 +3449,7 @@ zdb_read_block(char *thing, spa_t *spa)
 	psize = size;
 	lsize = size;
 
-	/* Some 4K native devices require 4K buffer alignment */
-	pbuf = umem_alloc_aligned(SPA_MAXBLOCKSIZE, PAGESIZE, UMEM_NOFAIL);
+	pabd = abd_alloc_linear(SPA_MAXBLOCKSIZE, B_FALSE);
 	lbuf = umem_alloc(SPA_MAXBLOCKSIZE, UMEM_NOFAIL);
 
 	BP_ZERO(bp);
@@ -3454,15 +3477,15 @@ zdb_read_block(char *thing, spa_t *spa)
 		/*
 		 * Treat this as a normal block read.
 		 */
-		zio_nowait(zio_read(zio, spa, bp, pbuf, psize, NULL, NULL,
+		zio_nowait(zio_read(zio, spa, bp, pabd, psize, NULL, NULL,
 		    ZIO_PRIORITY_SYNC_READ,
 		    ZIO_FLAG_CANFAIL | ZIO_FLAG_RAW, NULL));
 	} else {
 		/*
 		 * Treat this as a vdev child I/O.
 		 */
-		zio_nowait(zio_vdev_child_io(zio, bp, vd, offset, pbuf, psize,
-		    ZIO_TYPE_READ, ZIO_PRIORITY_SYNC_READ,
+		zio_nowait(zio_vdev_child_io(zio, bp, vd, offset, pabd,
+		    psize, ZIO_TYPE_READ, ZIO_PRIORITY_SYNC_READ,
 		    ZIO_FLAG_DONT_CACHE | ZIO_FLAG_DONT_QUEUE |
 		    ZIO_FLAG_DONT_PROPAGATE | ZIO_FLAG_DONT_RETRY |
 		    ZIO_FLAG_CANFAIL | ZIO_FLAG_RAW, NULL, NULL));
@@ -3485,13 +3508,13 @@ zdb_read_block(char *thing, spa_t *spa)
 		void *pbuf2 = umem_alloc(SPA_MAXBLOCKSIZE, UMEM_NOFAIL);
 		void *lbuf2 = umem_alloc(SPA_MAXBLOCKSIZE, UMEM_NOFAIL);
 
-		bcopy(pbuf, pbuf2, psize);
+		abd_copy_to_buf(pbuf2, pabd, psize);
 
-		VERIFY(random_get_pseudo_bytes((uint8_t *)pbuf + psize,
-		    SPA_MAXBLOCKSIZE - psize) == 0);
+		VERIFY0(abd_iterate_func(pabd, psize, SPA_MAXBLOCKSIZE - psize,
+		    random_get_pseudo_bytes_cb, NULL));
 
-		VERIFY(random_get_pseudo_bytes((uint8_t *)pbuf2 + psize,
-		    SPA_MAXBLOCKSIZE - psize) == 0);
+		VERIFY0(random_get_pseudo_bytes((uint8_t *)pbuf2 + psize,
+		    SPA_MAXBLOCKSIZE - psize));
 
 		/*
 		 * XXX - On the one hand, with SPA_MAXBLOCKSIZE at 16MB,
@@ -3506,10 +3529,10 @@ zdb_read_block(char *thing, spa_t *spa)
 				    "Trying %05llx -> %05llx (%s)\n",
 				    (u_longlong_t)psize, (u_longlong_t)lsize,
 				    zio_compress_table[c].ci_name);
-				if (zio_decompress_data(c, pbuf, lbuf,
-				    psize, lsize) == 0 &&
-				    zio_decompress_data(c, pbuf2, lbuf2,
-				    psize, lsize) == 0 &&
+				if (zio_decompress_data(c, pabd,
+				    lbuf, psize, lsize) == 0 &&
+				    zio_decompress_data_buf(c, pbuf2,
+				    lbuf2, psize, lsize) == 0 &&
 				    bcmp(lbuf, lbuf2, lsize) == 0)
 					break;
 			}
@@ -3527,7 +3550,7 @@ zdb_read_block(char *thing, spa_t *spa)
 		buf = lbuf;
 		size = lsize;
 	} else {
-		buf = pbuf;
+		buf = abd_to_buf(pabd);
 		size = psize;
 	}
 
@@ -3545,7 +3568,7 @@ zdb_read_block(char *thing, spa_t *spa)
 		zdb_dump_block(thing, buf, size, flags);
 
 out:
-	umem_free(pbuf, SPA_MAXBLOCKSIZE);
+	abd_free(pabd);
 	umem_free(lbuf, SPA_MAXBLOCKSIZE);
 	free(dup);
 }

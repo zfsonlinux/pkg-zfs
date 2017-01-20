@@ -530,7 +530,7 @@ spa_deadman(void *arg)
 	if (zfs_deadman_enabled)
 		vdev_deadman(spa->spa_root_vdev);
 
-	spa->spa_deadman_tqid = taskq_dispatch_delay(system_taskq,
+	spa->spa_deadman_tqid = taskq_dispatch_delay(system_delay_taskq,
 	    spa_deadman, spa, TQ_SLEEP, ddi_get_lbolt() +
 	    NSEC_TO_TICK(spa->spa_deadman_synctime));
 }
@@ -634,6 +634,9 @@ spa_add(const char *name, nvlist_t *config, const char *altroot)
 
 	spa->spa_min_ashift = INT_MAX;
 	spa->spa_max_ashift = 0;
+
+	/* Reset cached value */
+	spa->spa_dedup_dspace = ~0ULL;
 
 	/*
 	 * As a pool is being created, treat all features as disabled by
@@ -1830,12 +1833,14 @@ spa_init(int mode)
 	refcount_init();
 	unique_init();
 	range_tree_init();
+	metaslab_alloc_trace_init();
 	ddt_init();
 	zio_init();
 	dmu_init();
 	zil_init();
 	vdev_cache_stat_init();
 	vdev_raidz_math_init();
+	vdev_file_init();
 	zfs_prop_init();
 	zpool_prop_init();
 	zpool_feature_init();
@@ -1850,12 +1855,14 @@ spa_fini(void)
 
 	spa_evict_all();
 
+	vdev_file_fini();
 	vdev_cache_stat_fini();
 	vdev_raidz_math_fini();
 	zil_fini();
 	dmu_fini();
 	zio_fini();
 	ddt_fini();
+	metaslab_alloc_trace_fini();
 	range_tree_fini();
 	unique_fini();
 	refcount_fini();
@@ -2090,9 +2097,9 @@ EXPORT_SYMBOL(spa_has_slogs);
 EXPORT_SYMBOL(spa_is_root);
 EXPORT_SYMBOL(spa_writeable);
 EXPORT_SYMBOL(spa_mode);
-
 EXPORT_SYMBOL(spa_namespace_lock);
 
+/* BEGIN CSTYLED */
 module_param(zfs_flags, uint, 0644);
 MODULE_PARM_DESC(zfs_flags, "Set additional debugging flags");
 
@@ -2115,4 +2122,5 @@ MODULE_PARM_DESC(spa_asize_inflation,
 
 module_param(spa_slop_shift, int, 0644);
 MODULE_PARM_DESC(spa_slop_shift, "Reserved free space in pool");
+/* END CSTYLED */
 #endif

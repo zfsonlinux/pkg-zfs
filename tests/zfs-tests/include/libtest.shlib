@@ -44,6 +44,32 @@ function is_linux
 	fi
 }
 
+# Determine if this is a 32-bit system
+#
+# Return 0 if platform is 32-bit, 1 if otherwise
+
+function is_32bit
+{
+	if [[ $(getconf LONG_BIT) == "32" ]]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+# Determine if kmemleak is enabled
+#
+# Return 0 if kmemleak is enabled, 1 if otherwise
+
+function is_kmemleak
+{
+	if is_linux && [[ -e /sys/kernel/debug/kmemleak ]]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
 # Determine whether a dataset is mounted
 #
 # $1 dataset name
@@ -888,7 +914,7 @@ function partition_disk	#<slice_size> <whole_disk_name>	<total_slices>
 #	filenum:    the maximum number of files per subdirectory
 #	bytes:	    number of bytes to write
 #	num_writes: numer of types to write out bytes
-#	data:	    the data that will be writen
+#	data:	    the data that will be written
 #
 #	E.g.
 #	file_fs /testdir 20 25 1024 256 0
@@ -1039,7 +1065,7 @@ function datasetnonexists
 }
 
 #
-# Given a mountpoint, or a dataset name, determine if it is shared.
+# Given a mountpoint, or a dataset name, determine if it is shared via NFS.
 #
 # Returns 0 if shared, 1 otherwise.
 #
@@ -1047,11 +1073,6 @@ function is_shared
 {
 	typeset fs=$1
 	typeset mtpt
-
-	if is_linux; then
-		log_unsupported "Currently unsupported by the test framework"
-		return 1
-	fi
 
 	if [[ $fs != "/"* ]] ; then
 		if datasetnonexists "$fs" ; then
@@ -1065,6 +1086,15 @@ function is_shared
 					;;
 			esac
 		fi
+	fi
+
+	if is_linux; then
+		for mtpt in `$SHARE | $AWK '{print $1}'` ; do
+			if [[ $mtpt == $fs ]] ; then
+				return 0
+			fi
+		done
+		return 1
 	fi
 
 	for mtpt in `$SHARE | $AWK '{print $2}'` ; do
@@ -1082,7 +1112,36 @@ function is_shared
 }
 
 #
-# Given a mountpoint, determine if it is not shared.
+# Given a dataset name determine if it is shared via SMB.
+#
+# Returns 0 if shared, 1 otherwise.
+#
+function is_shared_smb
+{
+	typeset fs=$1
+	typeset mtpt
+
+	if datasetnonexists "$fs" ; then
+		return 1
+	else
+		fs=$(echo $fs | sed 's@/@_@g')
+	fi
+
+	if is_linux; then
+		for mtpt in `$NET usershare list | $AWK '{print $1}'` ; do
+			if [[ $mtpt == $fs ]] ; then
+				return 0
+			fi
+		done
+		return 1
+	else
+		log_unsupported "Currently unsupported by the test framework"
+		return 1
+	fi
+}
+
+#
+# Given a mountpoint, determine if it is not shared via NFS.
 #
 # Returns 0 if not shared, 1 otherwise.
 #
@@ -1090,12 +1149,24 @@ function not_shared
 {
 	typeset fs=$1
 
-	if is_linux; then
-		log_unsupported "Currently unsupported by the test framework"
+	is_shared $fs
+	if (($? == 0)); then
 		return 1
 	fi
 
-	is_shared $fs
+	return 0
+}
+
+#
+# Given a dataset determine if it is not shared via SMB.
+#
+# Returns 0 if not shared, 1 otherwise.
+#
+function not_shared_smb
+{
+	typeset fs=$1
+
+	is_shared_smb $fs
 	if (($? == 0)); then
 		return 1
 	fi
@@ -1110,14 +1181,81 @@ function unshare_fs #fs
 {
 	typeset fs=$1
 
-	if is_linux; then
-		log_unsupported "Currently unsupported by the test framework"
-		return 1
-	fi
-
-	is_shared $fs
+	is_shared $fs || is_shared_smb $fs
 	if (($? == 0)); then
 		log_must $ZFS unshare $fs
+	fi
+
+	return 0
+}
+
+#
+# Helper function to share a NFS mountpoint.
+#
+function share_nfs #fs
+{
+	typeset fs=$1
+
+	if is_linux; then
+		is_shared $fs
+		if (($? != 0)); then
+			log_must $SHARE "*:$fs"
+		fi
+	else
+		is_shared $fs
+		if (($? != 0)); then
+			log_must $SHARE -F nfs $fs
+		fi
+	fi
+
+	return 0
+}
+
+#
+# Helper function to unshare a NFS mountpoint.
+#
+function unshare_nfs #fs
+{
+	typeset fs=$1
+
+	if is_linux; then
+		is_shared $fs
+		if (($? == 0)); then
+			log_must $UNSHARE -u "*:$fs"
+		fi
+	else
+		is_shared $fs
+		if (($? == 0)); then
+			log_must $UNSHARE -F nfs $fs
+		fi
+	fi
+
+	return 0
+}
+
+#
+# Helper function to show NFS shares.
+#
+function showshares_nfs
+{
+	if is_linux; then
+		$SHARE -v
+	else
+		$SHARE -F nfs
+	fi
+
+	return 0
+}
+
+#
+# Helper function to show SMB shares.
+#
+function showshares_smb
+{
+	if is_linux; then
+		$NET usershare list
+	else
+		$SHARE -F smb
 	fi
 
 	return 0
@@ -1136,7 +1274,7 @@ function setup_nfs_server
 	fi
 
 	if is_linux; then
-		log_unsupported "Currently unsupported by the test framework"
+		log_note "NFS server must started prior to running test framework."
 		return
 	fi
 
@@ -1698,7 +1836,7 @@ function is_pool_scrub_stopped #pool
 }
 
 #
-# Use create_pool()/destroy_pool() to clean up the infomation in
+# Use create_pool()/destroy_pool() to clean up the information in
 # in the given disk to avoid slice overlapping.
 #
 function cleanup_devices #vdevs

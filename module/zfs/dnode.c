@@ -632,7 +632,7 @@ dnode_reallocate(dnode_t *dn, dmu_object_type_t ot, int blocksize,
 	    (bonustype == DMU_OT_SA && bonuslen == 0));
 	ASSERT(DMU_OT_IS_VALID(bonustype));
 	ASSERT3U(bonuslen, <=,
-		DN_BONUS_SIZE(spa_maxdnodesize(dmu_objset_spa(dn->dn_objset))));
+	    DN_BONUS_SIZE(spa_maxdnodesize(dmu_objset_spa(dn->dn_objset))));
 
 	dn_slots = dn_slots > 0 ? dn_slots : DNODE_MIN_SLOTS;
 
@@ -1184,6 +1184,7 @@ dnode_is_free(dmu_buf_impl_t *db, int idx, int slots)
  * errors:
  * EINVAL - invalid object number.
  * ENOSPC - hole too small to fulfill "slots" request
+ * ENOENT - the requested dnode is not allocated
  * EIO - i/o error.
  * succeeds even for free dnodes.
  */
