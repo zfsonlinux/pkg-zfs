@@ -327,6 +327,8 @@ exit 0
 %endif
 
 %changelog
+* Fri Jan 20 2017 Brian Behlendorf  - 0.6.5.8-2
+- Kernel compatibility patches
 * Fri Sep 9 2016 Ned Bass <bass6@llnl.gov> - 0.6.5.8-1
 - Linux 4.6, 4.7 and 4.8 compatibility zfsonlinux/spl#549 zfsonlinux/spl#563 zfsonlinux/spl#565 zfsonlinux/spl#566 zfsonlinux/zfs#4664 zfsonlinux/zfs#4665 zfsonlinux/zfs#4717 zfsonlinux/zfs#4726 zfsonlinux/zfs#4892  zfsonlinux/zfs#4899 zfsonlinux/zfs#4922  zfsonlinux/zfs#4944  zfsonlinux/zfs#4946 zfsonlinux/zfs#4951
 - Fix new tunable to ignore hole_birth, enabled by default zfsonlinux/zfs#4833
