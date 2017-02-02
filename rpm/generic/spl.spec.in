@@ -33,6 +33,15 @@ make install DESTDIR=%{?buildroot}
 %{_mandir}/man5/*
 
 %changelog
+* Fri Feb 3 2017 Brian Behlendorf <behlendorf1@llnl.gov> - 0.6.5.9-1
+- Use kernel slab for vn_cache and vn_file_cache zfsonlinux/spl#599
+- Fix splat-cred.c cred usage zfsonlinux/spl#556
+- Fix splat memleak zfsonlinux/spl#590
+- Fix p0 initializer zfsonlinux/spl#576
+- Fix aarch64 type warning zfsonlinux/spl#574
+- Linux 4.8 compat: Fix RW_READ_HELD zfsonlinux/zfs#5233
+- Linux 4.9 compat: group_info changes zfsonlinux/spl#581
+- Fix crgetgroups out-of-bound and misc cred fix zfsonlinux/spl#556
 * Fri Sep 9 2016 Ned Bass <bass6@llnl.gov> - 0.6.5.8-1
 - Fix HAVE_MUTEX_OWNER test for kernels prior to 4.6 zfsonlinux/spl#566
 - Add handling for kernel 4.7's CONFIG_TRIM_UNUSED_KSYMS zfsonlinux/spl#565
