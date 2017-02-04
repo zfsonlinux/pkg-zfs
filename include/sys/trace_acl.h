@@ -56,7 +56,6 @@ DECLARE_EVENT_CLASS(zfs_ace_class,
 	    __field(uint64_t,		z_mapcnt)
 	    __field(uint64_t,		z_gen)
 	    __field(uint64_t,		z_size)
-	    __array(uint64_t,		z_atime, 2)
 	    __field(uint64_t,		z_links)
 	    __field(uint64_t,		z_pflags)
 	    __field(uint64_t,		z_uid)
@@ -64,7 +63,6 @@ DECLARE_EVENT_CLASS(zfs_ace_class,
 	    __field(uint32_t,		z_sync_cnt)
 	    __field(mode_t,		z_mode)
 	    __field(boolean_t,		z_is_sa)
-	    __field(boolean_t,		z_is_zvol)
 	    __field(boolean_t,		z_is_mapped)
 	    __field(boolean_t,		z_is_ctldir)
 	    __field(boolean_t,		z_is_stale)
@@ -95,8 +93,6 @@ DECLARE_EVENT_CLASS(zfs_ace_class,
 	    __entry->z_mapcnt		= zn->z_mapcnt;
 	    __entry->z_gen		= zn->z_gen;
 	    __entry->z_size		= zn->z_size;
-	    __entry->z_atime[0]		= zn->z_atime[0];
-	    __entry->z_atime[1]		= zn->z_atime[1];
 	    __entry->z_links		= zn->z_links;
 	    __entry->z_pflags		= zn->z_pflags;
 	    __entry->z_uid		= zn->z_uid;
@@ -104,7 +100,6 @@ DECLARE_EVENT_CLASS(zfs_ace_class,
 	    __entry->z_sync_cnt		= zn->z_sync_cnt;
 	    __entry->z_mode		= zn->z_mode;
 	    __entry->z_is_sa		= zn->z_is_sa;
-	    __entry->z_is_zvol		= zn->z_is_zvol;
 	    __entry->z_is_mapped	= zn->z_is_mapped;
 	    __entry->z_is_ctldir	= zn->z_is_ctldir;
 	    __entry->z_is_stale		= zn->z_is_stale;
@@ -126,9 +121,9 @@ DECLARE_EVENT_CLASS(zfs_ace_class,
 	),
 	TP_printk("zn { id %llu unlinked %u atime_dirty %u "
 	    "zn_prefetch %u moved %u blksz %u seq %u "
-	    "mapcnt %llu gen %llu size %llu atime 0x%llx:0x%llx "
+	    "mapcnt %llu gen %llu size %llu "
 	    "links %llu pflags %llu uid %llu gid %llu "
-	    "sync_cnt %u mode 0x%x is_sa %d is_zvol %d "
+	    "sync_cnt %u mode 0x%x is_sa %d "
 	    "is_mapped %d is_ctldir %d is_stale %d inode { "
 	    "ino %lu nlink %u version %llu size %lli blkbits %u "
 	    "bytes %u mode 0x%x generation %x } } ace { type %u "
@@ -136,10 +131,10 @@ DECLARE_EVENT_CLASS(zfs_ace_class,
 	    __entry->z_id, __entry->z_unlinked, __entry->z_atime_dirty,
 	    __entry->z_zn_prefetch, __entry->z_moved, __entry->z_blksz,
 	    __entry->z_seq, __entry->z_mapcnt, __entry->z_gen,
-	    __entry->z_size, __entry->z_atime[0], __entry->z_atime[1],
+	    __entry->z_size,
 	    __entry->z_links, __entry->z_pflags, __entry->z_uid,
 	    __entry->z_gid, __entry->z_sync_cnt, __entry->z_mode,
-	    __entry->z_is_sa, __entry->z_is_zvol, __entry->z_is_mapped,
+	    __entry->z_is_sa, __entry->z_is_mapped,
 	    __entry->z_is_ctldir, __entry->z_is_stale, __entry->i_ino,
 	    __entry->i_nlink, __entry->i_version, __entry->i_size,
 	    __entry->i_blkbits, __entry->i_bytes, __entry->i_mode,
