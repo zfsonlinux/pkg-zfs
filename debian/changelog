@@ -1,3 +1,91 @@
+zfs-linux (0.6.5.9-1~trusty) trusty; urgency=low
+
+  [ Richard Laager ]
+  * Fix the Vcs-* lines in debian/control
+
+  [ Brian Behlendorf ]
+  * Fix uninitialized variable in avl_add()
+
+  [ Chunwei Chen ]
+  * Remove dir inode operations from zpl_inode_operations
+
+  [ DeHackEd ]
+  * Kernel 4.9 compat: file_operations->aio_fsync removal
+
+  [ tuxoko ]
+  * Linux 4.7 compat: Fix deadlock during lookup on case-insensitive
+
+  [ Chunwei Chen ]
+  * Linux 4.9 compat: iops->rename() wants flags
+  * Linux 4.9 compat: remove iops->{set,get,remove}xattr
+
+  [ Brian Behlendorf ]
+  * Linux 4.9 compat: inode_change_ok() renamed setattr_prepare()
+
+  [ tuxoko ]
+  * Linux 3.14 compat: assign inode->set_acl
+
+  [ Stian Ellingsen ]
+  * Fix use after free in zfsctl_snapshot_unmount()
+  * Use env, not sh in zfsctl_snapshot_{,un}mount()
+
+  [ Brian Behlendorf ]
+  * Use large stacks when available
+
+  [ Tim Chase ]
+  * Write issue taskq shouldn't be dynamic
+
+  [ LOLi ]
+  * Fix uninitialized variable snapprops_nvlist in zfs_receive_one
+
+  [ Hajo Möller ]
+  * Fix lookup_bdev() on Ubuntu
+
+  [ tuxoko ]
+  * Fix cred leak in zpl_fallocate_common
+
+  [ Neal Gompa (ニール・ゴンパ) ]
+  * Process all systemd services through the systemd scriptlets
+
+  [ Chunwei Chen ]
+  * Batch free zpl_posix_acl_release
+  * Use set_cached_acl and forget_cached_acl when possible
+
+  [ Tim Chase ]
+  * Fix sync behavior for disk vdevs
+
+  [ Brian Behlendorf ]
+  * Remove custom root pool import code
+  * Reorder HAVE_BIO_RW_* checks
+
+  [ Tim Chase ]
+  * 4.10 compat - BIO flag changes and others
+
+  [ Isaac Huang ]
+  * Explicit block device plugging when submitting multiple BIOs
+
+  [ Gvozden Neskovic ]
+  * Fix ZFS_AC_KERNEL_SET_CACHED_ACL_USABLE check
+
+  [ Richard Yao ]
+  * zfs_inode_update should not call dmu_object_size_from_db under spinlock
+
+  [ Chunwei Chen ]
+  * Don't count '@' for dataset namelen if not a snapshot
+  * Fix wrong operator in xvattr.h
+  * Fix fchange in zpl_ioctl_setflags
+  * Fix zmo leak when zfs_sb_create fails
+  * Retire .write/.read file operations
+  * Fix write(2) returns zero bug from 933ec99
+  * Fix atime handling and relatime
+  * Enable lazytime semantic for atime
+  * Make zfs mount according to relatime config in dataset
+
+  [ Brian Behlendorf ]
+  * Prepare to release 0.6.5.9
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sat, 04 Feb 2017 10:14:50 -0500
+
 zfs-linux (0.6.5.8-1~trusty) trusty; urgency=low
 
   [ Marcel Huber ]
