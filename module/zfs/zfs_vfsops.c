@@ -700,19 +700,17 @@ zfs_sb_create(const char *osname, zfs_mntopts_t *zmo, zfs_sb_t **zsbp)
 	zsb = kmem_zalloc(sizeof (zfs_sb_t), KM_SLEEP);
 
 	/*
+	 * Optional temporary mount options, free'd in zfs_sb_free().
+	 */
+	zsb->z_mntopts = (zmo ? zmo : zfs_mntopts_alloc());
+
+	/*
 	 * We claim to always be readonly so we can open snapshots;
 	 * other ZPL code will prevent us from writing to snapshots.
 	 */
 	error = dmu_objset_own(osname, DMU_OST_ZFS, B_TRUE, zsb, &os);
-	if (error) {
-		kmem_free(zsb, sizeof (zfs_sb_t));
-		return (error);
-	}
-
-	/*
-	 * Optional temporary mount options, free'd in zfs_sb_free().
-	 */
-	zsb->z_mntopts = (zmo ? zmo : zfs_mntopts_alloc());
+	if (error)
+		goto out_zmo;
 
 	/*
 	 * Initialize the zfs-specific filesystem structure.
@@ -840,8 +838,9 @@ zfs_sb_create(const char *osname, zfs_mntopts_t *zmo, zfs_sb_t **zsbp)
 
 out:
 	dmu_objset_disown(os, zsb);
+out_zmo:
 	*zsbp = NULL;
-
+	zfs_mntopts_free(zsb->z_mntopts);
 	kmem_free(zsb, sizeof (zfs_sb_t));
 	return (error);
 }
@@ -1124,8 +1123,7 @@ zfs_root(zfs_sb_t *zsb, struct inode **ipp)
 }
 EXPORT_SYMBOL(zfs_root);
 
-#if !defined(HAVE_SPLIT_SHRINKER_CALLBACK) && !defined(HAVE_SHRINK) && \
-	defined(HAVE_D_PRUNE_ALIASES)
+#ifdef HAVE_D_PRUNE_ALIASES
 /*
  * Linux kernels older than 3.1 do not support a per-filesystem shrinker.
  * To accommodate this we must improvise and manually walk the list of znodes
@@ -1215,15 +1213,29 @@ zfs_sb_prune(struct super_block *sb, unsigned long nr_to_scan, int *objects)
 	} else {
 			*objects = (*shrinker->scan_objects)(shrinker, &sc);
 	}
+
 #elif defined(HAVE_SPLIT_SHRINKER_CALLBACK)
 	*objects = (*shrinker->scan_objects)(shrinker, &sc);
 #elif defined(HAVE_SHRINK)
 	*objects = (*shrinker->shrink)(shrinker, &sc);
 #elif defined(HAVE_D_PRUNE_ALIASES)
+#define	D_PRUNE_ALIASES_IS_DEFAULT
 	*objects = zfs_sb_prune_aliases(zsb, nr_to_scan);
 #else
 #error "No available dentry and inode cache pruning mechanism."
 #endif
+
+#if defined(HAVE_D_PRUNE_ALIASES) && !defined(D_PRUNE_ALIASES_IS_DEFAULT)
+#undef	D_PRUNE_ALIASES_IS_DEFAULT
+	/*
+	 * Fall back to zfs_sb_prune_aliases if the kernel's per-superblock
+	 * shrinker couldn't free anything, possibly due to the inodes being
+	 * allocated in a different memcg.
+	 */
+	if (*objects == 0)
+		*objects = zfs_sb_prune_aliases(zsb, nr_to_scan);
+#endif
+
 	ZFS_EXIT(zsb);
 
 	dprintf_ds(zsb->z_os->os_dsl_dataset,
@@ -1601,6 +1613,14 @@ zfs_vget(struct super_block *sb, struct inode **ipp, fid_t *fidp)
 		ZFS_EXIT(zsb);
 		return (err);
 	}
+
+	/* Don't export xattr stuff */
+	if (zp->z_pflags & ZFS_XATTR) {
+		iput(ZTOI(zp));
+		ZFS_EXIT(zsb);
+		return (SET_ERROR(ENOENT));
+	}
+
 	(void) sa_lookup(zp->z_sa_hdl, SA_ZPL_GEN(zsb), &zp_gen,
 	    sizeof (uint64_t));
 	zp_gen = zp_gen & gen_mask;
@@ -1613,7 +1633,7 @@ zfs_vget(struct super_block *sb, struct inode **ipp, fid_t *fidp)
 		    fid_gen);
 		iput(ZTOI(zp));
 		ZFS_EXIT(zsb);
-		return (SET_ERROR(EINVAL));
+		return (SET_ERROR(ENOENT));
 	}
 
 	*ipp = ZTOI(zp);
@@ -1858,7 +1878,10 @@ zfs_init(void)
 void
 zfs_fini(void)
 {
-	taskq_wait_outstanding(system_taskq, 0);
+	/*
+	 * we don't use outstanding because zpl_posix_acl_free might add more.
+	 */
+	taskq_wait(system_taskq);
 	unregister_filesystem(&zpl_fs_type);
 	zfs_znode_fini();
 	zfsctl_fini();

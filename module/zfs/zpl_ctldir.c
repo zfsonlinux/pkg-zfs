@@ -81,7 +81,7 @@ out:
 	return (error);
 }
 
-#if !defined(HAVE_VFS_ITERATE)
+#if !defined(HAVE_VFS_ITERATE) && !defined(HAVE_VFS_ITERATE_SHARED)
 static int
 zpl_root_readdir(struct file *filp, void *dirent, filldir_t filldir)
 {
@@ -144,7 +144,9 @@ const struct file_operations zpl_fops_root = {
 	.open		= zpl_common_open,
 	.llseek		= generic_file_llseek,
 	.read		= generic_read_dir,
-#ifdef HAVE_VFS_ITERATE
+#ifdef HAVE_VFS_ITERATE_SHARED
+	.iterate_shared	= zpl_root_iterate,
+#elif defined(HAVE_VFS_ITERATE)
 	.iterate	= zpl_root_iterate,
 #else
 	.readdir	= zpl_root_readdir,
@@ -285,7 +287,7 @@ out:
 	return (error);
 }
 
-#if !defined(HAVE_VFS_ITERATE)
+#if !defined(HAVE_VFS_ITERATE) && !defined(HAVE_VFS_ITERATE_SHARED)
 static int
 zpl_snapdir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 {
@@ -299,12 +301,16 @@ zpl_snapdir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 }
 #endif /* HAVE_VFS_ITERATE */
 
-int
-zpl_snapdir_rename(struct inode *sdip, struct dentry *sdentry,
-    struct inode *tdip, struct dentry *tdentry)
+static int
+zpl_snapdir_rename2(struct inode *sdip, struct dentry *sdentry,
+    struct inode *tdip, struct dentry *tdentry, unsigned int flags)
 {
 	cred_t *cr = CRED();
 	int error;
+
+	/* We probably don't want to support renameat2(2) in ctldir */
+	if (flags)
+		return (-EINVAL);
 
 	crhold(cr);
 	error = -zfsctl_snapdir_rename(sdip, dname(sdentry),
@@ -314,6 +320,15 @@ zpl_snapdir_rename(struct inode *sdip, struct dentry *sdentry,
 
 	return (error);
 }
+
+#ifndef HAVE_RENAME_WANTS_FLAGS
+static int
+zpl_snapdir_rename(struct inode *sdip, struct dentry *sdentry,
+    struct inode *tdip, struct dentry *tdentry)
+{
+	return (zpl_snapdir_rename2(sdip, sdentry, tdip, tdentry, 0));
+}
+#endif
 
 static int
 zpl_snapdir_rmdir(struct inode *dip, struct dentry *dentry)
@@ -385,7 +400,9 @@ const struct file_operations zpl_fops_snapdir = {
 	.open		= zpl_common_open,
 	.llseek		= generic_file_llseek,
 	.read		= generic_read_dir,
-#ifdef HAVE_VFS_ITERATE
+#ifdef HAVE_VFS_ITERATE_SHARED
+	.iterate_shared	= zpl_snapdir_iterate,
+#elif defined(HAVE_VFS_ITERATE)
 	.iterate	= zpl_snapdir_iterate,
 #else
 	.readdir	= zpl_snapdir_readdir,
@@ -401,7 +418,11 @@ const struct file_operations zpl_fops_snapdir = {
 const struct inode_operations zpl_ops_snapdir = {
 	.lookup		= zpl_snapdir_lookup,
 	.getattr	= zpl_snapdir_getattr,
+#ifdef HAVE_RENAME_WANTS_FLAGS
+	.rename		= zpl_snapdir_rename2,
+#else
 	.rename		= zpl_snapdir_rename,
+#endif
 	.rmdir		= zpl_snapdir_rmdir,
 	.mkdir		= zpl_snapdir_mkdir,
 };
@@ -472,7 +493,7 @@ out:
 	return (error);
 }
 
-#if !defined(HAVE_VFS_ITERATE)
+#if !defined(HAVE_VFS_ITERATE) && !defined(HAVE_VFS_ITERATE_SHARED)
 static int
 zpl_shares_readdir(struct file *filp, void *dirent, filldir_t filldir)
 {
@@ -525,7 +546,9 @@ const struct file_operations zpl_fops_shares = {
 	.open		= zpl_common_open,
 	.llseek		= generic_file_llseek,
 	.read		= generic_read_dir,
-#ifdef HAVE_VFS_ITERATE
+#ifdef HAVE_VFS_ITERATE_SHARED
+	.iterate_shared	= zpl_shares_iterate,
+#elif defined(HAVE_VFS_ITERATE)
 	.iterate	= zpl_shares_iterate,
 #else
 	.readdir	= zpl_shares_readdir,

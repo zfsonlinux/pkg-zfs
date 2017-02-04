@@ -76,7 +76,7 @@ extern ssize_t zpl_xattr_list(struct dentry *dentry, char *buf, size_t size);
 extern int zpl_xattr_security_init(struct inode *ip, struct inode *dip,
     const struct qstr *qstr);
 #if defined(CONFIG_FS_POSIX_ACL)
-extern int zpl_set_acl(struct inode *ip, int type, struct posix_acl *acl);
+extern int zpl_set_acl(struct inode *ip, struct posix_acl *acl, int type);
 extern struct posix_acl *zpl_get_acl(struct inode *ip, int type);
 #if !defined(HAVE_GET_ACL)
 #if defined(HAVE_CHECK_ACL_WITH_FLAGS)
@@ -123,7 +123,7 @@ extern const struct inode_operations zpl_ops_snapdirs;
 extern const struct file_operations zpl_fops_shares;
 extern const struct inode_operations zpl_ops_shares;
 
-#ifdef HAVE_VFS_ITERATE
+#if defined(HAVE_VFS_ITERATE) || defined(HAVE_VFS_ITERATE_SHARED)
 
 #define	DIR_CONTEXT_INIT(_dirent, _actor, _pos) {	\
 	.actor = _actor,				\
