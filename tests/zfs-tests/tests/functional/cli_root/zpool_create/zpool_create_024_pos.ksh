@@ -39,16 +39,11 @@
 
 verify_runnable "global"
 
-# See issue: https://github.com/zfsonlinux/zfs/issues/5479
-if is_kmemleak; then
-	log_unsupported "Test case runs slowly when kmemleak is enabled"
-fi
-
 function cleanup
 {
 	if [[ -n "$child_pids" ]]; then
 		for wait_pid in $child_pids; do
-			$KILL $wait_pid 2>/dev/null
+			kill $wait_pid 2>/dev/null
 		done
 	fi
 
@@ -61,7 +56,7 @@ function cleanup
 				destroy_pool $pool
 			fi
 
-			$RM -f $vdev0 $vdev1
+			rm -f $vdev0 $vdev1
 		done
 	fi
 }
@@ -82,14 +77,14 @@ function zpool_stress
 	typeset retry=10
 	typeset j=0
 
-	$TRUNCATE -s $FILESIZE $vdev0
-	$TRUNCATE -s $FILESIZE $vdev1
+	truncate -s $FILESIZE $vdev0
+	truncate -s $FILESIZE $vdev1
 
 	while [[ $j -lt $iters ]]; do
 		((j = j + 1))
-		$SLEEP 1
+		sleep 1
 
-		$ZPOOL create $pool $vdev0 $vdev1
+		zpool create $pool $vdev0 $vdev1
 		if [ $? -ne 0 ]; then
 			return 1;
 		fi
@@ -101,25 +96,25 @@ function zpool_stress
 		while [[ $k -lt $retry ]]; do
 			((k = k + 1))
 
-			$ZPOOL destroy $pool
+			zpool destroy $pool
 			if [ $? -eq 0 ]; then
 				break;
 			elif [ $k -eq $retry ]; then
 				return 1;
 			fi
 
-			$SLEEP 3
+			sleep 3
 		done
 	done
 
-	$RM -f $vdev0 $vdev1
+	rm -f $vdev0 $vdev1
 	return 0
 }
 
 # 1. Create 128 process each of which create/destroy a pool 5 times.
 typeset i=0
 while [[ $i -lt 128 ]]; do
-	typeset uuid=$($UUIDGEN | $CUT -c1-13)
+	typeset uuid=$(uuidgen | cut -c1-13)
 
 	zpool_stress $TESTPOOL-$uuid 5 &
 	typeset pid=$!

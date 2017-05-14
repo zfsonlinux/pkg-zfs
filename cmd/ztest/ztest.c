@@ -20,7 +20,7 @@
  */
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2011, 2015 by Delphix. All rights reserved.
+ * Copyright (c) 2011, 2016 by Delphix. All rights reserved.
  * Copyright 2011 Nexenta Systems, Inc.  All rights reserved.
  * Copyright (c) 2013 Steven Hartland. All rights reserved.
  */
@@ -629,6 +629,8 @@ usage(boolean_t requested)
 	    "\t[-F freezeloops (default: %llu)] max loops in spa_freeze()\n"
 	    "\t[-P passtime (default: %llu sec)] time per pass\n"
 	    "\t[-B alt_ztest (default: <none>)] alternate ztest path\n"
+	    "\t[-o variable=value] ... set global variable to an unsigned\n"
+	    "\t    32-bit integer value\n"
 	    "\t[-h] (print help)\n"
 	    "",
 	    zo->zo_pool,
@@ -664,7 +666,7 @@ process_options(int argc, char **argv)
 	bcopy(&ztest_opts_defaults, zo, sizeof (*zo));
 
 	while ((opt = getopt(argc, argv,
-	    "v:s:a:m:r:R:d:t:g:i:k:p:f:VET:P:hF:B:")) != EOF) {
+	    "v:s:a:m:r:R:d:t:g:i:k:p:f:VET:P:hF:B:o:")) != EOF) {
 		value = 0;
 		switch (opt) {
 		case 'v':
@@ -751,6 +753,10 @@ process_options(int argc, char **argv)
 			break;
 		case 'B':
 			(void) strlcpy(altdir, optarg, sizeof (altdir));
+			break;
+		case 'o':
+			if (set_global_var(optarg) != 0)
+				usage(B_FALSE);
 			break;
 		case 'h':
 			usage(B_TRUE);
@@ -2596,7 +2602,7 @@ ztest_zil_remount(ztest_ds_t *zd, uint64_t id)
 	mutex_enter(&zd->zd_dirobj_lock);
 	(void) rw_wrlock(&zd->zd_zilog_lock);
 
-	/* zfs_sb_teardown() */
+	/* zfsvfs_teardown() */
 	zil_close(zd->zd_zilog);
 
 	/* zfsvfs_setup() */
@@ -3499,9 +3505,12 @@ ztest_objset_destroy_cb(const char *name, void *arg)
 	 * Destroy the dataset.
 	 */
 	if (strchr(name, '@') != NULL) {
-		VERIFY0(dsl_destroy_snapshot(name, B_FALSE));
+		VERIFY0(dsl_destroy_snapshot(name, B_TRUE));
 	} else {
-		VERIFY0(dsl_destroy_head(name));
+		error = dsl_destroy_head(name);
+		/* There could be a hold on this dataset */
+		if (error != EBUSY)
+			ASSERT0(error);
 	}
 	return (0);
 }
@@ -5211,7 +5220,7 @@ ztest_fault_inject(ztest_ds_t *zd, uint64_t id)
 	char *path0;
 	char *pathrand;
 	size_t fsize;
-	int bshift = SPA_MAXBLOCKSHIFT + 2;	/* don't scrog all labels */
+	int bshift = SPA_MAXBLOCKSHIFT + 2;
 	int iters = 1000;
 	int maxfaults;
 	int mirror_save;
@@ -5404,7 +5413,29 @@ ztest_fault_inject(ztest_ds_t *zd, uint64_t id)
 		    (leaves << bshift) + (leaf << bshift) +
 		    (ztest_random(1ULL << (bshift - 1)) & -8ULL);
 
-		if (offset >= fsize)
+		/*
+		 * Only allow damage to the labels at one end of the vdev.
+		 *
+		 * If all labels are damaged, the device will be totally
+		 * inaccessible, which will result in loss of data,
+		 * because we also damage (parts of) the other side of
+		 * the mirror/raidz.
+		 *
+		 * Additionally, we will always have both an even and an
+		 * odd label, so that we can handle crashes in the
+		 * middle of vdev_config_sync().
+		 */
+		if ((leaf & 1) == 0 && offset < VDEV_LABEL_START_SIZE)
+			continue;
+
+		/*
+		 * The two end labels are stored at the "end" of the disk, but
+		 * the end of the disk (vdev_psize) is aligned to
+		 * sizeof (vdev_label_t).
+		 */
+		uint64_t psize = P2ALIGN(fsize, sizeof (vdev_label_t));
+		if ((leaf & 1) == 1 &&
+		    offset + sizeof (bad) > psize - VDEV_LABEL_END_SIZE)
 			continue;
 
 		mutex_enter(&ztest_vdev_lock);
@@ -5476,9 +5507,14 @@ ztest_ddt_repair(ztest_ds_t *zd, uint64_t id)
 		return;
 	}
 
+	dmu_objset_stats_t dds;
+	dsl_pool_config_enter(dmu_objset_pool(os), FTAG);
+	dmu_objset_fast_stat(os, &dds);
+	dsl_pool_config_exit(dmu_objset_pool(os), FTAG);
+
 	object = od[0].od_object;
 	blocksize = od[0].od_blocksize;
-	pattern = zs->zs_guid ^ dmu_objset_fsid_guid(os);
+	pattern = zs->zs_guid ^ dds.dds_guid;
 
 	ASSERT(object != 0);
 
@@ -5644,6 +5680,7 @@ ztest_fletcher(ztest_ds_t *zd, uint64_t id)
 	while (gethrtime() <= end) {
 		int run_count = 100;
 		void *buf;
+		struct abd *abd_data, *abd_meta;
 		uint32_t size;
 		int *ptr;
 		int i;
@@ -5651,10 +5688,16 @@ ztest_fletcher(ztest_ds_t *zd, uint64_t id)
 		zio_cksum_t zc_ref_byteswap;
 
 		size = ztest_random_blocksize();
+
 		buf = umem_alloc(size, UMEM_NOFAIL);
+		abd_data = abd_alloc(size, B_FALSE);
+		abd_meta = abd_alloc(size, B_TRUE);
 
 		for (i = 0, ptr = buf; i < size / sizeof (*ptr); i++, ptr++)
 			*ptr = ztest_random(UINT_MAX);
+
+		abd_copy_from_buf_off(abd_data, buf, 0, size);
+		abd_copy_from_buf_off(abd_meta, buf, 0, size);
 
 		VERIFY0(fletcher_4_impl_set("scalar"));
 		fletcher_4_native(buf, size, NULL, &zc_ref);
@@ -5671,9 +5714,30 @@ ztest_fletcher(ztest_ds_t *zd, uint64_t id)
 			VERIFY0(bcmp(&zc, &zc_ref, sizeof (zc)));
 			VERIFY0(bcmp(&zc_byteswap, &zc_ref_byteswap,
 			    sizeof (zc_byteswap)));
+
+			/* Test ABD - data */
+			abd_fletcher_4_byteswap(abd_data, size, NULL,
+			    &zc_byteswap);
+			abd_fletcher_4_native(abd_data, size, NULL, &zc);
+
+			VERIFY0(bcmp(&zc, &zc_ref, sizeof (zc)));
+			VERIFY0(bcmp(&zc_byteswap, &zc_ref_byteswap,
+			    sizeof (zc_byteswap)));
+
+			/* Test ABD - metadata */
+			abd_fletcher_4_byteswap(abd_meta, size, NULL,
+			    &zc_byteswap);
+			abd_fletcher_4_native(abd_meta, size, NULL, &zc);
+
+			VERIFY0(bcmp(&zc, &zc_ref, sizeof (zc)));
+			VERIFY0(bcmp(&zc_byteswap, &zc_ref_byteswap,
+			    sizeof (zc_byteswap)));
+
 		}
 
 		umem_free(buf, size);
+		abd_free(abd_data);
+		abd_free(abd_meta);
 	}
 }
 
@@ -5808,7 +5872,7 @@ ztest_run_zdb(char *pool)
 	ztest_get_zdb_bin(bin, len);
 
 	(void) sprintf(zdb,
-	    "%s -bcc%s%s -d -U %s %s",
+	    "%s -bcc%s%s -G -d -U %s %s",
 	    bin,
 	    ztest_opts.zo_verbose >= 3 ? "s" : "",
 	    ztest_opts.zo_verbose >= 4 ? "v" : "",
@@ -6219,9 +6283,13 @@ ztest_run(ztest_shared_t *zs)
 	metaslab_preload_limit = ztest_random(20) + 1;
 	ztest_spa = spa;
 
+	dmu_objset_stats_t dds;
 	VERIFY0(dmu_objset_own(ztest_opts.zo_pool,
 	    DMU_OST_ANY, B_TRUE, FTAG, &os));
-	zs->zs_guid = dmu_objset_fsid_guid(os);
+	dsl_pool_config_enter(dmu_objset_pool(os), FTAG);
+	dmu_objset_fast_stat(os, &dds);
+	dsl_pool_config_exit(dmu_objset_pool(os), FTAG);
+	zs->zs_guid = dds.dds_guid;
 	dmu_objset_disown(os, FTAG);
 
 	spa->spa_dedup_ditto = 2 * ZIO_DEDUPDITTO_MIN;
@@ -6240,7 +6308,7 @@ ztest_run(ztest_shared_t *zs)
 	 * Create a thread to periodically resume suspended I/O.
 	 */
 	VERIFY3P((resume_thread = zk_thread_create(NULL, 0,
-	    (thread_func_t)ztest_resume_thread, spa, TS_RUN, NULL, 0, 0,
+	    (thread_func_t)ztest_resume_thread, spa, 0, NULL, TS_RUN, 0,
 	    PTHREAD_CREATE_JOINABLE)), !=, NULL);
 
 #if 0
@@ -6296,7 +6364,7 @@ ztest_run(ztest_shared_t *zs)
 
 		VERIFY3P(thread = zk_thread_create(NULL, 0,
 		    (thread_func_t)ztest_thread,
-		    (void *)(uintptr_t)t, TS_RUN, NULL, 0, 0,
+		    (void *)(uintptr_t)t, 0, NULL, TS_RUN, 0,
 		    PTHREAD_CREATE_JOINABLE), !=, NULL);
 		tid[t] = thread->t_tid;
 	}

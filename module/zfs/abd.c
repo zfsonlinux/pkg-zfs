@@ -374,7 +374,7 @@ abd_free_pages(abd_t *abd)
 	struct sg_table table;
 	struct page *page;
 	int nr_pages = ABD_SCATTER(abd).abd_nents;
-	int order, i, j;
+	int order, i;
 
 	if (abd->abd_flags & ABD_FLAG_MULTI_ZONE)
 		ABDSTAT_BUMPDOWN(abdstat_scatter_page_multi_zone);
@@ -383,13 +383,11 @@ abd_free_pages(abd_t *abd)
 		ABDSTAT_BUMPDOWN(abdstat_scatter_page_multi_chunk);
 
 	abd_for_each_sg(abd, sg, nr_pages, i) {
-		for (j = 0; j < sg->length; ) {
-			page = nth_page(sg_page(sg), j >> PAGE_SHIFT);
-			order = compound_order(page);
-			__free_pages(page, order);
-			j += (PAGESIZE << order);
-			ABDSTAT_BUMPDOWN(abdstat_scatter_orders[order]);
-		}
+		page = sg_page(sg);
+		order = compound_order(page);
+		__free_pages(page, order);
+		ASSERT3U(sg->length, <=, PAGE_SIZE << order);
+		ABDSTAT_BUMPDOWN(abdstat_scatter_orders[order]);
 	}
 
 	table.sgl = ABD_SCATTER(abd).abd_sgl;
@@ -423,7 +421,8 @@ struct scatterlist {
 };
 
 static void
-sg_init_table(struct scatterlist *sg, int nr) {
+sg_init_table(struct scatterlist *sg, int nr)
+{
 	memset(sg, 0, nr * sizeof (struct scatterlist));
 	sg[nr - 1].end = 1;
 }
@@ -721,7 +720,7 @@ abd_alloc_sametype(abd_t *sabd, size_t size)
 abd_t *
 abd_alloc_for_io(size_t size, boolean_t is_metadata)
 {
-	return (abd_alloc_linear(size, is_metadata));
+	return (abd_alloc(size, is_metadata));
 }
 
 /*
@@ -1315,8 +1314,8 @@ abd_cmp(abd_t *dabd, abd_t *sabd)
  */
 void
 abd_raidz_gen_iterate(abd_t **cabds, abd_t *dabd,
-	ssize_t csize, ssize_t dsize, const unsigned parity,
-	void (*func_raidz_gen)(void **, const void *, size_t, size_t))
+    ssize_t csize, ssize_t dsize, const unsigned parity,
+    void (*func_raidz_gen)(void **, const void *, size_t, size_t))
 {
 	int i;
 	ssize_t len, dlen;
@@ -1407,10 +1406,10 @@ abd_raidz_gen_iterate(abd_t **cabds, abd_t *dabd,
  */
 void
 abd_raidz_rec_iterate(abd_t **cabds, abd_t **tabds,
-	ssize_t tsize, const unsigned parity,
-	void (*func_raidz_rec)(void **t, const size_t tsize, void **c,
-	const unsigned *mul),
-	const unsigned *mul)
+    ssize_t tsize, const unsigned parity,
+    void (*func_raidz_rec)(void **t, const size_t tsize, void **c,
+    const unsigned *mul),
+    const unsigned *mul)
 {
 	int i;
 	ssize_t len;
@@ -1497,7 +1496,7 @@ abd_nr_pages_off(abd_t *abd, unsigned int size, size_t off)
  */
 unsigned int
 abd_scatter_bio_map_off(struct bio *bio, abd_t *abd,
-			unsigned int io_size, size_t off)
+    unsigned int io_size, size_t off)
 {
 	int i;
 	struct abd_iter aiter;

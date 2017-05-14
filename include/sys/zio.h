@@ -22,8 +22,10 @@
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
  * Copyright 2011 Nexenta Systems, Inc. All rights reserved.
- * Copyright (c) 2012, 2016 by Delphix. All rights reserved.
+ * Copyright (c) 2012, 2017 by Delphix. All rights reserved.
  * Copyright (c) 2013 by Saso Kiselkov. All rights reserved.
+ * Copyright (c) 2013, Joyent, Inc. All rights reserved.
+ * Copyright 2016 Toomas Soome <tsoome@me.com>
  */
 
 #ifndef _ZIO_H
@@ -120,6 +122,16 @@ enum zio_checksum {
 #define	BOOTFS_COMPRESS_VALID(compress)			\
 	((compress) == ZIO_COMPRESS_LZJB ||		\
 	(compress) == ZIO_COMPRESS_LZ4 ||		\
+	(compress) == ZIO_COMPRESS_GZIP_1 ||		\
+	(compress) == ZIO_COMPRESS_GZIP_2 ||		\
+	(compress) == ZIO_COMPRESS_GZIP_3 ||		\
+	(compress) == ZIO_COMPRESS_GZIP_4 ||		\
+	(compress) == ZIO_COMPRESS_GZIP_5 ||		\
+	(compress) == ZIO_COMPRESS_GZIP_6 ||		\
+	(compress) == ZIO_COMPRESS_GZIP_7 ||		\
+	(compress) == ZIO_COMPRESS_GZIP_8 ||		\
+	(compress) == ZIO_COMPRESS_GZIP_9 ||		\
+	(compress) == ZIO_COMPRESS_ZLE ||		\
 	(compress) == ZIO_COMPRESS_ON ||		\
 	(compress) == ZIO_COMPRESS_OFF)
 
@@ -296,7 +308,7 @@ typedef struct zio_prop {
 typedef struct zio_cksum_report zio_cksum_report_t;
 
 typedef void zio_cksum_finish_f(zio_cksum_report_t *rep,
-    const void *good_data);
+    const abd_t *good_data);
 typedef void zio_cksum_free_f(void *cbdata, size_t size);
 
 struct zio_bad_cksum;				/* defined in zio_checksum.h */
@@ -454,7 +466,7 @@ struct zio {
 	taskq_ent_t	io_tqent;
 };
 
-extern int zio_timestamp_compare(const void *, const void *);
+extern int zio_bookmark_compare(const void *, const void *);
 
 extern zio_t *zio_null(zio_t *pio, spa_t *spa, vdev_t *vd,
     zio_done_func_t *done, void *private, enum zio_flag flags);
@@ -587,14 +599,14 @@ extern hrtime_t zio_handle_io_delay(zio_t *zio);
 extern void zfs_ereport_start_checksum(spa_t *spa, vdev_t *vd, struct zio *zio,
     uint64_t offset, uint64_t length, void *arg, struct zio_bad_cksum *info);
 extern void zfs_ereport_finish_checksum(zio_cksum_report_t *report,
-    const void *good_data, const void *bad_data, boolean_t drop_if_identical);
+    const abd_t *good_data, const abd_t *bad_data, boolean_t drop_if_identical);
 
 extern void zfs_ereport_free_checksum(zio_cksum_report_t *report);
 
 /* If we have the good data in hand, this function can be used */
 extern void zfs_ereport_post_checksum(spa_t *spa, vdev_t *vd,
     struct zio *zio, uint64_t offset, uint64_t length,
-    const void *good_data, const void *bad_data, struct zio_bad_cksum *info);
+    const abd_t *good_data, const abd_t *bad_data, struct zio_bad_cksum *info);
 
 /* Called from spa_sync(), but primarily an injection handler */
 extern void spa_handle_ignored_writes(spa_t *spa);

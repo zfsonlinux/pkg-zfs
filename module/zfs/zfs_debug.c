@@ -42,7 +42,7 @@ kstat_t *zfs_dbgmsg_kstat;
  * # Clear the kernel debug message log.
  * echo 0 >/proc/spl/kstat/zfs/dbgmsg
  */
-#if defined(_KERNEL)
+#if defined(_KERNEL) && !defined(ZFS_DEBUG)
 int zfs_dbgmsg_enable = 0;
 #else
 int zfs_dbgmsg_enable = 1;
@@ -227,6 +227,21 @@ __dprintf(const char *file, const char *func, int line, const char *fmt, ...)
 		__zfs_dbgmsg(buf);
 
 	kmem_free(buf, size);
+}
+
+#else
+
+void
+zfs_dbgmsg_print(const char *tag)
+{
+	zfs_dbgmsg_t *zdm;
+
+	(void) printf("ZFS_DBGMSG(%s):\n", tag);
+	mutex_enter(&zfs_dbgmsgs_lock);
+	for (zdm = list_head(&zfs_dbgmsgs); zdm;
+	    zdm = list_next(&zfs_dbgmsgs, zdm))
+		(void) printf("%s\n", zdm->zdm_msg);
+	mutex_exit(&zfs_dbgmsgs_lock);
 }
 #endif /* _KERNEL */
 

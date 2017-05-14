@@ -21,7 +21,7 @@
 /*
  * Copyright 2015 Nexenta Systems, Inc. All rights reserved.
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012 by Delphix. All rights reserved.
+ * Copyright (c) 2012, 2016 by Delphix. All rights reserved.
  * Copyright 2015 RackTop Systems.
  * Copyright (c) 2016, Intel Corporation.
  */
@@ -476,7 +476,6 @@ update_vdev_config_dev_strs(nvlist_t *nv)
 	    !strncasecmp(env, "YES", 3) || !strncasecmp(env, "ON", 2))) {
 		(void) nvlist_remove_all(nv, ZPOOL_CONFIG_DEVID);
 		(void) nvlist_remove_all(nv, ZPOOL_CONFIG_PHYS_PATH);
-		(void) nvlist_remove_all(nv, ZPOOL_CONFIG_VDEV_ENC_SYSFS_PATH);
 		return;
 	}
 
@@ -504,6 +503,9 @@ update_vdev_config_dev_strs(nvlist_t *nv)
 		if (spath)
 			nvlist_add_string(nv, ZPOOL_CONFIG_VDEV_ENC_SYSFS_PATH,
 			    spath);
+		else
+			nvlist_remove_all(nv, ZPOOL_CONFIG_VDEV_ENC_SYSFS_PATH);
+
 		free(upath);
 		free(spath);
 	} else {
@@ -823,13 +825,14 @@ refresh_config(libzfs_handle_t *hdl, nvlist_t *config)
 {
 	nvlist_t *nvl;
 	zfs_cmd_t zc = {"\0"};
-	int err;
+	int err, dstbuf_size;
 
 	if (zcmd_write_conf_nvlist(hdl, &zc, config) != 0)
 		return (NULL);
 
-	if (zcmd_alloc_dst_nvlist(hdl, &zc,
-	    zc.zc_nvlist_conf_size * 2) != 0) {
+	dstbuf_size = MAX(CONFIG_BUF_MINSIZE, zc.zc_nvlist_conf_size * 4);
+
+	if (zcmd_alloc_dst_nvlist(hdl, &zc, dstbuf_size) != 0) {
 		zcmd_free_nvlists(&zc);
 		return (NULL);
 	}
@@ -1935,10 +1938,15 @@ zpool_find_import_impl(libzfs_handle_t *hdl, importargs_t *iarg)
 				 * exclusively. This will prune all underlying
 				 * multipath devices which otherwise could
 				 * result in the vdev appearing as UNAVAIL.
+				 *
+				 * Under zdb, this step isn't required and
+				 * would prevent a zdb -e of active pools with
+				 * no cachefile.
 				 */
 				fd = open(slice->rn_name, O_RDONLY | O_EXCL);
-				if (fd >= 0) {
-					close(fd);
+				if (fd >= 0 || iarg->can_be_active) {
+					if (fd >= 0)
+						close(fd);
 					add_config(hdl, &pools,
 					    slice->rn_name, slice->rn_order,
 					    slice->rn_num_labels, config);

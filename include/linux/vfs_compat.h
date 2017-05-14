@@ -70,45 +70,114 @@ truncate_setsize(struct inode *ip, loff_t new)
 /*
  * 2.6.32 - 2.6.33, bdi_setup_and_register() is not available.
  * 2.6.34 - 3.19, bdi_setup_and_register() takes 3 arguments.
- * 4.0 - x.y, bdi_setup_and_register() takes 2 arguments.
+ * 4.0 - 4.11, bdi_setup_and_register() takes 2 arguments.
+ * 4.12 - x.y, super_setup_bdi_name() new interface.
  */
-#if defined(HAVE_2ARGS_BDI_SETUP_AND_REGISTER)
+#if defined(HAVE_SUPER_SETUP_BDI_NAME)
 static inline int
-zpl_bdi_setup_and_register(struct backing_dev_info *bdi, char *name)
+zpl_bdi_setup(struct super_block *sb, char *name)
 {
-	return (bdi_setup_and_register(bdi, name));
+	return (super_setup_bdi_name(sb, name));
+}
+static inline void
+zpl_bdi_destroy(struct super_block *sb)
+{
+}
+#elif defined(HAVE_2ARGS_BDI_SETUP_AND_REGISTER)
+static inline int
+zpl_bdi_setup(struct super_block *sb, char *name)
+{
+	struct backing_dev_info *bdi;
+	int error;
+
+	bdi = kmem_zalloc(sizeof (struct backing_dev_info), KM_SLEEP);
+	error = bdi_setup_and_register(bdi, name);
+	if (error) {
+		kmem_free(bdi, sizeof (struct backing_dev_info));
+		return (error);
+	}
+
+	sb->s_bdi = bdi;
+
+	return (0);
+}
+static inline void
+zpl_bdi_destroy(struct super_block *sb)
+{
+	struct backing_dev_info *bdi = sb->s_bdi;
+
+	bdi_destroy(bdi);
+	kmem_free(bdi, sizeof (struct backing_dev_info));
+	sb->s_bdi = NULL;
 }
 #elif defined(HAVE_3ARGS_BDI_SETUP_AND_REGISTER)
 static inline int
-zpl_bdi_setup_and_register(struct backing_dev_info *bdi, char *name)
+zpl_bdi_setup(struct super_block *sb, char *name)
 {
-	return (bdi_setup_and_register(bdi, name, BDI_CAP_MAP_COPY));
+	struct backing_dev_info *bdi;
+	int error;
+
+	bdi = kmem_zalloc(sizeof (struct backing_dev_info), KM_SLEEP);
+	error = bdi_setup_and_register(bdi, name, BDI_CAP_MAP_COPY);
+	if (error) {
+		kmem_free(sb->s_bdi, sizeof (struct backing_dev_info));
+		return (error);
+	}
+
+	sb->s_bdi = bdi;
+
+	return (0);
+}
+static inline void
+zpl_bdi_destroy(struct super_block *sb)
+{
+	struct backing_dev_info *bdi = sb->s_bdi;
+
+	bdi_destroy(bdi);
+	kmem_free(bdi, sizeof (struct backing_dev_info));
+	sb->s_bdi = NULL;
 }
 #else
 extern atomic_long_t zfs_bdi_seq;
 
 static inline int
-zpl_bdi_setup_and_register(struct backing_dev_info *bdi, char *name)
+zpl_bdi_setup(struct super_block *sb, char *name)
 {
+	struct backing_dev_info *bdi;
 	char tmp[32];
 	int error;
 
+	bdi = kmem_zalloc(sizeof (struct backing_dev_info), KM_SLEEP);
 	bdi->name = name;
 	bdi->capabilities = BDI_CAP_MAP_COPY;
 
 	error = bdi_init(bdi);
-	if (error)
+	if (error) {
+		kmem_free(bdi, sizeof (struct backing_dev_info));
 		return (error);
+	}
 
 	sprintf(tmp, "%.28s%s", name, "-%d");
 	error = bdi_register(bdi, NULL, tmp,
 	    atomic_long_inc_return(&zfs_bdi_seq));
 	if (error) {
 		bdi_destroy(bdi);
+		kmem_free(bdi, sizeof (struct backing_dev_info));
 		return (error);
 	}
 
-	return (error);
+	sb->s_bdi = bdi;
+
+	return (0);
+}
+static inline void
+zpl_bdi_destroy(struct super_block *sb)
+{
+	struct backing_dev_info *bdi = sb->s_bdi;
+
+	bdi_destroy(bdi);
+	kmem_free(bdi, sizeof (struct backing_dev_info));
+	sb->s_bdi = NULL;
 }
 #endif
 
@@ -225,7 +294,8 @@ zpl_posix_acl_release(struct posix_acl *acl)
 #define	zpl_forget_cached_acl(ip, ty)		forget_cached_acl(ip, ty)
 #else
 static inline void
-zpl_set_cached_acl(struct inode *ip, int type, struct posix_acl *newer) {
+zpl_set_cached_acl(struct inode *ip, int type, struct posix_acl *newer)
+{
 	struct posix_acl *older = NULL;
 
 	spin_lock(&ip->i_lock);
@@ -250,7 +320,8 @@ zpl_set_cached_acl(struct inode *ip, int type, struct posix_acl *newer) {
 }
 
 static inline void
-zpl_forget_cached_acl(struct inode *ip, int type) {
+zpl_forget_cached_acl(struct inode *ip, int type)
+{
 	zpl_set_cached_acl(ip, type, (struct posix_acl *)ACL_NOT_CACHED);
 }
 #endif /* HAVE_SET_CACHED_ACL_USABLE */
@@ -261,7 +332,8 @@ zpl_forget_cached_acl(struct inode *ip, int type) {
 #define	__posix_acl_create(acl, gfp, mode)	posix_acl_create(acl, gfp, mode)
 #else
 static inline int
-__posix_acl_chmod(struct posix_acl **acl, int flags, umode_t umode) {
+__posix_acl_chmod(struct posix_acl **acl, int flags, umode_t umode)
+{
 	struct posix_acl *oldacl = *acl;
 	mode_t mode = umode;
 	int error;
@@ -282,7 +354,8 @@ __posix_acl_chmod(struct posix_acl **acl, int flags, umode_t umode) {
 }
 
 static inline int
-__posix_acl_create(struct posix_acl **acl, int flags, umode_t *umodep) {
+__posix_acl_create(struct posix_acl **acl, int flags, umode_t *umodep)
+{
 	struct posix_acl *oldacl = *acl;
 	mode_t mode = *umodep;
 	int error;
@@ -449,5 +522,48 @@ setattr_prepare(struct dentry *dentry, struct iattr *ia)
 	return (inode_change_ok(dentry->d_inode, ia));
 }
 #endif
+
+/*
+ * 4.11 API change
+ * These macros are defined by kernel 4.11.  We define them so that the same
+ * code builds under kernels < 4.11 and >= 4.11.  The macros are set to 0 so
+ * that it will create obvious failures if they are accidentally used when built
+ * against a kernel >= 4.11.
+ */
+
+#ifndef STATX_BASIC_STATS
+#define	STATX_BASIC_STATS	0
+#endif
+
+#ifndef AT_STATX_SYNC_AS_STAT
+#define	AT_STATX_SYNC_AS_STAT	0
+#endif
+
+/*
+ * 4.11 API change
+ * 4.11 takes struct path *, < 4.11 takes vfsmount *
+ */
+
+#ifdef HAVE_VFSMOUNT_IOPS_GETATTR
+#define	ZPL_GETATTR_WRAPPER(func)					\
+static int								\
+func(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)	\
+{									\
+	struct path path = { .mnt = mnt, .dentry = dentry };		\
+	return func##_impl(&path, stat, STATX_BASIC_STATS,		\
+	    AT_STATX_SYNC_AS_STAT);					\
+}
+#elif defined(HAVE_PATH_IOPS_GETATTR)
+#define	ZPL_GETATTR_WRAPPER(func)					\
+static int								\
+func(const struct path *path, struct kstat *stat, u32 request_mask,	\
+    unsigned int query_flags)						\
+{									\
+	return (func##_impl(path, stat, request_mask, query_flags));	\
+}
+#else
+#error
+#endif
+
 
 #endif /* _ZFS_VFS_H */

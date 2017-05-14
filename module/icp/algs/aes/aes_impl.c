@@ -22,23 +22,22 @@
  * Copyright (c) 2003, 2010, Oracle and/or its affiliates. All rights reserved.
  */
 
-#include <sys/zfs_context.h>
-#include <sys/crypto/spi.h>
-#include <modes/modes.h>
-#include <aes/aes_impl.h>
+#if defined(_KERNEL) && defined(__amd64)
+#include <linux/simd_x86.h>
 
-#ifdef __amd64
-
-#ifdef _KERNEL
-/* Workaround for no XMM kernel thread save/restore */
-#define	KPREEMPT_DISABLE	kpreempt_disable()
-#define	KPREEMPT_ENABLE		kpreempt_enable()
+#define	KPREEMPT_DISABLE	kfpu_begin()
+#define	KPREEMPT_ENABLE		kfpu_end()
 
 #else
 #define	KPREEMPT_DISABLE
 #define	KPREEMPT_ENABLE
 #endif	/* _KERNEL */
-#endif  /* __amd64 */
+
+#include <sys/zfs_context.h>
+#include <sys/crypto/spi.h>
+#include <modes/modes.h>
+#include <aes/aes_impl.h>
+
 
 
 /*
@@ -988,7 +987,8 @@ aes_setupkeys(aes_key_t *key, const uint32_t *keyarr32, int keybits)
  */
 static void
 rijndael_encrypt(const uint32_t rk[], int Nr, const uint32_t pt[4],
-    uint32_t ct[4], int flags) {
+    uint32_t ct[4], int flags)
+{
 	if (flags & INTEL_AES_NI_CAPABLE) {
 		KPREEMPT_DISABLE;
 		aes_encrypt_intel(rk, Nr, pt, ct);
@@ -1015,7 +1015,8 @@ rijndael_encrypt(const uint32_t rk[], int Nr, const uint32_t pt[4],
  */
 static void
 rijndael_decrypt(const uint32_t rk[], int Nr, const uint32_t ct[4],
-    uint32_t pt[4], int flags) {
+    uint32_t pt[4], int flags)
+{
 	if (flags & INTEL_AES_NI_CAPABLE) {
 		KPREEMPT_DISABLE;
 		aes_decrypt_intel(rk, Nr, ct, pt);

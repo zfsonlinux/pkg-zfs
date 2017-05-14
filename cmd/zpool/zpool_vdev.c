@@ -21,7 +21,7 @@
 
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2013 by Delphix. All rights reserved.
+ * Copyright (c) 2013, 2015 by Delphix. All rights reserved.
  * Copyright (c) 2016 Intel Corporation.
  * Copyright 2016 Igor Kozhukhov <ikozhukhov@gmail.com>.
  */
@@ -70,6 +70,7 @@
 #include <libintl.h>
 #include <libnvpair.h>
 #include <limits.h>
+#include <sys/spa.h>
 #include <scsi/scsi.h>
 #include <scsi/sg.h>
 #include <stdio.h>
@@ -506,31 +507,6 @@ check_device(const char *path, boolean_t force,
 }
 
 /*
- * By "whole disk" we mean an entire physical disk (something we can
- * label, toggle the write cache on, etc.) as opposed to the full
- * capacity of a pseudo-device such as lofi or did.  We act as if we
- * are labeling the disk, which should be a pretty good test of whether
- * it's a viable device or not.  Returns B_TRUE if it is and B_FALSE if
- * it isn't.
- */
-static boolean_t
-is_whole_disk(const char *path)
-{
-	struct dk_gpt *label;
-	int fd;
-
-	if ((fd = open(path, O_RDONLY|O_DIRECT)) < 0)
-		return (B_FALSE);
-	if (efi_alloc_and_init(fd, EFI_NUMPAR, &label) != 0) {
-		(void) close(fd);
-		return (B_FALSE);
-	}
-	efi_free(label);
-	(void) close(fd);
-	return (B_TRUE);
-}
-
-/*
  * This may be a shorthand device path or it could be total gibberish.
  * Check to see if it is a known device available in zfs_vdev_paths.
  * As part of this check, see if we've been given an entire disk
@@ -544,7 +520,7 @@ is_shorthand_path(const char *arg, char *path, size_t path_size,
 
 	error = zfs_resolve_shortname(arg, path, path_size);
 	if (error == 0) {
-		*wholedisk = is_whole_disk(path);
+		*wholedisk = zfs_dev_is_whole_disk(path);
 		if (*wholedisk || (stat64(path, statbuf) == 0))
 			return (0);
 	}
@@ -639,7 +615,7 @@ make_leaf_vdev(nvlist_t *props, const char *arg, uint64_t is_log)
 		/*
 		 * Complete device or file path.  Exact type is determined by
 		 * examining the file descriptor afterwards.  Symbolic links
-		 * are resolved to their real paths for the is_whole_disk()
+		 * are resolved to their real paths to determine whole disk
 		 * and S_ISBLK/S_ISREG type checks.  However, we are careful
 		 * to store the given path as ZPOOL_CONFIG_PATH to ensure we
 		 * can leverage udev's persistent device labels.
@@ -650,7 +626,7 @@ make_leaf_vdev(nvlist_t *props, const char *arg, uint64_t is_log)
 			return (NULL);
 		}
 
-		wholedisk = is_whole_disk(path);
+		wholedisk = zfs_dev_is_whole_disk(path);
 		if (!wholedisk && (stat64(path, &statbuf) != 0)) {
 			(void) fprintf(stderr,
 			    gettext("cannot open '%s': %s\n"),
@@ -658,7 +634,7 @@ make_leaf_vdev(nvlist_t *props, const char *arg, uint64_t is_log)
 			return (NULL);
 		}
 
-		/* After is_whole_disk() check restore original passed path */
+		/* After whole disk check restore original passed path */
 		strlcpy(path, arg, sizeof (path));
 	} else {
 		err = is_shorthand_path(arg, path, sizeof (path),
@@ -721,8 +697,22 @@ make_leaf_vdev(nvlist_t *props, const char *arg, uint64_t is_log)
 		char *value = NULL;
 
 		if (nvlist_lookup_string(props,
-		    zpool_prop_to_name(ZPOOL_PROP_ASHIFT), &value) == 0)
-			zfs_nicestrtonum(NULL, value, &ashift);
+		    zpool_prop_to_name(ZPOOL_PROP_ASHIFT), &value) == 0) {
+			if (zfs_nicestrtonum(NULL, value, &ashift) != 0) {
+				(void) fprintf(stderr,
+				    gettext("ashift must be a number.\n"));
+				return (NULL);
+			}
+			if (ashift != 0 &&
+			    (ashift < ASHIFT_MIN || ashift > ASHIFT_MAX)) {
+				(void) fprintf(stderr,
+				    gettext("invalid 'ashift=%" PRIu64 "' "
+				    "property: only values between %" PRId32 " "
+				    "and %" PRId32 " are allowed.\n"),
+				    ashift, ASHIFT_MIN, ASHIFT_MAX);
+				return (NULL);
+			}
+		}
 	}
 
 	/*
@@ -763,6 +753,19 @@ typedef struct replication_level {
 
 #define	ZPOOL_FUZZ	(16 * 1024 * 1024)
 
+static boolean_t
+is_raidz_mirror(replication_level_t *a, replication_level_t *b,
+    replication_level_t **raidz, replication_level_t **mirror)
+{
+	if (strcmp(a->zprl_type, "raidz") == 0 &&
+	    strcmp(b->zprl_type, "mirror") == 0) {
+		*raidz = a;
+		*mirror = b;
+		return (B_TRUE);
+	}
+	return (B_FALSE);
+}
+
 /*
  * Given a list of toplevel vdevs, return the current replication level.  If
  * the config is inconsistent, then NULL is returned.  If 'fatal' is set, then
@@ -780,6 +783,7 @@ get_replication(nvlist_t *nvroot, boolean_t fatal)
 	replication_level_t lastrep = {0};
 	replication_level_t rep;
 	replication_level_t *ret;
+	replication_level_t *raidz, *mirror;
 	boolean_t dontreport;
 
 	ret = safe_malloc(sizeof (replication_level_t));
@@ -787,7 +791,6 @@ get_replication(nvlist_t *nvroot, boolean_t fatal)
 	verify(nvlist_lookup_nvlist_array(nvroot, ZPOOL_CONFIG_CHILDREN,
 	    &top, &toplevels) == 0);
 
-	lastrep.zprl_type = NULL;
 	for (t = 0; t < toplevels; t++) {
 		uint64_t is_log = B_FALSE;
 
@@ -963,7 +966,35 @@ get_replication(nvlist_t *nvroot, boolean_t fatal)
 		 * different.
 		 */
 		if (lastrep.zprl_type != NULL) {
-			if (strcmp(lastrep.zprl_type, rep.zprl_type) != 0) {
+			if (is_raidz_mirror(&lastrep, &rep, &raidz, &mirror) ||
+			    is_raidz_mirror(&rep, &lastrep, &raidz, &mirror)) {
+				/*
+				 * Accepted raidz and mirror when they can
+				 * handle the same number of disk failures.
+				 */
+				if (raidz->zprl_parity !=
+				    mirror->zprl_children - 1) {
+					if (ret != NULL)
+						free(ret);
+					ret = NULL;
+					if (fatal)
+						vdev_error(gettext(
+						    "mismatched replication "
+						    "level: "
+						    "%s and %s vdevs with "
+						    "different redundancy, "
+						    "%llu vs. %llu (%llu-way) "
+						    "are present\n"),
+						    raidz->zprl_type,
+						    mirror->zprl_type,
+						    raidz->zprl_parity,
+						    mirror->zprl_children - 1,
+						    mirror->zprl_children);
+					else
+						return (NULL);
+				}
+			} else if (strcmp(lastrep.zprl_type, rep.zprl_type) !=
+			    0) {
 				if (ret != NULL)
 					free(ret);
 				ret = NULL;

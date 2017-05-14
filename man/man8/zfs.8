@@ -118,7 +118,7 @@ zfs \- configures ZFS file systems
 
 .LP
 .nf
-\fBzfs\fR \fBinherit\fR [\fB-rS\fR] \fIproperty\fR \fIfilesystem\fR|\fIvolume|snapshot\fR ...
+\fBzfs\fR \fBinherit\fR [\fB-rS\fR] \fIproperty\fR \fIfilesystem\fR|\fIvolume\fR|\fIsnapshot\fR ...
 .fi
 
 .LP
@@ -175,12 +175,12 @@ zfs \- configures ZFS file systems
 
 .LP
 .nf
-\fBzfs\fR \fBsend\fR [\fB-DnPpRveLc\fR] [\fB-\fR[\fBiI\fR] \fIsnapshot\fR] \fIsnapshot\fR
+\fBzfs\fR \fBsend\fR [\fB-DnPpRveLc\fR] [\fB-\fR[\fBi\fR|\fBI\fR] \fIsnapshot\fR] \fIsnapshot\fR
 .fi
 
 .LP
 .nf
-\fBzfs\fR \fBsend\fR [\fB-Le\fR] [\fB-i \fIsnapshot\fR|\fIbookmark\fR]\fR \fIfilesystem\fR|\fIvolume\fR|\fIsnapshot\fR
+\fBzfs\fR \fBsend\fR [\fB-Lec\fR] [\fB-i \fIsnapshot\fR|\fIbookmark\fR]\fR \fIfilesystem\fR|\fIvolume\fR|\fIsnapshot\fR
 .fi
 
 .LP
@@ -267,7 +267,7 @@ zfs \- configures ZFS file systems
 
 .LP
 .nf
-\fBzfs\fR \fBdiff\fR [\fB-FHt\fR] \fIsnapshot\fR \fIsnapshot|filesystem\fR
+\fBzfs\fR \fBdiff\fR [\fB-FHt\fR] \fIsnapshot\fR \fIsnapshot\fR|\fIfilesystem\fR
 
 .SH DESCRIPTION
 .LP
@@ -699,9 +699,10 @@ The \fBuserused@\fR... properties are not displayed by \fBzfs get all\fR. The us
 \fISID numeric ID\fR (for example, \fBS-1-123-456-789\fR)
 .RE
 .RE
-Files created on Linux always have POSIX owners.
-
 .RS 4n
+.sp
+Files created on Linux always have POSIX owners.
+.sp
 The \fBuserobjused\fR is similar to \fBuserused\fR but instead it counts the number of objects consumed by \fIuser\fR. This feature doesn't count the internal objects used by ZFS, therefore it may under count a few objects comparing with the results of third-party tool such as \fBdfs -i\fR.
 When the property \fBxattr=on\fR is set on a fileset, ZFS will create additional objects per-file to store extended attributes. These additional objects are reflected in the \fBuserobjused\fR value and are counted against the user's \fBuserobjquota\fR. When a filesystem is configured to use \fBxattr=sa\fR no additional internal objects are required.
 .RE
@@ -1340,7 +1341,7 @@ Controls whether the file system is shared via \fBNFS\fR, and what options are u
 .sp
 .in +4
 .nf
-/usr/sbin/exportfs -i -o sec=sys,rw,no_subtree_check,no_root_squash,mountpoint *:<mountpoint of dataset>
+/usr/sbin/exportfs -i -o sec=sys,rw,crossmnt,no_subtree_check,no_root_squash,mountpoint *:<mountpoint of dataset>
 .fi
 .in -4
 .sp
@@ -2202,7 +2203,7 @@ A comma-separated list of types to display, where \fItype\fR is one of \fBfilesy
 .ne 2
 .na
 \fB\fBzfs set\fR \fIproperty\fR=\fIvalue\fR[ \fIproperty\fR=\fIvalue\fR]...
-\fIfilesystem\fR|\fIvolume\fR|\fIsnapshot\fR ...\fR
+\fIfilesystem\fR|\fIvolume\fR|\fIsnapshot\fR|\fIbookmark\fR ...\fR
 .ad
 .sp .6
 .RS 4n
@@ -2214,7 +2215,7 @@ can be set on snapshots. For more information, see the "User Properties" section
 
 .sp
 .ne 2
-\fB\fBzfs get\fR [\fB-r\fR|\fB-d\fR \fIdepth\fR] [\fB-Hp\fR] [\fB-o\fR \fIfield\fR[,...] [\fB-t\fR \fItype\fR[,...]] [\fB-s\fR \fIsource\fR[,...] "\fIall\fR" | \fIproperty\fR[,...] \fIfilesystem\fR|\fIvolume\fR|\fIsnapshot\fR ...\fR
+\fB\fBzfs get\fR [\fB-r\fR|\fB-d\fR \fIdepth\fR] [\fB-Hp\fR] [\fB-o\fR \fIfield\fR[,...] [\fB-t\fR \fItype\fR[,...]] [\fB-s\fR \fIsource\fR[,...] "\fIall\fR" | \fIproperty\fR[,...] \fIfilesystem\fR|\fIvolume\fR|\fIsnapshot\fR ...\fR|\fIbookmark\fR ...\fR
 .ad
 .sp .6
 .RS 4n
@@ -2724,7 +2725,7 @@ See \fBzpool-features\fR(5) for details on ZFS feature flags and the
 .sp
 .ne 2
 .na
-\fBzfs send\fR [\fB-DnPpRveLc\fR] [\fB-\fR[\fBiI\fR] \fIsnapshot\fR] \fIsnapshot\fR
+\fBzfs send\fR [\fB-DnPpRveLc\fR] [\fB-\fR[\fBi\fR|\fBI\fR] \fIsnapshot\fR] \fIsnapshot\fR
 .ad
 .sp .6
 .RS 4n
@@ -2754,7 +2755,7 @@ Generate a stream package that sends all intermediary snapshots from the first s
 .sp
 .ne 2
 .na
-\fB\fB-R\fR\fR
+\fB\fB-R\fR, \fB--replicate\fR\fR
 .ad
 .sp .6
 .RS 4n
@@ -2766,7 +2767,7 @@ If the \fB-i\fR or \fB-I\fR flags are used in conjunction with the \fB-R\fR flag
 .sp
 .ne 2
 .na
-\fB\fB-D\fR\fR
+\fB\fB-D\fR, \fB--dedup\fR\fR
 .ad
 .sp .6
 .RS 4n
@@ -2776,7 +2777,7 @@ Generate a deduplicated stream. Blocks which would have been sent multiple times
 .sp
 .ne 2
 .na
-\fB\fB-L\fR\fR
+\fB\fB-L\fR, \fB--large-block\fR\fR
 .ad
 .sp .6
 .RS 4n
@@ -2791,7 +2792,7 @@ flags and the \fBlarge_blocks\fR feature.
 .sp
 .ne 2
 .na
-\fB\fB-e\fR\fR
+\fB\fB-e\fR, \fB--embed\fR\fR
 .ad
 .sp .6
 .RS 4n
@@ -2824,7 +2825,7 @@ decompressed before sending so it can be split into smaller block sizes.
 .sp
 .ne 2
 .na
-\fB\fB-p\fR\fR
+\fB\fB-p\fR, \fB--props\fR\fR
 .ad
 .sp .6
 .RS 4n
@@ -2834,7 +2835,7 @@ Include the dataset's properties in the stream.  This flag is implicit when -R i
 .sp
 .ne 2
 .na
-\fB\fB-n\fR\fR
+\fB\fB-n\fR, \fB--dryrun\fR\fR
 .ad
 .sp .6
 .RS 4n
@@ -2848,7 +2849,7 @@ to standard output and the verbose output goes to standard error).
 .sp
 .ne 2
 .na
-\fB\fB-P\fR\fR
+\fB\fB-P\fR, \fB--parsable\fR\fR
 .ad
 .sp .6
 .RS 4n
@@ -2858,7 +2859,7 @@ Print machine-parsable verbose information about the stream package generated.
 .sp
 .ne 2
 .na
-\fB\fB-v\fR\fR
+\fB\fB-v\fR, \fB--verbose\fR\fR
 .ad
 .sp .6
 .RS 4n
@@ -2886,7 +2887,7 @@ name will be "--head--".
 .sp
 .ne 2
 .na
-\fB\fB-L\fR\fR
+\fB\fB-L\fR, \fB--large-block\fR\fR
 .ad
 .sp .6
 .RS 4n
@@ -2901,7 +2902,7 @@ flags and the \fBlarge_blocks\fR feature.
 .sp
 .ne 2
 .na
-\fB\fB-e\fR\fR
+\fB\fB-e\fR, \fB--embed\fR\fR
 .ad
 .sp .6
 .RS 4n
@@ -3341,7 +3342,7 @@ Recursively releases a hold with the given tag on the snapshots of all descenden
 .sp
 .ne 2
 .na
-\fB\fBzfs diff\fR [\fB-FHt\fR] \fIsnapshot\fR \fIsnapshot|filesystem\fR
+\fB\fBzfs diff\fR [\fB-FHt\fR] \fIsnapshot\fR \fIsnapshot\fR|\fIfilesystem\fR
 .ad
 .sp .6
 .RS 4n
@@ -3745,6 +3746,10 @@ The following commands show how to set \fBsharenfs\fR property options to enable
 .sp
 .LP
 If you are using \fBDNS\fR for host name resolution, specify the fully qualified hostname.
+
+.sp
+.LP
+If you want to access snapdir through NFS, be sure to add \fBcrossmnt\fR to the options.
 
 .LP
 \fBExample 17 \fRDelegating ZFS Administration Permissions on a ZFS Dataset

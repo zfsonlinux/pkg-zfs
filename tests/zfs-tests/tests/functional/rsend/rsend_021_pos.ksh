@@ -12,7 +12,7 @@
 #
 
 #
-# Copyright (c) 2014 by Delphix. All rights reserved.
+# Copyright (c) 2014, 2016 by Delphix. All rights reserved.
 #
 
 . $STF_SUITE/include/libtest.shlib
@@ -37,15 +37,16 @@ verify_runnable "both"
 
 log_assert "Verify resumability of a full and incremental ZFS send/receive " \
     "with the -e (embedded) flag"
-log_onexit cleanup_pool $POOL2
 
 sendfs=$POOL/sendfs
 recvfs=$POOL2/recvfs
 streamfs=$POOL/stream
 
-test_fs_setup $POOL $POOL2
-resume_test "$ZFS send -v -e $sendfs@a" $streamfs $recvfs
-resume_test "$ZFS send -v -e -i @a $sendfs@b" $streamfs $recvfs
+log_onexit resume_cleanup $sendfs $streamfs
+
+test_fs_setup $sendfs $recvfs
+resume_test "zfs send -v -e $sendfs@a" $streamfs $recvfs
+resume_test "zfs send -v -e -i @a $sendfs@b" $streamfs $recvfs
 file_check $sendfs $recvfs
 
 log_pass "Verify resumability of a full and incremental ZFS send/receive " \

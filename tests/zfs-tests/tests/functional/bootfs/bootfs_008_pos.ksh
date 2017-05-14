@@ -25,18 +25,22 @@
 # Use is subject to license terms.
 #
 
+#
+# Copyright (c) 2012, 2016 by Delphix. All rights reserved.
+#
+
 . $STF_SUITE/include/libtest.shlib
 
 #
 # DESCRIPTION:
 #
-# setting bootfs on a dataset which has gzip compression enabled will fail
+# setting bootfs on a dataset which has gzip compression enabled will not fail
 #
 # STRATEGY:
 # 1. create pools based on a valid vdev
-# 2. create a filesystem on this pool and set the compression property to gzip1-9
+# 2. create a filesystem on this pool, set the compression property to gzip1-9
 # 3. set the pool's bootfs property to filesystem we just configured which
-#    should fail
+#    should not fail
 #
 
 verify_runnable "global"
@@ -47,31 +51,31 @@ function cleanup {
 	fi
 
 	if [[ -f $VDEV ]]; then
-		log_must $RM -f $VDEV
+		log_must rm -f $VDEV
 	fi
 }
 
 typeset assert_msg="setting bootfs on a dataset which has gzip \
-    compression enabled will fail"
+    compression enabled will not fail"
 
-typeset VDEV=$TESTDIR/bootfs_008_neg_a.$$.dat
+typeset VDEV=$TEST_BASE_DIR/bootfs_008_pos_a.$$.dat
 typeset COMP_FS=$TESTPOOL/COMP_FS
 
 log_onexit cleanup
 log_assert $assert_msg
 
-log_must $MKFILE 300m $VDEV
-log_must $ZPOOL create $TESTPOOL $VDEV
-log_must $ZFS create $COMP_FS
+log_must mkfile $MINVDEVSIZE $VDEV
+log_must zpool create $TESTPOOL $VDEV
+log_must zfs create $COMP_FS
 
 typeset -i i=0
 set -A gtype "gzip" "gzip-1" "gzip-2" "gzip-3" "gzip-4" "gzip-5" \
 	     "gzip-6" "gzip-7" "gzip-8" "gzip-9"
 
 while (( i < ${#gtype[@]} )); do
-	log_must $ZFS set compression=${gtype[i]} $COMP_FS
-	log_mustnot $ZPOOL set bootfs=$COMP_FS $TESTPOOL
-	log_must $ZFS set compression=off $COMP_FS
+	log_must zfs set compression=${gtype[i]} $COMP_FS
+	log_must zpool set bootfs=$COMP_FS $TESTPOOL
+	log_must zfs set compression=off $COMP_FS
 	(( i += 1 ))
 done
 

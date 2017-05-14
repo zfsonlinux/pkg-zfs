@@ -20,7 +20,7 @@
  */
 /*
  * Copyright (c) 2005, 2010, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2011, 2016 by Delphix. All rights reserved.
+ * Copyright (c) 2011, 2017 by Delphix. All rights reserved.
  * Copyright (c) 2011 Nexenta Systems, Inc. All rights reserved.
  */
 
@@ -167,10 +167,10 @@ zio_init(void)
 		 */
 		align = 8 * SPA_MINBLOCKSIZE;
 #else
-		if (size <= 4 * SPA_MINBLOCKSIZE) {
+		if (size < PAGESIZE) {
 			align = SPA_MINBLOCKSIZE;
 		} else if (IS_P2ALIGNED(size, p2 >> 2)) {
-			align = MIN(p2 >> 2, PAGESIZE);
+			align = PAGESIZE;
 		}
 #endif
 
@@ -308,6 +308,12 @@ zio_data_buf_free(void *buf, size_t size)
 	VERIFY3U(c, <, SPA_MAXBLOCKSIZE >> SPA_MINBLOCKSHIFT);
 
 	kmem_cache_free(zio_data_buf_cache[c], buf);
+}
+
+static void
+zio_abd_free(void *abd, size_t size)
+{
+	abd_free((abd_t *)abd);
 }
 
 /*
@@ -544,21 +550,37 @@ zio_inherit_child_errors(zio_t *zio, enum zio_child c)
 }
 
 int
-zio_timestamp_compare(const void *x1, const void *x2)
+zio_bookmark_compare(const void *x1, const void *x2)
 {
 	const zio_t *z1 = x1;
 	const zio_t *z2 = x2;
-	int cmp;
 
-	cmp = AVL_CMP(z1->io_queued_timestamp, z2->io_queued_timestamp);
-	if (likely(cmp))
-		return (cmp);
+	if (z1->io_bookmark.zb_objset < z2->io_bookmark.zb_objset)
+		return (-1);
+	if (z1->io_bookmark.zb_objset > z2->io_bookmark.zb_objset)
+		return (1);
 
-	cmp = AVL_CMP(z1->io_offset, z2->io_offset);
-	if (likely(cmp))
-		return (cmp);
+	if (z1->io_bookmark.zb_object < z2->io_bookmark.zb_object)
+		return (-1);
+	if (z1->io_bookmark.zb_object > z2->io_bookmark.zb_object)
+		return (1);
 
-	return (AVL_PCMP(z1, z2));
+	if (z1->io_bookmark.zb_level < z2->io_bookmark.zb_level)
+		return (-1);
+	if (z1->io_bookmark.zb_level > z2->io_bookmark.zb_level)
+		return (1);
+
+	if (z1->io_bookmark.zb_blkid < z2->io_bookmark.zb_blkid)
+		return (-1);
+	if (z1->io_bookmark.zb_blkid > z2->io_bookmark.zb_blkid)
+		return (1);
+
+	if (z1 < z2)
+		return (-1);
+	if (z1 > z2)
+		return (1);
+
+	return (0);
 }
 
 /*
@@ -1043,8 +1065,8 @@ zio_write_phys(zio_t *pio, vdev_t *vd, uint64_t offset, uint64_t size,
  */
 zio_t *
 zio_vdev_child_io(zio_t *pio, blkptr_t *bp, vdev_t *vd, uint64_t offset,
-	abd_t *data, uint64_t size, int type, zio_priority_t priority,
-	enum zio_flag flags, zio_done_func_t *done, void *private)
+    abd_t *data, uint64_t size, int type, zio_priority_t priority,
+    enum zio_flag flags, zio_done_func_t *done, void *private)
 {
 	enum zio_stage pipeline = ZIO_VDEV_CHILD_PIPELINE;
 	zio_t *zio;
@@ -1827,7 +1849,7 @@ zio_reexecute(zio_t *pio)
 	/*
 	 * Now that all children have been reexecuted, execute the parent.
 	 * We don't reexecute "The Godfather" I/O here as it's the
-	 * responsibility of the caller to wait on him.
+	 * responsibility of the caller to wait on it.
 	 */
 	if (!(pio->io_flags & ZIO_FLAG_GODFATHER)) {
 		pio->io_queued_timestamp = gethrtime();
@@ -2953,8 +2975,6 @@ zio_dva_throttle(zio_t *zio)
 		return (ZIO_PIPELINE_CONTINUE);
 
 	if (nio != NULL) {
-		ASSERT3U(nio->io_queued_timestamp, <=,
-		    zio->io_queued_timestamp);
 		ASSERT(nio->io_stage == ZIO_STAGE_DVA_THROTTLE);
 		/*
 		 * We are passing control to a new zio so make sure that
@@ -3318,7 +3338,7 @@ zio_vdev_io_done(zio_t *zio)
  */
 static void
 zio_vsd_default_cksum_finish(zio_cksum_report_t *zcr,
-    const void *good_buf)
+    const abd_t *good_buf)
 {
 	/* no processing needed */
 	zfs_ereport_finish_checksum(zcr, good_buf, zcr->zcr_cbdata, B_FALSE);
@@ -3328,14 +3348,14 @@ zio_vsd_default_cksum_finish(zio_cksum_report_t *zcr,
 void
 zio_vsd_default_cksum_report(zio_t *zio, zio_cksum_report_t *zcr, void *ignored)
 {
-	void *buf = zio_buf_alloc(zio->io_size);
+	void *abd = abd_alloc_sametype(zio->io_abd, zio->io_size);
 
-	abd_copy_to_buf(buf, zio->io_abd, zio->io_size);
+	abd_copy(abd, zio->io_abd, zio->io_size);
 
 	zcr->zcr_cbinfo = zio->io_size;
-	zcr->zcr_cbdata = buf;
+	zcr->zcr_cbdata = abd;
 	zcr->zcr_finish = zio_vsd_default_cksum_finish;
-	zcr->zcr_free = zio_buf_free;
+	zcr->zcr_free = zio_abd_free;
 }
 
 static int
@@ -3392,6 +3412,16 @@ zio_vdev_io_assess(zio_t *zio)
 	    vd != NULL && !vd->vdev_ops->vdev_op_leaf) {
 		vd->vdev_cant_write = B_TRUE;
 	}
+
+	/*
+	 * If a cache flush returns ENOTSUP or ENOTTY, we know that no future
+	 * attempts will ever succeed. In this case we set a persistent bit so
+	 * that we don't bother with it in the future.
+	 */
+	if ((zio->io_error == ENOTSUP || zio->io_error == ENOTTY) &&
+	    zio->io_type == ZIO_TYPE_IOCTL &&
+	    zio->io_cmd == DKIOCFLUSHWRITECACHE && vd != NULL)
+		vd->vdev_nowritecache = B_TRUE;
 
 	if (zio->io_error)
 		zio->io_pipeline = ZIO_INTERLOCK_PIPELINE;
@@ -3682,7 +3712,7 @@ zio_done(zio_t *zio)
 	 * Always attempt to keep stack usage minimal here since
 	 * we can be called recurisvely up to 19 levels deep.
 	 */
-	uint64_t psize = zio->io_size;
+	const uint64_t psize = zio->io_size;
 	zio_t *pio, *pio_next;
 	int c, w;
 	zio_link_t *zl = NULL;
@@ -3764,25 +3794,18 @@ zio_done(zio_t *zio)
 			zio_cksum_report_t *zcr = zio->io_cksum_report;
 			uint64_t align = zcr->zcr_align;
 			uint64_t asize = P2ROUNDUP(psize, align);
-			char *abuf = NULL;
 			abd_t *adata = zio->io_abd;
 
 			if (asize != psize) {
-				adata = abd_alloc_linear(asize, B_TRUE);
+				adata = abd_alloc(asize, B_TRUE);
 				abd_copy(adata, zio->io_abd, psize);
 				abd_zero_off(adata, psize, asize - psize);
 			}
 
-			if (adata != NULL)
-				abuf = abd_borrow_buf_copy(adata, asize);
-
 			zio->io_cksum_report = zcr->zcr_next;
 			zcr->zcr_next = NULL;
-			zcr->zcr_finish(zcr, abuf);
+			zcr->zcr_finish(zcr, adata);
 			zfs_ereport_free_checksum(zcr);
-
-			if (adata != NULL)
-				abd_return_buf(adata, abuf, asize);
 
 			if (asize != psize)
 				abd_free(adata);
@@ -3885,7 +3908,7 @@ zio_done(zio_t *zio)
 	 */
 	if ((zio->io_flags & ZIO_FLAG_GODFATHER) &&
 	    (zio->io_reexecute & ZIO_REEXECUTE_SUSPEND))
-		zio->io_reexecute = 0;
+		zio->io_reexecute &= ~ZIO_REEXECUTE_SUSPEND;
 
 	if (zio->io_reexecute) {
 		/*

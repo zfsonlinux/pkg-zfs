@@ -26,18 +26,11 @@
 #
 
 #
-# Copyright (c) 2012 by Delphix. All rights reserved.
+# Copyright (c) 2012, 2016 by Delphix. All rights reserved.
 #
 
 . $STF_SUITE/include/libtest.shlib
 . $STF_SUITE/tests/functional/cli_root/zpool_create/zpool_create.shlib
-
-[[ -z $FORMAT ]] || \
-[[ -z $MKDIR ]] || \
-[[ -z $LSBLK ]] || \
-[[ -z $READLINK ]] || \
-[[ -z $TOUCH ]] && \
-	log_fail "Missing required commands"
 
 verify_runnable "global"
 
@@ -52,12 +45,12 @@ if [[ -n $DISK ]]; then
         #
 	cleanup_devices $DISK
 
-        partition_disk $SIZE $DISK 7
+        partition_disk $((($MINVDEVSIZE / (1024 * 1024)) * 2))m $DISK 7
 else
-	for disk in `$ECHO $DISKSARRAY`; do
+	for disk in `echo $DISKSARRAY`; do
 		cleanup_devices $disk
 
-		partition_disk $SIZE $disk 7
+		partition_disk $((($MINVDEVSIZE / (1024 * 1024)) * 2))m $disk 7
 	done
 fi
 

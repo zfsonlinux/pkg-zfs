@@ -31,6 +31,7 @@
 
 #include <linux/blkdev.h>
 #include <linux/elevator.h>
+#include <linux/backing-dev.h>
 
 #ifndef HAVE_FMODE_T
 typedef unsigned __bitwise__ fmode_t;
@@ -127,6 +128,16 @@ __blk_queue_max_segments(struct request_queue *q, unsigned short max_segments)
 	blk_queue_max_hw_segments(q, max_segments);
 }
 #endif
+
+static inline void
+blk_queue_set_read_ahead(struct request_queue *q, unsigned long ra_pages)
+{
+#ifdef HAVE_BLK_QUEUE_BDI_DYNAMIC
+	q->backing_dev_info->ra_pages = ra_pages;
+#else
+	q->backing_dev_info.ra_pages = ra_pages;
+#endif
+}
 
 #ifndef HAVE_GET_DISK_RO
 static inline int
@@ -343,16 +354,14 @@ bio_set_op_attrs(struct bio *bio, unsigned rw, unsigned flags)
 static inline void
 bio_set_flush(struct bio *bio)
 {
-#if defined(WRITE_BARRIER)	/* < 2.6.37 */
-	bio_set_op_attrs(bio, 0, WRITE_BARRIER);
+#if defined(REQ_PREFLUSH)	/* >= 4.10 */
+	bio_set_op_attrs(bio, 0, REQ_PREFLUSH);
 #elif defined(WRITE_FLUSH_FUA)	/* >= 2.6.37 and <= 4.9 */
 	bio_set_op_attrs(bio, 0, WRITE_FLUSH_FUA);
-#elif defined(REQ_PREFLUSH)	/* >= 4.10 */
-	bio_set_op_attrs(bio, 0, REQ_PREFLUSH);
+#elif defined(WRITE_BARRIER)	/* < 2.6.37 */
+	bio_set_op_attrs(bio, 0, WRITE_BARRIER);
 #else
 #error	"Allowing the build will cause bio_set_flush requests to be ignored."
-	"Please file an issue report at: "
-	"https://github.com/zfsonlinux/zfs/issues/new"
 #endif
 }
 
@@ -375,9 +384,6 @@ bio_set_flush(struct bio *bio)
  * in all cases but may have a performance impact for some kernels.  It
  * has the advantage of minimizing kernel specific changes in the zvol code.
  *
- * Note that 2.6.32 era kernels provide both BIO_RW_BARRIER and REQ_FLUSH,
- * where BIO_RW_BARRIER is the correct interface.  Therefore, it is important
- * that the HAVE_BIO_RW_BARRIER check occur before the REQ_FLUSH check.
  */
 static inline boolean_t
 bio_is_flush(struct bio *bio)
@@ -388,13 +394,12 @@ bio_is_flush(struct bio *bio)
 	return (bio->bi_opf & REQ_PREFLUSH);
 #elif defined(REQ_PREFLUSH) && !defined(HAVE_BIO_BI_OPF)
 	return (bio->bi_rw & REQ_PREFLUSH);
-#elif defined(HAVE_BIO_RW_BARRIER)
-	return (bio->bi_rw & (1 << BIO_RW_BARRIER));
 #elif defined(REQ_FLUSH)
 	return (bio->bi_rw & REQ_FLUSH);
+#elif defined(HAVE_BIO_RW_BARRIER)
+	return (bio->bi_rw & (1 << BIO_RW_BARRIER));
 #else
-#error	"Allowing the build will cause flush requests to be ignored. Please "
-	"file an issue report at: https://github.com/zfsonlinux/zfs/issues/new"
+#error	"Allowing the build will cause flush requests to be ignored."
 #endif
 }
 
@@ -413,8 +418,7 @@ bio_is_fua(struct bio *bio)
 #elif defined(REQ_FUA)
 	return (bio->bi_rw & REQ_FUA);
 #else
-#error	"Allowing the build will cause fua requests to be ignored. Please "
-	"file an issue report at: https://github.com/zfsonlinux/zfs/issues/new"
+#error	"Allowing the build will cause fua requests to be ignored."
 #endif
 }
 
@@ -445,9 +449,8 @@ bio_is_discard(struct bio *bio)
 #elif defined(REQ_DISCARD)
 	return (bio->bi_rw & REQ_DISCARD);
 #else
-#error	"Allowing the build will cause discard requests to become writes "
-	"potentially triggering the DMU_MAX_ACCESS assertion. Please file "
-	"an issue report at: https://github.com/zfsonlinux/zfs/issues/new"
+/* potentially triggering the DMU_MAX_ACCESS assertion.  */
+#error	"Allowing the build will cause discard requests to become writes."
 #endif
 }
 
@@ -506,8 +509,15 @@ blk_queue_discard_granularity(struct request_queue *q, unsigned int dg)
 #define	VDEV_HOLDER			((void *)0x2401de7)
 
 #ifndef HAVE_GENERIC_IO_ACCT
-#define	generic_start_io_acct(rw, slen, part)		((void)0)
-#define	generic_end_io_acct(rw, part, start_jiffies)	((void)0)
+static inline void
+generic_start_io_acct(int rw, unsigned long sectors, struct hd_struct *part)
+{
+}
+
+static inline void
+generic_end_io_acct(int rw, struct hd_struct *part, unsigned long start_time)
+{
+}
 #endif
 
 #endif /* _ZFS_BLKDEV_H */

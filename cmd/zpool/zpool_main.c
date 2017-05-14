@@ -45,6 +45,7 @@
 #include <unistd.h>
 #include <pwd.h>
 #include <zone.h>
+#include <sys/wait.h>
 #include <zfs_prop.h>
 #include <sys/fs/zfs.h>
 #include <sys/stat.h>
@@ -52,6 +53,7 @@
 #include <sys/fm/util.h>
 #include <sys/fm/protocol.h>
 #include <sys/zfs_ioctl.h>
+
 #include <math.h>
 
 #include <libzfs.h>
@@ -314,10 +316,10 @@ get_usage(zpool_help_t idx)
 		    "[-R root] [-F [-n]]\n"
 		    "\t    <pool | id> [newpool]\n"));
 	case HELP_IOSTAT:
-		return (gettext("\tiostat [-c CMD] [-T d | u] [-ghHLpPvy] "
-		    "[[-lq]|[-r|-w]]\n"
-		    "\t    [[pool ...]|[pool vdev ...]|[vdev ...]] "
-		    "[interval [count]]\n"));
+		return (gettext("\tiostat [[[-c [script1,script2,...]"
+		    "[-lq]]|[-rw]] [-T d | u] [-ghHLpPvy]\n"
+		    "\t    [[pool ...]|[pool vdev ...]|[vdev ...]]"
+		    " [interval [count]]\n"));
 	case HELP_LABELCLEAR:
 		return (gettext("\tlabelclear [-f] <vdev>\n"));
 	case HELP_LIST:
@@ -337,8 +339,8 @@ get_usage(zpool_help_t idx)
 	case HELP_SCRUB:
 		return (gettext("\tscrub [-s] <pool> ...\n"));
 	case HELP_STATUS:
-		return (gettext("\tstatus [-c CMD] [-gLPvxD] [-T d|u] [pool]"
-		    " ... [interval [count]]\n"));
+		return (gettext("\tstatus [-c [script1,script2,...]] [-gLPvxD]"
+		    "[-T d|u] [pool] ... [interval [count]]\n"));
 	case HELP_UPGRADE:
 		return (gettext("\tupgrade\n"
 		    "\tupgrade -v\n"
@@ -676,6 +678,20 @@ zpool_do_add(int argc, char **argv)
 		return (1);
 	}
 
+	/* unless manually specified use "ashift" pool property (if set) */
+	if (!nvlist_exists(props, ZPOOL_CONFIG_ASHIFT)) {
+		int intval;
+		zprop_source_t src;
+		char strval[ZPOOL_MAXPROPLEN];
+
+		intval = zpool_get_prop_int(zhp, ZPOOL_PROP_ASHIFT, &src);
+		if (src != ZPROP_SRC_DEFAULT) {
+			(void) sprintf(strval, "%" PRId32, intval);
+			verify(add_prop_list(ZPOOL_CONFIG_ASHIFT, strval,
+			    &props, B_TRUE) == 0);
+		}
+	}
+
 	/* pass off to get_vdev_spec for processing */
 	nvroot = make_root_vdev(zhp, props, force, !force, B_FALSE, dryrun,
 	    argc, argv);
@@ -790,7 +806,10 @@ zpool_do_remove(int argc, char **argv)
 }
 
 /*
- * zpool labelclear <vdev>
+ * zpool labelclear [-f] <vdev>
+ *
+ *	-f	Force clearing the label for the vdevs which are members of
+ *		the exported or foreign pools.
  *
  * Verifies that the vdev is not active and zeros out the label information
  * on the device.
@@ -798,8 +817,11 @@ zpool_do_remove(int argc, char **argv)
 int
 zpool_do_labelclear(int argc, char **argv)
 {
-	char *vdev, *name;
+	char vdev[MAXPATHLEN];
+	char *name = NULL;
+	struct stat st;
 	int c, fd = -1, ret = 0;
+	nvlist_t *config;
 	pool_state_t state;
 	boolean_t inuse = B_FALSE;
 	boolean_t force = B_FALSE;
@@ -822,90 +844,111 @@ zpool_do_labelclear(int argc, char **argv)
 
 	/* get vdev name */
 	if (argc < 1) {
-		(void) fprintf(stderr, gettext("missing vdev device name\n"));
+		(void) fprintf(stderr, gettext("missing vdev name\n"));
+		usage(B_FALSE);
+	}
+	if (argc > 1) {
+		(void) fprintf(stderr, gettext("too many arguments\n"));
 		usage(B_FALSE);
 	}
 
-	vdev = argv[0];
-	if ((fd = open(vdev, O_RDWR)) < 0) {
-		(void) fprintf(stderr, gettext("Unable to open %s\n"), vdev);
-		return (B_FALSE);
-	}
+	/*
+	 * Check if we were given absolute path and use it as is.
+	 * Otherwise if the provided vdev name doesn't point to a file,
+	 * try prepending expected disk paths and partition numbers.
+	 */
+	(void) strlcpy(vdev, argv[0], sizeof (vdev));
+	if (vdev[0] != '/' && stat(vdev, &st) != 0) {
+		int error;
 
-	name = NULL;
-	if (zpool_in_use(g_zfs, fd, &state, &name, &inuse) != 0) {
-		if (force)
-			goto wipe_label;
+		error = zfs_resolve_shortname(argv[0], vdev, MAXPATHLEN);
+		if (error == 0 && zfs_dev_is_whole_disk(vdev)) {
+			if (zfs_append_partition(vdev, MAXPATHLEN) == -1)
+				error = ENOENT;
+		}
 
-		(void) fprintf(stderr,
-		    gettext("Unable to determine pool state for %s\n"
-		    "Use -f to force the clearing any label data\n"), vdev);
-
-		return (1);
-	}
-
-	if (inuse) {
-		switch (state) {
-		default:
-		case POOL_STATE_ACTIVE:
-		case POOL_STATE_SPARE:
-		case POOL_STATE_L2CACHE:
-			(void) fprintf(stderr,
-			    gettext("labelclear operation failed.\n"
-			    "\tVdev %s is a member (%s), of pool \"%s\".\n"
-			    "\tTo remove label information from this device, "
-			    "export or destroy\n\tthe pool, or remove %s from "
-			    "the configuration of this pool\n\tand retry the "
-			    "labelclear operation.\n"),
-			    vdev, zpool_pool_state_to_name(state), name, vdev);
-			ret = 1;
-			goto errout;
-
-		case POOL_STATE_EXPORTED:
-			if (force)
-				break;
-
-			(void) fprintf(stderr,
-			    gettext("labelclear operation failed.\n\tVdev "
-			    "%s is a member of the exported pool \"%s\".\n"
-			    "\tUse \"zpool labelclear -f %s\" to force the "
-			    "removal of label\n\tinformation.\n"),
-			    vdev, name, vdev);
-			ret = 1;
-			goto errout;
-
-		case POOL_STATE_POTENTIALLY_ACTIVE:
-			if (force)
-				break;
-
-			(void) fprintf(stderr,
-			    gettext("labelclear operation failed.\n"
-			    "\tVdev %s is a member of the pool \"%s\".\n"
-			    "\tThis pool is unknown to this system, but may "
-			    "be active on\n\tanother system. Use "
-			    "\'zpool labelclear -f %s\' to force the\n"
-			    "\tremoval of label information.\n"),
-			    vdev, name, vdev);
-			ret = 1;
-			goto errout;
-
-		case POOL_STATE_DESTROYED:
-			/* inuse should never be set for a destroyed pool... */
-			break;
+		if (error || (stat(vdev, &st) != 0)) {
+			(void) fprintf(stderr, gettext(
+			    "failed to find device %s, try specifying absolute "
+			    "path instead\n"), argv[0]);
+			return (1);
 		}
 	}
 
-wipe_label:
-	if (zpool_clear_label(fd) != 0) {
+	if ((fd = open(vdev, O_RDWR)) < 0) {
+		(void) fprintf(stderr, gettext("failed to open %s: %s\n"),
+		    vdev, strerror(errno));
+		return (1);
+	}
+
+	if (ioctl(fd, BLKFLSBUF) != 0)
+		(void) fprintf(stderr, gettext("failed to invalidate "
+		    "cache for %s: %s\n"), vdev, strerror(errno));
+
+	if (zpool_read_label(fd, &config, NULL) != 0 || config == NULL) {
 		(void) fprintf(stderr,
-		    gettext("Label clear failed on vdev %s\n"), vdev);
+		    gettext("failed to check state for %s\n"), vdev);
+		return (1);
+	}
+	nvlist_free(config);
+
+	ret = zpool_in_use(g_zfs, fd, &state, &name, &inuse);
+	if (ret != 0) {
+		(void) fprintf(stderr,
+		    gettext("failed to check state for %s\n"), vdev);
+		return (1);
+	}
+
+	if (!inuse)
+		goto wipe_label;
+
+	switch (state) {
+	default:
+	case POOL_STATE_ACTIVE:
+	case POOL_STATE_SPARE:
+	case POOL_STATE_L2CACHE:
+		(void) fprintf(stderr, gettext(
+		    "%s is a member (%s) of pool \"%s\"\n"),
+		    vdev, zpool_pool_state_to_name(state), name);
 		ret = 1;
+		goto errout;
+
+	case POOL_STATE_EXPORTED:
+		if (force)
+			break;
+		(void) fprintf(stderr, gettext(
+		    "use '-f' to override the following error:\n"
+		    "%s is a member of exported pool \"%s\"\n"),
+		    vdev, name);
+		ret = 1;
+		goto errout;
+
+	case POOL_STATE_POTENTIALLY_ACTIVE:
+		if (force)
+			break;
+		(void) fprintf(stderr, gettext(
+		    "use '-f' to override the following error:\n"
+		    "%s is a member of potentially active pool \"%s\"\n"),
+		    vdev, name);
+		ret = 1;
+		goto errout;
+
+	case POOL_STATE_DESTROYED:
+		/* inuse should never be set for a destroyed pool */
+		assert(0);
+		break;
+	}
+
+wipe_label:
+	ret = zpool_clear_label(fd);
+	if (ret != 0) {
+		(void) fprintf(stderr,
+		    gettext("failed to clear label for %s\n"), vdev);
 	}
 
 errout:
-	close(fd);
-	if (name != NULL)
-		free(name);
+	free(name);
+	(void) close(fd);
 
 	return (ret);
 }
@@ -1515,17 +1558,68 @@ typedef struct status_cbdata {
 	vdev_cmd_data_list_t	*vcdl;
 } status_cbdata_t;
 
-/* Print output line for specific vdev in a specific pool */
+/* Return 1 if string is NULL, empty, or whitespace; return 0 otherwise. */
+static int
+is_blank_str(char *str)
+{
+	while (str != NULL && *str != '\0') {
+		if (!isblank(*str))
+			return (0);
+		str++;
+	}
+	return (1);
+}
+
+/* Print command output lines for specific vdev in a specific pool */
 static void
 zpool_print_cmd(vdev_cmd_data_list_t *vcdl, const char *pool, char *path)
 {
-	int i;
+	vdev_cmd_data_t *data;
+	int i, j;
+	char *val;
+
 	for (i = 0; i < vcdl->count; i++) {
-		if ((strcmp(vcdl->data[i].path, path) == 0) &&
-		    (strcmp(vcdl->data[i].pool, pool) == 0)) {
-			printf("%s", vcdl->data[i].line);
-			break;
+		if ((strcmp(vcdl->data[i].path, path) != 0) ||
+		    (strcmp(vcdl->data[i].pool, pool) != 0)) {
+			/* Not the vdev we're looking for */
+			continue;
 		}
+
+		data = &vcdl->data[i];
+		/* Print out all the output values for this vdev */
+		for (j = 0; j < vcdl->uniq_cols_cnt; j++) {
+			val = NULL;
+			/* Does this vdev have values for this column? */
+			for (int k = 0; k < data->cols_cnt; k++) {
+				if (strcmp(data->cols[k],
+				    vcdl->uniq_cols[j]) == 0) {
+					/* yes it does, record the value */
+					val = data->lines[k];
+					break;
+				}
+			}
+			/*
+			 * Mark empty values with dashes to make output
+			 * awk-able.
+			 */
+			if (is_blank_str(val))
+				val = "-";
+
+			printf("%*s", vcdl->uniq_cols_width[j], val);
+			if (j < vcdl->uniq_cols_cnt - 1)
+				printf("  ");
+		}
+
+		/* Print out any values that aren't in a column at the end */
+		for (j = data->cols_cnt; j < data->lines_cnt; j++) {
+			/* Did we have any columns?  If so print a spacer. */
+			if (vcdl->uniq_cols_cnt > 0)
+				printf("  ");
+
+			val = data->lines[j];
+			printf("%s", val ? val : "");
+		}
+		break;
 	}
 }
 
@@ -2772,8 +2866,53 @@ print_iostat_labels(iostat_cbdata_t *cb, unsigned int force_column_width,
 
 		}
 	}
-	printf("\n");
 }
+
+
+/*
+ * print_cmd_columns - Print custom column titles from -c
+ *
+ * If the user specified the "zpool status|iostat -c" then print their custom
+ * column titles in the header.  For example, print_cmd_columns() would print
+ * the "  col1  col2" part of this:
+ *
+ * $ zpool iostat -vc 'echo col1=val1; echo col2=val2'
+ * ...
+ *	      capacity     operations     bandwidth
+ * pool        alloc   free   read  write   read  write  col1  col2
+ * ----------  -----  -----  -----  -----  -----  -----  ----  ----
+ * mypool       269K  1008M      0      0    107    946
+ *   mirror     269K  1008M      0      0    107    946
+ *     sdb         -      -      0      0    102    473  val1  val2
+ *     sdc         -      -      0      0      5    473  val1  val2
+ * ----------  -----  -----  -----  -----  -----  -----  ----  ----
+ */
+void
+print_cmd_columns(vdev_cmd_data_list_t *vcdl, int use_dashes)
+{
+	int i, j;
+	vdev_cmd_data_t *data = &vcdl->data[0];
+
+	if (vcdl->count == 0 || data == NULL)
+		return;
+
+	/*
+	 * Each vdev cmd should have the same column names unless the user did
+	 * something weird with their cmd.  Just take the column names from the
+	 * first vdev and assume it works for all of them.
+	 */
+	for (i = 0; i < vcdl->uniq_cols_cnt; i++) {
+		printf("  ");
+		if (use_dashes) {
+			for (j = 0; j < vcdl->uniq_cols_width[i]; j++)
+				printf("-");
+		} else {
+			printf("%*s", vcdl->uniq_cols_width[i],
+			    vcdl->uniq_cols[i]);
+		}
+	}
+}
+
 
 /*
  * Utility function to print out a line of dashes like:
@@ -2843,7 +2982,6 @@ print_iostat_dashes(iostat_cbdata_t *cb, unsigned int force_column_width,
 				    "--------------------");
 		}
 	}
-	printf("\n");
 }
 
 
@@ -2885,12 +3023,22 @@ print_iostat_header_impl(iostat_cbdata_t *cb, unsigned int force_column_width,
 
 
 	print_iostat_labels(cb, force_column_width, iostat_top_labels);
+	printf("\n");
 
 	printf("%-*s", namewidth, title);
 
 	print_iostat_labels(cb, force_column_width, iostat_bottom_labels);
+	if (cb->vcdl != NULL)
+		print_cmd_columns(cb->vcdl, 0);
+
+	printf("\n");
 
 	print_iostat_separator_impl(cb, force_column_width);
+
+	if (cb->vcdl != NULL)
+		print_cmd_columns(cb->vcdl, 1);
+
+	printf("\n");
 }
 
 static void
@@ -2953,7 +3101,8 @@ struct stat_array {
 };
 
 static uint64_t
-stat_histo_max(struct stat_array *nva, unsigned int len) {
+stat_histo_max(struct stat_array *nva, unsigned int len)
+{
 	uint64_t max = 0;
 	int i;
 	for (i = 0; i < len; i++)
@@ -2969,7 +3118,8 @@ stat_histo_max(struct stat_array *nva, unsigned int len) {
  */
 static int
 nvpair64_to_stat_array(nvlist_t *nvl, const char *name,
-    struct stat_array *nva) {
+    struct stat_array *nva)
+{
 	nvpair_t *tmp;
 	int ret;
 
@@ -3422,11 +3572,8 @@ print_vdev_stats(zpool_handle_t *zhp, const char *name, nvlist_t *oldnv,
 		char *path;
 		if (nvlist_lookup_string(newnv, ZPOOL_CONFIG_PATH,
 		    &path) == 0) {
-			if (!(cb->cb_flags & IOS_ANYHISTO_M))
-				printf("  ");
+			printf("  ");
 			zpool_print_cmd(cb->vcdl, zpool_get_name(zhp), path);
-			if (cb->cb_flags & IOS_ANYHISTO_M)
-				printf("\n");
 		}
 	}
 
@@ -3478,6 +3625,7 @@ children:
 		    !cb->cb_vdev_names) {
 			print_iostat_dashes(cb, 0, "logs");
 		}
+		printf("\n");
 
 		for (c = 0; c < children; c++) {
 			uint64_t islog = B_FALSE;
@@ -3512,6 +3660,7 @@ children:
 		    !cb->cb_vdev_names) {
 			print_iostat_dashes(cb, 0, "cache");
 		}
+		printf("\n");
 
 		for (c = 0; c < children; c++) {
 			vname = zpool_vdev_name(g_zfs, zhp, newchild[c],
@@ -3573,6 +3722,10 @@ print_iostat(zpool_handle_t *zhp, void *data)
 	if ((ret != 0) && !(cb->cb_flags & IOS_ANYHISTO_M) &&
 	    !cb->cb_scripted && cb->cb_verbose && !cb->cb_vdev_names_count) {
 		print_iostat_separator(cb);
+		if (cb->vcdl != NULL) {
+			print_cmd_columns(cb->vcdl, 1);
+		}
+		printf("\n");
 	}
 
 	return (ret);
@@ -3871,7 +4024,8 @@ is_pool(char *name)
 
 /* Are all our argv[] strings pool names?  If so return 1, 0 otherwise. */
 static int
-are_all_pools(int argc, char **argv) {
+are_all_pools(int argc, char **argv)
+{
 	if ((argc == 0) || !*argv)
 		return (0);
 
@@ -3952,18 +4106,80 @@ get_interval_count_filter_guids(int *argc, char **argv, float *interval,
  * seconds.
  */
 static void
-fsleep(float sec) {
+fsleep(float sec)
+{
 	struct timespec req;
 	req.tv_sec = floor(sec);
 	req.tv_nsec = (sec - (float)req.tv_sec) * NANOSEC;
 	nanosleep(&req, NULL);
 }
 
+/*
+ * Run one of the zpool status/iostat -c scripts with the help (-h) option and
+ * print the result.
+ *
+ * name:	Short name of the script ('iostat').
+ * path:	Full path to the script ('/usr/local/etc/zfs/zpool.d/iostat');
+ */
+static void
+print_zpool_script_help(char *name, char *path)
+{
+	char *argv[] = {path, "-h", NULL};
+	char **lines = NULL;
+	int lines_cnt = 0;
+	int rc;
+
+	rc = libzfs_run_process_get_stdout_nopath(path, argv, NULL, &lines,
+	    &lines_cnt);
+	if (rc != 0 || lines == NULL || lines_cnt <= 0)
+		return;
+
+	for (int i = 0; i < lines_cnt; i++)
+		if (!is_blank_str(lines[i]))
+			printf("  %-14s  %s\n", name, lines[i]);
+
+	libzfs_free_str_array(lines, lines_cnt);
+}
+
 
 /*
- * zpool iostat [-c CMD] [-ghHLpPvy] [[-lq]|[-r|-w]] [-n name] [-T d|u]
- *		[[ pool ...]|[pool vdev ...]|[vdev ...]]
- *		[interval [count]]
+ * Go though the list of all the zpool status/iostat -c scripts, run their
+ * help option (-h), and print out the results.
+ */
+static void
+print_zpool_script_list(void)
+{
+	DIR *dir;
+	struct dirent *ent;
+	char fullpath[MAXPATHLEN];
+	struct stat dir_stat;
+
+	if ((dir = opendir(ZPOOL_SCRIPTS_DIR)) != NULL) {
+		printf("\n");
+		/* print all the files and directories within directory */
+		while ((ent = readdir(dir)) != NULL) {
+			sprintf(fullpath, "%s/%s", ZPOOL_SCRIPTS_DIR,
+			    ent->d_name);
+
+			/* Print the scripts */
+			if (stat(fullpath, &dir_stat) == 0)
+				if (dir_stat.st_mode & S_IXUSR &&
+				    S_ISREG(dir_stat.st_mode))
+					print_zpool_script_help(ent->d_name,
+					    fullpath);
+		}
+		printf("\n");
+		closedir(dir);
+	} else {
+		fprintf(stderr, gettext("Can't open %s scripts dir\n"),
+		    ZPOOL_SCRIPTS_DIR);
+	}
+}
+
+/*
+ * zpool iostat [[-c [script1,script2,...]] [-lq]|[-rw]] [-ghHLpPvy] [-n name]
+ *              [-T d|u] [[ pool ...]|[pool vdev ...]|[vdev ...]]
+ *              [interval [count]]
  *
  *	-c CMD  For each vdev, run command CMD
  *	-g	Display guid for individual vdev name.
@@ -4015,7 +4231,20 @@ zpool_do_iostat(int argc, char **argv)
 	while ((c = getopt(argc, argv, "c:gLPT:vyhplqrwH")) != -1) {
 		switch (c) {
 		case 'c':
+			if (cmd != NULL) {
+				fprintf(stderr,
+				    gettext("Can't set -c flag twice\n"));
+				exit(1);
+			}
+			if ((getuid() <= 0 || geteuid() <= 0) &&
+			    !libzfs_envvar_is_set("ZPOOL_SCRIPTS_AS_ROOT")) {
+				fprintf(stderr, gettext(
+				    "Can't run -c with root privileges "
+				    "unless ZPOOL_SCRIPTS_AS_ROOT is set.\n"));
+				exit(1);
+			}
 			cmd = optarg;
+			verbose = B_TRUE;
 			break;
 		case 'g':
 			guid = B_TRUE;
@@ -4058,8 +4287,11 @@ zpool_do_iostat(int argc, char **argv)
 			break;
 		case '?':
 			if (optopt == 'c') {
-				fprintf(stderr,
-				    gettext("Missing CMD for -c\n"));
+				fprintf(stderr, gettext(
+				    "Current scripts in %s:\n"),
+				    ZPOOL_SCRIPTS_DIR);
+				print_zpool_script_list();
+				exit(0);
 			} else {
 				fprintf(stderr,
 				    gettext("invalid option '%c'\n"), optopt);
@@ -4154,10 +4386,10 @@ zpool_do_iostat(int argc, char **argv)
 		return (1);
 	}
 
-	if ((l_histo || rq_histo) && (queues || latency)) {
+	if ((l_histo || rq_histo) && (cmd != NULL || latency || queues)) {
 		pool_list_free(list);
 		(void) fprintf(stderr,
-		    gettext("[-r|-w] isn't allowed with [-q|-l]\n"));
+		    gettext("[-r|-w] isn't allowed with [-c|-l|-q]\n"));
 		usage(B_FALSE);
 		return (1);
 	}
@@ -4245,6 +4477,15 @@ zpool_do_iostat(int argc, char **argv)
 			if (timestamp_fmt != NODATE)
 				print_timestamp(timestamp_fmt);
 
+			if (cmd != NULL && cb.cb_verbose &&
+			    !(cb.cb_flags & IOS_ANYHISTO_M)) {
+				cb.vcdl = all_pools_for_each_vdev_run(argc,
+				    argv, cmd, g_zfs, cb.cb_vdev_names,
+				    cb.cb_vdev_names_count, cb.cb_name_flags);
+			} else {
+				cb.vcdl = NULL;
+			}
+
 			/*
 			 * If it's the first time and we're not skipping it,
 			 * or either skip or verbose mode, print the header.
@@ -4263,15 +4504,8 @@ zpool_do_iostat(int argc, char **argv)
 				continue;
 			}
 
-			if (cmd != NULL && cb.cb_verbose)
-				cb.vcdl = all_pools_for_each_vdev_run(argc,
-				    argv, cmd, g_zfs, cb.cb_vdev_names,
-				    cb.cb_vdev_names_count, cb.cb_name_flags);
 
 			pool_list_iter(list, B_FALSE, print_iostat, &cb);
-
-			if (cb.vcdl != NULL)
-				free_vdev_cmd_data_list(cb.vcdl);
 
 			/*
 			 * If there's more than one pool, and we're not in
@@ -4287,7 +4521,14 @@ zpool_do_iostat(int argc, char **argv)
 			    cb.cb_vdev_names_count)) &&
 			    !cb.cb_scripted) {
 				print_iostat_separator(&cb);
+				if (cb.vcdl != NULL)
+					print_cmd_columns(cb.vcdl, 1);
+				printf("\n");
 			}
+
+			if (cb.vcdl != NULL)
+				free_vdev_cmd_data_list(cb.vcdl);
+
 		}
 
 		/*
@@ -4837,6 +5078,20 @@ zpool_do_attach_or_replace(int argc, char **argv, int replacing)
 		zpool_close(zhp);
 		nvlist_free(props);
 		return (1);
+	}
+
+	/* unless manually specified use "ashift" pool property (if set) */
+	if (!nvlist_exists(props, ZPOOL_CONFIG_ASHIFT)) {
+		int intval;
+		zprop_source_t src;
+		char strval[ZPOOL_MAXPROPLEN];
+
+		intval = zpool_get_prop_int(zhp, ZPOOL_PROP_ASHIFT, &src);
+		if (src != ZPROP_SRC_DEFAULT) {
+			(void) sprintf(strval, "%" PRId32, intval);
+			verify(add_prop_list(ZPOOL_CONFIG_ASHIFT, strval,
+			    &props, B_TRUE) == 0);
+		}
 	}
 
 	nvroot = make_root_vdev(zhp, props, force, B_FALSE, replacing, B_FALSE,
@@ -5503,7 +5758,7 @@ print_scan_status(pool_scan_stat_t *ps)
 
 	start = ps->pss_start_time;
 	end = ps->pss_end_time;
-	zfs_nicenum(ps->pss_processed, processed_buf, sizeof (processed_buf));
+	zfs_nicebytes(ps->pss_processed, processed_buf, sizeof (processed_buf));
 
 	assert(ps->pss_func == POOL_SCAN_SCRUB ||
 	    ps->pss_func == POOL_SCAN_RESILVER);
@@ -5565,9 +5820,9 @@ print_scan_status(pool_scan_stat_t *ps)
 	mins_left = ((total - examined) / rate) / 60;
 	hours_left = mins_left / 60;
 
-	zfs_nicenum(examined, examined_buf, sizeof (examined_buf));
-	zfs_nicenum(total, total_buf, sizeof (total_buf));
-	zfs_nicenum(rate, rate_buf, sizeof (rate_buf));
+	zfs_nicebytes(examined, examined_buf, sizeof (examined_buf));
+	zfs_nicebytes(total, total_buf, sizeof (total_buf));
+	zfs_nicebytes(rate, rate_buf, sizeof (rate_buf));
 
 	/*
 	 * do not print estimated time if hours_left is more than 30 days
@@ -5599,11 +5854,8 @@ print_error_log(zpool_handle_t *zhp)
 	char *pathname;
 	size_t len = MAXPATHLEN * 2;
 
-	if (zpool_get_errlog(zhp, &nverrlist) != 0) {
-		(void) printf("errors: List of errors unavailable "
-		    "(insufficient privileges)\n");
+	if (zpool_get_errlog(zhp, &nverrlist) != 0)
 		return;
-	}
 
 	(void) printf("errors: Permanent errors have been "
 	    "detected in the following files:\n\n");
@@ -5673,6 +5925,7 @@ print_dedup_stats(nvlist_t *config)
 	ddt_stat_t *dds;
 	ddt_object_t *ddo;
 	uint_t c;
+	char dspace[6], mspace[6];
 
 	/*
 	 * If the pool was faulted then we may not have been able to
@@ -5690,10 +5943,12 @@ print_dedup_stats(nvlist_t *config)
 		return;
 	}
 
-	(void) printf("DDT entries %llu, size %llu on disk, %llu in core\n",
+	zfs_nicebytes(ddo->ddo_dspace, dspace, sizeof (dspace));
+	zfs_nicebytes(ddo->ddo_mspace, mspace, sizeof (mspace));
+	(void) printf("DDT entries %llu, size %s on disk, %s in core\n",
 	    (u_longlong_t)ddo->ddo_count,
-	    (u_longlong_t)ddo->ddo_dspace,
-	    (u_longlong_t)ddo->ddo_mspace);
+	    dspace,
+	    mspace);
 
 	verify(nvlist_lookup_uint64_array(config, ZPOOL_CONFIG_DDT_STATS,
 	    (uint64_t **)&dds, &c) == 0);
@@ -6008,9 +6263,14 @@ status_callback(zpool_handle_t *zhp, void *data)
 			cbp->cb_namewidth = 10;
 
 		(void) printf(gettext("config:\n\n"));
-		(void) printf(gettext("\t%-*s  %-8s %5s %5s %5s\n"),
+		(void) printf(gettext("\t%-*s  %-8s %5s %5s %5s"),
 		    cbp->cb_namewidth, "NAME", "STATE", "READ", "WRITE",
 		    "CKSUM");
+
+		if (cbp->vcdl != NULL)
+			print_cmd_columns(cbp->vcdl, 0);
+
+		printf("\n");
 		print_status_config(zhp, cbp, zpool_get_name(zhp), nvroot, 0,
 		    B_FALSE);
 
@@ -6070,7 +6330,8 @@ status_callback(zpool_handle_t *zhp, void *data)
 }
 
 /*
- * zpool status [-c CMD] [-gLPvx] [-T d|u] [pool] ... [interval [count]]
+ * zpool status [-c [script1,script2,...]] [-gLPvx] [-T d|u] [pool] ...
+ *              [interval [count]]
  *
  *	-c CMD	For each vdev, run command CMD
  *	-g	Display guid for individual vdev name.
@@ -6097,6 +6358,18 @@ zpool_do_status(int argc, char **argv)
 	while ((c = getopt(argc, argv, "c:gLPvxDT:")) != -1) {
 		switch (c) {
 		case 'c':
+			if (cmd != NULL) {
+				fprintf(stderr,
+				    gettext("Can't set -c flag twice\n"));
+				exit(1);
+			}
+			if ((getuid() <= 0 || geteuid() <= 0) &&
+			    !libzfs_envvar_is_set("ZPOOL_SCRIPTS_AS_ROOT")) {
+				fprintf(stderr, gettext(
+				    "Can't run -c with root privileges "
+				    "unless ZPOOL_SCRIPTS_AS_ROOT is set.\n"));
+				exit(1);
+			}
 			cmd = optarg;
 			break;
 		case 'g':
@@ -6122,8 +6395,11 @@ zpool_do_status(int argc, char **argv)
 			break;
 		case '?':
 			if (optopt == 'c') {
-				fprintf(stderr,
-				    gettext("Missing CMD for -c\n"));
+				fprintf(stderr, gettext(
+				    "Current scripts in %s:\n"),
+				    ZPOOL_SCRIPTS_DIR);
+				print_zpool_script_list();
+				exit(0);
 			} else {
 				fprintf(stderr,
 				    gettext("invalid option '%c'\n"), optopt);

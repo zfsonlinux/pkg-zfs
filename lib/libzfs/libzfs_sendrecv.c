@@ -27,6 +27,7 @@
  * All rights reserved
  * Copyright (c) 2013 Steven Hartland. All rights reserved.
  * Copyright 2015, OmniTI Computer Consulting, Inc. All rights reserved.
+ * Copyright 2016 Igor Kozhukhov <ikozhukhov@gmail.com>
  */
 
 #include <assert.h>
@@ -245,12 +246,16 @@ cksummer(void *arg)
 	int outfd;
 	dedup_table_t ddt;
 	zio_cksum_t stream_cksum;
-	uint64_t physmem = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE);
 	uint64_t numbuckets;
 
+#ifdef _ILP32
+	ddt.max_ddt_size = SMALLEST_POSSIBLE_MAX_DDT_MB << 20;
+#else
+	uint64_t physmem = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE);
 	ddt.max_ddt_size =
 	    MAX((physmem * MAX_DDT_PHYSMEM_PERCENT) / 100,
 	    SMALLEST_POSSIBLE_MAX_DDT_MB << 20);
+#endif
 
 	numbuckets = ddt.max_ddt_size / (sizeof (dedup_entry_t));
 
@@ -271,6 +276,15 @@ cksummer(void *arg)
 	outfd = dda->outputfd;
 	ofp = fdopen(dda->inputfd, "r");
 	while (ssread(drr, sizeof (*drr), ofp) != 0) {
+
+		/*
+		 * kernel filled in checksum, we are going to write same
+		 * record, but need to regenerate checksum.
+		 */
+		if (drr->drr_type != DRR_BEGIN) {
+			bzero(&drr->drr_u.drr_checksum.drr_checksum,
+			    sizeof (drr->drr_u.drr_checksum.drr_checksum));
+		}
 
 		switch (drr->drr_type) {
 		case DRR_BEGIN:
@@ -412,7 +426,7 @@ cksummer(void *arg)
 				wbr_drrr->drr_checksumtype =
 				    drrw->drr_checksumtype;
 				wbr_drrr->drr_checksumflags =
-				    drrw->drr_checksumtype;
+				    drrw->drr_checksumflags;
 				wbr_drrr->drr_key.ddk_cksum =
 				    drrw->drr_key.ddk_cksum;
 				wbr_drrr->drr_key.ddk_prop =
@@ -856,6 +870,8 @@ send_iterate_fs(zfs_handle_t *zhp, void *arg)
 		}
 		VERIFY(0 == nvlist_add_uint64(nvfs, "origin",
 		    origin->zfs_dmustats.dds_guid));
+
+		zfs_close(origin);
 	}
 
 	/* iterate over props */
@@ -1150,7 +1166,7 @@ send_progress_thread(void *arg)
 			    tm->tm_hour, tm->tm_min, tm->tm_sec,
 			    bytes, zhp->zfs_name);
 		} else {
-			zfs_nicenum(bytes, buf, sizeof (buf));
+			zfs_nicebytes(bytes, buf, sizeof (buf));
 			(void) fprintf(stderr, "%02d:%02d:%02d   %5s   %s\n",
 			    tm->tm_hour, tm->tm_min, tm->tm_sec,
 			    buf, zhp->zfs_name);
@@ -1195,7 +1211,7 @@ send_print_verbose(FILE *fout, const char *tosnap, const char *fromsnap,
 			    (longlong_t)size);
 		} else {
 			char buf[16];
-			zfs_nicenum(size, buf, sizeof (buf));
+			zfs_nicebytes(size, buf, sizeof (buf));
 			(void) fprintf(fout, dgettext(TEXT_DOMAIN,
 			    " estimated size is %s"), buf);
 		}
@@ -1312,7 +1328,7 @@ dump_snapshot(zfs_handle_t *zhp, void *arg)
 			pa.pa_parsable = sdd->parsable;
 
 			if ((err = pthread_create(&tid, NULL,
-			    send_progress_thread, &pa))) {
+			    send_progress_thread, &pa)) != 0) {
 				zfs_close(zhp);
 				return (err);
 			}
@@ -1787,7 +1803,7 @@ zfs_send(zfs_handle_t *zhp, const char *fromsnap, const char *tosnap,
 	if (flags->dedup && !flags->dryrun) {
 		featureflags |= (DMU_BACKUP_FEATURE_DEDUP |
 		    DMU_BACKUP_FEATURE_DEDUPPROPS);
-		if ((err = socketpair(AF_UNIX, SOCK_STREAM, 0, pipefd))) {
+		if ((err = socketpair(AF_UNIX, SOCK_STREAM, 0, pipefd)) != 0) {
 			zfs_error_aux(zhp->zfs_hdl, strerror(errno));
 			return (zfs_error(zhp->zfs_hdl, EZFS_PIPEFAILED,
 			    errbuf));
@@ -1795,7 +1811,7 @@ zfs_send(zfs_handle_t *zhp, const char *fromsnap, const char *tosnap,
 		dda.outputfd = outfd;
 		dda.inputfd = pipefd[1];
 		dda.dedup_hdl = zhp->zfs_hdl;
-		if ((err = pthread_create(&tid, NULL, cksummer, &dda))) {
+		if ((err = pthread_create(&tid, NULL, cksummer, &dda)) != 0) {
 			(void) close(pipefd[0]);
 			(void) close(pipefd[1]);
 			zfs_error_aux(zhp->zfs_hdl, strerror(errno));
@@ -1943,7 +1959,7 @@ zfs_send(zfs_handle_t *zhp, const char *fromsnap, const char *tosnap,
 				    (longlong_t)sdd.size);
 			} else {
 				char buf[16];
-				zfs_nicenum(sdd.size, buf, sizeof (buf));
+				zfs_nicebytes(sdd.size, buf, sizeof (buf));
 				(void) fprintf(fout, dgettext(TEXT_DOMAIN,
 				    "total estimated size is %s\n"), buf);
 			}
@@ -2817,7 +2833,7 @@ zfs_receive_package(libzfs_handle_t *hdl, int fd, const char *destname,
 			goto out;
 		}
 
-		if (fromsnap != NULL) {
+		if (fromsnap != NULL && recursive) {
 			nvlist_t *renamed = NULL;
 			nvpair_t *pair = NULL;
 
@@ -2844,7 +2860,7 @@ zfs_receive_package(libzfs_handle_t *hdl, int fd, const char *destname,
 				*strchr(tofs, '@') = '\0';
 			}
 
-			if (recursive && !flags->dryrun && !flags->nomount) {
+			if (!flags->dryrun && !flags->nomount) {
 				VERIFY(0 == nvlist_alloc(&renamed,
 				    NV_UNIQUE_NAME, 0));
 			}
@@ -2913,7 +2929,7 @@ zfs_receive_package(libzfs_handle_t *hdl, int fd, const char *destname,
 		anyerr |= error;
 	} while (error == 0);
 
-	if (drr->drr_payloadlen != 0 && fromsnap != NULL) {
+	if (drr->drr_payloadlen != 0 && recursive && fromsnap != NULL) {
 		/*
 		 * Now that we have the fs's they sent us, try the
 		 * renames again.
@@ -3225,7 +3241,12 @@ zfs_receive_one(libzfs_handle_t *hdl, int infd, const char *tosnap,
 	/*
 	 * Determine the name of the origin snapshot.
 	 */
-	if (drrb->drr_flags & DRR_FLAG_CLONE) {
+	if (originsnap) {
+		(void) strncpy(origin, originsnap, sizeof (origin));
+		if (flags->verbose)
+			(void) printf("using provided clone origin %s\n",
+			    origin);
+	} else if (drrb->drr_flags & DRR_FLAG_CLONE) {
 		if (guid_to_name(hdl, destsnap,
 		    drrb->drr_fromguid, B_FALSE, origin) != 0) {
 			zfs_error_aux(hdl, dgettext(TEXT_DOMAIN,
@@ -3236,11 +3257,6 @@ zfs_receive_one(libzfs_handle_t *hdl, int infd, const char *tosnap,
 		}
 		if (flags->verbose)
 			(void) printf("found clone origin %s\n", origin);
-	} else if (originsnap) {
-		(void) strncpy(origin, originsnap, sizeof (origin));
-		if (flags->verbose)
-			(void) printf("using provided clone origin %s\n",
-			    origin);
 	}
 
 	boolean_t resuming = DMU_GET_FEATUREFLAGS(drrb->drr_versioninfo) &
@@ -3601,7 +3617,8 @@ zfs_receive_one(libzfs_handle_t *hdl, int infd, const char *tosnap,
 	}
 
 	if (clp) {
-		err |= changelist_postfix(clp);
+		if (!flags->nomount)
+			err |= changelist_postfix(clp);
 		changelist_free(clp);
 	}
 
@@ -3628,10 +3645,10 @@ zfs_receive_one(libzfs_handle_t *hdl, int infd, const char *tosnap,
 		time_t delta = time(NULL) - begin_time;
 		if (delta == 0)
 			delta = 1;
-		zfs_nicenum(bytes, buf1, sizeof (buf1));
-		zfs_nicenum(bytes/delta, buf2, sizeof (buf1));
+		zfs_nicebytes(bytes, buf1, sizeof (buf1));
+		zfs_nicebytes(bytes/delta, buf2, sizeof (buf1));
 
-		(void) printf("received %sB stream in %lu seconds (%sB/sec)\n",
+		(void) printf("received %s stream in %lu seconds (%s/sec)\n",
 		    buf1, delta, buf2);
 	}
 

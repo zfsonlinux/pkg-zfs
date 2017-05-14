@@ -25,13 +25,14 @@
  * Copyright 2012 Milan Jurik. All rights reserved.
  * Copyright (c) 2012, Joyent, Inc. All rights reserved.
  * Copyright (c) 2013 Steven Hartland.  All rights reserved.
- * Copyright 2013 Nexenta Systems, Inc.  All rights reserved.
  * Copyright 2016 Igor Kozhukhov <ikozhukhov@gmail.com>.
+ * Copyright 2016 Nexenta Systems, Inc.
  */
 
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <getopt.h>
 #include <libgen.h>
 #include <libintl.h>
 #include <libuutil.h>
@@ -232,7 +233,7 @@ get_usage(zfs_help_t idx)
 		    "[-o \"all\" | field[,...]]\n"
 		    "\t    [-t type[,...]] [-s source[,...]]\n"
 		    "\t    <\"all\" | property[,...]> "
-		    "[filesystem|volume|snapshot] ...\n"));
+		    "[filesystem|volume|snapshot|bookmark] ...\n"));
 	case HELP_INHERIT:
 		return (gettext("\tinherit [-rS] <property> "
 		    "<filesystem|volume|snapshot> ...\n"));
@@ -262,9 +263,9 @@ get_usage(zfs_help_t idx)
 	case HELP_ROLLBACK:
 		return (gettext("\trollback [-rRf] <snapshot>\n"));
 	case HELP_SEND:
-		return (gettext("\tsend [-DnPpRvLec] [-[iI] snapshot] "
+		return (gettext("\tsend [-DnPpRvLec] [-[i|I] snapshot] "
 		    "<snapshot>\n"
-		    "\tsend [-Le] [-i snapshot|bookmark] "
+		    "\tsend [-Lec] [-i snapshot|bookmark] "
 		    "<filesystem|volume|snapshot>\n"
 		    "\tsend [-nvPe] -t <receive_resume_token>\n"));
 	case HELP_SET:
@@ -1312,7 +1313,7 @@ zfs_do_destroy(int argc, char **argv)
 
 		if (cb.cb_verbose) {
 			char buf[16];
-			zfs_nicenum(cb.cb_snapused, buf, sizeof (buf));
+			zfs_nicebytes(cb.cb_snapused, buf, sizeof (buf));
 			if (cb.cb_parsable) {
 				(void) printf("reclaim\t%llu\n",
 				    (u_longlong_t)cb.cb_snapused);
@@ -1608,7 +1609,7 @@ zfs_do_get(int argc, char **argv)
 {
 	zprop_get_cbdata_t cb = { 0 };
 	int i, c, flags = ZFS_ITER_ARGS_CAN_BE_PATHS;
-	int types = ZFS_TYPE_DATASET;
+	int types = ZFS_TYPE_DATASET | ZFS_TYPE_BOOKMARK;
 	char *value, *fields;
 	int ret = 0;
 	int limit = 0;
@@ -2548,11 +2549,17 @@ userspace_cb(void *arg, const char *domain, uid_t rid, uint64_t space)
 	}
 
 	/* Calculate/update width of USED/QUOTA fields */
-	if (cb->cb_nicenum)
-		zfs_nicenum(space, sizebuf, sizeof (sizebuf));
-	else
+	if (cb->cb_nicenum) {
+		if (prop == ZFS_PROP_USERUSED || prop == ZFS_PROP_GROUPUSED ||
+		    prop == ZFS_PROP_USERQUOTA || prop == ZFS_PROP_GROUPQUOTA) {
+			zfs_nicebytes(space, sizebuf, sizeof (sizebuf));
+		} else {
+			zfs_nicenum(space, sizebuf, sizeof (sizebuf));
+		}
+	} else {
 		(void) snprintf(sizebuf, sizeof (sizebuf), "%llu",
 		    (u_longlong_t)space);
+	}
 	sizelen = strlen(sizebuf);
 	if (prop == ZFS_PROP_USERUSED || prop == ZFS_PROP_GROUPUSED) {
 		propname = "used";
@@ -2645,22 +2652,36 @@ print_us_node(boolean_t scripted, boolean_t parsable, int *fields, int types,
 			break;
 		case USFIELD_USED:
 		case USFIELD_QUOTA:
+			if (type == DATA_TYPE_UINT64) {
+				if (parsable) {
+					(void) sprintf(valstr, "%llu",
+					    (u_longlong_t)val64);
+					strval = valstr;
+				} else if (field == USFIELD_QUOTA &&
+				    val64 == 0) {
+					strval = "none";
+				} else {
+					zfs_nicebytes(val64, valstr,
+					    sizeof (valstr));
+					strval = valstr;
+				}
+			}
+			break;
 		case USFIELD_OBJUSED:
 		case USFIELD_OBJQUOTA:
 			if (type == DATA_TYPE_UINT64) {
 				if (parsable) {
 					(void) sprintf(valstr, "%llu",
 					    (u_longlong_t)val64);
+					strval = valstr;
+				} else if (field == USFIELD_OBJQUOTA &&
+				    val64 == 0) {
+					strval = "none";
 				} else {
 					zfs_nicenum(val64, valstr,
 					    sizeof (valstr));
-				}
-				if ((field == USFIELD_QUOTA ||
-				    field == USFIELD_OBJQUOTA) &&
-				    strcmp(valstr, "0") == 0)
-					strval = "none";
-				else
 					strval = valstr;
+				}
 			}
 			break;
 		}
@@ -3771,8 +3792,23 @@ zfs_do_send(int argc, char **argv)
 	nvlist_t *dbgnv = NULL;
 	boolean_t extraverbose = B_FALSE;
 
+	struct option long_options[] = {
+		{"replicate",	no_argument,		NULL, 'R'},
+		{"props",	no_argument,		NULL, 'p'},
+		{"parsable",	no_argument,		NULL, 'P'},
+		{"dedup",	no_argument,		NULL, 'D'},
+		{"verbose",	no_argument,		NULL, 'v'},
+		{"dryrun",	no_argument,		NULL, 'n'},
+		{"large-block",	no_argument,		NULL, 'L'},
+		{"embed",	no_argument,		NULL, 'e'},
+		{"resume",	required_argument,	NULL, 't'},
+		{"compressed",	no_argument,		NULL, 'c'},
+		{0, 0, 0, 0}
+	};
+
 	/* check options */
-	while ((c = getopt(argc, argv, ":i:I:RDpvnPLet:c")) != -1) {
+	while ((c = getopt_long(argc, argv, ":i:I:RDpvnPLet:c", long_options,
+	    NULL)) != -1) {
 		switch (c) {
 		case 'i':
 			if (fromname)
@@ -3820,13 +3856,42 @@ zfs_do_send(int argc, char **argv)
 			flags.compress = B_TRUE;
 			break;
 		case ':':
-			(void) fprintf(stderr, gettext("missing argument for "
-			    "'%c' option\n"), optopt);
+			/*
+			 * If a parameter was not passed, optopt contains the
+			 * value that would normally lead us into the
+			 * appropriate case statement.  If it's > 256, then this
+			 * must be a longopt and we should look at argv to get
+			 * the string.  Otherwise it's just the character, so we
+			 * should use it directly.
+			 */
+			if (optopt <= UINT8_MAX) {
+				(void) fprintf(stderr,
+				    gettext("missing argument for '%c' "
+				    "option\n"), optopt);
+			} else {
+				(void) fprintf(stderr,
+				    gettext("missing argument for '%s' "
+				    "option\n"), argv[optind - 1]);
+			}
 			usage(B_FALSE);
 			break;
 		case '?':
-			(void) fprintf(stderr, gettext("invalid option '%c'\n"),
-			    optopt);
+			/*FALLTHROUGH*/
+		default:
+			/*
+			 * If an invalid flag was passed, optopt contains the
+			 * character if it was a short flag, or 0 if it was a
+			 * longopt.
+			 */
+			if (optopt != 0) {
+				(void) fprintf(stderr,
+				    gettext("invalid option '%c'\n"), optopt);
+			} else {
+				(void) fprintf(stderr,
+				    gettext("invalid option '%s'\n"),
+				    argv[optind - 1]);
+
+			}
 			usage(B_FALSE);
 		}
 	}
@@ -6534,6 +6599,15 @@ unshare_unmount(int op, int argc, char **argv)
 				continue;
 			}
 
+			/*
+			 * Ignore datasets that are excluded/restricted by
+			 * parent pool name.
+			 */
+			if (zpool_skip_pool(zfs_get_pool_name(zhp))) {
+				zfs_close(zhp);
+				continue;
+			}
+
 			switch (op) {
 			case OP_SHARE:
 				verify(zfs_prop_get(zhp, ZFS_PROP_SHARENFS,
@@ -6826,6 +6900,7 @@ static int
 zfs_do_bookmark(int argc, char **argv)
 {
 	char snapname[ZFS_MAX_DATASET_NAME_LEN];
+	char bookname[ZFS_MAX_DATASET_NAME_LEN];
 	zfs_handle_t *zhp;
 	nvlist_t *nvl;
 	int ret = 0;
@@ -6856,7 +6931,7 @@ zfs_do_bookmark(int argc, char **argv)
 
 	if (strchr(argv[1], '#') == NULL) {
 		(void) fprintf(stderr,
-		    gettext("invalid bookmark name '%s' -- "
+		    gettext("invalid bookmark name '%s': "
 		    "must contain a '#'\n"), argv[1]);
 		goto usage;
 	}
@@ -6872,6 +6947,18 @@ zfs_do_bookmark(int argc, char **argv)
 	} else {
 		(void) strlcpy(snapname, argv[0], sizeof (snapname));
 	}
+	if (argv[1][0] == '#') {
+		/*
+		 * Bookmark name begins with #.
+		 * Default to same fs as snapshot.
+		 */
+		(void) strlcpy(bookname, argv[0], sizeof (bookname));
+		*strchr(bookname, '@') = '\0';
+		(void) strlcat(bookname, argv[1], sizeof (bookname));
+	} else {
+		(void) strlcpy(bookname, argv[1], sizeof (bookname));
+	}
+
 	zhp = zfs_open(g_zfs, snapname, ZFS_TYPE_SNAPSHOT);
 	if (zhp == NULL)
 		goto usage;
@@ -6879,7 +6966,7 @@ zfs_do_bookmark(int argc, char **argv)
 
 
 	nvl = fnvlist_alloc();
-	fnvlist_add_string(nvl, argv[1], snapname);
+	fnvlist_add_string(nvl, bookname, snapname);
 	ret = lzc_bookmark(nvl, NULL);
 	fnvlist_free(nvl);
 
@@ -6889,7 +6976,7 @@ zfs_do_bookmark(int argc, char **argv)
 
 		(void) snprintf(errbuf, sizeof (errbuf),
 		    dgettext(TEXT_DOMAIN,
-		    "cannot create bookmark '%s'"), argv[1]);
+		    "cannot create bookmark '%s'"), bookname);
 
 		switch (ret) {
 		case EXDEV:
@@ -6906,6 +6993,9 @@ zfs_do_bookmark(int argc, char **argv)
 			break;
 		case ENOSPC:
 			err_msg = "out of space";
+			break;
+		case ENOENT:
+			err_msg = "dataset does not exist";
 			break;
 		default:
 			err_msg = "unknown error";

@@ -699,15 +699,13 @@ do_dump(dmu_sendarg_t *dsa, struct send_block_record *data)
 		arc_buf_t *abuf;
 		int blksz = dblkszsec << SPA_MINBLOCKSHIFT;
 		uint64_t offset;
-		enum zio_flag zioflags = ZIO_FLAG_CANFAIL;
 
 		/*
 		 * If we have large blocks stored on disk but the send flags
 		 * don't allow us to send large blocks, we split the data from
 		 * the arc buf into chunks.
 		 */
-		boolean_t split_large_blocks =
-		    data->datablkszsec > SPA_OLD_MAXBLOCKSIZE &&
+		boolean_t split_large_blocks = blksz > SPA_OLD_MAXBLOCKSIZE &&
 		    !(dsa->dsa_featureflags & DMU_BACKUP_FEATURE_LARGE_BLOCKS);
 		/*
 		 * We should only request compressed data from the ARC if all
@@ -729,17 +727,19 @@ do_dump(dmu_sendarg_t *dsa, struct send_block_record *data)
 		    (zb->zb_object == dsa->dsa_resume_object &&
 		    zb->zb_blkid * blksz >= dsa->dsa_resume_offset));
 
+		ASSERT3U(blksz, ==, BP_GET_LSIZE(bp));
+
+		enum zio_flag zioflags = ZIO_FLAG_CANFAIL;
 		if (request_compressed)
 			zioflags |= ZIO_FLAG_RAW;
 
 		if (arc_read(NULL, spa, bp, arc_getbuf_func, &abuf,
-		    ZIO_PRIORITY_ASYNC_READ, zioflags,
-		    &aflags, zb) != 0) {
+		    ZIO_PRIORITY_ASYNC_READ, zioflags, &aflags, zb) != 0) {
 			if (zfs_send_corrupt_data) {
-				uint64_t *ptr;
 				/* Send a block filled with 0x"zfs badd bloc" */
 				abuf = arc_alloc_buf(spa, &abuf, ARC_BUFC_DATA,
 				    blksz);
+				uint64_t *ptr;
 				for (ptr = abuf->b_data;
 				    (char *)ptr < (char *)abuf->b_data + blksz;
 				    ptr++)
@@ -752,9 +752,9 @@ do_dump(dmu_sendarg_t *dsa, struct send_block_record *data)
 		offset = zb->zb_blkid * blksz;
 
 		if (split_large_blocks) {
-			char *buf = abuf->b_data;
 			ASSERT3U(arc_get_compression(abuf), ==,
 			    ZIO_COMPRESS_OFF);
+			char *buf = abuf->b_data;
 			while (blksz > 0 && err == 0) {
 				int n = MIN(blksz, SPA_OLD_MAXBLOCKSIZE);
 				err = dump_write(dsa, type, zb->zb_object,
@@ -1613,10 +1613,12 @@ dmu_recv_begin_sync(void *arg, dmu_tx_t *tx)
 	 * If we actually created a non-clone, we need to create the
 	 * objset in our new dataset.
 	 */
+	rrw_enter(&newds->ds_bp_rwlock, RW_READER, FTAG);
 	if (BP_IS_HOLE(dsl_dataset_get_blkptr(newds))) {
 		(void) dmu_objset_create_impl(dp->dp_spa,
 		    newds, dsl_dataset_get_blkptr(newds), drrb->drr_type, tx);
 	}
+	rrw_exit(&newds->ds_bp_rwlock, FTAG);
 
 	drba->drba_cookie->drc_ds = newds;
 
@@ -1759,7 +1761,9 @@ dmu_recv_resume_begin_sync(void *arg, dmu_tx_t *tx)
 	dmu_buf_will_dirty(ds->ds_dbuf, tx);
 	dsl_dataset_phys(ds)->ds_flags |= DS_FLAG_INCONSISTENT;
 
+	rrw_enter(&ds->ds_bp_rwlock, RW_READER, FTAG);
 	ASSERT(!BP_IS_HOLE(dsl_dataset_get_blkptr(ds)));
+	rrw_exit(&ds->ds_bp_rwlock, FTAG);
 
 	drba->drba_cookie->drc_ds = ds;
 
@@ -2090,7 +2094,7 @@ save_resume_state(struct receive_writer_arg *rwa,
 
 noinline static int
 receive_object(struct receive_writer_arg *rwa, struct drr_object *drro,
-	void *data)
+    void *data)
 {
 	dmu_object_info_t doi;
 	dmu_tx_t *tx;
@@ -2226,7 +2230,7 @@ receive_freeobjects(struct receive_writer_arg *rwa,
 
 noinline static int
 receive_write(struct receive_writer_arg *rwa, struct drr_write *drrw,
-	arc_buf_t *abuf)
+    arc_buf_t *abuf)
 {
 	dmu_tx_t *tx;
 	dmu_buf_t *bonus;
@@ -3226,6 +3230,9 @@ dmu_recv_end_sync(void *arg, dmu_tx_t *tx)
 		dsl_dataset_phys(origin_head)->ds_flags &=
 		    ~DS_FLAG_INCONSISTENT;
 
+		drc->drc_newsnapobj =
+		    dsl_dataset_phys(origin_head)->ds_prev_snap_obj;
+
 		dsl_dataset_rele(origin_head, FTAG);
 		dsl_destroy_head_sync_impl(drc->drc_ds, tx);
 
@@ -3261,8 +3268,9 @@ dmu_recv_end_sync(void *arg, dmu_tx_t *tx)
 			(void) zap_remove(dp->dp_meta_objset, ds->ds_object,
 			    DS_FIELD_RESUME_TONAME, tx);
 		}
+		drc->drc_newsnapobj =
+		    dsl_dataset_phys(drc->drc_ds)->ds_prev_snap_obj;
 	}
-	drc->drc_newsnapobj = dsl_dataset_phys(drc->drc_ds)->ds_prev_snap_obj;
 	zvol_create_minors(dp->dp_spa, drc->drc_tofs, B_TRUE);
 	/*
 	 * Release the hold from dmu_recv_begin.  This must be done before
@@ -3306,8 +3314,6 @@ static int dmu_recv_end_modified_blocks = 3;
 static int
 dmu_recv_existing_end(dmu_recv_cookie_t *drc)
 {
-	int error;
-
 #ifdef _KERNEL
 	/*
 	 * We will be destroying the ds; make sure its origin is unmounted if
@@ -3318,23 +3324,30 @@ dmu_recv_existing_end(dmu_recv_cookie_t *drc)
 	zfs_destroy_unmount_origin(name);
 #endif
 
-	error = dsl_sync_task(drc->drc_tofs,
+	return (dsl_sync_task(drc->drc_tofs,
 	    dmu_recv_end_check, dmu_recv_end_sync, drc,
-	    dmu_recv_end_modified_blocks, ZFS_SPACE_CHECK_NORMAL);
-
-	if (error != 0)
-		dmu_recv_cleanup_ds(drc);
-	return (error);
+	    dmu_recv_end_modified_blocks, ZFS_SPACE_CHECK_NORMAL));
 }
 
 static int
 dmu_recv_new_end(dmu_recv_cookie_t *drc)
 {
+	return (dsl_sync_task(drc->drc_tofs,
+	    dmu_recv_end_check, dmu_recv_end_sync, drc,
+	    dmu_recv_end_modified_blocks, ZFS_SPACE_CHECK_NORMAL));
+}
+
+int
+dmu_recv_end(dmu_recv_cookie_t *drc, void *owner)
+{
 	int error;
 
-	error = dsl_sync_task(drc->drc_tofs,
-	    dmu_recv_end_check, dmu_recv_end_sync, drc,
-	    dmu_recv_end_modified_blocks, ZFS_SPACE_CHECK_NORMAL);
+	drc->drc_owner = owner;
+
+	if (drc->drc_newfs)
+		error = dmu_recv_new_end(drc);
+	else
+		error = dmu_recv_existing_end(drc);
 
 	if (error != 0) {
 		dmu_recv_cleanup_ds(drc);
@@ -3344,17 +3357,6 @@ dmu_recv_new_end(dmu_recv_cookie_t *drc)
 		    drc->drc_newsnapobj);
 	}
 	return (error);
-}
-
-int
-dmu_recv_end(dmu_recv_cookie_t *drc, void *owner)
-{
-	drc->drc_owner = owner;
-
-	if (drc->drc_newfs)
-		return (dmu_recv_new_end(drc));
-	else
-		return (dmu_recv_existing_end(drc));
 }
 
 /*

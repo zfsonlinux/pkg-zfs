@@ -30,11 +30,19 @@
 #
 
 #
-# Copyright (c) 2016 by Lawrence Livermore National Security, LLC.
+# Copyright (c) 2016-2017 by Lawrence Livermore National Security, LLC.
 #
 
+# DESCRIPTION:
+# Verify zpool iostat command mode (-c) works for all pre-baked scripts.
+#
+# STRATEGY:
+# 1. Make sure each script creates at least one new column.
+# 2. Make sure the new column values exist.
+# 3. Make sure we can run multiple scripts in one -c line
 
 . $STF_SUITE/include/libtest.shlib
+. $STF_SUITE/include/zpool_script.shlib
 
 verify_runnable "both"
 
@@ -45,36 +53,24 @@ else
 	testpool=${TESTPOOL%%/*}
 fi
 
-#
-# DESCRIPTION:
-# Verify 'zpool iostat -c CMD' works, and that VDEV_PATH and VDEV_UPATH get set.
-#
-# STRATEGY:
-# grep for '^\s+/' to just get the vdevs (not pools).  All vdevs will start with
-# a '/' when we specify the path (-P) flag. We check for "{}" to see if one
-# of the VDEV variables isn't set.
-#
-C1=$($ZPOOL iostat -Pv $testpool | $GREP -E '^\s+/' | $WC -l)
-C2=$($ZPOOL iostat -Pv -c 'echo vdev_test{$VDEV_PATH}{$VDEV_UPATH}' $testpool \
-    | $GREP -E '^\s+/' | $GREP -v '{}' | $WC -l)
-if [ "$C1" != "$C2" ] ; then
-	log_fail "zpool iostat -c failed, expected $C1 vdevs, got $C2"
-else
-	log_note "zpool iostat -c passed, expected $C1 vdevs, got $C2"
-fi
+files="$(ls $ZPOOLSCRIPTDIR)"
+scripts=""
+for i in $files ; do
+	if [ ! -x "$ZPOOLSCRIPTDIR/$i" ] ; then
+		# Skip non-executables
+		continue
+	fi
 
-# Call iostat on only a specific vdev, and verify that the command only gets
-# run on the vdev.  We write the command results to a temp file to verify that
-# the command actually gets run, rather than just verifying that the results
-# are *displayed* for the specific vdev.
-TMP=$($MKTEMP)
-FIRST_VDEV=$($ZPOOL iostat -Pv $testpool | $GREP -Eo '^\s+/[^ ]+' | $HEAD -n 1)
-log_must $ZPOOL iostat -Pv -c "echo \$VDEV_PATH >> $TMP" $testpool \
-    $FIRST_VDEV > /dev/null
-C2=$($WC -w < $TMP)
-$RM $TMP
-if [ "$C2" != "1" ] ; then
-	log_fail "zpool iostat -c <VDEV> failed, expected 1 vdev, got $C2"
-else
-	log_note "zpool iostat -c <VDEV> passed, expected 1 vdev, got $C2"
-fi
+	# Collect executable script names
+	scripts="$scripts $i"
+
+	# Run each one with -c
+	test_zpool_script "$i" "$testpool" "zpool iostat -Pv -c"
+done
+
+# Test that we can run multiple scripts separated with a commma by running
+# all the scripts in a single -c line.
+allscripts="$(echo $scripts | sed -r 's/[[:blank:]]+/,/g')"
+test_zpool_script "$allscripts" "$testpool" "zpool iostat -Pv -c"
+
+exit 0

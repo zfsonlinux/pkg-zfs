@@ -138,10 +138,12 @@ DECLARE_EVENT_CLASS(zfs_ace_class,
 );
 /* END CSTYLED */
 
+/* BEGIN CSTYLED */
 #define	DEFINE_ACE_EVENT(name) \
 DEFINE_EVENT(zfs_ace_class, name, \
 	TP_PROTO(znode_t *zn, zfs_ace_hdr_t *ace, uint32_t mask_matched), \
 	TP_ARGS(zn, ace, mask_matched))
+/* END CSTYLED */
 DEFINE_ACE_EVENT(zfs_zfs__ace__denies);
 DEFINE_ACE_EVENT(zfs_zfs__ace__allows);
 
