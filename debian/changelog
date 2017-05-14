@@ -1,3 +1,631 @@
+zfs-linux (0.7.0-rc4-1~trusty~1.gbpf71b97) trusty; urgency=low
+
+  [ Darik Horn ]
+  * Update changelog for 0.7.0-rc3-1~trusty~1.gbp45e48b release
+
+  [ Chunwei Chen ]
+  * Partial revert "Disable slow tests for kmemleak"
+
+  [ George Melikov ]
+  * OpenZFS 7729 - libzfs_core`lzc_rollback() leaks result nvl
+
+  [ Paul Dagnelie ]
+  * OpenZFS 6459 - cstyle doesn't detect opening braces on the same line as function header Authored by: Paul Dagnelie <pcd@delphix.com> Reviewed by: Matthew Ahrens <mahrens@delphix.com> Reviewed by: Alex Reece <alex@delphix.com> Reviewed by: Albert Lee <trisk@omniti.com> Reviewed by: Dan McDonald <danmcd@omniti.com> Approved by: Robert Mustacchi <rm@joyent.com> Ported-by: George Melikov mail@gmelikov.ru
+
+  [ George Melikov ]
+  * codebase style improvements for OpenZFS 6459 port
+  * OpenZFS 7054 - dmu_tx_hold_t should use refcount_t to track space
+  * OpenZFS 6052 - decouple lzc_create() from the implementation details
+  * OpenZFS 7233 - dir_is_empty should open directory with CLOEXEC
+  * OpenZFS 7304 - zfs filesystem/snapshot counts should be read-only
+  * OpenZFS 3746 - ZRLs are racy
+  * OpenZFS 7180 - potential race between zfs_suspend_fs+zfs_resume_fs and zfs_ioc_rename
+  * OpenZFS 6428 - set canmount=off on unmounted filesystem tries to unmount children
+  * OpenZFS 7604 - if volblocksize property is the default, it displays as "-" rather than 8K
+
+  [ Brian Behlendorf ]
+  * Fix pool_names_001_pos test case
+  * Fix build-it compilation regression
+
+  [ George Melikov ]
+  * OpenZFS 6880 - zdb incorrectly reports feature count mismatch when feature is disabled
+
+  [ Håkan Johansson ]
+  * Minor man-page formatting fixes
+
+  [ George Melikov ]
+  * OpenZFS 6871 - libzpool implementation of thread_create should enforce length is 0
+  * OpenZFS 7571 - non-present readonly numeric ZFS props do not have default value
+  * OpenZFS 6872 - zfs libraries should not allow uninitialized variables
+
+  [ Brian Behlendorf ]
+  * Refresh Linux test suite runfile
+
+  [ George Melikov ]
+  * OpenZFS 7336 - vfork and O_CLOEXEC causes zfs_mount EBUSY
+
+  [ Brian Behlendorf ]
+  * OpenZFS 7147 - ztest: ztest_ddt_repair fails with ztest_pattern_match assertion
+
+  [ George Melikov ]
+  * OpenZFS 7253 - ztest failure: dsl_destroy_head(name) == 0 (0x10 == 0x0), file ../ztest.c, line 3235 (#5660)
+  * OpenZFS 7163 - ztest failures due to excess error injection
+
+  [ Giuseppe Di Natale ]
+  * OpenZFS 6999 - fix 'Use of uninitialized value $picky in numeric eq (==)' in cstyle
+  * OpenZFS 7348 - cstyle can't handle ellipsis on continuation line
+
+  [ George Melikov ]
+  * OpenZFS 6412 - zfs receive: -u can be ignored sometimes
+  * OpenZFS 7606 - dmu_objset_find_dp() takes a long time while importing pool
+  * OpenZFS 5142 - libzfs support raidz root pool (loader project)
+  * OpenZFS 7386 - zfs get does not work properly with bookmarks
+  * OpenZFS 6676 - Race between unique_insert() and unique_remove() causes ZFS fsid change
+  * OpenZFS 7500 - Simplify dbuf_free_range by removing dn_unlisted_l0_blkid
+
+  [ Tim Chase ]
+  * OpenZFS 7613 - ms_freetree[4] is only used in syncing context
+
+  [ Brian Behlendorf ]
+  * OpenZFS 5561 - support root pools on EFI/GPT partitioned disks
+
+  [ Chunwei Chen ]
+  * Retire .write/.read file operations
+
+  [ George Melikov ]
+  * Add realloc() success check in zpool_history_unpack()
+  * OpenZFS 7254 - ztest failed assertion in ztest_dataset_dirobj_verify: dirobjs + 1 == usedobjs
+  * OpenZFS 7301 - zpool export -f should be able to interrupt file freeing
+  * OpenZFS 7340 - receive manual origin should override automatic origin
+  * OpenZFS 7580 - ztest failure in dbuf_read_impl
+
+  [ Brian Behlendorf ]
+  * Add -Wno-declaration-after-statement to KERNELCPPFLAGS
+  * Fix suspend Godfather I/Os io_reexecute bits
+
+  [ George Melikov ]
+  * OpenZFS 7277 - zdb should be able to print zfs_dbgmsg's
+  * OpenZFS 7502 - ztest should run zdb with -G (debug mode)
+  * OpenZFS 7541 - zpool import/tryimport ioctl returns ENOMEM
+  * OpenZFS 6922 - Emit ESC_ZFS_VDEV_REMOVE_AUX after removing an aux device
+  * OpenZFS 7490 - real checksum errors are silenced when zinject is on
+  * OpenZFS 7280 - Allow changing global libzpool variables in zdb and ztest through command line
+  * OpenZFS 7136 - ESC_VDEV_REMOVE_AUX ought to always include vdev information
+  * OpenZFS 7019 - zfsdev_ioctl skips secpolicy when FKIOCTL is set
+  * OpenZFS 7745 - print error if lzc_* is called before libzfs_core_init
+
+  [ Tim Chase ]
+  * Update deadman operation to better align with upstream OpenZFS
+
+  [ Aron Xu ]
+  * contrib/dracut: fix syntax error in module-setup.sh
+
+  [ Giuseppe Di Natale ]
+  * OpenZFS 7545 - zdb should disable reference tracking
+
+  [ George Melikov ]
+  * OpenZFS 7742 - zfs send wrong error message with invalid long opts
+  * OpenZFS 6569 - large file delete can starve out write ops
+
+  [ Tim Crawford ]
+  * Match on word for excluding pools from tests
+
+  [ David Quigley ]
+  * Use fletcher_4 routines natively with `abd_iterate_func()`
+
+  [ Brian Behlendorf ]
+  * Fix atomic_sub_64() i386 assembly implementation
+
+  [ George Melikov ]
+  * OpenZFS 7072 - zfs fails to expand if lun added when os is in shutdown state
+
+  [ Brian Behlendorf ]
+  * Fix reservation test cases for large disks
+
+  [ Giuseppe Di Natale ]
+  * Remove lint ifdef checks in zdb and dbuf
+
+  [ Chunwei Chen ]
+  * Fix write(2) returns zero bug from 933ec99
+
+  [ Don Brady ]
+  * Add nvlist payload stats for zdb -ll dump
+
+  [ George Melikov ]
+  * OpenZFS 1300 - filename normalization doesn't work for removes
+
+  [ Giuseppe Di Natale ]
+  * OpenZFS 4521 - zfstest is trying to execute evil "zfs unmount -a"
+
+  [ Olaf Faaland ]
+  * Add tmpfile_003_pos to .gitignore
+
+  [ Don Brady ]
+  * OpenZFS 6866 - zdb -l non-zero status if no label
+
+  [ Brian Behlendorf ]
+  * Disable sparse_001_pos / truncate_001_pos.ksh on 32-bit systems
+
+  [ George Melikov ]
+  * OpenZFS 7247 - zfs receive of deduplicated stream fails
+  * OpenZFS 7504 - kmem_reap hangs spa_sync and administrative tasks
+  * OpenZFS 7448 - ZFS doesn't notice when disk vdevs have no write cache
+
+  [ LOLi ]
+  * Fix ZFS Test Suite failures caused by ksh brace expansion feature
+
+  [ Don Brady ]
+  * Fix coverity defects: CID 155928
+
+  [ David Quigley ]
+  * Add missing module_param for zfs_per_txg_dirty_frees_percent
+
+  [ George Melikov ]
+  * OpenZFS 6931 - lib/libzfs: cleanup gcc warnings
+
+  [ Matthew Ahrens ]
+  * Allow c99 code to compile
+
+  [ George Melikov ]
+  * Fix coverity defects: CID 155964, 155965
+
+  [ Brian Behlendorf ]
+  * Fix zfs-mount.service failure on boot
+
+  [ George Melikov ]
+  * Add `wait_freeing` helper function to ZTS
+
+  [ Brian Behlendorf ]
+  * Fix iput() calls within a tx
+  * Move ziltest.sh to the ZTS framework
+
+  [ Matthew Ahrens ]
+  * panic in bpobj_space(): null pointer dereference
+  * OpenZFS 7104 - increase indirect block size
+
+  [ Simon Klinkert ]
+  * OpenZFS 5704 - libzfs can only handle 255 file descriptors
+
+  [ Tony Hutter ]
+  * Clear enclosure sysfs path from VDEV label when sysfs path isn't present
+  * Enclosure LED fixes
+
+  [ Chunwei Chen ]
+  * Fix off by one in zpl_lookup
+
+  [ John Wren Kennedy ]
+  * OpenZFS 6642 - testrunner output can be displayed in the wrong order
+  * OpenZFS 7496 - cmp_ds_cont has never worked
+
+  [ Yuri Pankov ]
+  * OpenZFS 6580 - zfs-tests use undefined variable WRAPPER
+
+  [ Tim Chase ]
+  * Fix zfs_compressed_arc_enabled parameter description
+
+  [ Matthew Ahrens ]
+  * OpenZFS 7162 - Intermittent failures from ro_props_001_pos
+
+  [ Marcel Telka ]
+  * OpenZFS 7103 - failed test cli_root/zfs_snapshot/zfs_snapshot_009_pos
+  * OpenZFS 7398 - zfs test zfs_get_005_neg does not work as expected
+
+  [ Igor Kozhukhov ]
+  * OpenZFS 7036 - zvol_swap_004_pos test failed
+
+  [ George Melikov ]
+  * Disable racy snapshot_008_pos
+
+  [ Yuri Pankov ]
+  * OpenZFS 6754 - zfs-tests: get_substr() function is redundant
+
+  [ Akash Ayare ]
+  * OpenZFS 7027 - zfs_written_property_001_pos makes unreasonable assumptions about metadata space usage
+
+  [ Olaf Faaland ]
+  * Use file-based pools for zpool_expand test 002 and enable it
+
+  [ John Wren Kennedy ]
+  * OpenZFS 7260 - disable libdiskmgmt in zfstest unless it's required
+
+  [ Christopher Voltz ]
+  * Fix broken URL
+
+  [ Matthew Ahrens ]
+  * OpenZFS 6404 - zvol_swap_006_pos can occasionally fail due to swaplen being < 16
+  * zfs_arc_num_sublists_per_state should be common to all multilists
+
+  [ Prakash Surya ]
+  * OpenZFS 7762 - avoid division by zero in property_alias_001_pos
+
+  [ John Wren Kennedy ]
+  * OpenZFS 7248 - large block support breaks rsend_009_pos
+
+  [ Hans Rosenfeld ]
+  * OpenZFS 7001 - zvol_misc tests should not depend on /sbin or /usr/sbin being in PATH
+
+  [ Christopher Voltz ]
+  * Retry setting LED
+
+  [ Isaac Huang ]
+  * Fix incorrect spare vdev state after replacing
+
+  [ Giuseppe Di Natale ]
+  * Allow zfs-tests to run a single test
+
+  [ Matthew Ahrens ]
+  * OpenZFS 7337 - inherit_001_pos occasionally times out
+
+  [ Andriy Gapon ]
+  * OpenZFS 7199 - dsl_dataset_rollback_sync may try to free already free blocks
+
+  [ Prakash Surya ]
+  * OpenZFS 7761 - bootfs_005_neg's pool destruction must handle EBUSY
+
+  [ Daniel Hoffman ]
+  * OpenZFS 7812 - Remove gender specific language
+
+  [ Ahmed G ]
+  * OpenZFS 7736 - ZFS Performance tests should log FIO summary output
+
+  [ Tim Crawford ]
+  * Fix checksumflags assignment in cksummer
+
+  [ Isaac Huang ]
+  * ABD style cleanups
+
+  [ Matthew Ahrens ]
+  * Clean up by-dnode code in dmu_tx.c
+
+  [ Matt Kemp ]
+  * Fix initramfs hook for merged /usr/lib and /lib
+
+  [ Olaf Faaland ]
+  * Linux 4.11 compat: avoid refcount_t name conflict
+
+  [ Sydney Vanda ]
+  * Add auto-online test for ZED/FMA as part of the ZTS
+
+  [ Giuseppe Di Natale ]
+  * Bug fixes for single test runs in zfs-tests
+  * Reduce size of zvol and enforce 4k blocksize in zvol tests
+
+  [ Brian Behlendorf ]
+  * Fix powerpc build
+
+  [ Chunwei Chen ]
+  * Fix loop device becomes read-only
+
+  [ Olaf Faaland ]
+  * Dump unique configurations and Uberblocks in zdb -lu
+
+  [ Brian Behlendorf ]
+  * OpenZFS 7843 - get_clones_stat() is suboptimal for lots of clones
+  * OpenZFS 7793 - ztest fails assertion in dmu_tx_willuse_space
+
+  [ bunder2015 ]
+  * Fix multi-line error messages in blkdev_compat.h
+
+  [ Gvozden Neskovic ]
+  * [icp] fpu and asm cleanup for linux
+
+  [ bunder2015 ]
+  * Corrected highlight for zpool man page
+
+  [ Andriy Gapon ]
+  * OpenZFS 7867 - ARC space accounting leak
+
+  [ Tony Hutter ]
+  * Fix harmless "BARRIER is deprecated" kernel warning on Centos 6.8
+
+  [ Chunwei Chen ]
+  * Fix nfs snapdir automount
+
+  [ Giuseppe Di Natale ]
+  * Enable shellcheck to run for select scripts
+  * Correct arc_summary and dbufstat python style
+  * Suppress cppcheck nullPointer error in zfs_write
+
+  [ Brian Behlendorf ]
+  * Fix ZVOL BLKFLSBUF ioctl
+  * Rename zfs_sb_t -> zfsvfs_t
+  * Rename zfs_* functions
+  * Restructure mount option handling
+
+  [ Matthew Ahrens ]
+  * OpenZFS 6874 - rollback and receive need to reset ZPL state to what's on disk
+  * OpenZFS 7801 - add more by-dnode routines (lint)
+
+  [ DeHackEd ]
+  * zfs(8) fixes
+
+  [ Olaf Faaland ]
+  * Linux 4.11 compat: iops.getattr and friends
+
+  [ Matthew Ahrens ]
+  * OpenZFS 7968 - multi-threaded spa_sync()
+
+  [ John Paul Adrian Glaubitz ]
+  * libspl: Fix incorrect use of platform defines on sparc64
+
+  [ wli5 ]
+  * GZIP compression offloading with QAT accelerator
+
+  [ Brian Behlendorf ]
+  * Fix `zpool status -v` error message
+
+  [ George Wilson ]
+  * OpenZFS 3821 - Race in rollback, zil close, and zil flush
+
+  [ Brian Behlendorf ]
+  * Fix undefined reference to `libzfs_fru_compare'
+  * Retry zfs_znode_alloc() in zfs_mknode()
+
+  [ LOLi ]
+  * Fix 'zdb -o' segmentation fault
+
+  [ Brian Behlendorf ]
+  * Allow c99 when building ZFS in the kernel tree
+
+  [ wli5 ]
+  * Update documentation for new parameter "zfs_qat_disable"
+
+  [ Brian Behlendorf ]
+  * Disable rsend_009_pos
+
+  [ Sen Haerens ]
+  * Fix "undefined reference to xdr_control" when building raidz_test cmd
+
+  [ Chunwei Chen ]
+  * Fix wrong offset args in vdev_cache_write
+
+  [ LOLi ]
+  * Check ashift validity in 'zpool add'
+
+  [ Giuseppe Di Natale ]
+  * OpenZFS 7990 - libzfs: snapspec_cb() does not need to call zfs_strdup()
+
+  [ Gvozden Neskovic ]
+  * Remove dependency on linear ABD
+
+  [ Brian Behlendorf ]
+  * Fix add-o_ashift.ksh permissions
+
+  [ Olaf Faaland ]
+  * glibc 2.5 compat: use correct header for makedev() et al.
+
+  [ Giuseppe Di Natale ]
+  * Commit message format in contributing guidelines
+
+  [ George Melikov ]
+  * zfs_get_005_neg.ksh fix typos
+
+  [ Giuseppe Di Natale ]
+  * Prevent commitcheck.sh from running twice
+
+  [ N Clark ]
+  * Additional Information for Zedlets
+
+  [ Tom Matthews ]
+  * list -o props should be alloc,free not used,avail
+
+  [ Steven Hartland ]
+  * OpenZFS 7885 - zpool list can report 16.0e for expandsz
+
+  [ Giuseppe Di Natale ]
+  * Fix coverity defects: CID 161264
+
+  [ Don Brady ]
+  * Fix regression in zfs_ereport_start()
+
+  [ Håkan Johansson ]
+  * Accept raidz and mirror with similar redundancy
+
+  [ Sydney Vanda ]
+  * Added auto-replace FMA test for the ZFS Test Suite
+
+  [ John Wren Kennedy ]
+  * OpenZFS 7290 - ZFS test suite needs to control what utilities it can run
+
+  [ Giuseppe Di Natale ]
+  * Fix coverity defects: CID 161288
+
+  [ Brian Behlendorf ]
+  * Skip xfstests on Amazon Linux
+
+  [ Giuseppe Di Natale ]
+  * Correct shellcheck make recipe
+
+  [ Brian Behlendorf ]
+  * OpenZFS 7629 - Fix for 7290 neglected to remove some escape sequences
+
+  [ Toomas Soome ]
+  * OpenZFS 7404 - rootpool_007_neg, bootfs_006_pos and bootfs_008_neg tests fail with the loader project bits
+
+  [ George Melikov ]
+  * zfstests cli_user/misc/setup.ksh space missed
+  * zfs_receive_010_pos.ksh local => typeset change
+
+  [ Andriy Gapon ]
+  * OpenZFS 8027 - tighten up dsl_pool_dirty_delta
+
+  [ Pedro Giffuni ]
+  * OpenZFS 8046 - Let calloc() do the multiplication in libzfs_fru_refresh
+
+  [ Andriy Gapon ]
+  * OpenZFS 5380 - receive of a send -p stream doesn't need to try renaming snapshots
+
+  [ George Wilson ]
+  * OpenZFS 8023 - Panic destroying a metaslab deferred range tree
+
+  [ George Melikov ]
+  * zfstest reservation_009_pos.sh missed backslash
+  * zfstest - replace dircmp with diff
+
+  [ Giuseppe Di Natale ]
+  * OpenZFS 2932 - support crash dumps to raidz, etc. pools
+
+  [ Matthew Ahrens ]
+  * OpenZFS 8005 - poor performance of 1MB writes on certain RAID-Z configurations
+
+  [ LOLi ]
+  * Fix size inflation in spa_get_worst_case_asize()
+
+  [ Yuri Pankov ]
+  * OpenZFS 6865 - want zfs-tests cases for zpool labelclear command
+
+  [ Giuseppe Di Natale ]
+  * Skip rate limiting events in zfs_ereport_post
+
+  [ Brian Behlendorf ]
+  * OpenZFS 7535 - need test for resumed send of top most filesystem
+
+  [ Richard Yao ]
+  * Add missing includes to zed_log.c
+  * Fix `zpool iostat -T d 1` on musl
+  * Fix header inclusions for standards conformance
+
+  [ Brian Behlendorf ]
+  * OpenZFS 7503 - zfs-test should tail ::zfs_dbgmsg on test failure
+
+  [ Giuseppe Di Natale ]
+  * Invalidate cache during a zpool labelclear
+
+  [ Brian Behlendorf ]
+  * OpenZFS 5120 - zfs should allow large block/gzip/raidz boot pool (loader project)
+  * OpenZFS 6410 - teach zdb to perform object lookups by path
+
+  [ Debabrata Banerjee ]
+  * SEEK_HOLE should not block on txg_wait_synced()
+
+  [ Andriy Gapon ]
+  * OpenZFS 8026 - retire zfs_throttle_delay and zfs_throttle_resolution
+  * OpenZFS 6101 - attempt to lzc_create() a filesystem under a volume results in a panic
+
+  [ Alan Somers ]
+  * OpenZFS 7900 - zdb shouldn't print the path of a znode at verbosity < 5
+
+  [ Matthew Ahrens ]
+  * OpenZFS 8061 - sa_find_idx_tab can be declared more type-safely
+
+  [ DHE ]
+  * Increase zfs_vdev_async_write_min_active to 2
+
+  [ George Melikov ]
+  * zfstest: add dmesg command to $PATH
+
+  [ Giuseppe Di Natale ]
+  * Clean up correctly in zpool_scrub_004_pos
+
+  [ Richard Yao ]
+  * OpenZFS 6392 - zdb: introduce -V for verbatim import
+
+  [ Tim Crawford ]
+  * Fix leak in send_iterate_fs
+
+  [ George Melikov ]
+  * zfs_receive_010_pos: change dd arguments
+
+  [ LOLi ]
+  * Allow bookmark short name in 'zfs bookmark'
+
+  [ Ned Bass ]
+  * vdev_id: fix failure due to multipath -l bug
+
+  [ LOLi ]
+  * Documentation fixes for zfs(8) and 'zfs' binary
+
+  [ Tony Hutter ]
+  * Prebaked scripts for zpool status/iostat -c
+
+  [ Olaf Faaland ]
+  * Correct lock ASSERTs in vdev_label_read/write
+
+  [ Tony Hutter ]
+  * Fix shellcheck warning in pre-baked script
+
+  [ dbavatar ]
+  * Fix lseek result when dnode is dirty
+
+  [ Don Brady ]
+  * Fixed zdb -e regression for active cacheless pools
+
+  [ DeHackEd ]
+  * Fix 'zpool iostat -v' cache and log output
+  * Typo in zfs-module-parameters(5)
+
+  [ Matthew Ahrens ]
+  * OpenZFS 8025 - dbuf_read() creates unnecessary zio_root() for bonus buf
+
+  [ bunder2015 ]
+  * Fix typo in zfs-module-parameters man page
+
+  [ wli5 ]
+  * Change U16 to U32 due to atomic_inc_32_nv
+
+  [ Dan Kimmel ]
+  * OpenZFS 7252 - compressed zfs send / receive
+
+  [ Tim Chase ]
+  * Update documentation for zfs_vdev_queue_depth_pct
+
+  [ Chunwei Chen ]
+  * Reinstate zvol_taskq to fix aio on zvol
+
+  [ Brian Behlendorf ]
+  * Limit zfs_dirty_data_max_max to 4G
+
+  [ Yuri Pankov ]
+  * OpenZFS 7786 - zfs`vdev_online() needs better notification about state changes
+
+  [ Brian Behlendorf ]
+  * Linux 4.12 compat: super_setup_bdi_name()
+
+  [ jxiong ]
+  * Guarantee PAGESIZE alignment for large zio buffers
+  * minor improvement to abd_free_pages()
+
+  [ Debabrata Banerjee ]
+  * Don't report ghost buffers as evictable mem
+  * Make arc_need_free updates atomic
+  * Stop double reclaiming or not reclaiming at all
+  * Do not stop kernel shrinker on lock contention
+  * Only wakeup waiters if we've actually done work
+  * Don't run the reaper if we didn't shrink the cache
+  * Correct signed operation
+  * Allow scaling of arc in proportion to pagecache
+
+  [ LOLi ]
+  * Add zfs_nicebytes() to print human-readable sizes
+
+  [ Olaf Faaland ]
+  * Write label 2,3 uberblocks when vdev expands
+
+  [ LOLi ]
+  * More ashift improvements
+
+  [ Brian Behlendorf ]
+  * Enable all zfs_destroy test cases
+  * Update rsend_014_pos and send-c_volume test cases
+
+  [ RageLtMan ]
+  * Disable write merging on ZVOLs
+
+  [ Richard Yao ]
+  * Enable Linux read-ahead for a single page on ZVOLs
+
+  [ Brian Behlendorf ]
+  * Default to zvol_request_async=0
+
+  [ Gvozden Neskovic ]
+  * Add missing *_destroy/*_fini calls
+
+  [ Brian Behlendorf ]
+  * Fix unused variable warning
+  * Tag 0.7.0-rc4
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 14 May 2017 11:30:02 -0400
+
 zfs-linux (0.7.0-rc3-1~trusty~1.gbp45e48b) trusty; urgency=low
 
   ** SNAPSHOT build @45e48bdf9bb4f9c51620bde10d8760da378a7ad4 **
