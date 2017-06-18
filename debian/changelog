@@ -1,3 +1,67 @@
+zfs-linux (0.6.5.10-1~trusty) trusty; urgency=low
+
+  [ Olaf Faaland ]
+  * Linux 4.11 compat: avoid refcount_t name conflict
+  * Linux 4.11 compat: iops.getattr and friends
+
+  [ Chunwei Chen ]
+  * Fix off by one in zpl_lookup
+
+  [ Brian Behlendorf ]
+  * Fix iput() calls within a tx
+  * Fix zfs-mount.service failure on boot
+
+  [ loli10K ]
+  * Allow ZVOL bookmarks to be listed recursively
+
+  [ Chunwei Chen ]
+  * Fix loop device becomes read-only
+
+  [ Brian Behlendorf ]
+  * Fix atomic_sub_64() i386 assembly implementation
+
+  [ Tim Chase ]
+  * zdb: segfault in dump_bpobj_subobjs()
+
+  [ Chunwei Chen ]
+  * Add kmap_atomic in dmu_bio_copy
+
+  [ Tony Hutter ]
+  * Fix harmless "BARRIER is deprecated" kernel warning on Centos 6.8
+
+  [ jxiong ]
+  * Guarantee PAGESIZE alignment for large zio buffers
+
+  [ Ned Bass ]
+  * vdev_id: fix failure due to multipath -l bug
+
+  [ Matthew Ahrens ]
+  * OpenZFS 8166 - zpool scrub thinks it repaired offline device
+
+  [ Brian Behlendorf ]
+  * Limit zfs_dirty_data_max_max to 4G
+  * Linux 4.12 compat: super_setup_bdi_name()
+  * Linux 4.12 compat: CURRENT_TIME removed
+
+  [ LOLi ]
+  * Linux 4.12 compat: fix super_setup_bdi_name() call
+  * Linux 4.9 compat: fix zfs_ctldir xattr handling
+
+  [ Chunwei Chen ]
+  * Fix import finding spare/l2cache when path changes
+  * Fix import wrong spare/l2 device when path change
+
+  [ Matthew Ahrens ]
+  * OpenZFS 8005 - poor performance of 1MB writes on certain RAID-Z configurations
+
+  [ Brian Behlendorf ]
+  * Add MS_MANDLOCK mount failure message
+
+  [ Tony Hutter ]
+  * Prepare to release 0.6.5.10
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 18 Jun 2017 10:39:43 -0400
+
 zfs-linux (0.6.5.9-1~trusty) trusty; urgency=low
 
   [ Richard Laager ]
