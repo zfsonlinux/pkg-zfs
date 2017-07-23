@@ -1,3 +1,33 @@
+zfs-linux (0.6.5.11-1~trusty) trusty; urgency=low
+
+  [ Olaf Faaland ]
+  * glibc 2.5 compat: use correct header for makedev() et al.
+
+  [ Justin Lecher ]
+  * Compatibilty with glibc-2.23
+
+  [ Brian Behlendorf ]
+  * Remove complicated libspl assert wrappers
+
+  [ Tony Hutter ]
+  * GCC 7.1 fixes
+  * Fix RHEL 7.4 bio_set_op_attrs build error
+
+  [ loli10K ]
+  * Fix int overflow in zbookmark_is_before()
+
+  [ DHE ]
+  * Increase zfs_vdev_async_write_min_active to 2
+
+  [ alaviss ]
+  * Musl libc fixes
+
+  [ Tony Hutter ]
+  * Linux 4.12 compat: super_setup_bdi_name() - add missing code
+  * Prepare to release 0.6.5.11
+
+ -- Darik Horn <dajhorn@vanadac.com>  Sun, 23 Jul 2017 13:48:50 -0400
+
 zfs-linux (0.6.5.10-1~trusty) trusty; urgency=low
 
   [ Olaf Faaland ]
